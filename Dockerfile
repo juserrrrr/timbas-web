@@ -44,7 +44,10 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 
 # Copia a pasta public
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Copia os assets estáticos do build
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Define o usuário para executar a aplicação
 USER nextjs
