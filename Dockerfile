@@ -11,7 +11,7 @@ RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml* ./
 
 # Instala as dependências de produção
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 
 # 2. Estágio de Build
