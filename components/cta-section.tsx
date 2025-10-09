@@ -5,7 +5,7 @@ import Link from "next/link"
 export function CTASection() {
   return (
     <section id="about" className="relative py-24">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 cursor-default">
         <div className="relative overflow-hidden rounded-2xl border border-gray-800 bg-gradient-to-br from-blue-900/20 to-red-900/20 p-12 backdrop-blur-sm md:p-16">
           <div className="relative z-10 mx-auto max-w-3xl text-center">
             <h2 className="mb-6 text-balance text-4xl font-bold text-white md:text-5xl">

@@ -28,7 +28,7 @@ export function HeroSection() {
   return (
     <section ref={sectionRef} className="relative min-h-screen pt-32 pb-20">
       <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-5xl text-center">
+        <div className="mx-auto max-w-5xl text-center cursor-default">
           {/* Announcement badge */}
           <div
             data-parallax="0.1"
