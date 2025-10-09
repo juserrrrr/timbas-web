@@ -1,6 +1,5 @@
 import { LoginForm } from "@/components/login-form"
-import { Bot } from "lucide-react"
-import Link from "next/link"
+import { Header } from "@/components/header"
 
 export default function LoginPage() {
   return (
@@ -12,16 +11,7 @@ export default function LoginPage() {
       </div>
 
       {/* Header */}
-      <header className="border-b border-gray-800 bg-black/50 backdrop-blur-lg">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-105">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
-              <Bot className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-xl font-bold">TimbasBot</span>
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       {/* Login Form */}
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
