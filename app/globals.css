@@ -155,3 +155,46 @@
     scrollbar-color: #3b82f6 rgba(0, 0, 0, 0.3);
   }
 }
+
+
+@property --angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes spin-glow-gap {
+  to {
+    --angle: 360deg;
+  }
+}
+
+@layer utilities {
+  .rotating-border-glow {
+    position: relative;
+    z-index: 0; /* Stacking context */
+  }
+
+  .rotating-border-glow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+    border-radius: theme('radius.lg');
+    background: conic-gradient(
+      from var(--angle),
+      theme('colors.yellow.400'),
+      theme('colors.yellow.500'),
+      theme('colors.amber.500') 48%,
+      theme('colors.amber.500') 52%,
+      theme('colors.yellow.500'),
+      theme('colors.yellow.400')
+    );
+    filter: blur(30px);
+    animation: spin-glow-gap 4s linear infinite;
+    opacity: 0.7;
+  }
+}

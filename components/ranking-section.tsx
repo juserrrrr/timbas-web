@@ -35,7 +35,7 @@ const generateMockPlayers = () => {
   return names.map((name, index) => ({
     id: index + 1,
     name,
-    avatar: `/placeholder.svg?height=40&width=40&query=avatar-${index}`,
+    avatar: ``, // Avatar is now handled by fallback
     points: 2500 - index * 100,
     wins: 150 - index * 5,
     losses: 50 + index * 2,
@@ -82,13 +82,13 @@ export function RankingSection() {
   const getMedalBg = (position: number) => {
     switch (position) {
       case 1:
-        return "from-yellow-500/20 to-yellow-600/20 border-yellow-500/30"
+        return "bg-yellow-500/20 border-yellow-500/30" // Border is handled by the wrapper
       case 2:
-        return "from-gray-400/20 to-gray-500/20 border-gray-400/30"
+        return "bg-gray-400/20 border-gray-400/30"
       case 3:
-        return "from-amber-600/20 to-amber-700/20 border-amber-600/30"
+        return "bg-amber-600/20 border-amber-600/30"
       default:
-        return "from-gray-800/20 to-gray-900/20 border-gray-700/30"
+        return "bg-gray-800/20 border-gray-700/30"
     }
   }
 
@@ -118,7 +118,7 @@ export function RankingSection() {
               {mockServers.map((server) => (
                 <SelectItem key={server.id} value={server.id} className="focus:bg-gray-800 focus:text-white">
                   <div className="flex items-center gap-2">
-                    <img src={server.icon || "/placeholder.svg"} alt={server.name} className="h-5 w-5 rounded-full" />
+                    <img src={server.icon || "/user-avatar.jpg"} alt={server.name} className="h-5 w-5 rounded-full" />
                     <span>{server.name}</span>
                   </div>
                 </SelectItem>
@@ -131,7 +131,7 @@ export function RankingSection() {
       {/* Top 3 Podium */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* 2nd Place */}
-        <Card className={`order-2 border bg-gradient-to-br p-6 backdrop-blur-sm md:order-1 ${getMedalBg(2)}`}>
+        <Card className={`order-2 border p-6 backdrop-blur-sm md:order-1 ${getMedalBg(2)}`}>
           <div className="mb-4 flex items-center justify-between">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-400/20">
               <Medal className={`h-7 w-7 ${getMedalColor(2)}`} />
@@ -140,7 +140,7 @@ export function RankingSection() {
           </div>
           <div className="mb-4 flex items-center gap-3">
             <Avatar className="h-16 w-16 border-2 border-gray-400">
-              <AvatarImage src={topThree[1].avatar || "/placeholder.svg"} alt={topThree[1].name} />
+              <AvatarImage src={topThree[1].avatar || "/user-avatar.jpg"} alt={topThree[1].name} />
               <AvatarFallback>{topThree[1].name[0]}</AvatarFallback>
             </Avatar>
             <div>
@@ -161,37 +161,39 @@ export function RankingSection() {
         </Card>
 
         {/* 1st Place */}
-        <Card className={`order-1 scale-105 border bg-gradient-to-br p-6 backdrop-blur-sm md:order-2 ${getMedalBg(1)}`}>
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500/20">
-              <Trophy className={`h-8 w-8 ${getMedalColor(1)}`} />
+        <div className="order-1 scale-105 md:order-2 rotating-border-glow">
+          <Card className={`p-6 backdrop-blur-sm border ${getMedalBg(1)}`}>
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500/20">
+                <Trophy className={`h-8 w-8 ${getMedalColor(1)}`} />
+              </div>
+              <span className="text-4xl font-bold text-yellow-400">1º</span>
             </div>
-            <span className="text-4xl font-bold text-yellow-400">1º</span>
-          </div>
-          <div className="mb-4 flex items-center gap-3">
-            <Avatar className="h-20 w-20 border-4 border-yellow-400">
-              <AvatarImage src={topThree[0].avatar || "/placeholder.svg"} alt={topThree[0].name} />
-              <AvatarFallback>{topThree[0].name[0]}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="text-xl font-bold text-white">{topThree[0].name}</h3>
-              <p className="text-sm text-gray-400">{topThree[0].points} pts</p>
+            <div className="mb-4 flex items-center gap-3">
+              <Avatar className="h-20 w-20 border-4 border-yellow-400">
+                <AvatarImage src={topThree[0].avatar || "/user-avatar.jpg"} alt={topThree[0].name} />
+                <AvatarFallback>{topThree[0].name[0]}</AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="text-xl font-bold text-white">{topThree[0].name}</h3>
+                <p className="text-sm text-gray-400">{topThree[0].points} pts</p>
+              </div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="rounded-lg bg-black/30 p-2 text-center">
-              <div className="font-semibold text-green-400">{topThree[0].wins}V</div>
-              <div className="text-xs text-gray-400">Vitórias</div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-lg bg-black/30 p-2 text-center">
+                <div className="font-semibold text-green-400">{topThree[0].wins}V</div>
+                <div className="text-xs text-gray-400">Vitórias</div>
+              </div>
+              <div className="rounded-lg bg-black/30 p-2 text-center">
+                <div className="font-semibold text-red-400">{topThree[0].losses}D</div>
+                <div className="text-xs text-gray-400">Derrotas</div>
+              </div>
             </div>
-            <div className="rounded-lg bg-black/30 p-2 text-center">
-              <div className="font-semibold text-red-400">{topThree[0].losses}D</div>
-              <div className="text-xs text-gray-400">Derrotas</div>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
 
         {/* 3rd Place */}
-        <Card className={`order-3 border bg-gradient-to-br p-6 backdrop-blur-sm ${getMedalBg(3)}`}>
+        <Card className={`order-3 border p-6 backdrop-blur-sm ${getMedalBg(3)}`}>
           <div className="mb-4 flex items-center justify-between">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-600/20">
               <Medal className={`h-7 w-7 ${getMedalColor(3)}`} />
@@ -200,7 +202,7 @@ export function RankingSection() {
           </div>
           <div className="mb-4 flex items-center gap-3">
             <Avatar className="h-16 w-16 border-2 border-amber-600">
-              <AvatarImage src={topThree[2].avatar || "/placeholder.svg"} alt={topThree[2].name} />
+              <AvatarImage src={topThree[2].avatar || "/user-avatar.jpg"} alt={topThree[2].name} />
               <AvatarFallback>{topThree[2].name[0]}</AvatarFallback>
             </Avatar>
             <div>
@@ -248,7 +250,7 @@ export function RankingSection() {
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={player.avatar || "/placeholder.svg"} alt={player.name} />
+                          <AvatarImage src={player.avatar || "/user-avatar.jpg"} alt={player.name} />
                           <AvatarFallback>{player.name[0]}</AvatarFallback>
                         </Avatar>
                         <span className="font-medium text-white">{player.name}</span>
