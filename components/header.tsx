@@ -54,47 +54,52 @@ export function Header() {
         <a
           href="#top"
           onClick={scrollToTop}
-          className="flex items-center gap-2 transition-transform hover:scale-105 cursor-pointer"
+          className="group flex cursor-pointer items-center gap-2"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 transition-transform duration-300 ease-in-out group-hover:scale-110">
             <Bot className="h-6 w-6 text-white" />
           </div>
-          <span className="text-xl font-bold text-white">TimbasBot</span>
+          <span className="text-xl font-bold text-white transition-colors duration-300 group-hover:text-gray-200">
+            TimbasBot
+          </span>
         </a>
 
         <nav className="hidden items-center gap-6 md:flex">
           <a
             href="#top"
             onClick={scrollToTop}
-            className="text-sm font-medium text-gray-400 transition-colors hover:text-white"
+            className="text-base font-medium text-gray-300 transition-colors hover:text-white"
           >
             Início
           </a>
           <a
             href="#features"
             onClick={(e) => scrollToSection(e, "features")}
-            className="text-sm font-medium text-gray-400 transition-colors hover:text-white"
+            className="text-base font-medium text-gray-300 transition-colors hover:text-white"
           >
             Features
           </a>
           <a
             href="#commands"
             onClick={(e) => scrollToSection(e, "commands")}
-            className="text-sm font-medium text-gray-400 transition-colors hover:text-white"
+            className="text-base font-medium text-gray-300 transition-colors hover:text-white"
           >
             Comandos
           </a>
           <a
             href="#about"
             onClick={(e) => scrollToSection(e, "about")}
-            className="text-sm font-medium text-gray-400 transition-colors hover:text-white"
+            className="text-base font-medium text-gray-300 transition-colors hover:text-white"
           >
             Sobre
           </a>
         </nav>
 
         <div className="flex items-center gap-3">
-          <Button asChild className="bg-blue-600 hover:bg-blue-700">
+          <Button
+            asChild
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
             <Link href="/login">Entrar com Discord</Link>
           </Button>
         </div>
