@@ -29,7 +29,7 @@ export default function StatsPage() {
         {stats.map((stat) => (
           <Card
             key={stat.label}
-            className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm"
+            className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -44,7 +44,7 @@ export default function StatsPage() {
         ))}
       </div>
 
-      <Card className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm">
+      <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
         <h2 className="mb-6 text-xl font-bold text-white">Desempenho Recente</h2>
         <div className="space-y-4">
           {recentPerformance.map((week, index) => {
@@ -72,7 +72,7 @@ export default function StatsPage() {
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm">
+        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
           <h2 className="mb-4 text-xl font-bold text-white">Campeões Mais Jogados</h2>
           <div className="space-y-3">
             {["Yasuo", "Zed", "Lee Sin", "Thresh", "Jinx"].map((champion, index) => (
@@ -87,7 +87,7 @@ export default function StatsPage() {
           </div>
         </Card>
 
-        <Card className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm">
+        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
           <h2 className="mb-4 text-xl font-bold text-white">Conquistas Recentes</h2>
           <div className="space-y-3">
             {[

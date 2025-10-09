@@ -14,7 +14,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
-        <Card className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm">
+        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
           <div className="mb-4 flex items-center gap-3">
             <div className="rounded-lg bg-blue-500/10 p-2">
               <Bell className="h-5 w-5 text-blue-400" />
@@ -48,7 +48,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm">
+        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
           <div className="mb-4 flex items-center gap-3">
             <div className="rounded-lg bg-red-500/10 p-2">
               <Shield className="h-5 w-5 text-red-400" />
@@ -82,7 +82,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm">
+        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
           <div className="mb-4 flex items-center gap-3">
             <div className="rounded-lg bg-purple-500/10 p-2">
               <Palette className="h-5 w-5 text-purple-400" />
@@ -108,7 +108,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm">
+        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
           <div className="mb-4 flex items-center gap-3">
             <div className="rounded-lg bg-green-500/10 p-2">
               <Globe className="h-5 w-5 text-green-400" />

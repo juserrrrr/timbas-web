@@ -88,7 +88,7 @@ export default function HistoryPage() {
         {matches.map((match) => (
           <Card
             key={match.id}
-            className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm"
+            className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm"
           >
             {/* Match Header */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-gray-800/50 pb-4">

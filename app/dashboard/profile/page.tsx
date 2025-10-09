@@ -40,7 +40,7 @@ export default function ProfilePage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Avatar Card */}
-        <Card className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm lg:col-span-1">
+        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm lg:col-span-1">
           <div className="flex flex-col items-center space-y-4">
             <div className="relative">
               <Avatar className="h-32 w-32 border-4 border-gray-700/50 ring-4 ring-blue-500/20">
@@ -79,7 +79,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* Profile Info Card */}
-        <Card className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm lg:col-span-2">
+        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm lg:col-span-2">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-blue-500/10 p-2">
@@ -171,7 +171,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Stats Card */}
-      <Card className="border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-sm">
+      <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
         <h2 className="mb-4 text-lg font-bold text-white">Estatísticas Rápidas</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
