@@ -161,7 +161,7 @@ export function RankingSection() {
         </Card>
 
         {/* 1st Place */}
-        <div className="order-1 scale-105 md:order-2 rotating-border-glow">
+        <div className="order-1 scale-105 md:order-2">
           <Card className={`p-6 backdrop-blur-sm border ${getMedalBg(1)}`}>
             <div className="mb-4 flex items-center justify-between">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500/20">
@@ -170,10 +170,12 @@ export function RankingSection() {
               <span className="text-4xl font-bold text-yellow-400">1º</span>
             </div>
             <div className="mb-4 flex items-center gap-3">
-              <Avatar className="h-20 w-20 border-4 border-yellow-400">
-                <AvatarImage src={topThree[0].avatar || "/user-avatar.jpg"} alt={topThree[0].name} />
-                <AvatarFallback>{topThree[0].name[0]}</AvatarFallback>
-              </Avatar>
+              <div className="rotating-border-glow rounded-full">
+                <Avatar className="h-20 w-20 border-4 border-yellow-400">
+                  <AvatarImage src={topThree[0].avatar || "/user-avatar.jpg"} alt={topThree[0].name} />
+                  <AvatarFallback>{topThree[0].name[0]}</AvatarFallback>
+                </Avatar>
+              </div>
               <div>
                 <h3 className="text-xl font-bold text-white">{topThree[0].name}</h3>
                 <p className="text-sm text-gray-400">{topThree[0].points} pts</p>

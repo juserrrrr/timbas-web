@@ -169,6 +169,19 @@
   }
 }
 
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: blur(10px);
+    opacity: 0.7;
+  }
+  50% {
+    filter: blur(20px);
+    opacity: 1;
+  }
+}
+
+
+
 @layer utilities {
   .rotating-border-glow {
     position: relative;
@@ -188,13 +201,11 @@
       from var(--angle),
       theme('colors.yellow.400'),
       theme('colors.yellow.500'),
-      theme('colors.amber.500') 48%,
-      theme('colors.amber.500') 52%,
+      theme('colors.yellow.300') 49.9%,
+      theme('colors.yellow.300') 50.1%,
       theme('colors.yellow.500'),
       theme('colors.yellow.400')
     );
-    filter: blur(30px);
-    animation: spin-glow-gap 4s linear infinite;
-    opacity: 0.7;
+    animation: spin-glow-gap 1s linear infinite, pulse-glow 3s ease-in-out infinite;
   }
 }
