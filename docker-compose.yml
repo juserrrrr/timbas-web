@@ -1,11 +1,10 @@
 version: '3.8'
-
 services:
-  timbas-web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: timbas-web
+  web:
+    build: .
     ports:
-      - "3000:3000"
-    restart: unless-stopped
+      - '3000:3000'
+    environment:
+      # Você pode definir o token aqui para o ambiente de produção/deploy
+      # Lembre-se de usar secrets do seu provedor de hospedagem em um cenário real
+      - API_TOKEN=${API_TOKEN}
