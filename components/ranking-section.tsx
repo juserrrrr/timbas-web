@@ -11,9 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 // Mock data for servers - this could also come from an API
 const mockServers = [
-  { id: "779382528821166100", name: "Galera do LoL", icon: "/user-avatar.jpg" },
-  { id: "2", name: "Pro Players BR", icon: "/user-avatar.jpg" },
-  { id: "3", name: "Amigos da Ranked", icon: "/user-avatar.jpg" },
+  { id: "779382528821166100", name: "Timbas", icon: "/user-avatar.jpg" },
+  { id: "465211051865276426", name: "Entrosa Não", icon: "/user-avatar.jpg" },
+  { id: "1187881256508211321", name: "Fusão", icon: "/user-avatar.jpg" },
   { id: "4", name: "TimbasBot Official", icon: "/user-avatar.jpg" },
 ]
 
