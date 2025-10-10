@@ -3,6 +3,8 @@
 import { Trophy, Users, BarChart3, Zap, Shield, Clock } from "lucide-react"
 import { Card } from "@/components/ui/card"
 
+//TODO: Add animations to icons and cards for a more dynamic feel
+
 const features = [
   {
     icon: Trophy,
@@ -53,7 +55,7 @@ export function FeaturesSection() {
     <section id="features" className="relative py-24">
       <div className="container mx-auto px-4">
         <div className="mb-16 text-center">
-          <h2 className="mb-4 text-balance text-4xl font-bold text-white md:text-5xl">
+          <h2 className="mb-4 text-balance text-4xl font-bold text-white md:text-5xl ">
             Tudo que você precisa para{" "}
             <span className="bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">dominar</span>
           </h2>
@@ -66,25 +68,13 @@ export function FeaturesSection() {
           {features.map((feature, index) => (
             <Card
               key={index}
-              className="group border-gray-800 bg-gray-900/50 p-6 backdrop-blur-sm transition-all hover:border-gray-700 hover:bg-gray-900/80"
-              style={{
-                boxShadow:
-                  feature.glow === "blue"
-                    ? "0 0 20px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1)"
-                    : "0 0 20px rgba(239, 68, 68, 0.3), 0 0 40px rgba(239, 68, 68, 0.1)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow =
-                  feature.glow === "blue"
-                    ? "0 0 30px rgba(59, 130, 246, 0.5), 0 0 60px rgba(59, 130, 246, 0.2)"
-                    : "0 0 30px rgba(239, 68, 68, 0.5), 0 0 60px rgba(239, 68, 68, 0.2)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow =
-                  feature.glow === "blue"
-                    ? "0 0 20px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1)"
-                    : "0 0 20px rgba(239, 68, 68, 0.3), 0 0 40px rgba(239, 68, 68, 0.1)"
-              }}
+              className={`
+                group border-gray-800 bg-gray-900/50 p-6 backdrop-blur-sm transition-all 
+                hover:border-gray-700 hover:bg-gray-900/80
+                ${feature.glow === "blue" 
+                  ? "shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)]" 
+                  : "shadow-[0_0_20px_rgba(239,68,68,0.3)] hover:shadow-[0_0_30px_rgba(239,68,68,0.5)]"
+                }`}
             >
               <div className="mb-4 flex items-center gap-3">
                 <div className="rounded-lg bg-gray-800 p-3 transition-colors group-hover:bg-gray-700">

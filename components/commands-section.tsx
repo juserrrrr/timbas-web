@@ -54,7 +54,7 @@ export function CommandsSection() {
 
   return (
     <section id="commands" className="relative py-24">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 cursor-default">
         <div className="mb-16 text-center">
           <h2 className="mb-4 text-balance text-4xl font-bold text-white md:text-5xl">
             Comandos{" "}

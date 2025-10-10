@@ -39,7 +39,7 @@ export function DashboardSidebar() {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-500/30">
                 <Bot className="h-6 w-6 text-white" />
               </div>
-              <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-xl font-bold text-transparent">
+              <span className="bg-gradient-to-r text-white bg-clip-text text-xl font-bold text-transparent">
                 TimbasBot
               </span>
             </div>
