@@ -54,7 +54,7 @@ export function FeaturesSection() {
   return (
     <section id="features" className="relative py-24">
       <div className="container mx-auto px-4">
-        <div className="mb-16 text-center cursor-default">
+        <div className="mb-16 text-center">
           <h2 className="mb-4 text-balance text-4xl font-bold text-white md:text-5xl ">
             Tudo que você precisa para{" "}
             <span className="bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">dominar</span>
@@ -69,7 +69,7 @@ export function FeaturesSection() {
             <Card
               key={index}
               className={`
-                group cursor-default border-gray-800 bg-gray-900/50 p-6 backdrop-blur-sm transition-all 
+                group border-gray-800 bg-gray-900/50 p-6 backdrop-blur-sm transition-all 
                 hover:border-gray-700 hover:bg-gray-900/80
                 ${feature.glow === "blue" 
                   ? "shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)]" 
