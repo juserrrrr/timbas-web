@@ -8,4 +8,7 @@ services:
     container_name: timbas-web
     ports:
       - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_API_TOKEN=${NEXT_PUBLIC_API_TOKEN}
     restart: unless-stopped
