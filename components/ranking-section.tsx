@@ -15,7 +15,7 @@ const mockServers = [
   { id: "465211051865276426", name: "Entrosa Não", icon: "/user-avatar.jpg" },
   { id: "1187881256508211321", name: "Fusão", icon: "/user-avatar.jpg" },
   { id: "4", name: "TimbasBot Official", icon: "/user-avatar.jpg" },
-]
+] 
 
 export function RankingSection() {
   const [players, setPlayers] = useState<PlayerStats[]>([])
