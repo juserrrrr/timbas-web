@@ -3,18 +3,13 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { useRouter } from "next/navigation"
 
 export function LoginForm() {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
   const handleDiscordLogin = () => {
     setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-      router.push("/dashboard")
-    }, 1000)
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/discord`
   }
 
   return (

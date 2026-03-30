@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
+import { getToken } from "@/lib/auth"
 
 const SERVERS = [
   { id: "779382528821166100", name: "Timbas" },
@@ -34,8 +35,8 @@ export default function StatsPage() {
       setSelectedPlayer(null)
       setError(null)
       try {
-        const token = process.env.NEXT_PUBLIC_API_TOKEN
-        if (!token) throw new Error("NEXT_PUBLIC_API_TOKEN não definido")
+        const token = getToken()
+        if (!token) throw new Error("Usuário não autenticado.")
         const data = await getRanking(token, selectedServer)
         setPlayers(data)
       } catch (err) {
@@ -55,8 +56,8 @@ export default function StatsPage() {
       setDetail(null)
       setError(null)
       try {
-        const token = process.env.NEXT_PUBLIC_API_TOKEN
-        if (!token) throw new Error("NEXT_PUBLIC_API_TOKEN não definido")
+        const token = getToken()
+        if (!token) throw new Error("Usuário não autenticado.")
         const player = players.find((p) => String(p.userId) === selectedUserId)
         setSelectedPlayer(player ?? null)
         const data = await getPlayerDetailStats(token, selectedServer, Number(selectedUserId))

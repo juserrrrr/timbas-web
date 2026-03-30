@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getMatchHistory, Match } from "@/lib/services/matches"
+import { getToken } from "@/lib/auth"
 
 const SERVERS = [
   { id: "779382528821166100", name: "Timbas" },
@@ -33,8 +34,8 @@ export default function HistoryPage() {
       setIsLoading(true)
       setError(null)
       try {
-        const token = process.env.NEXT_PUBLIC_API_TOKEN
-        if (!token) throw new Error("NEXT_PUBLIC_API_TOKEN não definido")
+        const token = getToken()
+        if (!token) throw new Error("Usuário não autenticado.")
         const data = await getMatchHistory(token, selectedServer)
         setMatches(data)
       } catch (err) {

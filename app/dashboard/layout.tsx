@@ -1,30 +1,12 @@
 import type React from "react"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
-import { Button } from "@/components/ui/button"
-import { LogOut, ChevronDown, User, SettingsIcon } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import Link from "next/link"
+import { UserMenu } from "@/components/user-menu"
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  // Mock user data - replace with real Discord user data
-  const user = {
-    name: "ProGamer",
-    avatar: "/user-avatar.jpg",
-    discriminator: "#1234",
-  }
-
   return (
     <div className="relative h-screen bg-black text-white overflow-hidden">
       <div className="pointer-events-none fixed inset-0 z-0">
@@ -63,79 +45,7 @@ export default function DashboardLayout({
         <DashboardSidebar />
 
         <div className="fixed right-6 top-6 z-50">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="group flex items-center gap-2 rounded-full p-1 transition-all hover:bg-gray-800/30"
-              >
-                <Avatar className="h-10 w-10 border-2 border-gray-700/50 ring-2 ring-transparent transition-all group-hover:border-blue-500/50 group-hover:ring-blue-500/20">
-                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-sm font-bold text-white">
-                    ?
-                  </AvatarFallback>
-                </Avatar>
-                <ChevronDown className="h-4 w-4 text-gray-400 transition-all group-hover:text-white" />
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent
-              align="end"
-              className="w-64 border border-gray-800/50 bg-gray-900/98 backdrop-blur-2xl shadow-2xl shadow-black/50"
-            >
-              <DropdownMenuLabel className="px-4 py-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 border-2 border-gray-700/50">
-                    <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-lg font-bold text-white">
-                      ?
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{user.name}</p>
-                    <p className="text-xs text-gray-400">{user.discriminator}</p>
-                  </div>
-                </div>
-              </DropdownMenuLabel>
-
-              <DropdownMenuSeparator className="bg-gray-800/50" />
-
-              <div className="p-2 space-y-1">
-                <DropdownMenuItem
-                  className="rounded-lg text-gray-300 transition-all hover:bg-gray-800/50 hover:text-white focus:bg-gray-800/50 focus:text-white cursor-pointer"
-                  asChild
-                >
-                  <Link href="/dashboard/profile" className="flex items-center">
-                    <User className="mr-3 h-4 w-4" />
-                    Perfil
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="rounded-lg text-gray-300 transition-all hover:bg-gray-800/50 hover:text-white focus:bg-gray-800/50 focus:text-white cursor-pointer"
-                  asChild
-                >
-                  <Link href="/dashboard/settings" className="flex items-center">
-                    <SettingsIcon className="mr-3 h-4 w-4" />
-                    Configurações
-                  </Link>
-                </DropdownMenuItem>
-              </div>
-
-              <DropdownMenuSeparator className="bg-gray-800/50" />
-
-              <div className="p-2">
-                <DropdownMenuItem
-                  className="rounded-lg text-red-400 transition-all hover:bg-red-500/10 hover:text-red-300 focus:bg-red-500/10 focus:text-red-300 cursor-pointer"
-                  asChild
-                >
-                  <Link href="/login" className="flex items-center">
-                    <LogOut className="mr-3 h-4 w-4" />
-                    Sair
-                  </Link>
-                </DropdownMenuItem>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <UserMenu />
         </div>
 
         <main className="ml-20 h-screen overflow-y-auto custom-scrollbar">

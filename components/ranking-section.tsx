@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getToken } from "@/lib/auth"
 
 // Mock data for servers - this could also come from an API
 const mockServers = [
@@ -30,10 +31,8 @@ export function RankingSection() {
       setIsLoading(true)
       setError(null)
       try {
-        const token = process.env.NEXT_PUBLIC_API_TOKEN;
-        if (!token) {
-          throw new Error("NEXT_PUBLIC_API_TOKEN não está definido nas variáveis de ambiente.");
-        }
+        const token = getToken()
+        if (!token) throw new Error("Usuário não autenticado.")
         const data = await getRanking(token, selectedServer)
         setPlayers(data)
       } catch (err) {
