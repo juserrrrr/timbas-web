@@ -1,3 +1,5 @@
+import { apiFetch } from '../api'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 export interface PlayerUser {
@@ -43,22 +45,21 @@ export interface CustomLeagueMatch {
   expiresAt: string | null
 }
 
-const headers = (token?: string) => {
-  const h: HeadersInit = { 'Content-Type': 'application/json' }
-  if (token) h.Authorization = `Bearer ${token}`
-  return h
-}
+const h = (token?: string): HeadersInit => ({
+  'Content-Type': 'application/json',
+  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+})
 
 export async function getMatch(id: number, token?: string): Promise<CustomLeagueMatch> {
-  const res = await fetch(`${API_URL}/leagueMatch/${id}`, { headers: headers(token), cache: 'no-store' })
+  const res = await apiFetch(`${API_URL}/leagueMatch/${id}`, { headers: h(token), cache: 'no-store' })
   if (!res.ok) throw new Error('Partida não encontrada')
   return res.json()
 }
 
 export async function joinMatch(token: string, id: number, discordId: string) {
-  const res = await fetch(`${API_URL}/leagueMatch/${id}/join`, {
+  const res = await apiFetch(`${API_URL}/leagueMatch/${id}/join`, {
     method: 'POST',
-    headers: headers(token),
+    headers: h(token),
     body: JSON.stringify({ discordId }),
   })
   if (!res.ok) {
@@ -69,9 +70,9 @@ export async function joinMatch(token: string, id: number, discordId: string) {
 }
 
 export async function leaveMatch(token: string, id: number, discordId: string) {
-  const res = await fetch(`${API_URL}/leagueMatch/${id}/leave`, {
+  const res = await apiFetch(`${API_URL}/leagueMatch/${id}/leave`, {
     method: 'DELETE',
-    headers: headers(token),
+    headers: h(token),
     body: JSON.stringify({ discordId }),
   })
   if (!res.ok) {
@@ -82,9 +83,9 @@ export async function leaveMatch(token: string, id: number, discordId: string) {
 }
 
 export async function drawTeams(token: string, id: number, requesterDiscordId: string) {
-  const res = await fetch(`${API_URL}/leagueMatch/${id}/draw`, {
+  const res = await apiFetch(`${API_URL}/leagueMatch/${id}/draw`, {
     method: 'POST',
-    headers: headers(token),
+    headers: h(token),
     body: JSON.stringify({ requesterDiscordId }),
   })
   if (!res.ok) {
@@ -95,9 +96,9 @@ export async function drawTeams(token: string, id: number, requesterDiscordId: s
 }
 
 export async function startMatch(token: string, id: number, requesterDiscordId: string) {
-  const res = await fetch(`${API_URL}/leagueMatch/${id}/start`, {
+  const res = await apiFetch(`${API_URL}/leagueMatch/${id}/start`, {
     method: 'POST',
-    headers: headers(token),
+    headers: h(token),
     body: JSON.stringify({ requesterDiscordId }),
   })
   if (!res.ok) {
@@ -108,9 +109,9 @@ export async function startMatch(token: string, id: number, requesterDiscordId: 
 }
 
 export async function finishMatch(token: string, id: number, requesterDiscordId: string, winner: 'BLUE' | 'RED') {
-  const res = await fetch(`${API_URL}/leagueMatch/${id}/finish`, {
+  const res = await apiFetch(`${API_URL}/leagueMatch/${id}/finish`, {
     method: 'POST',
-    headers: headers(token),
+    headers: h(token),
     body: JSON.stringify({ requesterDiscordId, winner }),
   })
   if (!res.ok) {

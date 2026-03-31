@@ -1,3 +1,5 @@
+import { apiFetch, authHeaders } from '../api'
+
 export interface SideStats {
   wins: number
   losses: number
@@ -23,8 +25,8 @@ export async function getPlayerDetailStats(
   const API_URL = process.env.NEXT_PUBLIC_API_URL
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL is not defined')
 
-  const response = await fetch(`${API_URL}/leaderboard/${discordServerId}/player/${userId}`, {
-    headers: { Authorization: `Bearer ${token}` },
+  const response = await apiFetch(`${API_URL}/leaderboard/${discordServerId}/player/${userId}`, {
+    headers: authHeaders(token),
   })
 
   if (!response.ok) throw new Error(`Falha ao buscar stats. Status: ${response.status}`)

@@ -1,3 +1,5 @@
+import { apiFetch, authHeaders } from '../api'
+
 export interface MatchPlayer {
   userId: number
   name: string
@@ -24,8 +26,8 @@ export async function getMatchHistory(token: string, discordServerId: string): P
   const API_URL = process.env.NEXT_PUBLIC_API_URL
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL is not defined')
 
-  const response = await fetch(`${API_URL}/leaderboard/${discordServerId}/matches`, {
-    headers: { Authorization: `Bearer ${token}` },
+  const response = await apiFetch(`${API_URL}/leaderboard/${discordServerId}/matches`, {
+    headers: authHeaders(token),
   })
 
   if (!response.ok) throw new Error(`Falha ao buscar histórico. Status: ${response.status}`)

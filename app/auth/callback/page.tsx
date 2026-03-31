@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { setToken, decodeToken } from "@/lib/auth"
+import { setToken, setRefreshToken, decodeToken } from "@/lib/auth"
 import { Bot } from "lucide-react"
 
 const ADMIN_ROLES = ["ADMIN", "admin", "Admin"]
@@ -13,23 +13,25 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const token = searchParams.get("token")
+    const refreshToken = searchParams.get("refreshToken")
     const error = searchParams.get("error")
     const isAdminPending =
       typeof window !== "undefined" && sessionStorage.getItem("adminPending") === "1"
 
     if (token) {
+      setToken(token)
+      if (refreshToken) setRefreshToken(refreshToken)
+
       if (isAdminPending) {
         sessionStorage.removeItem("adminPending")
         const payload = decodeToken(token)
         const isAdmin = payload?.role && ADMIN_ROLES.includes(payload.role)
         if (isAdmin) {
-          setToken(token)
           router.replace("/admin?welcome=1")
         } else {
           router.replace("/admin/login?error=unauthorized")
         }
       } else {
-        setToken(token)
         const redirectPath = searchParams.get("redirect")
         if (redirectPath && redirectPath.startsWith('/')) {
           router.replace(redirectPath)
