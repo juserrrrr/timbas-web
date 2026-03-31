@@ -15,7 +15,11 @@ export function LoginForm() {
 
   const handleDiscordLogin = () => {
     setIsLoading(true)
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/discord`
+    const urlParams = new URLSearchParams(window.location.search)
+    const redirect = urlParams.get('redirect')
+    let authUrl = `${process.env.NEXT_PUBLIC_API_URL}/auth/discord`
+    if (redirect) authUrl += `?redirect=${encodeURIComponent(redirect)}`
+    window.location.href = authUrl
   }
 
   return (

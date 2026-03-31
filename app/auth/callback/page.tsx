@@ -30,7 +30,12 @@ export default function AuthCallbackPage() {
         }
       } else {
         setToken(token)
-        router.replace("/dashboard")
+        const redirectPath = searchParams.get("redirect")
+        if (redirectPath && redirectPath.startsWith('/')) {
+          router.replace(redirectPath)
+        } else {
+          router.replace("/dashboard")
+        }
       }
     } else {
       if (isAdminPending) {

@@ -17,7 +17,9 @@ export function middleware(request: NextRequest) {
 
   // ── Dashboard ─────────────────────────────────────────────
   if (!token && pathname.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
   }
   if (token && pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
