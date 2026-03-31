@@ -39,10 +39,10 @@ const POSITION_ICONS: Record<string, string> = {
 }
 
 const FORMAT_LABELS: Record<string, string> = {
-  ALEATORIO: "Aleatório",
-  LIVRE: "Livre",
-  ALEATORIO_COMPLETO: "Aleatório Completo",
-  BALANCEADO: "Balanceado",
+  ALEATORIO: "Random",
+  LIVRE: "Free",
+  ALEATORIO_COMPLETO: "Full Random",
+  BALANCEADO: "Balanced",
 }
 
 const getMatchEventsUrl = (id: string) => `${process.env.NEXT_PUBLIC_API_URL}/leagueMatch/${id}/events`
@@ -125,9 +125,9 @@ function WaitingPlayer({ playerLayout }: { playerLayout: UserTeamLeague }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function PartidaPage() {
-  const { lobbyId } = useParams<{ lobbyId: string }>()
-  const matchIdNum = parseInt(lobbyId as string, 10)
+export default function MatchPage() {
+  const { matchId } = useParams<{ matchId: string }>()
+  const matchIdNum = parseInt(matchId as string, 10)
 
   const [match, setMatch] = useState<CustomLeagueMatch | null>(null)
   const [loading, setLoading] = useState(true)
@@ -233,25 +233,25 @@ export default function PartidaPage() {
   const redSlots  = Array.from({ length: 5 }, (_, i) => redTeam[i]  ?? null)
 
   const statusConfig = {
-    WAITING:  { label: "Aguardando", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20", dot: "bg-yellow-400 animate-pulse" },
-    STARTED:  { label: "Em Andamento", color: "text-green-400",  bg: "bg-green-500/10 border-green-500/20",  dot: "bg-green-400 animate-pulse" },
-    FINISHED: { label: "Finalizada",   color: "text-gray-400",   bg: "bg-gray-500/10 border-gray-500/20",    dot: "bg-gray-400" },
-    EXPIRED:  { label: "Expirada",     color: "text-red-400",    bg: "bg-red-500/10 border-red-500/20",      dot: "bg-red-400" },
+    WAITING:  { label: "Waiting", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20", dot: "bg-yellow-400 animate-pulse" },
+    STARTED:  { label: "In Progress", color: "text-green-400",  bg: "bg-green-500/10 border-green-500/20",  dot: "bg-green-400 animate-pulse" },
+    FINISHED: { label: "Finished",   color: "text-gray-400",   bg: "bg-gray-500/10 border-gray-500/20",    dot: "bg-gray-400" },
+    EXPIRED:  { label: "Expired",     color: "text-red-400",    bg: "bg-red-500/10 border-red-500/20",      dot: "bg-red-400" },
   } as const
   const sc = match ? statusConfig[match.status] : statusConfig.WAITING
 
   // ── Loading / Error ────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#07070c]">
-        <div className="flex flex-col items-center gap-4">
+      <div className="-mx-6 -my-8 flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
+        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
           <div className="relative h-16 w-16">
             <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/20" />
             <div className="relative flex h-full w-full items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-500/30">
               <Swords className="h-7 w-7 text-blue-400" />
             </div>
           </div>
-          <p className="text-sm text-gray-500">Carregando partida...</p>
+          <p className="text-sm text-gray-500">Loading match...</p>
         </div>
       </div>
     )
@@ -259,9 +259,9 @@ export default function PartidaPage() {
 
   if (error || !match) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#07070c]">
-        <div className="text-center">
-          <p className="text-lg font-bold text-white">Partida não encontrada</p>
+      <div className="-mx-6 -my-8 flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
+        <div className="text-center animate-in fade-in duration-500">
+          <p className="text-lg font-bold text-white">Match not found</p>
           <p className="mt-1 text-sm text-gray-500">{error}</p>
         </div>
       </div>
@@ -269,15 +269,8 @@ export default function PartidaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07070c] text-white">
-      {/* Background glow effects */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-40 top-0 h-96 w-96 rounded-full bg-blue-500/5 blur-3xl" />
-        <div className="absolute -right-40 top-0 h-96 w-96 rounded-full bg-red-500/5 blur-3xl" />
-        <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-purple-500/5 blur-3xl" />
-      </div>
-
-      <div className="relative mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:py-8">
+    <div className="-mx-6 -my-8 min-h-[calc(100vh-3.5rem)] text-white animate-in fade-in duration-300">
+      <div className="relative px-4 py-6 sm:px-8 lg:py-8">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -307,7 +300,7 @@ export default function PartidaPage() {
                 : "border-red-500/20 bg-red-500/10 text-red-400"
             }`}>
               {connected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {connected ? "Ao Vivo" : "Reconectando..."}
+              {connected ? "Live" : "Reconnecting..."}
             </div>
           </div>
         </div>
@@ -321,7 +314,7 @@ export default function PartidaPage() {
           }`}>
             <Trophy className={`h-7 w-7 ${winnerSide === "BLUE" ? "text-blue-400" : "text-red-400"}`} />
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-widest">Vencedor</p>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-widest">Winner</p>
               <p className={`text-xl font-black ${winnerSide === "BLUE" ? "text-blue-300" : "text-red-300"}`}>
                 Time {winnerSide === "BLUE" ? "Azul" : "Vermelho"}
               </p>
@@ -342,7 +335,7 @@ export default function PartidaPage() {
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/20 ring-1 ring-blue-500/30">
                 <Shield className="h-3.5 w-3.5 text-blue-400" />
               </div>
-              <span className="font-bold text-blue-300">Time Azul</span>
+              <span className="font-bold text-blue-300">Blue Team</span>
               {winnerSide === "BLUE" && <Crown className="ml-auto h-4 w-4 text-yellow-400" />}
             </div>
             <div className="space-y-2">
@@ -377,7 +370,7 @@ export default function PartidaPage() {
               <div className={`ml-auto flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/20 ring-1 ring-red-500/30 ${winnerSide === "RED" ? "" : "ml-0"}`}>
                 <Shield className="h-3.5 w-3.5 text-red-400" />
               </div>
-              <span className="font-bold text-red-300">Time Vermelho</span>
+              <span className="font-bold text-red-300">Red Team</span>
             </div>
             <div className="space-y-2">
               {redSlots.map((pLayout, i) =>
@@ -397,7 +390,7 @@ export default function PartidaPage() {
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-400">Aguardando na Fila</span>
+                <span className="text-sm font-medium text-gray-400">Waiting in Queue</span>
               </div>
               <span className={`text-sm font-bold tabular-nums ${qPlayers.length >= 10 ? "text-green-400" : "text-gray-400"}`}>
                 {qPlayers.length}/10
@@ -433,7 +426,7 @@ export default function PartidaPage() {
               <ActionBtn
                 id="btn-join"
                 icon={<LogIn className="h-4 w-4" />}
-                label="Entrar"
+                label="Join"
                 color="green"
                 loading={actionLoading === "join"}
                 onClick={handleJoin}
@@ -443,7 +436,7 @@ export default function PartidaPage() {
               <ActionBtn
                 id="btn-leave"
                 icon={<LogOut className="h-4 w-4" />}
-                label="Sair"
+                label="Leave"
                 color="gray"
                 loading={actionLoading === "leave"}
                 onClick={handleLeave}
@@ -457,7 +450,7 @@ export default function PartidaPage() {
                   <ActionBtn
                     id="btn-draw"
                     icon={<Shuffle className="h-4 w-4" />}
-                    label="Sortear Times"
+                    label="Draw Teams"
                     color="purple"
                     loading={actionLoading === "draw"}
                     onClick={handleDraw}
@@ -467,7 +460,7 @@ export default function PartidaPage() {
                 <ActionBtn
                   id="btn-start"
                   icon={<Play className="h-4 w-4" />}
-                  label="Iniciar Partida"
+                  label="Start Match"
                   color="blue"
                   loading={actionLoading === "start"}
                   onClick={handleStart}
@@ -480,7 +473,7 @@ export default function PartidaPage() {
               <ActionBtn
                 id="btn-finish"
                 icon={<Flag className="h-4 w-4" />}
-                label="Finalizar"
+                label="Finish"
                 color="red"
                 loading={actionLoading === "finish"}
                 onClick={() => setShowFinishModal(true)}
@@ -491,13 +484,13 @@ export default function PartidaPage() {
             {match.status === "WAITING" && !match.teamBlueId && (
               <div className="ml-auto rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-gray-500">
                 {qPlayers.length >= 10
-                  ? "✅ Pronto para sortear/iniciar"
-                  : `Aguardando ${10 - qPlayers.length} jogador${10 - qPlayers.length !== 1 ? "es" : ""}`}
+                  ? "✅ Ready to draw / start"
+                  : `Waiting for ${10 - qPlayers.length} more player${10 - qPlayers.length !== 1 ? "s" : ""}`}
               </div>
             )}
             {match.status === "WAITING" && match.teamBlueId && (
                <div className="ml-auto rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-gray-500">
-               ✅ Times sorteados! Aguardando início.
+               ✅ Teams drawn! Waiting to start.
              </div>
             )}
           </div>
@@ -505,7 +498,7 @@ export default function PartidaPage() {
 
         {match.status === "EXPIRED" && (
           <div className="mt-4 rounded-2xl border border-dashed border-white/10 p-6 text-center">
-            <p className="text-gray-500">Esta partida expirou após 1 hora sem iniciar.</p>
+            <p className="text-gray-500">This match expired after 1 hour without starting.</p>
           </div>
         )}
       </div>
@@ -518,8 +511,8 @@ export default function PartidaPage() {
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-500/10 ring-1 ring-yellow-500/20">
                 <Trophy className="h-6 w-6 text-yellow-400" />
               </div>
-              <h2 className="text-lg font-bold text-white">Quem venceu?</h2>
-              <p className="text-sm text-gray-500">Selecione o time vencedor da partida</p>
+              <h2 className="text-lg font-bold text-white">Who won?</h2>
+              <p className="text-sm text-gray-500">Select the winning team</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -528,7 +521,7 @@ export default function PartidaPage() {
                 className="flex flex-col items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 transition-all hover:border-blue-500/50 hover:bg-blue-500/20 hover:shadow-lg hover:shadow-blue-500/10"
               >
                 <Shield className="h-6 w-6 text-blue-400" />
-                <span className="font-bold text-blue-300">Time Azul</span>
+                <span className="font-bold text-blue-300">Blue Team</span>
               </button>
               <button
                 id="btn-win-red"
@@ -536,14 +529,14 @@ export default function PartidaPage() {
                 className="flex flex-col items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4 transition-all hover:border-red-500/50 hover:bg-red-500/20 hover:shadow-lg hover:shadow-red-500/10"
               >
                 <Shield className="h-6 w-6 text-red-400" />
-                <span className="font-bold text-red-300">Time Vermelho</span>
+                <span className="font-bold text-red-300">Red Team</span>
               </button>
             </div>
             <button
               onClick={() => setShowFinishModal(false)}
               className="mt-3 w-full rounded-xl py-2.5 text-sm text-gray-500 transition-colors hover:text-gray-300"
             >
-              Cancelar
+              Cancel
             </button>
           </div>
         </div>

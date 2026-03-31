@@ -326,7 +326,7 @@ export default function HistoryPage() {
                       )}
                       {pending && (
                         <Link
-                          href={`/dashboard/partida/${match.id}`}
+                          href={`/dashboard/match/${match.id}`}
                           className="flex items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 text-xs font-semibold text-yellow-400 transition-all hover:border-yellow-500/50 hover:bg-yellow-500/20"
                         >
                           <ExternalLink className="h-3 w-3" />
