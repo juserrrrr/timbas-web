@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Trophy, Swords, TrendingUp, Star, Hash, Flame, Zap, BarChart3 } from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getDiscordAvatarUrl } from "@/lib/auth"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken, decodeToken, TokenPayload } from "@/lib/auth"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
@@ -41,6 +42,7 @@ export default function ProfilePage() {
   if (isLoading) return <div className="flex h-64 items-center justify-center"><Spinner className="size-8 text-blue-500" /></div>
 
   const initials = payload?.name ? payload.name.slice(0, 2).toUpperCase() : "?"
+  const avatarUrl = getDiscordAvatarUrl(payload?.discordId, payload?.avatar, 256)
   const winRatePct = stats ? Math.round(stats.winRate * 100) : 0
   const blueWinRatePct = detail ? Math.round(detail.blueSide.winRate * 100) : null
   const redWinRatePct = detail ? Math.round(detail.redSide.winRate * 100) : null
@@ -60,6 +62,7 @@ export default function ProfilePage() {
           {/* Gradient border avatar */}
           <div className="mb-5 rounded-full p-[2px] bg-gradient-to-br from-blue-500/60 via-purple-500/30 to-red-500/50">
             <Avatar className="h-24 w-24">
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={payload?.name ?? ""} />}
               <AvatarFallback className="bg-[#0d0d15] text-3xl font-black text-white">
                 {initials}
               </AvatarFallback>

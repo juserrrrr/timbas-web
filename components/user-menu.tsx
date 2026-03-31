@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { getToken, decodeToken, clearToken, getDiscordAvatarUrl, TokenPayload } from "@/lib/auth"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+
 import { LogOut, User, Settings } from "lucide-react"
 import {
   DropdownMenu,
@@ -29,12 +30,14 @@ export function UserMenu() {
   }
 
   const initials = user?.name ? user.name.slice(0, 2).toUpperCase() : "?"
+  const avatarUrl = getDiscordAvatarUrl(user?.discordId, user?.avatar, 128)
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="group flex items-center gap-2 rounded-lg p-1 transition-all hover:bg-white/[0.05] focus:outline-none">
           <Avatar className="h-8 w-8 ring-1 ring-white/10 transition-all group-hover:ring-blue-500/30">
+            {avatarUrl && <AvatarImage src={avatarUrl} alt={user?.name ?? ""} />}
             <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-xs font-bold text-white">
               {initials}
             </AvatarFallback>
@@ -50,6 +53,7 @@ export function UserMenu() {
         {/* User info */}
         <div className="flex items-center gap-3 px-3 py-3">
           <Avatar className="h-9 w-9 ring-1 ring-white/10">
+            {avatarUrl && <AvatarImage src={avatarUrl} alt={user?.name ?? ""} />}
             <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-sm font-bold text-white">
               {initials}
             </AvatarFallback>
