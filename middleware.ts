@@ -11,7 +11,7 @@ function getTokenRole(token: string): string | null {
   }
 }
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const token = request.cookies.get('timbas_token')?.value
   const { pathname } = request.nextUrl
 
@@ -33,7 +33,6 @@ export function proxy(request: NextRequest) {
     const role = getTokenRole(token)
     if (role !== 'ADMIN') {
       const res = NextResponse.redirect(new URL('/admin/login?error=unauthorized', request.url))
-      // Clear token if it exists but has wrong role
       res.cookies.delete('timbas_token')
       return res
     }
