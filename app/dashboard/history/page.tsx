@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Calendar, Trophy, Users, ShieldHalf, Swords, BarChart2 } from "lucide-react"
+import { Calendar, Trophy, Users, ShieldHalf, Swords, BarChart2, ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
@@ -271,14 +272,24 @@ export default function HistoryPage() {
               return (
                 <Card
                   key={match.id}
-                  className={`border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm ${
+                  className={`relative overflow-hidden bg-[#0d0d14] p-6 ${
                     myTeamId !== null && !pending
                       ? iWon
-                        ? "border-l-2 border-l-green-500"
-                        : "border-l-2 border-l-red-500"
-                      : ""
+                        ? "border border-l-2 border-gray-800/40 border-l-green-500 shadow-[0_0_20px_-8px_rgba(34,197,94,0.3)]"
+                        : "border border-l-2 border-gray-800/40 border-l-red-500 shadow-[0_0_20px_-8px_rgba(239,68,68,0.3)]"
+                      : pending
+                        ? "border border-gray-700/50 shadow-[0_0_20px_-8px_rgba(234,179,8,0.2)]"
+                        : "border border-gray-800/40"
                   }`}
                 >
+                  {/* subtle top glow line */}
+                  <div className={`pointer-events-none absolute inset-x-0 top-0 h-px ${
+                    pending ? "bg-gradient-to-r from-transparent via-yellow-500/40 to-transparent"
+                    : myTeamId !== null && iWon ? "bg-gradient-to-r from-transparent via-green-500/30 to-transparent"
+                    : myTeamId !== null ? "bg-gradient-to-r from-transparent via-red-500/30 to-transparent"
+                    : "bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                  }`} />
+
                   <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-gray-800/50 pb-4">
                     <div className="flex items-center gap-4">
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-700 bg-gradient-to-br from-blue-600/20 to-red-600/20">
@@ -293,7 +304,7 @@ export default function HistoryPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="outline" className="border-gray-700 text-gray-300">
                         {MATCH_TYPE_LABELS[match.matchType] ?? match.matchType}
                       </Badge>
@@ -312,6 +323,15 @@ export default function HistoryPage() {
                         >
                           {iWon ? "Vitória" : "Derrota"}
                         </Badge>
+                      )}
+                      {pending && (
+                        <Link
+                          href={`/dashboard/partida/${match.id}`}
+                          className="flex items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 text-xs font-semibold text-yellow-400 transition-all hover:border-yellow-500/50 hover:bg-yellow-500/20"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Ver Lobby
+                        </Link>
                       )}
                     </div>
                   </div>
