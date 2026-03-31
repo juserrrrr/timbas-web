@@ -6,10 +6,10 @@ import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { getMatchHistory, Match } from "@/lib/services/matches"
 import { Spinner } from "@/components/ui/spinner"
 import { Calendar, Trophy } from "lucide-react"
-
-const DEFAULT_SERVER = "779382528821166100"
+import { useServer } from "@/lib/server-context"
 
 export default function DashboardPage() {
+  const { selectedServer } = useServer()
   const [stats, setStats] = useState<PlayerStats | null>(null)
   const [recentMatches, setRecentMatches] = useState<Match[]>([])
   const [userId, setUserId] = useState<number | null>(null)
@@ -25,8 +25,8 @@ export default function DashboardPage() {
         const uid = Number(payload.sub)
         setUserId(uid)
         const [ranking, matches] = await Promise.all([
-          getRanking(token, DEFAULT_SERVER),
-          getMatchHistory(token, DEFAULT_SERVER),
+          getRanking(token, selectedServer),
+          getMatchHistory(token, selectedServer),
         ])
         const myStats = ranking.find((p) => p.userId === uid) ?? null
         setStats(myStats)
@@ -38,7 +38,7 @@ export default function DashboardPage() {
       }
     }
     load()
-  }, [])
+  }, [selectedServer])
 
   if (isLoading) {
     return (

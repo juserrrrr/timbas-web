@@ -11,10 +11,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken, decodeToken, TokenPayload } from "@/lib/auth"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
-
-const DEFAULT_SERVER = "779382528821166100"
+import { useServer } from "@/lib/server-context"
 
 export default function ProfilePage() {
+  const { selectedServer } = useServer()
   const [payload, setPayload] = useState<TokenPayload | null>(null)
   const [stats, setStats] = useState<PlayerStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -27,7 +27,7 @@ export default function ProfilePage() {
         const decoded = decodeToken(token)
         if (!decoded) return
         setPayload(decoded)
-        const ranking = await getRanking(token, DEFAULT_SERVER)
+        const ranking = await getRanking(token, selectedServer)
         const uid = Number(decoded.sub)
         const myStats = ranking.find((p) => p.userId === uid) ?? null
         setStats(myStats)
@@ -38,7 +38,7 @@ export default function ProfilePage() {
       }
     }
     load()
-  }, [])
+  }, [selectedServer])
 
   if (isLoading) {
     return (

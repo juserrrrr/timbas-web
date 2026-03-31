@@ -1,6 +1,8 @@
 import type React from "react"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { UserMenu } from "@/components/user-menu"
+import { ServerSelector } from "@/components/server-selector"
+import { ServerProvider } from "@/lib/server-context"
 
 export default function DashboardLayout({
   children,
@@ -8,6 +10,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
+    <ServerProvider>
     <div className="relative h-screen bg-black text-white overflow-hidden">
       <div className="pointer-events-none fixed inset-0 z-0">
         {/* Blue neon blob - top left */}
@@ -44,7 +47,8 @@ export default function DashboardLayout({
       <div className="relative z-10">
         <DashboardSidebar />
 
-        <div className="fixed right-6 top-6 z-50">
+        <div className="fixed right-6 top-5 z-50 flex items-center gap-3">
+          <ServerSelector />
           <UserMenu />
         </div>
 
@@ -53,5 +57,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </ServerProvider>
   )
 }

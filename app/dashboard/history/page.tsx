@@ -1,29 +1,22 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Calendar, Server, Trophy, Users, ShieldHalf } from "lucide-react"
+import { Calendar, Trophy, Users, ShieldHalf, Swords, BarChart2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { getMatchHistory, Match } from "@/lib/services/matches"
 import { getToken, decodeToken } from "@/lib/auth"
-
-const SERVERS = [
-  { id: "779382528821166100", name: "Timbas" },
-  { id: "465211051865276426", name: "Entrosa Não" },
-  { id: "1187881256508211321", name: "Fusão" },
-  { id: "4", name: "TimbasBot Official" },
-]
+import { useServer } from "@/lib/server-context"
 
 const MATCH_TYPE_LABELS: Record<string, string> = {
   ALEATORIO: "Aleatório",
   LIVRE: "Livre",
   BALANCEADO: "Balanceado",
-  ALEATORIO_COMPLETO: "Aleatório Completo",
+  ALEATORIO_COMPLETO: "Aleat. Completo",
 }
 
-interface PartnerStat {
+interface PersonStat {
   userId: number
   name: string
   games: number
@@ -32,10 +25,10 @@ interface PartnerStat {
 }
 
 export default function HistoryPage() {
+  const { selectedServer } = useServer()
   const [matches, setMatches] = useState<Match[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedServer, setSelectedServer] = useState(SERVERS[0].id)
   const [userId, setUserId] = useState<number | null>(null)
 
   useEffect(() => {
@@ -64,12 +57,14 @@ export default function HistoryPage() {
     fetchMatches()
   }, [selectedServer])
 
-  const { partnerStats, blueWins, blueGames, redWins, redGames, myMatches } = useMemo(() => {
+  const stats = useMemo(() => {
     if (userId === null || matches.length === 0) {
-      return { partnerStats: [], blueWins: 0, blueGames: 0, redWins: 0, redGames: 0, myMatches: [] }
+      return { partnerStats: [], opponentStats: [], matchTypeStats: [], blueWins: 0, blueGames: 0, redWins: 0, redGames: 0, myMatches: [] }
     }
 
     const partnerMap: Record<number, { name: string; games: number; wins: number }> = {}
+    const opponentMap: Record<number, { name: string; games: number; wins: number }> = {}
+    const typeMap: Record<string, { games: number; wins: number }> = {}
     let bWins = 0, bGames = 0, rWins = 0, rGames = 0
     const myMatchList: Match[] = []
 
@@ -80,59 +75,65 @@ export default function HistoryPage() {
 
       myMatchList.push(match)
       const myTeam = inBlue ? match.blueTeam : match.redTeam
+      const enemyTeam = inBlue ? match.redTeam : match.blueTeam
       const won = match.winnerId !== null && match.winnerId === myTeam.id
 
-      if (inBlue) {
-        bGames++
-        if (won) bWins++
-      } else {
-        rGames++
-        if (won) rWins++
-      }
+      if (inBlue) { bGames++; if (won) bWins++ }
+      else { rGames++; if (won) rWins++ }
 
       for (const player of myTeam.players) {
         if (player.userId === userId) continue
-        if (!partnerMap[player.userId]) {
-          partnerMap[player.userId] = { name: player.name, games: 0, wins: 0 }
-        }
+        if (!partnerMap[player.userId]) partnerMap[player.userId] = { name: player.name, games: 0, wins: 0 }
         partnerMap[player.userId].games++
         if (won) partnerMap[player.userId].wins++
       }
+
+      for (const player of enemyTeam.players) {
+        if (!opponentMap[player.userId]) opponentMap[player.userId] = { name: player.name, games: 0, wins: 0 }
+        opponentMap[player.userId].games++
+        if (won) opponentMap[player.userId].wins++
+      }
+
+      const typeLabel = MATCH_TYPE_LABELS[match.matchType] ?? match.matchType
+      if (!typeMap[typeLabel]) typeMap[typeLabel] = { games: 0, wins: 0 }
+      typeMap[typeLabel].games++
+      if (won) typeMap[typeLabel].wins++
     }
 
-    const partners: PartnerStat[] = Object.entries(partnerMap)
-      .map(([id, data]) => ({
-        userId: Number(id),
-        name: data.name,
-        games: data.games,
-        wins: data.wins,
-        winRate: data.games > 0 ? data.wins / data.games : 0,
-      }))
-      .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
+    const toStat = (map: typeof partnerMap): PersonStat[] =>
+      Object.entries(map)
+        .map(([id, d]) => ({
+          userId: Number(id),
+          name: d.name,
+          games: d.games,
+          wins: d.wins,
+          winRate: d.games > 0 ? d.wins / d.games : 0,
+        }))
+        .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
 
-    return { partnerStats: partners, blueWins: bWins, blueGames: bGames, redWins: rWins, redGames: rGames, myMatches: myMatchList }
+    const matchTypeStats = Object.entries(typeMap)
+      .map(([type, d]) => ({ type, games: d.games, wins: d.wins, winRate: d.games > 0 ? d.wins / d.games : 0 }))
+      .sort((a, b) => b.winRate - a.winRate)
+
+    return {
+      partnerStats: toStat(partnerMap),
+      opponentStats: toStat(opponentMap),
+      matchTypeStats,
+      blueWins: bWins,
+      blueGames: bGames,
+      redWins: rWins,
+      redGames: rGames,
+      myMatches: myMatchList,
+    }
   }, [matches, userId])
+
+  const { partnerStats, opponentStats, matchTypeStats, blueWins, blueGames, redWins, redGames, myMatches } = stats
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Histórico de Partidas</h1>
-          <p className="text-gray-400">Veja todas as partidas jogadas e seus resultados</p>
-        </div>
-        <Select value={selectedServer} onValueChange={(v) => { setSelectedServer(v); setMatches([]) }}>
-          <SelectTrigger className="w-full border-gray-700 bg-gray-800/50 text-white sm:w-[240px]">
-            <Server className="mr-2 h-4 w-4 text-blue-400" />
-            <SelectValue placeholder="Selecione um servidor" />
-          </SelectTrigger>
-          <SelectContent className="border-gray-700 bg-gray-900 text-white">
-            {SERVERS.map((s) => (
-              <SelectItem key={s.id} value={s.id} className="focus:bg-gray-800 focus:text-white">
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div>
+        <h1 className="text-3xl font-bold text-white">Histórico de Partidas</h1>
+        <p className="text-gray-400">Veja todas as partidas jogadas e seus resultados</p>
       </div>
 
       {isLoading ? (
@@ -153,7 +154,7 @@ export default function HistoryPage() {
           {/* Side stats */}
           {myMatches.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Card className="border-blue-500/20 bg-blue-500/5 p-5 backdrop-blur-sm">
+              <Card className="border-blue-500/20 bg-blue-500/5 p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="h-3 w-3 rounded-full bg-blue-500" />
                   <h3 className="font-bold text-blue-400">Time Azul</h3>
@@ -163,7 +164,7 @@ export default function HistoryPage() {
                 </p>
                 <p className="text-sm text-gray-400">{blueWins}V / {blueGames - blueWins}D em {blueGames} partidas</p>
               </Card>
-              <Card className="border-red-500/20 bg-red-500/5 p-5 backdrop-blur-sm">
+              <Card className="border-red-500/20 bg-red-500/5 p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="h-3 w-3 rounded-full bg-red-500" />
                   <h3 className="font-bold text-red-400">Time Vermelho</h3>
@@ -176,30 +177,77 @@ export default function HistoryPage() {
             </div>
           )}
 
+          {/* Match type breakdown */}
+          {matchTypeStats.length > 0 && (
+            <Card className="border-gray-800/50 bg-gray-900/50 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 className="h-5 w-5 text-purple-400" />
+                <h2 className="text-lg font-bold text-white">Por Tipo de Partida</h2>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {matchTypeStats.map((t) => (
+                  <div key={t.type} className="rounded-lg bg-black/30 p-4">
+                    <p className="text-xs text-gray-500 mb-1">{t.type}</p>
+                    <p className={`text-2xl font-bold ${t.winRate >= 0.5 ? "text-green-400" : "text-red-400"}`}>
+                      {Math.round(t.winRate * 100)}%
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">{t.wins}V / {t.games - t.wins}D em {t.games}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* Partner stats */}
           {partnerStats.length > 0 && (
-            <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
+            <Card className="border-gray-800/50 bg-gray-900/50 p-6">
               <div className="flex items-center gap-2 mb-4">
                 <ShieldHalf className="h-5 w-5 text-blue-400" />
                 <h2 className="text-lg font-bold text-white">Parceiros</h2>
                 <span className="text-sm text-gray-400 ml-1">— ordenado por win rate</span>
               </div>
               <div className="space-y-2">
-                {partnerStats.map((partner, idx) => (
-                  <div
-                    key={partner.userId}
-                    className="flex items-center justify-between rounded-lg bg-black/30 px-4 py-3"
-                  >
+                {partnerStats.map((p, idx) => (
+                  <div key={p.userId} className="flex items-center justify-between rounded-lg bg-black/30 px-4 py-3">
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-gray-500 w-5">{idx + 1}.</span>
-                      <span className="font-medium text-white">{partner.name}</span>
+                      <span className="font-medium text-white">{p.name}</span>
                     </div>
                     <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gray-400">{partner.games} partidas</span>
-                      <span className="text-green-400">{partner.wins}V</span>
-                      <span className="text-red-400">{partner.games - partner.wins}D</span>
-                      <span className={`font-bold w-12 text-right ${partner.winRate >= 0.5 ? "text-green-400" : "text-red-400"}`}>
-                        {Math.round(partner.winRate * 100)}%
+                      <span className="text-gray-400 hidden sm:block">{p.games} partidas</span>
+                      <span className="text-green-400">{p.wins}V</span>
+                      <span className="text-red-400">{p.games - p.wins}D</span>
+                      <span className={`font-bold w-12 text-right ${p.winRate >= 0.5 ? "text-green-400" : "text-red-400"}`}>
+                        {Math.round(p.winRate * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Opponent stats */}
+          {opponentStats.length > 0 && (
+            <Card className="border-gray-800/50 bg-gray-900/50 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Swords className="h-5 w-5 text-red-400" />
+                <h2 className="text-lg font-bold text-white">Adversários</h2>
+                <span className="text-sm text-gray-400 ml-1">— seu win rate contra eles</span>
+              </div>
+              <div className="space-y-2">
+                {opponentStats.map((p, idx) => (
+                  <div key={p.userId} className="flex items-center justify-between rounded-lg bg-black/30 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-500 w-5">{idx + 1}.</span>
+                      <span className="font-medium text-white">{p.name}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-400 hidden sm:block">{p.games} partidas</span>
+                      <span className="text-green-400">{p.wins}V</span>
+                      <span className="text-red-400">{p.games - p.wins}D</span>
+                      <span className={`font-bold w-12 text-right ${p.winRate >= 0.5 ? "text-green-400" : "text-red-400"}`}>
+                        {Math.round(p.winRate * 100)}%
                       </span>
                     </div>
                   </div>
@@ -221,7 +269,16 @@ export default function HistoryPage() {
               const date = new Date(match.dateCreated)
 
               return (
-                <Card key={match.id} className={`border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm ${myTeamId !== null && !pending ? (iWon ? "border-l-2 border-l-green-500" : "border-l-2 border-l-red-500") : ""}`}>
+                <Card
+                  key={match.id}
+                  className={`border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm ${
+                    myTeamId !== null && !pending
+                      ? iWon
+                        ? "border-l-2 border-l-green-500"
+                        : "border-l-2 border-l-red-500"
+                      : ""
+                  }`}
+                >
                   <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-gray-800/50 pb-4">
                     <div className="flex items-center gap-4">
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-700 bg-gradient-to-br from-blue-600/20 to-red-600/20">
@@ -231,7 +288,8 @@ export default function HistoryPage() {
                         <h3 className="text-lg font-bold text-white">Partida {matches.length - index}</h3>
                         <div className="flex items-center gap-1 text-sm text-gray-400">
                           <Calendar className="h-3 w-3" />
-                          {date.toLocaleDateString("pt-BR")} às {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          {date.toLocaleDateString("pt-BR")} às{" "}
+                          {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                         </div>
                       </div>
                     </div>
@@ -245,7 +303,13 @@ export default function HistoryPage() {
                         </Badge>
                       )}
                       {myTeamId !== null && !pending && (
-                        <Badge className={iWon ? "bg-green-500/20 text-green-400 border-green-500/50" : "bg-red-500/20 text-red-400 border-red-500/50"}>
+                        <Badge
+                          className={
+                            iWon
+                              ? "bg-green-500/20 text-green-400 border-green-500/50"
+                              : "bg-red-500/20 text-red-400 border-red-500/50"
+                          }
+                        >
                           {iWon ? "Vitória" : "Derrota"}
                         </Badge>
                       )}
@@ -253,7 +317,11 @@ export default function HistoryPage() {
                   </div>
 
                   <div className="grid gap-6 md:grid-cols-2">
-                    <div className={`rounded-lg border p-4 ${blueWon ? "border-blue-500/50 bg-blue-500/5" : "border-gray-800/50 bg-gray-900/30"} ${inBlue ? "ring-1 ring-blue-500/30" : ""}`}>
+                    <div
+                      className={`rounded-lg border p-4 ${
+                        blueWon ? "border-blue-500/50 bg-blue-500/5" : "border-gray-800/50 bg-gray-900/30"
+                      } ${inBlue ? "ring-1 ring-blue-500/30" : ""}`}
+                    >
                       <div className="mb-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="h-3 w-3 rounded-full bg-blue-500" />
@@ -267,15 +335,26 @@ export default function HistoryPage() {
                       </div>
                       <div className="space-y-2">
                         {match.blueTeam.players.map((player) => (
-                          <div key={player.userId} className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${player.userId === userId ? "bg-blue-500/10" : "bg-black/30"}`}>
-                            <span className={`font-medium ${player.userId === userId ? "text-blue-300" : "text-white"}`}>{player.name}</span>
+                          <div
+                            key={player.userId}
+                            className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${
+                              player.userId === userId ? "bg-blue-500/10" : "bg-black/30"
+                            }`}
+                          >
+                            <span className={`font-medium ${player.userId === userId ? "text-blue-300" : "text-white"}`}>
+                              {player.name}
+                            </span>
                             {player.position && <span className="text-xs text-gray-500">{player.position}</span>}
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className={`rounded-lg border p-4 ${redWon ? "border-red-500/50 bg-red-500/5" : "border-gray-800/50 bg-gray-900/30"} ${inRed ? "ring-1 ring-red-500/30" : ""}`}>
+                    <div
+                      className={`rounded-lg border p-4 ${
+                        redWon ? "border-red-500/50 bg-red-500/5" : "border-gray-800/50 bg-gray-900/30"
+                      } ${inRed ? "ring-1 ring-red-500/30" : ""}`}
+                    >
                       <div className="mb-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="h-3 w-3 rounded-full bg-red-500" />
@@ -289,8 +368,15 @@ export default function HistoryPage() {
                       </div>
                       <div className="space-y-2">
                         {match.redTeam.players.map((player) => (
-                          <div key={player.userId} className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${player.userId === userId ? "bg-red-500/10" : "bg-black/30"}`}>
-                            <span className={`font-medium ${player.userId === userId ? "text-red-300" : "text-white"}`}>{player.name}</span>
+                          <div
+                            key={player.userId}
+                            className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${
+                              player.userId === userId ? "bg-red-500/10" : "bg-black/30"
+                            }`}
+                          >
+                            <span className={`font-medium ${player.userId === userId ? "text-red-300" : "text-white"}`}>
+                              {player.name}
+                            </span>
                             {player.position && <span className="text-xs text-gray-500">{player.position}</span>}
                           </div>
                         ))}

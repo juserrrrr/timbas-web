@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronRight, Trophy, History, Settings, BarChart3, Home, Bot } from "lucide-react"
+import { ChevronRight, Trophy, History, Settings, BarChart3, Home, Bot, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function DashboardSidebar() {
@@ -14,6 +14,7 @@ export function DashboardSidebar() {
     { icon: Home, label: "Início", href: "/dashboard" },
     { icon: Trophy, label: "Ranking", href: "/dashboard/ranking" },
     { icon: History, label: "Histórico", href: "/dashboard/history" },
+    { icon: Users, label: "Duplas", href: "/dashboard/teams" },
     { icon: BarChart3, label: "Estatísticas", href: "/dashboard/stats" },
     { icon: Settings, label: "Configurações", href: "/dashboard/settings" },
   ]

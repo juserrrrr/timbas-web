@@ -1,146 +1,115 @@
 "use client"
 
-import { Bell, Shield, Palette, Globe } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { LogOut, User, Mail, Shield } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Spinner } from "@/components/ui/spinner"
+import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "Administrador",
+  BOT: "Bot",
+  USER: "Usuário",
+  PLAYER: "Jogador",
+}
 
 export default function SettingsPage() {
+  const router = useRouter()
+  const [user, setUser] = useState<TokenPayload | null>(null)
+
+  useEffect(() => {
+    const token = getToken()
+    if (token) setUser(decodeToken(token))
+  }, [])
+
+  const handleLogout = () => {
+    clearToken()
+    router.push("/login")
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Spinner className="size-8 text-blue-500" />
+      </div>
+    )
+  }
+
+  const initials = user.name ? user.name.slice(0, 2).toUpperCase() : "?"
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Configurações</h1>
-        <p className="text-gray-400">Personalize sua experiência no TimbasBot</p>
+        <p className="text-gray-400">Gerencie sua conta</p>
       </div>
 
-      <div className="space-y-6">
-        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-lg bg-blue-500/10 p-2">
-              <Bell className="h-5 w-5 text-blue-400" />
-            </div>
+      <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="rounded-lg bg-blue-500/10 p-2">
+            <User className="h-5 w-5 text-blue-400" />
+          </div>
+          <h2 className="text-lg font-bold text-white">Minha Conta</h2>
+        </div>
+
+        <div className="flex items-center gap-4 mb-6 p-4 rounded-lg bg-black/30">
+          <Avatar className="h-16 w-16 border-2 border-gray-700/50">
+            <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-xl font-bold text-white">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-xl font-bold text-white">{user.name}</p>
+            <p className="text-sm text-gray-400">{user.email}</p>
+            <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              {ROLE_LABELS[user.role] ?? user.role}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 rounded-lg bg-black/20 p-4">
+            <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
             <div>
-              <h2 className="text-lg font-bold text-white">Notificações</h2>
-              <p className="text-sm text-gray-400">Gerencie suas preferências de notificação</p>
+              <p className="text-xs text-gray-500">Nome</p>
+              <p className="text-white">{user.name}</p>
             </div>
           </div>
-
-          <div className="space-y-4">
-            {[
-              { label: "Notificações de Partida", desc: "Receba alertas quando uma partida começar" },
-              { label: "Atualizações de Ranking", desc: "Seja notificado sobre mudanças no ranking" },
-              { label: "Convites de Time", desc: "Receba notificações de convites para times" },
-            ].map((setting) => (
-              <div key={setting.label} className="flex items-center justify-between rounded-lg bg-black/30 p-4">
-                <div>
-                  <Label className="text-white">{setting.label}</Label>
-                  <p className="text-sm text-gray-500">{setting.desc}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-gray-700 bg-gray-800/50 text-white hover:bg-gray-700"
-                >
-                  Ativado
-                </Button>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-lg bg-red-500/10 p-2">
-              <Shield className="h-5 w-5 text-red-400" />
-            </div>
+          <div className="flex items-center gap-3 rounded-lg bg-black/20 p-4">
+            <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
             <div>
-              <h2 className="text-lg font-bold text-white">Privacidade</h2>
-              <p className="text-sm text-gray-400">Controle quem pode ver suas informações</p>
+              <p className="text-xs text-gray-500">Email</p>
+              <p className="text-white">{user.email || "—"}</p>
             </div>
           </div>
-
-          <div className="space-y-4">
-            {[
-              { label: "Perfil Público", desc: "Permitir que outros vejam seu perfil" },
-              { label: "Estatísticas Visíveis", desc: "Mostrar suas estatísticas para outros jogadores" },
-              { label: "Histórico de Partidas", desc: "Permitir visualização do histórico de partidas" },
-            ].map((setting) => (
-              <div key={setting.label} className="flex items-center justify-between rounded-lg bg-black/30 p-4">
-                <div>
-                  <Label className="text-white">{setting.label}</Label>
-                  <p className="text-sm text-gray-500">{setting.desc}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-gray-700 bg-gray-800/50 text-white hover:bg-gray-700"
-                >
-                  Ativado
-                </Button>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-lg bg-purple-500/10 p-2">
-              <Palette className="h-5 w-5 text-purple-400" />
-            </div>
+          <div className="flex items-center gap-3 rounded-lg bg-black/20 p-4">
+            <Shield className="h-4 w-4 text-gray-400 flex-shrink-0" />
             <div>
-              <h2 className="text-lg font-bold text-white">Aparência</h2>
-              <p className="text-sm text-gray-400">Personalize a interface do bot</p>
+              <p className="text-xs text-gray-500">Função</p>
+              <p className="text-white">{ROLE_LABELS[user.role] ?? user.role}</p>
             </div>
           </div>
+        </div>
+      </Card>
 
-          <div className="space-y-4">
-            <div className="rounded-lg bg-black/30 p-4">
-              <Label className="mb-3 block text-white">Cor de Destaque</Label>
-              <div className="flex gap-3">
-                {["bg-blue-500", "bg-red-500", "bg-green-500", "bg-purple-500", "bg-yellow-500"].map((color) => (
-                  <button
-                    key={color}
-                    className={`h-10 w-10 rounded-lg ${color} transition-transform hover:scale-110`}
-                  />
-                ))}
-              </div>
-            </div>
+      <Card className="border-red-900/30 bg-red-950/20 p-6 backdrop-blur-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="rounded-lg bg-red-500/10 p-2">
+            <LogOut className="h-5 w-5 text-red-400" />
           </div>
-        </Card>
-
-        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-lg bg-green-500/10 p-2">
-              <Globe className="h-5 w-5 text-green-400" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-white">Região e Idioma</h2>
-              <p className="text-sm text-gray-400">Configure sua região e idioma preferido</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="rounded-lg bg-black/30 p-4">
-              <Label className="mb-2 block text-white">Região do Servidor</Label>
-              <Button
-                variant="outline"
-                className="w-full justify-start border-gray-700 bg-gray-800/50 text-white hover:bg-gray-700"
-              >
-                Brasil (BR)
-              </Button>
-            </div>
-            <div className="rounded-lg bg-black/30 p-4">
-              <Label className="mb-2 block text-white">Idioma</Label>
-              <Button
-                variant="outline"
-                className="w-full justify-start border-gray-700 bg-gray-800/50 text-white hover:bg-gray-700"
-              >
-                Português (BR)
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
+          <h2 className="text-lg font-bold text-white">Sair da Conta</h2>
+        </div>
+        <p className="text-sm text-gray-400 mb-4">
+          Você será desconectado e redirecionado para a página de login.
+        </p>
+        <Button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white">
+          <LogOut className="mr-2 h-4 w-4" />
+          Sair
+        </Button>
+      </Card>
     </div>
   )
 }

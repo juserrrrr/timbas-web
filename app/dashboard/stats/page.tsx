@@ -1,30 +1,75 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { TrendingUp, Target, Zap, Shield, Server, User } from "lucide-react"
+import { TrendingUp, Target, Zap, Shield, User } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
-import { getToken } from "@/lib/auth"
+import { getMatchHistory, Match } from "@/lib/services/matches"
+import { getToken, decodeToken } from "@/lib/auth"
+import { useServer } from "@/lib/server-context"
 
-const SERVERS = [
-  { id: "779382528821166100", name: "Timbas" },
-  { id: "465211051865276426", name: "Entrosa Não" },
-  { id: "1187881256508211321", name: "Fusão" },
-  { id: "4", name: "TimbasBot Official" },
-]
+function computePositionStats(matches: Match[], userId: number) {
+  const map: Record<string, { wins: number; games: number }> = {}
+  for (const match of matches) {
+    const inBlue = match.blueTeam.players.some((p) => p.userId === userId)
+    const inRed = match.redTeam.players.some((p) => p.userId === userId)
+    if (!inBlue && !inRed) continue
+    const myTeam = inBlue ? match.blueTeam : match.redTeam
+    const myPlayer = myTeam.players.find((p) => p.userId === userId)
+    if (!myPlayer?.position) continue
+    const won = match.winnerId !== null && match.winnerId === myTeam.id
+    if (!map[myPlayer.position]) map[myPlayer.position] = { wins: 0, games: 0 }
+    map[myPlayer.position].games++
+    if (won) map[myPlayer.position].wins++
+  }
+  return map
+}
+
+function computeMatchTypeStats(matches: Match[], userId: number) {
+  const labels: Record<string, string> = {
+    ALEATORIO: "Aleatório",
+    LIVRE: "Livre",
+    BALANCEADO: "Balanceado",
+    ALEATORIO_COMPLETO: "Aleat. Completo",
+  }
+  const map: Record<string, { wins: number; games: number }> = {}
+  for (const match of matches) {
+    const inBlue = match.blueTeam.players.some((p) => p.userId === userId)
+    const inRed = match.redTeam.players.some((p) => p.userId === userId)
+    if (!inBlue && !inRed) continue
+    const myTeam = inBlue ? match.blueTeam : match.redTeam
+    const won = match.winnerId !== null && match.winnerId === myTeam.id
+    const label = labels[match.matchType] ?? match.matchType
+    if (!map[label]) map[label] = { wins: 0, games: 0 }
+    map[label].games++
+    if (won) map[label].wins++
+  }
+  return map
+}
 
 export default function StatsPage() {
-  const [selectedServer, setSelectedServer] = useState(SERVERS[0].id)
+  const { selectedServer } = useServer()
   const [players, setPlayers] = useState<PlayerStats[]>([])
   const [selectedUserId, setSelectedUserId] = useState<string>("")
   const [rankingLoading, setRankingLoading] = useState(true)
   const [statsLoading, setStatsLoading] = useState(false)
   const [detail, setDetail] = useState<PlayerDetailStats | null>(null)
+  const [matches, setMatches] = useState<Match[]>([])
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+
+  useEffect(() => {
+    const token = getToken()
+    if (token) {
+      const payload = decodeToken(token)
+      if (payload) setCurrentUserId(Number(payload.sub))
+    }
+  }, [])
 
   useEffect(() => {
     const fetchPlayers = async () => {
@@ -37,8 +82,16 @@ export default function StatsPage() {
       try {
         const token = getToken()
         if (!token) throw new Error("Usuário não autenticado.")
-        const data = await getRanking(token, selectedServer)
+        const [data, matchData] = await Promise.all([
+          getRanking(token, selectedServer),
+          getMatchHistory(token, selectedServer),
+        ])
         setPlayers(data)
+        setMatches(matchData)
+        if (currentUserId !== null) {
+          const me = data.find((p) => p.userId === currentUserId)
+          if (me) setSelectedUserId(String(me.userId))
+        }
       } catch (err) {
         setError("Falha ao carregar jogadores.")
         console.error(err)
@@ -47,7 +100,7 @@ export default function StatsPage() {
       }
     }
     fetchPlayers()
-  }, [selectedServer])
+  }, [selectedServer, currentUserId])
 
   useEffect(() => {
     if (!selectedUserId) return
@@ -70,20 +123,31 @@ export default function StatsPage() {
       }
     }
     fetchDetail()
-  }, [selectedUserId])
+  }, [selectedUserId, selectedServer])
 
   const streakLabel = detail
     ? detail.currentStreakType
-      ? `${detail.currentStreakCount}${detail.currentStreakType}`
+      ? `${detail.currentStreakCount}${detail.currentStreakType === "W" ? "V" : "D"}`
       : "—"
     : "—"
-
   const streakColor =
     detail?.currentStreakType === "W"
       ? "text-green-400"
       : detail?.currentStreakType === "L"
       ? "text-red-400"
       : "text-gray-400"
+
+  const weeklyChartData =
+    detail?.weeklyPerformance.map((w) => ({
+      week: new Date(w.week).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+      Vitórias: w.wins,
+      Derrotas: w.losses,
+    })) ?? []
+
+  const positionStats = selectedUserId ? computePositionStats(matches, Number(selectedUserId)) : {}
+  const matchTypeStats = selectedUserId ? computeMatchTypeStats(matches, Number(selectedUserId)) : {}
+  const hasPositionData = Object.keys(positionStats).length > 0
+  const hasMatchTypeData = Object.keys(matchTypeStats).length > 0
 
   return (
     <div className="space-y-6">
@@ -92,39 +156,23 @@ export default function StatsPage() {
           <h1 className="text-3xl font-bold text-white">Estatísticas</h1>
           <p className="text-gray-400">Acompanhe o desempenho detalhado por jogador</p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Select value={selectedServer} onValueChange={setSelectedServer}>
-            <SelectTrigger className="w-full border-gray-700 bg-gray-800/50 text-white sm:w-[220px]">
-              <Server className="mr-2 h-4 w-4 text-blue-400" />
-              <SelectValue placeholder="Servidor" />
-            </SelectTrigger>
-            <SelectContent className="border-gray-700 bg-gray-900 text-white">
-              {SERVERS.map((s) => (
-                <SelectItem key={s.id} value={s.id} className="focus:bg-gray-800 focus:text-white">
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={selectedUserId}
-            onValueChange={setSelectedUserId}
-            disabled={rankingLoading || players.length === 0}
-          >
-            <SelectTrigger className="w-full border-gray-700 bg-gray-800/50 text-white sm:w-[220px]">
-              <User className="mr-2 h-4 w-4 text-purple-400" />
-              <SelectValue placeholder={rankingLoading ? "Carregando..." : "Selecione um jogador"} />
-            </SelectTrigger>
-            <SelectContent className="border-gray-700 bg-gray-900 text-white">
-              {players.map((p) => (
-                <SelectItem key={p.userId} value={String(p.userId)} className="focus:bg-gray-800 focus:text-white">
-                  {p.rank}º {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          value={selectedUserId}
+          onValueChange={setSelectedUserId}
+          disabled={rankingLoading || players.length === 0}
+        >
+          <SelectTrigger className="w-full border-gray-700 bg-gray-800/50 text-white sm:w-[260px]">
+            <User className="mr-2 h-4 w-4 text-purple-400" />
+            <SelectValue placeholder={rankingLoading ? "Carregando..." : "Selecione um jogador"} />
+          </SelectTrigger>
+          <SelectContent className="border-gray-700 bg-gray-900 text-white">
+            {players.map((p) => (
+              <SelectItem key={p.userId} value={String(p.userId)} className="focus:bg-gray-800 focus:text-white">
+                {p.rank}º {p.name}{p.userId === currentUserId ? " (Você)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {error && (
@@ -188,7 +236,7 @@ export default function StatsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-400">Maior Win Streak</p>
-                  <p className="text-3xl font-bold text-purple-400">{detail.longestWinStreak}W</p>
+                  <p className="text-3xl font-bold text-purple-400">{detail.longestWinStreak}V</p>
                 </div>
                 <div className="rounded-xl bg-purple-500/10 p-3">
                   <Shield className="h-6 w-6 text-purple-400" />
@@ -200,9 +248,7 @@ export default function StatsPage() {
           <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
             <h2 className="mb-4 text-xl font-bold text-white">
               Forma Recente{" "}
-              <span className="text-sm font-normal text-gray-400">
-                (últimas {detail.recentForm.length} partidas)
-              </span>
+              <span className="text-sm font-normal text-gray-400">(últimas {detail.recentForm.length} partidas)</span>
             </h2>
             {detail.recentForm.length === 0 ? (
               <p className="text-gray-500">Sem partidas finalizadas ainda.</p>
@@ -211,8 +257,10 @@ export default function StatsPage() {
                 {detail.recentForm.map((result, i) => (
                   <span
                     key={i}
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold ${
-                      result === "W" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold ${
+                      result === "W"
+                        ? "bg-green-500/20 text-green-400 ring-1 ring-green-500/30"
+                        : "bg-red-500/20 text-red-400 ring-1 ring-red-500/30"
                     }`}
                   >
                     {result === "W" ? "V" : "D"}
@@ -229,8 +277,7 @@ export default function StatsPage() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="flex items-center gap-2 text-blue-400">
-                      <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-                      Lado Azul
+                      <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />Lado Azul
                     </span>
                     <span className="text-white">
                       {detail.blueSide.wins}V / {detail.blueSide.losses}D
@@ -240,19 +287,14 @@ export default function StatsPage() {
                     </span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-gray-800">
-                    <div
-                      className="h-full rounded-full bg-blue-500 transition-all"
-                      style={{ width: `${Math.round(detail.blueSide.winRate * 100)}%` }}
-                    />
+                    <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${Math.round(detail.blueSide.winRate * 100)}%` }} />
                   </div>
                   <p className="text-xs text-gray-500">{detail.blueSide.total} partidas</p>
                 </div>
-
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="flex items-center gap-2 text-red-400">
-                      <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
-                      Lado Vermelho
+                      <span className="inline-block h-2 w-2 rounded-full bg-red-500" />Lado Vermelho
                     </span>
                     <span className="text-white">
                       {detail.redSide.wins}V / {detail.redSide.losses}D
@@ -262,10 +304,7 @@ export default function StatsPage() {
                     </span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-gray-800">
-                    <div
-                      className="h-full rounded-full bg-red-500 transition-all"
-                      style={{ width: `${Math.round(detail.redSide.winRate * 100)}%` }}
-                    />
+                    <div className="h-full rounded-full bg-red-500 transition-all" style={{ width: `${Math.round(detail.redSide.winRate * 100)}%` }} />
                   </div>
                   <p className="text-xs text-gray-500">{detail.redSide.total} partidas</p>
                 </div>
@@ -274,38 +313,91 @@ export default function StatsPage() {
 
             <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
               <h2 className="mb-4 text-xl font-bold text-white">Desempenho Semanal</h2>
-              {detail.weeklyPerformance.length === 0 ? (
+              {weeklyChartData.length === 0 ? (
                 <p className="text-gray-500">Sem dados suficientes.</p>
               ) : (
-                <div className="space-y-3">
-                  {detail.weeklyPerformance.map((week) => {
-                    const total = week.wins + week.losses
-                    const winPct = total > 0 ? (week.wins / total) * 100 : 0
-                    const label = new Date(week.week).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                    })
-                    return (
-                      <div key={week.week} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-400">Semana de {label}</span>
-                          <span className="text-white">
-                            {week.wins}V — {week.losses}D
-                          </span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-gray-800">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-green-500 to-green-600 transition-all"
-                            style={{ width: `${winPct}%` }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={weeklyChartData} barCategoryGap="30%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="week" tick={{ fill: "#9CA3AF", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "#9CA3AF", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: "8px", color: "#fff" }}
+                      cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                    />
+                    <Legend wrapperStyle={{ color: "#9CA3AF", fontSize: 12 }} />
+                    <Bar dataKey="Vitórias" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Derrotas" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               )}
             </Card>
           </div>
+
+          {(hasPositionData || hasMatchTypeData) && (
+            <div className="grid gap-6 md:grid-cols-2">
+              {hasPositionData && (
+                <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
+                  <h2 className="mb-4 text-xl font-bold text-white">Win Rate por Posição</h2>
+                  <div className="space-y-3">
+                    {Object.entries(positionStats)
+                      .sort((a, b) => b[1].wins / b[1].games - a[1].wins / a[1].games)
+                      .map(([pos, stat]) => {
+                        const wr = stat.games > 0 ? stat.wins / stat.games : 0
+                        return (
+                          <div key={pos} className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-300 font-medium">{pos}</span>
+                              <span className="text-white">
+                                {stat.wins}V / {stat.games - stat.wins}D{" "}
+                                <span className="text-gray-400">({Math.round(wr * 100)}%)</span>
+                              </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-gray-800">
+                              <div
+                                className={`h-full rounded-full transition-all ${wr >= 0.5 ? "bg-green-500" : "bg-red-500"}`}
+                                style={{ width: `${Math.round(wr * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                </Card>
+              )}
+
+              {hasMatchTypeData && (
+                <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
+                  <h2 className="mb-4 text-xl font-bold text-white">Win Rate por Tipo</h2>
+                  <div className="space-y-3">
+                    {Object.entries(matchTypeStats)
+                      .sort((a, b) => b[1].wins / b[1].games - a[1].wins / a[1].games)
+                      .map(([type, stat]) => {
+                        const wr = stat.games > 0 ? stat.wins / stat.games : 0
+                        return (
+                          <div key={type} className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-300 font-medium">{type}</span>
+                              <span className="text-white">
+                                {stat.wins}V / {stat.games - stat.wins}D{" "}
+                                <span className="text-gray-400">({Math.round(wr * 100)}%)</span>
+                              </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-gray-800">
+                              <div
+                                className={`h-full rounded-full transition-all ${wr >= 0.5 ? "bg-green-500" : "bg-red-500"}`}
+                                style={{ width: `${Math.round(wr * 100)}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-gray-500">{stat.games} partidas</p>
+                          </div>
+                        )
+                      })}
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
 
           <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
             <h2 className="mb-4 text-xl font-bold text-white">Resumo Geral</h2>
