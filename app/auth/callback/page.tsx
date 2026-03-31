@@ -2,8 +2,10 @@
 
 import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { setToken } from "@/lib/auth"
+import { setToken, decodeToken } from "@/lib/auth"
 import { Bot } from "lucide-react"
+
+const ADMIN_ROLES = ["ADMIN", "admin", "Admin"]
 
 export default function AuthCallbackPage() {
   const router = useRouter()
@@ -12,12 +14,31 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const token = searchParams.get("token")
     const error = searchParams.get("error")
+    const isAdminPending =
+      typeof window !== "undefined" && sessionStorage.getItem("adminPending") === "1"
 
     if (token) {
-      setToken(token)
-      router.replace("/dashboard")
+      if (isAdminPending) {
+        sessionStorage.removeItem("adminPending")
+        const payload = decodeToken(token)
+        const isAdmin = payload?.role && ADMIN_ROLES.includes(payload.role)
+        if (isAdmin) {
+          setToken(token)
+          router.replace("/admin?welcome=1")
+        } else {
+          router.replace("/admin/login?error=unauthorized")
+        }
+      } else {
+        setToken(token)
+        router.replace("/dashboard")
+      }
     } else {
-      router.replace(`/login?error=${error ?? "auth_failed"}`)
+      if (isAdminPending) {
+        sessionStorage.removeItem("adminPending")
+        router.replace(`/admin/login?error=${error ?? "auth_failed"}`)
+      } else {
+        router.replace(`/login?error=${error ?? "auth_failed"}`)
+      }
     }
   }, [])
 
