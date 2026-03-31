@@ -182,6 +182,15 @@
 
 
 
+/* Prevent content jump — pure opacity fade, no translateY */
+@keyframes content-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.content-enter {
+  animation: content-enter 0.18s ease-out both;
+}
+
 @layer utilities {
   .rotating-border-glow {
     position: relative;

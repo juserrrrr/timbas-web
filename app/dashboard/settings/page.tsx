@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { LogOut, Server, Info, Github, MessageSquare, Zap, Shield, Clock, ExternalLink } from "lucide-react"
+import { LogOut, Server, Info, Code2, MessageSquare, Zap, Shield, Clock, ExternalLink } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
 import { useServer, SERVERS } from "@/lib/server-context"
@@ -26,7 +26,7 @@ export default function SettingsPage() {
   if (!user) return <div className="flex h-64 items-center justify-center"><Spinner className="size-8 text-blue-500" /></div>
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="content-enter max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-black text-white">Configurações</h1>
         <p className="mt-1 text-sm text-gray-500">Preferências do dashboard</p>
@@ -114,7 +114,7 @@ export default function SettingsPage() {
               href="#"
               className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2 text-xs text-gray-400 transition-colors hover:bg-white/[0.06] hover:text-white"
             >
-              <Github className="h-3.5 w-3.5" />
+              <Code2 className="h-3.5 w-3.5" />
               GitHub
               <ExternalLink className="h-3 w-3 opacity-50" />
             </a>

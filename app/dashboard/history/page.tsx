@@ -130,7 +130,7 @@ export default function HistoryPage() {
   const { partnerStats, opponentStats, matchTypeStats, blueWins, blueGames, redWins, redGames, myMatches } = stats
 
   return (
-    <div className="space-y-6">
+    <div className="content-enter space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Histórico de Partidas</h1>
         <p className="text-gray-400">Veja todas as partidas jogadas e seus resultados</p>

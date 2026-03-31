@@ -49,7 +49,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="space-y-8">
+    <div className="content-enter space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>

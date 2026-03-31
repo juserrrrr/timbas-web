@@ -91,7 +91,7 @@ export function RankingSection() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="content-enter space-y-8">
       {/* Header */}
       <div>
         <h1 className="mb-2 text-4xl font-bold md:text-5xl">

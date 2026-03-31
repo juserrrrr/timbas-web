@@ -148,7 +148,7 @@ export default function StatsPage() {
   const hasMatchTypeData = Object.keys(matchTypeStats).length > 0
 
   return (
-    <div className="space-y-6">
+    <div className="content-enter space-y-6">
       <div className="flex flex-col gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">Estatísticas</h1>

@@ -84,7 +84,7 @@ export default function TeamsPage() {
   const top3 = duoStats.slice(0, 3)
 
   return (
-    <div className="space-y-6">
+    <div className="content-enter space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Melhores Duplas</h1>
         <p className="text-gray-400">Com quem você mais ganha partidas</p>

@@ -27,17 +27,22 @@ export function DashboardSidebar() {
     return (
       <Link
         href={item.href}
-        title={!expanded ? item.label : undefined}
-        className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 ${
+        className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 ${
           isActive
             ? `border ${item.active} ${item.glow} ${item.color}`
             : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
         }`}
       >
-        <item.icon className={`h-[18px] w-[18px] flex-shrink-0 transition-transform duration-200 ${isActive ? "" : "group-hover:scale-110"}`} />
-        {expanded && (
-          <span className="text-sm font-medium whitespace-nowrap overflow-hidden">{item.label}</span>
-        )}
+        {/* Icon — position never changes */}
+        <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
+
+        {/* Label — always in DOM, only width+opacity transitions */}
+        <span className={`text-sm font-medium whitespace-nowrap transition-all duration-300 ${
+          expanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0 overflow-hidden"
+        }`}>
+          {item.label}
+        </span>
+
         {/* Tooltip when collapsed */}
         {!expanded && (
           <div className="pointer-events-none absolute left-full ml-3 z-50 hidden rounded-lg border border-white/[0.08] bg-[#0d0d12] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl group-hover:block whitespace-nowrap">
@@ -59,15 +64,15 @@ export function DashboardSidebar() {
 
         {/* Logo */}
         <div className="flex h-14 items-center border-b border-white/[0.06] px-3">
-          <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
+          <Link href="/dashboard" className="flex items-center gap-3">
             <div className="h-8 w-8 flex-shrink-0 rounded-lg overflow-hidden ring-1 ring-white/10">
               <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={32} height={32} className="object-cover" />
             </div>
-            {expanded && (
-              <span className="text-sm font-black tracking-tight text-white whitespace-nowrap">
-                Timbas<span className="text-blue-400">Bot</span>
-              </span>
-            )}
+            <span className={`text-sm font-black tracking-tight text-white whitespace-nowrap transition-all duration-300 ${
+              expanded ? "max-w-[140px] opacity-100" : "max-w-0 opacity-0 overflow-hidden"
+            }`}>
+              Timbas<span className="text-blue-400">Bot</span>
+            </span>
           </Link>
         </div>
 
@@ -83,10 +88,14 @@ export function DashboardSidebar() {
           {/* Expand toggle */}
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-gray-600 transition-all hover:bg-white/[0.04] hover:text-gray-300"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-gray-600 transition-colors hover:bg-white/[0.04] hover:text-gray-300"
           >
             <ChevronRight className={`h-[18px] w-[18px] flex-shrink-0 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
-            {expanded && <span className="text-xs font-medium whitespace-nowrap">Recolher</span>}
+            <span className={`text-xs font-medium whitespace-nowrap transition-all duration-300 ${
+              expanded ? "max-w-[140px] opacity-100" : "max-w-0 opacity-0 overflow-hidden"
+            }`}>
+              Recolher
+            </span>
           </button>
         </div>
       </aside>
