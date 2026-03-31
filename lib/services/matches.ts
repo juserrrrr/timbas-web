@@ -2,6 +2,7 @@ export interface MatchPlayer {
   userId: number
   name: string
   discordId: string
+  avatar: string | null
   position: string | null
 }
 

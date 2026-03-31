@@ -21,6 +21,19 @@ export interface TokenPayload {
   email: string
   role: string
   sub: string
+  discordId?: string
+  avatar?: string
+}
+
+export function getDiscordAvatarUrl(discordId?: string, avatar?: string, size = 128): string | null {
+  if (discordId && avatar) {
+    return `https://cdn.discordapp.com/avatars/${discordId}/${avatar}.png?size=${size}`
+  }
+  if (discordId) {
+    const index = Number(BigInt(discordId) % BigInt(6))
+    return `https://cdn.discordapp.com/embed/avatars/${index}.png`
+  }
+  return null
 }
 
 export function decodeToken(token: string): TokenPayload | null {

@@ -9,6 +9,7 @@ import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
 import { getToken } from "@/lib/auth"
 import { useServer } from "@/lib/server-context"
+import { PlayerAvatar } from "@/components/player-avatar"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -308,13 +309,13 @@ export default function VersusPage() {
               }`}
             >
               <div className="flex flex-col items-center gap-2">
-                <div
-                  className={`flex h-14 w-14 items-center justify-center rounded-full text-xl font-black ring-2 ${
-                    winner === "left" ? "ring-blue-500 bg-blue-500/20 text-blue-300" : "ring-gray-700 bg-gray-800 text-gray-400"
-                  }`}
-                >
-                  {leftPlayer.name[0].toUpperCase()}
-                </div>
+                <PlayerAvatar
+                  name={leftPlayer.name}
+                  discordId={leftPlayer.discordId}
+                  avatar={leftPlayer.avatar}
+                  size={128}
+                  className={`h-14 w-14 ring-2 ${winner === "left" ? "ring-blue-500" : "ring-gray-700"}`}
+                />
                 <p className="font-bold text-white text-lg leading-tight">{leftPlayer.name}</p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">#{leftPlayer.rank}</span>
@@ -341,13 +342,13 @@ export default function VersusPage() {
               }`}
             >
               <div className="flex flex-col items-center gap-2">
-                <div
-                  className={`flex h-14 w-14 items-center justify-center rounded-full text-xl font-black ring-2 ${
-                    winner === "right" ? "ring-red-500 bg-red-500/20 text-red-300" : "ring-gray-700 bg-gray-800 text-gray-400"
-                  }`}
-                >
-                  {rightPlayer.name[0].toUpperCase()}
-                </div>
+                <PlayerAvatar
+                  name={rightPlayer.name}
+                  discordId={rightPlayer.discordId}
+                  avatar={rightPlayer.avatar}
+                  size={128}
+                  className={`h-14 w-14 ring-2 ${winner === "right" ? "ring-red-500" : "ring-gray-700"}`}
+                />
                 <p className="font-bold text-white text-lg leading-tight">{rightPlayer.name}</p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">#{rightPlayer.rank}</span>

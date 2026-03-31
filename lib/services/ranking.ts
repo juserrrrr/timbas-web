@@ -8,6 +8,7 @@ export interface PlayerStats {
   userId: number;
   name: string;
   discordId: string;
+  avatar: string | null;
   wins: number;
   losses: number;
   score: number;

@@ -4,11 +4,11 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trophy, Medal, ChevronLeft, ChevronRight } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"
 import { useServer, SERVERS } from "@/lib/server-context"
+import { PlayerAvatar } from "@/components/player-avatar"
 
 export function RankingSection() {
   const { selectedServer } = useServer()
@@ -122,10 +122,7 @@ export function RankingSection() {
                   <span className="text-3xl font-bold text-gray-300">2º</span>
                 </div>
                 <div className="mb-4 flex items-center gap-3">
-                  <Avatar className="h-16 w-16 border-2 border-gray-400">
-                    <AvatarImage src={"/user-avatar.jpg"} alt={topThree[1].name} />
-                    <AvatarFallback>{topThree[1].name[0]}</AvatarFallback>
-                  </Avatar>
+                  <PlayerAvatar name={topThree[1].name} discordId={topThree[1].discordId} avatar={topThree[1].avatar} size={128} className="h-16 w-16 border-2 border-gray-400" />
                   <div>
                     <h3 className="text-lg font-bold text-white">{topThree[1].name}</h3>
                     <p className="text-sm text-gray-400">{topThree[1].score} pts</p>
@@ -162,10 +159,7 @@ export function RankingSection() {
                   </div>
                   <div className="mb-4 flex items-center gap-3">
                     <div className="rotating-border-glow rounded-full">
-                      <Avatar className="h-20 w-20 border-4 border-yellow-400">
-                        <AvatarImage src={"/user-avatar.jpg"} alt={topThree[0].name} />
-                        <AvatarFallback>{topThree[0].name[0]}</AvatarFallback>
-                      </Avatar>
+                      <PlayerAvatar name={topThree[0].name} discordId={topThree[0].discordId} avatar={topThree[0].avatar} size={128} className="h-20 w-20 border-4 border-yellow-400" />
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white">{topThree[0].name}</h3>
@@ -202,10 +196,7 @@ export function RankingSection() {
                   <span className="text-3xl font-bold text-amber-600">3º</span>
                 </div>
                 <div className="mb-4 flex items-center gap-3">
-                  <Avatar className="h-16 w-16 border-2 border-amber-600">
-                    <AvatarImage src={"/user-avatar.jpg"} alt={topThree[2].name} />
-                    <AvatarFallback>{topThree[2].name[0]}</AvatarFallback>
-                  </Avatar>
+                  <PlayerAvatar name={topThree[2].name} discordId={topThree[2].discordId} avatar={topThree[2].avatar} size={128} className="h-16 w-16 border-2 border-amber-600" />
                   <div>
                     <h3 className="text-lg font-bold text-white">{topThree[2].name}</h3>
                     <p className="text-sm text-gray-400">{topThree[2].score} pts</p>
@@ -259,10 +250,7 @@ export function RankingSection() {
                         </td>
                         <td className="p-4">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={"/user-avatar.jpg"} alt={player.name} />
-                              <AvatarFallback>{player.name[0]}</AvatarFallback>
-                            </Avatar>
+                            <PlayerAvatar name={player.name} discordId={player.discordId} avatar={player.avatar} size={64} className="h-10 w-10" />
                             <span className="font-medium text-white">{player.name}</span>
                           </div>
                         </td>
