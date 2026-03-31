@@ -3,30 +3,23 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, Medal, ChevronLeft, ChevronRight, Server } from "lucide-react"
+import { Trophy, Medal, ChevronLeft, ChevronRight } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"
-
-// Mock data for servers - this could also come from an API
-const mockServers = [
-  { id: "779382528821166100", name: "Timbas", icon: "/user-avatar.jpg" },
-  { id: "465211051865276426", name: "Entrosa Não", icon: "/user-avatar.jpg" },
-  { id: "1187881256508211321", name: "Fusão", icon: "/user-avatar.jpg" },
-  { id: "4", name: "TimbasBot Official", icon: "/user-avatar.jpg" },
-] 
+import { useServer, SERVERS } from "@/lib/server-context"
 
 export function RankingSection() {
+  const { selectedServer } = useServer()
   const [players, setPlayers] = useState<PlayerStats[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedServer, setSelectedServer] = useState(mockServers[0].id)
   const playersPerPage = 10
 
   useEffect(() => {
+    setCurrentPage(1)
     const fetchRanking = async () => {
       setIsLoading(true)
       setError(null)
@@ -78,7 +71,7 @@ export function RankingSection() {
     }
   }
 
-  const selectedServerName = mockServers.find((s) => s.id === selectedServer)?.name || "Servidor"
+  const selectedServerName = SERVERS.find((s) => s.id === selectedServer)?.name || "Servidor"
 
   if (isLoading) {
     return (
@@ -99,35 +92,15 @@ export function RankingSection() {
 
   return (
     <div className="space-y-8">
-      {/* Header with Server Selector */}
-      <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-        <div className="text-center md:text-left">
-          <h1 className="mb-2 text-4xl font-bold md:text-5xl">
-            Ranking{" "}
-            <span className="bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">
-              {selectedServerName}
-            </span>
-          </h1>
-          <p className="text-gray-400">Os melhores jogadores da temporada</p>
-        </div>
-        <div className="w-full md:w-auto">
-          <Select value={selectedServer} onValueChange={setSelectedServer}>
-            <SelectTrigger className="w-full border-gray-700 bg-gray-800/50 text-white md:w-[280px]">
-              <Server className="mr-2 h-4 w-4 text-blue-400" />
-              <SelectValue placeholder="Selecione um servidor" />
-            </SelectTrigger>
-            <SelectContent className="border-gray-700 bg-gray-900 text-white">
-              {mockServers.map((server) => (
-                <SelectItem key={server.id} value={server.id} className="focus:bg-gray-800 focus:text-white">
-                  <div className="flex items-center gap-2">
-                    <img src={server.icon || "/user-avatar.jpg"} alt={server.name} className="h-5 w-5 rounded-full" />
-                    <span>{server.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="mb-2 text-4xl font-bold md:text-5xl">
+          Ranking{" "}
+          <span className="bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">
+            {selectedServerName}
+          </span>
+        </h1>
+        <p className="text-gray-400">Os melhores jogadores da temporada</p>
       </div>
 
       {players.length === 0 ? (
