@@ -11,7 +11,6 @@ import { ThemeProvider } from "@/components/theme-provider"
 export const metadata: Metadata = {
   title: "TimbasBot - Discord Bot para Partidas 5v5",
   description: "O melhor bot de Discord para organizar partidas competitivas entre amigos",
-  generator: "v0.app",
 }
 
 export default function RootLayout({

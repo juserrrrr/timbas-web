@@ -5,7 +5,7 @@ import { getToken, decodeToken } from "@/lib/auth"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { getMatchHistory, Match } from "@/lib/services/matches"
 import { Spinner } from "@/components/ui/spinner"
-import { Calendar, Trophy } from "lucide-react"
+import { Calendar, Trophy, Swords, TrendingUp, Star } from "lucide-react"
 import { useServer } from "@/lib/server-context"
 
 export default function DashboardPage() {
@@ -17,6 +17,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const load = async () => {
+      setIsLoading(true)
       try {
         const token = getToken()
         if (!token) return
@@ -28,88 +29,82 @@ export default function DashboardPage() {
           getRanking(token, selectedServer),
           getMatchHistory(token, selectedServer),
         ])
-        const myStats = ranking.find((p) => p.userId === uid) ?? null
-        setStats(myStats)
+        setStats(ranking.find((p) => p.userId === uid) ?? null)
         setRecentMatches(matches.slice(0, 5))
-      } catch {
-        // silently fail, show empty state
-      } finally {
-        setIsLoading(false)
-      }
+      } catch { /* silent */ }
+      finally { setIsLoading(false) }
     }
     load()
   }, [selectedServer])
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="size-8 text-blue-500" />
-      </div>
-    )
+    return <div className="flex h-64 items-center justify-center"><Spinner className="size-8 text-blue-500" /></div>
   }
+
+  const statCards = [
+    { label: "Partidas",   value: stats?.totalGames ?? "—", icon: Swords,     color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
+    { label: "Vitórias",   value: stats?.wins ?? "—",       icon: Trophy,     color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/15"  },
+    { label: "Derrotas",   value: stats?.losses ?? "—",     icon: TrendingUp, color: "text-red-400",    bg: "bg-red-500/10",    border: "border-red-500/15"    },
+    { label: "Win Rate",   value: stats ? `${Math.round(stats.winRate * 100)}%` : "—", icon: Star, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/15" },
+  ]
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold text-white mb-2">Bem-vindo ao Dashboard</h1>
-        <p className="text-gray-400">Gerencie suas partidas e acompanhe seu desempenho</p>
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-white">Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-500">Seu desempenho no servidor</p>
+        </div>
+        {stats && (
+          <div className="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-2">
+            <Trophy className="h-4 w-4 text-yellow-400" />
+            <span className="text-sm font-bold text-yellow-400">Rank #{stats.rank}</span>
+          </div>
+        )}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <div className="group relative overflow-hidden rounded-2xl border border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-xl transition-all hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/20">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-          <div className="relative">
-            <p className="text-sm text-gray-400 mb-1">Total de Partidas</p>
-            <p className="text-3xl font-bold text-white">{stats?.totalGames ?? "—"}</p>
+      {/* Stat cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {statCards.map(({ label, value, icon: Icon, color, bg, border }) => (
+          <div key={label} className={`rounded-2xl border ${border} bg-white/[0.02] p-5 transition-all hover:bg-white/[0.04]`}>
+            <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl ${bg}`}>
+              <Icon className={`h-4 w-4 ${color}`} />
+            </div>
+            <p className="text-xs text-gray-600 mb-1">{label}</p>
+            <p className={`text-3xl font-black tabular-nums ${color}`}>{value}</p>
           </div>
-        </div>
-
-        <div className="group relative overflow-hidden rounded-2xl border border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-xl transition-all hover:border-green-500/50 hover:shadow-lg hover:shadow-green-500/20">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-600/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-          <div className="relative">
-            <p className="text-sm text-gray-400 mb-1">Vitórias</p>
-            <p className="text-3xl font-bold text-white">{stats?.wins ?? "—"}</p>
-          </div>
-        </div>
-
-        <div className="group relative overflow-hidden rounded-2xl border border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-xl transition-all hover:border-red-500/50 hover:shadow-lg hover:shadow-red-500/20">
-          <div className="absolute inset-0 bg-gradient-to-br from-red-600/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-          <div className="relative">
-            <p className="text-sm text-gray-400 mb-1">Derrotas</p>
-            <p className="text-3xl font-bold text-white">{stats?.losses ?? "—"}</p>
-          </div>
-        </div>
-
-        <div className="group relative overflow-hidden rounded-2xl border border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-xl transition-all hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/20">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-          <div className="relative">
-            <p className="text-sm text-gray-400 mb-1">Win Rate</p>
-            <p className="text-3xl font-bold text-white">
-              {stats ? `${Math.round(stats.winRate * 100)}%` : "—"}
-            </p>
-          </div>
-        </div>
+        ))}
       </div>
 
+      {/* Score highlight */}
       {stats && (
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-xl">
-            <p className="text-sm text-gray-400 mb-1">Posição no Ranking</p>
-            <p className="text-3xl font-bold text-yellow-400">#{stats.rank}</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/[0.08] to-transparent p-5">
+            <p className="text-xs text-gray-600 mb-1">Pontuação Total</p>
+            <p className="text-3xl font-black text-blue-400 tabular-nums">{stats.score} pts</p>
           </div>
-          <div className="rounded-2xl border border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-xl">
-            <p className="text-sm text-gray-400 mb-1">Pontuação</p>
-            <p className="text-3xl font-bold text-blue-400">{stats.score}</p>
+          <div className="rounded-2xl border border-yellow-500/15 bg-gradient-to-br from-yellow-500/[0.08] to-transparent p-5">
+            <p className="text-xs text-gray-600 mb-1">Posição Global</p>
+            <p className="text-3xl font-black text-yellow-400">#{stats.rank}</p>
           </div>
         </div>
       )}
 
-      <div className="rounded-2xl border border-gray-800/50 bg-gradient-to-br from-gray-900/50 to-black/50 p-6 backdrop-blur-xl">
-        <h2 className="text-2xl font-bold text-white mb-4">Partidas Recentes</h2>
+      {/* Recent matches */}
+      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+        <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-4">
+          <Calendar className="h-4 w-4 text-gray-500" />
+          <h2 className="text-sm font-semibold text-white">Partidas Recentes</h2>
+        </div>
+
         {recentMatches.length === 0 ? (
-          <p className="text-gray-400">Nenhuma partida encontrada.</p>
+          <div className="px-5 py-12 text-center">
+            <Swords className="mx-auto mb-3 h-8 w-8 text-gray-700" />
+            <p className="text-sm text-gray-600">Nenhuma partida encontrada.</p>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="divide-y divide-white/[0.04]">
             {recentMatches.map((match) => {
               const inBlue = userId !== null && match.blueTeam.players.some((p) => p.userId === userId)
               const myTeamId = inBlue ? match.blueTeam.id : match.redTeam.id
@@ -118,32 +113,20 @@ export default function DashboardPage() {
               const date = new Date(match.dateCreated)
 
               return (
-                <div
-                  key={match.id}
-                  className="flex items-center justify-between rounded-xl border border-gray-800/50 bg-gray-900/30 p-4 transition-all hover:border-gray-700/50 hover:bg-gray-900/50"
-                >
-                  <div>
-                    <p className="font-medium text-white">Partida #{match.id}</p>
-                    <div className="flex items-center gap-1 text-sm text-gray-400">
-                      <Calendar className="h-3 w-3" />
-                      {date.toLocaleDateString("pt-BR")} às{" "}
-                      {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </div>
+                <div key={match.id} className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-white/[0.02]">
+                  {/* Result dot */}
+                  <div className={`h-2 w-2 flex-shrink-0 rounded-full ${pending ? "bg-yellow-400" : won ? "bg-green-400" : "bg-red-400"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white">Partida #{match.id}</p>
+                    <p className="text-xs text-gray-600">
+                      {date.toLocaleDateString("pt-BR")} · {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
                   </div>
-                  {pending ? (
-                    <div className="rounded-lg px-3 py-1 text-sm font-medium bg-yellow-500/10 text-yellow-400">
-                      Em andamento
-                    </div>
-                  ) : (
-                    <div
-                      className={`flex items-center gap-1 rounded-lg px-3 py-1 text-sm font-medium ${
-                        won ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
-                      }`}
-                    >
-                      <Trophy className="h-3 w-3" />
-                      {won ? "Vitória" : "Derrota"}
-                    </div>
-                  )}
+                  <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                    pending ? "bg-yellow-500/10 text-yellow-400" : won ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
+                  }`}>
+                    {pending ? "Em andamento" : won ? "Vitória" : "Derrota"}
+                  </span>
                 </div>
               )
             })}

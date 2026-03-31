@@ -8,13 +8,13 @@ export function ServerSelector() {
   const { selectedServer, setSelectedServer } = useServer()
   return (
     <Select value={selectedServer} onValueChange={setSelectedServer}>
-      <SelectTrigger className="w-[180px] border-gray-700/50 bg-gray-800/40 text-white backdrop-blur-sm">
-        <Server className="mr-2 h-4 w-4 text-blue-400 flex-shrink-0" />
+      <SelectTrigger className="h-8 w-[160px] gap-1.5 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm text-gray-300 hover:bg-white/[0.07] focus:ring-0">
+        <Server className="h-3.5 w-3.5 flex-shrink-0 text-blue-400" />
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className="border-gray-700 bg-gray-900 text-white">
+      <SelectContent className="border-white/[0.08] bg-[#0d0d12] text-white shadow-xl shadow-black/50 backdrop-blur-xl">
         {SERVERS.map((s) => (
-          <SelectItem key={s.id} value={s.id} className="focus:bg-gray-800 focus:text-white">
+          <SelectItem key={s.id} value={s.id} className="text-sm focus:bg-white/[0.06] focus:text-white">
             {s.name}
           </SelectItem>
         ))}

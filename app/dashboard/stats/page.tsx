@@ -5,7 +5,6 @@ import { TrendingUp, Target, Zap, Shield, User } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
 import { getMatchHistory, Match } from "@/lib/services/matches"
@@ -137,12 +136,11 @@ export default function StatsPage() {
       ? "text-red-400"
       : "text-gray-400"
 
-  const weeklyChartData =
-    detail?.weeklyPerformance.map((w) => ({
-      week: new Date(w.week).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-      Vitórias: w.wins,
-      Derrotas: w.losses,
-    })) ?? []
+  const weeklyChartData = detail?.weeklyPerformance.map((w) => ({
+    week: new Date(w.week).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+    Vitórias: w.wins,
+    Derrotas: w.losses,
+  })) ?? []
 
   const positionStats = selectedUserId ? computePositionStats(matches, Number(selectedUserId)) : {}
   const matchTypeStats = selectedUserId ? computeMatchTypeStats(matches, Number(selectedUserId)) : {}
@@ -316,20 +314,41 @@ export default function StatsPage() {
               {weeklyChartData.length === 0 ? (
                 <p className="text-gray-500">Sem dados suficientes.</p>
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={weeklyChartData} barCategoryGap="30%">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="week" tick={{ fill: "#9CA3AF", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "#9CA3AF", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: "8px", color: "#fff" }}
-                      cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                    />
-                    <Legend wrapperStyle={{ color: "#9CA3AF", fontSize: 12 }} />
-                    <Bar dataKey="Vitórias" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Derrotas" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="space-y-1">
+                  {/* Legend */}
+                  <div className="flex gap-4 mb-4 text-xs text-gray-400">
+                    <span className="flex items-center gap-1.5"><span className="inline-block h-2 w-3 rounded-sm bg-green-500" />Vitórias</span>
+                    <span className="flex items-center gap-1.5"><span className="inline-block h-2 w-3 rounded-sm bg-red-500" />Derrotas</span>
+                  </div>
+                  {/* Bars */}
+                  {(() => {
+                    const maxVal = Math.max(...weeklyChartData.map((w) => w.Vitórias + w.Derrotas), 1)
+                    return weeklyChartData.map((w, i) => (
+                      <div key={i} className="flex items-center gap-3 group">
+                        <span className="w-12 shrink-0 text-right text-xs text-gray-500">{w.week}</span>
+                        <div className="flex-1 flex gap-0.5 h-6 items-end">
+                          {/* Vitórias bar */}
+                          <div
+                            className="bg-green-500 rounded-sm transition-all"
+                            style={{ width: `${(w.Vitórias / maxVal) * 50}%`, height: "100%" }}
+                            title={`${w.Vitórias} vitórias`}
+                          />
+                          {/* Derrotas bar */}
+                          <div
+                            className="bg-red-500 rounded-sm transition-all"
+                            style={{ width: `${(w.Derrotas / maxVal) * 50}%`, height: "100%" }}
+                            title={`${w.Derrotas} derrotas`}
+                          />
+                        </div>
+                        <span className="w-20 shrink-0 text-xs text-gray-400">
+                          <span className="text-green-400">{w.Vitórias}V</span>
+                          {" / "}
+                          <span className="text-red-400">{w.Derrotas}D</span>
+                        </span>
+                      </div>
+                    ))
+                  })()}
+                </div>
               )}
             </Card>
           </div>

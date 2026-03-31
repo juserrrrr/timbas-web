@@ -2,90 +2,93 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { ChevronRight, Trophy, History, Settings, BarChart3, Home, Bot, Users } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Trophy, History, Settings, BarChart3, Home, Users, ChevronRight } from "lucide-react"
+
+const NAV = [
+  { icon: Home,     label: "Início",        href: "/dashboard",          color: "text-blue-400",   glow: "bg-blue-500/10",   active: "border-blue-500/20" },
+  { icon: Trophy,   label: "Ranking",       href: "/dashboard/ranking",  color: "text-yellow-400", glow: "bg-yellow-500/10", active: "border-yellow-500/20" },
+  { icon: History,  label: "Histórico",     href: "/dashboard/history",  color: "text-purple-400", glow: "bg-purple-500/10", active: "border-purple-500/20" },
+  { icon: Users,    label: "Duplas",        href: "/dashboard/teams",    color: "text-green-400",  glow: "bg-green-500/10",  active: "border-green-500/20" },
+  { icon: BarChart3,label: "Estatísticas",  href: "/dashboard/stats",    color: "text-red-400",    glow: "bg-red-500/10",    active: "border-red-500/20" },
+]
+
+const BOTTOM = [
+  { icon: Settings, label: "Configurações", href: "/dashboard/settings", color: "text-gray-400",   glow: "bg-white/5",       active: "border-white/10" },
+]
 
 export function DashboardSidebar() {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const pathname = usePathname()
 
-  const menuItems = [
-    { icon: Home, label: "Início", href: "/dashboard" },
-    { icon: Trophy, label: "Ranking", href: "/dashboard/ranking" },
-    { icon: History, label: "Histórico", href: "/dashboard/history" },
-    { icon: Users, label: "Duplas", href: "/dashboard/teams" },
-    { icon: BarChart3, label: "Estatísticas", href: "/dashboard/stats" },
-    { icon: Settings, label: "Configurações", href: "/dashboard/settings" },
-  ]
+  const NavItem = ({ item }: { item: typeof NAV[0] }) => {
+    const isActive = pathname === item.href
+    return (
+      <Link
+        href={item.href}
+        title={!expanded ? item.label : undefined}
+        className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 ${
+          isActive
+            ? `border ${item.active} ${item.glow} ${item.color}`
+            : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
+        }`}
+      >
+        <item.icon className={`h-[18px] w-[18px] flex-shrink-0 transition-transform duration-200 ${isActive ? "" : "group-hover:scale-110"}`} />
+        {expanded && (
+          <span className="text-sm font-medium whitespace-nowrap overflow-hidden">{item.label}</span>
+        )}
+        {/* Tooltip when collapsed */}
+        {!expanded && (
+          <div className="pointer-events-none absolute left-full ml-3 z-50 hidden rounded-lg border border-white/[0.08] bg-[#0d0d12] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl group-hover:block whitespace-nowrap">
+            {item.label}
+          </div>
+        )}
+      </Link>
+    )
+  }
 
   return (
     <>
       {/* Mobile overlay */}
-      {isExpanded && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
-          onClick={() => setIsExpanded(false)}
-        />
+      {expanded && (
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setExpanded(false)} />
       )}
 
-      <aside
-        className={`fixed left-0 top-0 z-50 h-screen border-r border-gray-800/30 bg-gradient-to-b from-gray-900/50 to-black/50 backdrop-blur-2xl transition-all duration-300 ${
-          isExpanded ? "w-64" : "w-20"
-        }`}
-      >
-        <div className="flex h-20 items-center justify-center border-b border-gray-800/30 px-4">
-          {isExpanded ? (
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-500/30">
-                <Bot className="h-6 w-6 text-white" />
-              </div>
-              <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-xl font-bold text-transparent">
-                TimbasBot
+      <aside className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-white/[0.06] bg-[#07070c] transition-all duration-300 ${expanded ? "w-[220px]" : "w-16"}`}>
+
+        {/* Logo */}
+        <div className="flex h-14 items-center border-b border-white/[0.06] px-3">
+          <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
+            <div className="h-8 w-8 flex-shrink-0 rounded-lg overflow-hidden ring-1 ring-white/10">
+              <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={32} height={32} className="object-cover" />
+            </div>
+            {expanded && (
+              <span className="text-sm font-black tracking-tight text-white whitespace-nowrap">
+                Timbas<span className="text-blue-400">Bot</span>
               </span>
-            </div>
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-500/30">
-              <Bot className="h-6 w-6 text-white" />
-            </div>
-          )}
+            )}
+          </Link>
         </div>
 
-        <div className={`flex items-center px-3 py-3 ${isExpanded ? "justify-end" : "justify-center"}`}>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="h-8 w-8 rounded-lg text-gray-400 transition-all hover:bg-gray-800/30 hover:text-white"
-          >
-            <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`} />
-          </Button>
-        </div>
-
-        <nav className="space-y-1 px-3">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href
-
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`group relative flex items-center gap-4 rounded-lg px-4 py-3 transition-all duration-200 ${
-                  isActive ? "bg-blue-500/10 text-blue-400" : "text-gray-400 hover:bg-gray-800/20 hover:text-white"
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-blue-500 shadow-lg shadow-blue-500/50" />
-                )}
-
-                <item.icon className="relative z-10 h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
-                {isExpanded && (
-                  <span className="relative z-10 text-sm font-medium transition-all duration-200">{item.label}</span>
-                )}
-              </Link>
-            )
-          })}
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5">
+          {NAV.map((item) => <NavItem key={item.href} item={item} />)}
         </nav>
+
+        {/* Bottom */}
+        <div className="border-t border-white/[0.06] p-2 space-y-0.5">
+          {BOTTOM.map((item) => <NavItem key={item.href} item={item} />)}
+
+          {/* Expand toggle */}
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-gray-600 transition-all hover:bg-white/[0.04] hover:text-gray-300"
+          >
+            <ChevronRight className={`h-[18px] w-[18px] flex-shrink-0 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
+            {expanded && <span className="text-xs font-medium whitespace-nowrap">Recolher</span>}
+          </button>
+        </div>
       </aside>
     </>
   )

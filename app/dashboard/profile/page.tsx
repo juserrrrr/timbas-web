@@ -1,12 +1,7 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
-import { User, Mail, Hash } from "lucide-react"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { User, Mail, Hash, Trophy, Swords, TrendingUp, Star } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken, decodeToken, TokenPayload } from "@/lib/auth"
@@ -28,135 +23,94 @@ export default function ProfilePage() {
         if (!decoded) return
         setPayload(decoded)
         const ranking = await getRanking(token, selectedServer)
-        const uid = Number(decoded.sub)
-        const myStats = ranking.find((p) => p.userId === uid) ?? null
-        setStats(myStats)
-      } catch {
-        // silently fail
-      } finally {
-        setIsLoading(false)
-      }
+        setStats(ranking.find((p) => p.userId === Number(decoded.sub)) ?? null)
+      } catch { /* silent */ }
+      finally { setIsLoading(false) }
     }
     load()
   }, [selectedServer])
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="size-8 text-blue-500" />
-      </div>
-    )
-  }
+  if (isLoading) return <div className="flex h-64 items-center justify-center"><Spinner className="size-8 text-blue-500" /></div>
 
-  const initials = payload?.name
-    ? payload.name.slice(0, 2).toUpperCase()
-    : "?"
+  const initials = payload?.name ? payload.name.slice(0, 2).toUpperCase() : "?"
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">Meu Perfil</h1>
-        <p className="text-gray-400">Suas informações pessoais</p>
+        <h1 className="text-2xl font-black text-white">Meu Perfil</h1>
+        <p className="mt-1 text-sm text-gray-500">Suas informações e estatísticas</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm lg:col-span-1">
-          <div className="flex flex-col items-center space-y-4">
-            <Avatar className="h-32 w-32 border-4 border-gray-700/50 ring-4 ring-blue-500/20">
-              <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-4xl font-bold text-white">
+      {/* Profile card + info side by side */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Avatar card */}
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 flex flex-col items-center text-center">
+          <div className="mb-4 rounded-2xl p-[1px] bg-gradient-to-br from-blue-500/40 to-red-500/30">
+            <Avatar className="h-24 w-24 rounded-[15px]">
+              <AvatarFallback className="rounded-[15px] bg-gradient-to-br from-blue-600 to-red-600 text-3xl font-black text-white">
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div className="text-center">
-              <h2 className="text-xl font-bold text-white">{payload?.name ?? "—"}</h2>
-              {stats && (
-                <p className="text-sm text-gray-400">Rank #{stats.rank}</p>
-              )}
-            </div>
           </div>
-        </Card>
+          <h2 className="text-lg font-bold text-white">{payload?.name ?? "—"}</h2>
+          {stats && (
+            <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-1">
+              <Trophy className="h-3.5 w-3.5 text-yellow-400" />
+              <span className="text-sm font-bold text-yellow-400">Rank #{stats.rank}</span>
+            </div>
+          )}
+          {stats && (
+            <div className="mt-4 w-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+              <p className="text-xs text-gray-600 mb-0.5">Pontuação</p>
+              <p className="text-2xl font-black text-blue-400">{stats.score} pts</p>
+            </div>
+          )}
+        </div>
 
-        <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm lg:col-span-2">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="rounded-lg bg-blue-500/10 p-2">
-              <User className="h-5 w-5 text-blue-400" />
+        {/* Info */}
+        <div className="lg:col-span-2 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+              <User className="h-4 w-4 text-blue-400" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-white">Informações Pessoais</h2>
-              <p className="text-sm text-gray-400">Dados vinculados à sua conta</p>
-            </div>
+            <h2 className="font-bold text-white">Informações da Conta</h2>
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="flex items-center gap-2 text-white">
-                <User className="h-4 w-4 text-gray-400" />
-                Nome de Usuário
-              </Label>
-              <Input
-                id="name"
-                value={payload?.name ?? ""}
-                disabled
-                className="border-gray-700 bg-gray-800/50 text-white disabled:opacity-70"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-2 text-white">
-                <Mail className="h-4 w-4 text-gray-400" />
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={payload?.email ?? ""}
-                disabled
-                className="border-gray-700 bg-gray-800/50 text-white disabled:opacity-70"
-              />
-              <p className="text-xs text-gray-500">Email vinculado ao Discord (não editável)</p>
-            </div>
-
-            {stats?.discordId && (
-              <div className="space-y-2">
-                <Label htmlFor="discordId" className="flex items-center gap-2 text-white">
-                  <Hash className="h-4 w-4 text-gray-400" />
-                  Discord ID
-                </Label>
-                <Input
-                  id="discordId"
-                  value={stats.discordId}
-                  disabled
-                  className="border-gray-700 bg-gray-800/50 text-white disabled:opacity-70"
-                />
+          <div className="space-y-3">
+            {[
+              { icon: User,  label: "Nome de usuário", value: payload?.name  ?? "—" },
+              { icon: Mail,  label: "Email",            value: payload?.email ?? "—" },
+              { icon: Hash,  label: "Discord ID",       value: stats?.discordId ?? "—" },
+            ].map(({ icon: Icon, label, value }) => (
+              <div key={label} className="flex items-center gap-4 rounded-xl border border-white/[0.05] bg-white/[0.02] px-4 py-3">
+                <Icon className="h-4 w-4 flex-shrink-0 text-gray-600" />
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-600">{label}</p>
+                  <p className="truncate text-sm font-medium text-white">{value}</p>
+                </div>
               </div>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-lg font-bold text-white">Estatísticas</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-gray-800/50 bg-black/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{stats?.totalGames ?? "—"}</p>
-            <p className="text-sm text-gray-400">Partidas Jogadas</p>
-          </div>
-          <div className="rounded-lg border border-gray-800/50 bg-black/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{stats?.wins ?? "—"}</p>
-            <p className="text-sm text-gray-400">Vitórias</p>
-          </div>
-          <div className="rounded-lg border border-gray-800/50 bg-black/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">
-              {stats ? `${Math.round(stats.winRate * 100)}%` : "—"}
-            </p>
-            <p className="text-sm text-gray-400">Taxa de Vitória</p>
-          </div>
-          <div className="rounded-lg border border-gray-800/50 bg-black/30 p-4 text-center">
-            <p className="text-2xl font-bold text-white">{stats ? `#${stats.rank}` : "—"}</p>
-            <p className="text-sm text-gray-400">Posição no Ranking</p>
+            ))}
           </div>
         </div>
-      </Card>
+      </div>
+
+      {/* Stats grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Partidas",  value: stats?.totalGames ?? "—", icon: Swords,     color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
+          { label: "Vitórias",  value: stats?.wins ?? "—",       icon: Trophy,     color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/15"  },
+          { label: "Win Rate",  value: stats ? `${Math.round(stats.winRate * 100)}%` : "—", icon: Star, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/15" },
+          { label: "Ranking",   value: stats ? `#${stats.rank}` : "—", icon: TrendingUp, color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/15" },
+        ].map(({ label, value, icon: Icon, color, bg, border }) => (
+          <div key={label} className={`rounded-2xl border ${border} bg-white/[0.02] p-5`}>
+            <div className={`mb-3 inline-flex h-8 w-8 items-center justify-center rounded-lg ${bg}`}>
+              <Icon className={`h-4 w-4 ${color}`} />
+            </div>
+            <p className="text-xs text-gray-600 mb-1">{label}</p>
+            <p className={`text-2xl font-black tabular-nums ${color}`}>{value}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

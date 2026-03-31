@@ -1,6 +1,5 @@
 "use client"
 
-import { Card } from "@/components/ui/card"
 import { Terminal, Copy, Check } from "lucide-react"
 import { useState } from "react"
 
@@ -9,31 +8,43 @@ const commands = [
     command: "/criarperson",
     description: "Cria um novo personagem/jogador no sistema",
     example: "/criarperson @usuario nick: ProPlayer",
+    badge: "Jogadores",
+    badgeColor: "bg-blue-500/15 text-blue-300 border-blue-500/20",
   },
   {
     command: "/puxartodos",
     description: "Puxa todos os jogadores disponíveis para a partida",
     example: "/puxartodos",
+    badge: "Partidas",
+    badgeColor: "bg-purple-500/15 text-purple-300 border-purple-500/20",
   },
   {
     command: "/anunciar",
     description: "Anuncia uma nova partida para todos os membros",
     example: "/anunciar mensagem: Partida em 10 minutos!",
+    badge: "Partidas",
+    badgeColor: "bg-purple-500/15 text-purple-300 border-purple-500/20",
   },
   {
     command: "/criarpartida",
     description: "Inicia uma nova partida 5v5 com times balanceados",
     example: "/criarpartida modo: ranqueada",
+    badge: "Partidas",
+    badgeColor: "bg-purple-500/15 text-purple-300 border-purple-500/20",
   },
   {
     command: "/ranking",
-    description: "Exibe o ranking atual dos jogadores",
+    description: "Exibe o ranking atual dos jogadores do servidor",
     example: "/ranking top: 10",
+    badge: "Stats",
+    badgeColor: "bg-yellow-500/15 text-yellow-300 border-yellow-500/20",
   },
   {
     command: "/stats",
     description: "Mostra as estatísticas detalhadas de um jogador",
     example: "/stats @usuario",
+    badge: "Stats",
+    badgeColor: "bg-yellow-500/15 text-yellow-300 border-yellow-500/20",
   },
 ]
 
@@ -44,56 +55,78 @@ export function CommandsSection() {
     try {
       await navigator.clipboard.writeText(command)
       setCopiedIndex(index)
-      setTimeout(() => {
-        setCopiedIndex(null)
-      }, 2000)
-    } catch (err) {
-      console.error("Failed to copy:", err)
+      setTimeout(() => setCopiedIndex(null), 2000)
+    } catch {
+      // silent
     }
   }
 
   return (
-    <section id="commands" className="relative py-24">
+    <section id="commands" className="relative py-28">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+
       <div className="container mx-auto px-4">
         <div className="mb-16 text-center">
-          <h2 className="mb-4 text-balance text-4xl font-bold text-white md:text-5xl">
-            Comandos{" "}
-            <span className="bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">Poderosos</span>
+          <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5 text-sm text-gray-400">
+            Comandos
+          </span>
+          <h2 className="mb-4 text-4xl font-bold text-white md:text-5xl">
+            Slash Commands{" "}
+            <span className="bg-gradient-to-r from-blue-400 to-red-400 bg-clip-text text-transparent">
+              poderosos
+            </span>
           </h2>
-          <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
-            Interface simples e intuitiva com comandos slash do Discord
+          <p className="mx-auto max-w-xl text-lg text-gray-500">
+            Interface nativa do Discord — sem sair do servidor para nada.
           </p>
         </div>
 
-        <div className="mx-auto max-w-4xl space-y-4">
-          {commands.map((cmd, index) => (
-            <Card
-              key={index}
-              className="group border-gray-800 bg-gray-900/50 p-6 backdrop-blur-sm transition-all hover:border-blue-500/50 hover:bg-gray-900/80"
-            >
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="flex-1">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Terminal className="h-5 w-5 text-blue-400" />
-                    <code className="text-lg font-semibold text-blue-400">{cmd.command}</code>
+        {/* Terminal window */}
+        <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.08] bg-[#0d0d12] overflow-hidden shadow-2xl shadow-black/40">
+          {/* Terminal header */}
+          <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[#0a0a0f] px-5 py-3.5">
+            <div className="flex gap-1.5">
+              <div className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+              <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
+              <div className="h-3 w-3 rounded-full bg-[#28c840]" />
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <Terminal className="h-3.5 w-3.5" />
+              <span>TimbasBot — Discord Commands</span>
+            </div>
+          </div>
+
+          {/* Commands list */}
+          <div className="divide-y divide-white/[0.04]">
+            {commands.map((cmd, index) => (
+              <div
+                key={index}
+                className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.02]"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-1">
+                    <code className="text-sm font-bold text-blue-400">{cmd.command}</code>
+                    <span className={`hidden sm:inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${cmd.badgeColor}`}>
+                      {cmd.badge}
+                    </span>
                   </div>
-                  <p className="mb-2 text-sm text-gray-300">{cmd.description}</p>
-                  <code className="text-xs text-gray-500">{cmd.example}</code>
+                  <p className="text-sm text-gray-500 truncate">{cmd.description}</p>
+                  <code className="mt-1 block text-xs text-gray-600">{cmd.example}</code>
                 </div>
                 <button
                   onClick={() => copyToClipboard(cmd.command, index)}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-700 bg-gray-800/50 transition-all hover:border-blue-500/50 hover:bg-gray-800"
+                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] opacity-0 transition-all group-hover:opacity-100 hover:bg-white/[0.08] hover:border-white/20"
                   aria-label="Copiar comando"
                 >
                   {copiedIndex === index ? (
-                    <Check className="h-5 w-5 text-green-500" />
+                    <Check className="h-4 w-4 text-green-400" />
                   ) : (
-                    <Copy className="h-5 w-5 text-gray-400" />
+                    <Copy className="h-4 w-4 text-gray-400" />
                   )}
                 </button>
               </div>
-            </Card>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>

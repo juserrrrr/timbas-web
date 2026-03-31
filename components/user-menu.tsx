@@ -3,14 +3,12 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
-import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { ChevronDown, LogOut, User, SettingsIcon } from "lucide-react"
+import { LogOut, User, Settings } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -22,9 +20,7 @@ export function UserMenu() {
 
   useEffect(() => {
     const token = getToken()
-    if (token) {
-      setUser(decodeToken(token))
-    }
+    if (token) setUser(decodeToken(token))
   }, [])
 
   const handleLogout = () => {
@@ -37,71 +33,57 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="group flex items-center gap-2 rounded-full p-1 transition-all hover:bg-gray-800/30"
-        >
-          <Avatar className="h-10 w-10 border-2 border-gray-700/50 ring-2 ring-transparent transition-all group-hover:border-blue-500/50 group-hover:ring-blue-500/20">
-            <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-sm font-bold text-white">
+        <button className="group flex items-center gap-2 rounded-lg p-1 transition-all hover:bg-white/[0.05] focus:outline-none">
+          <Avatar className="h-8 w-8 ring-1 ring-white/10 transition-all group-hover:ring-blue-500/30">
+            <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-xs font-bold text-white">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <ChevronDown className="h-4 w-4 text-gray-400 transition-all group-hover:text-white" />
-        </Button>
+        </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         align="end"
-        className="w-64 border border-gray-800/50 bg-gray-900/98 backdrop-blur-2xl shadow-2xl shadow-black/50"
+        sideOffset={8}
+        className="w-56 rounded-xl border border-white/[0.08] bg-[#0d0d12] p-1 shadow-2xl shadow-black/60 backdrop-blur-xl"
       >
-        <DropdownMenuLabel className="px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12 border-2 border-gray-700/50">
-              <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-lg font-bold text-white">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{user?.name ?? "Carregando..."}</p>
-              <p className="text-xs text-gray-400">{user?.role ?? ""}</p>
-            </div>
+        {/* User info */}
+        <div className="flex items-center gap-3 px-3 py-3">
+          <Avatar className="h-9 w-9 ring-1 ring-white/10">
+            <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-sm font-bold text-white">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-white">{user?.name ?? "—"}</p>
+            <p className="truncate text-xs text-gray-600">{user?.role ?? ""}</p>
           </div>
-        </DropdownMenuLabel>
-
-        <DropdownMenuSeparator className="bg-gray-800/50" />
-
-        <div className="p-2 space-y-1">
-          <DropdownMenuItem
-            className="rounded-lg text-gray-300 transition-all hover:bg-gray-800/50 hover:text-white focus:bg-gray-800/50 focus:text-white cursor-pointer"
-            asChild
-          >
-            <Link href="/dashboard/profile" className="flex items-center">
-              <User className="mr-3 h-4 w-4" />
-              Perfil
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="rounded-lg text-gray-300 transition-all hover:bg-gray-800/50 hover:text-white focus:bg-gray-800/50 focus:text-white cursor-pointer"
-            asChild
-          >
-            <Link href="/dashboard/settings" className="flex items-center">
-              <SettingsIcon className="mr-3 h-4 w-4" />
-              Configurações
-            </Link>
-          </DropdownMenuItem>
         </div>
 
-        <DropdownMenuSeparator className="bg-gray-800/50" />
+        <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
 
-        <div className="p-2">
-          <DropdownMenuItem
-            className="rounded-lg text-red-400 transition-all hover:bg-red-500/10 hover:text-red-300 focus:bg-red-500/10 focus:text-red-300 cursor-pointer"
-            onClick={handleLogout}
-          >
-            <LogOut className="mr-3 h-4 w-4" />
-            Sair
-          </DropdownMenuItem>
-        </div>
+        <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm text-gray-400 focus:bg-white/[0.05] focus:text-white">
+          <Link href="/dashboard/profile" className="flex items-center gap-2.5">
+            <User className="h-4 w-4" />
+            Meu Perfil
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm text-gray-400 focus:bg-white/[0.05] focus:text-white">
+          <Link href="/dashboard/settings" className="flex items-center gap-2.5">
+            <Settings className="h-4 w-4" />
+            Configurações
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
+
+        <DropdownMenuItem
+          onClick={handleLogout}
+          className="cursor-pointer rounded-lg px-3 py-2 text-sm text-red-400 focus:bg-red-500/10 focus:text-red-300"
+        >
+          <LogOut className="mr-2.5 h-4 w-4" />
+          Sair
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
