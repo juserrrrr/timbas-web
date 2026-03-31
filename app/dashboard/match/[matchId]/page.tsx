@@ -39,10 +39,10 @@ const POSITION_ICONS: Record<string, string> = {
 }
 
 const FORMAT_LABELS: Record<string, string> = {
-  ALEATORIO: "Random",
-  LIVRE: "Free",
-  ALEATORIO_COMPLETO: "Full Random",
-  BALANCEADO: "Balanced",
+  ALEATORIO: "Aleatório",
+  LIVRE: "Livre",
+  ALEATORIO_COMPLETO: "Aleatório Completo",
+  BALANCEADO: "Balanceado",
 }
 
 const getMatchEventsUrl = (id: string) => `${process.env.NEXT_PUBLIC_API_URL}/leagueMatch/${id}/events`
@@ -71,6 +71,8 @@ function PlayerCard({
 
   return (
     <div className={`flex items-center gap-3 rounded-xl border p-3 transition-all duration-300 ${
+      side === "red" ? "flex-row-reverse" : ""
+    } ${
       empty
         ? "border-white/5 bg-white/[0.02] opacity-40"
         : `${sideBg} shadow-lg`
@@ -90,7 +92,7 @@ function PlayerCard({
       </div>
 
       {/* Info */}
-      <div className="min-w-0 flex-1">
+      <div className={`min-w-0 flex-1 ${side === "red" ? "text-right" : ""}`}>
         <p className={`truncate text-sm font-semibold ${empty ? "text-gray-700" : "text-white"}`}>
           {empty ? "Vazio" : player!.name}
         </p>
@@ -145,7 +147,7 @@ export default function MatchPage() {
   const isInLobby = me?.discordId && allPlayers.some((p) => p.user.discordId === me.discordId)
 
   const totalCapacity = match?.queuePlayers.length ?? 0
-  const canDraw = isCreator && match?.status === "WAITING" && totalCapacity === 10 && match?.matchType !== "LIVRE"
+  const canDraw = isCreator && match?.status === "WAITING" && match?.matchType !== "LIVRE" && !match?.teamBlueId
   const canStart = isCreator && match?.status === "WAITING" && totalCapacity >= 10
   const canFinish = isCreator && match?.status === "STARTED"
   const canJoin = match?.status === "WAITING" && totalCapacity < 10 && !isInLobby
@@ -233,10 +235,10 @@ export default function MatchPage() {
   const redSlots  = Array.from({ length: 5 }, (_, i) => redTeam[i]  ?? null)
 
   const statusConfig = {
-    WAITING:  { label: "Waiting", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20", dot: "bg-yellow-400 animate-pulse" },
-    STARTED:  { label: "In Progress", color: "text-green-400",  bg: "bg-green-500/10 border-green-500/20",  dot: "bg-green-400 animate-pulse" },
-    FINISHED: { label: "Finished",   color: "text-gray-400",   bg: "bg-gray-500/10 border-gray-500/20",    dot: "bg-gray-400" },
-    EXPIRED:  { label: "Expired",     color: "text-red-400",    bg: "bg-red-500/10 border-red-500/20",      dot: "bg-red-400" },
+    WAITING:  { label: "Aguardando",    color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20", dot: "bg-yellow-400 animate-pulse" },
+    STARTED:  { label: "Em Andamento",  color: "text-green-400",  bg: "bg-green-500/10 border-green-500/20",  dot: "bg-green-400 animate-pulse" },
+    FINISHED: { label: "Finalizada",    color: "text-gray-400",   bg: "bg-gray-500/10 border-gray-500/20",    dot: "bg-gray-400" },
+    EXPIRED:  { label: "Expirada",      color: "text-red-400",    bg: "bg-red-500/10 border-red-500/20",      dot: "bg-red-400" },
   } as const
   const sc = match ? statusConfig[match.status] : statusConfig.WAITING
 
@@ -251,7 +253,7 @@ export default function MatchPage() {
               <Swords className="h-7 w-7 text-blue-400" />
             </div>
           </div>
-          <p className="text-sm text-gray-500">Loading match...</p>
+          <p className="text-sm text-gray-500">Carregando partida...</p>
         </div>
       </div>
     )
@@ -261,7 +263,7 @@ export default function MatchPage() {
     return (
       <div className="-mx-6 -my-8 flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
         <div className="text-center animate-in fade-in duration-500">
-          <p className="text-lg font-bold text-white">Match not found</p>
+          <p className="text-lg font-bold text-white">Partida não encontrada</p>
           <p className="mt-1 text-sm text-gray-500">{error}</p>
         </div>
       </div>
@@ -300,7 +302,7 @@ export default function MatchPage() {
                 : "border-red-500/20 bg-red-500/10 text-red-400"
             }`}>
               {connected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {connected ? "Live" : "Reconnecting..."}
+              {connected ? "Ao vivo" : "Reconectando..."}
             </div>
           </div>
         </div>
@@ -314,7 +316,7 @@ export default function MatchPage() {
           }`}>
             <Trophy className={`h-7 w-7 ${winnerSide === "BLUE" ? "text-blue-400" : "text-red-400"}`} />
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-widest">Winner</p>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-widest">Vencedor</p>
               <p className={`text-xl font-black ${winnerSide === "BLUE" ? "text-blue-300" : "text-red-300"}`}>
                 Time {winnerSide === "BLUE" ? "Azul" : "Vermelho"}
               </p>
@@ -335,7 +337,7 @@ export default function MatchPage() {
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/20 ring-1 ring-blue-500/30">
                 <Shield className="h-3.5 w-3.5 text-blue-400" />
               </div>
-              <span className="font-bold text-blue-300">Blue Team</span>
+              <span className="font-bold text-blue-300">Time Azul</span>
               {winnerSide === "BLUE" && <Crown className="ml-auto h-4 w-4 text-yellow-400" />}
             </div>
             <div className="space-y-2">
@@ -352,9 +354,9 @@ export default function MatchPage() {
           {/* VS Divider */}
           <div className="flex flex-col items-center justify-center gap-3 h-full">
             <div className="flex-1 w-px bg-gradient-to-b from-transparent via-white/15 to-transparent min-h-[4rem]" />
-            <div className="group relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-[#0d0d14] border border-white/10 shadow-2xl transition-all hover:border-white/20 hover:scale-110">
+            <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-[#0d0d14] border border-white/10 shadow-2xl">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/10 to-red-500/10 animate-pulse" />
-              <Swords className="relative h-7 w-7 text-gray-400 drop-shadow-md transition-all group-hover:text-white" />
+              <Swords className="relative h-7 w-7 text-gray-400 drop-shadow-md" />
             </div>
             <div className="flex-1 w-px bg-gradient-to-b from-transparent via-white/15 to-transparent min-h-[4rem]" />
           </div>
@@ -365,12 +367,12 @@ export default function MatchPage() {
               ? "border-red-500/50 bg-red-500/10 shadow-xl shadow-red-500/15"
               : "border-red-500/15 bg-red-500/[0.04]"
           }`}>
-            <div className="mb-3 flex items-center gap-2">
-              {winnerSide === "RED" && <Crown className="h-4 w-4 text-yellow-400" />}
-              <div className={`ml-auto flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/20 ring-1 ring-red-500/30 ${winnerSide === "RED" ? "" : "ml-0"}`}>
+            <div className="mb-3 flex flex-row-reverse items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/20 ring-1 ring-red-500/30">
                 <Shield className="h-3.5 w-3.5 text-red-400" />
               </div>
-              <span className="font-bold text-red-300">Red Team</span>
+              <span className="font-bold text-red-300">Time Vermelho</span>
+              {winnerSide === "RED" && <Crown className="h-4 w-4 text-yellow-400" />}
             </div>
             <div className="space-y-2">
               {redSlots.map((pLayout, i) =>
@@ -385,25 +387,25 @@ export default function MatchPage() {
         </div>
 
         {/* ── Waiting Players (queue) ─────────────────────────────────────── */}
-        {match.status === "WAITING" && match.queuePlayers.length > 0 && !match.teamBlueId && (
+        {match.status === "WAITING" && !match.teamBlueId && (
           <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-400">Waiting in Queue</span>
+                <span className="text-sm font-medium text-gray-400">Na fila</span>
               </div>
               <span className={`text-sm font-bold tabular-nums ${qPlayers.length >= 10 ? "text-green-400" : "text-gray-400"}`}>
                 {qPlayers.length}/10
               </span>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 justify-center">
               {qPlayers.map((p) => (
                 <WaitingPlayer key={p.user.discordId} playerLayout={p} />
               ))}
               {Array.from({ length: Math.max(0, 10 - qPlayers.length) }, (_, i) => (
                 <div key={`slot-${i}`} className="flex flex-col items-center gap-1">
                   <div className="h-9 w-9 rounded-full border border-dashed border-white/10" />
-                  <span className="text-[10px] text-gray-700">Vazio</span>
+                  <span className="text-[10px] text-gray-700">—</span>
                 </div>
               ))}
             </div>
@@ -426,7 +428,7 @@ export default function MatchPage() {
               <ActionBtn
                 id="btn-join"
                 icon={<LogIn className="h-4 w-4" />}
-                label="Join"
+                label="Entrar"
                 color="green"
                 loading={actionLoading === "join"}
                 onClick={handleJoin}
@@ -436,7 +438,7 @@ export default function MatchPage() {
               <ActionBtn
                 id="btn-leave"
                 icon={<LogOut className="h-4 w-4" />}
-                label="Leave"
+                label="Sair"
                 color="gray"
                 loading={actionLoading === "leave"}
                 onClick={handleLeave}
@@ -450,7 +452,7 @@ export default function MatchPage() {
                   <ActionBtn
                     id="btn-draw"
                     icon={<Shuffle className="h-4 w-4" />}
-                    label="Draw Teams"
+                    label="Sortear"
                     color="purple"
                     loading={actionLoading === "draw"}
                     onClick={handleDraw}
@@ -460,7 +462,7 @@ export default function MatchPage() {
                 <ActionBtn
                   id="btn-start"
                   icon={<Play className="h-4 w-4" />}
-                  label="Start Match"
+                  label="Iniciar"
                   color="blue"
                   loading={actionLoading === "start"}
                   onClick={handleStart}
@@ -473,7 +475,7 @@ export default function MatchPage() {
               <ActionBtn
                 id="btn-finish"
                 icon={<Flag className="h-4 w-4" />}
-                label="Finish"
+                label="Finalizar"
                 color="red"
                 loading={actionLoading === "finish"}
                 onClick={() => setShowFinishModal(true)}
@@ -484,13 +486,13 @@ export default function MatchPage() {
             {match.status === "WAITING" && !match.teamBlueId && (
               <div className="ml-auto rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-gray-500">
                 {qPlayers.length >= 10
-                  ? "✅ Ready to draw / start"
-                  : `Waiting for ${10 - qPlayers.length} more player${10 - qPlayers.length !== 1 ? "s" : ""}`}
+                  ? "✅ Pronto para sortear / iniciar"
+                  : `Aguardando mais ${10 - qPlayers.length} jogador${10 - qPlayers.length !== 1 ? "es" : ""}`}
               </div>
             )}
             {match.status === "WAITING" && match.teamBlueId && (
                <div className="ml-auto rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-gray-500">
-               ✅ Teams drawn! Waiting to start.
+               ✅ Times sorteados! Aguardando início.
              </div>
             )}
           </div>
@@ -498,7 +500,7 @@ export default function MatchPage() {
 
         {match.status === "EXPIRED" && (
           <div className="mt-4 rounded-2xl border border-dashed border-white/10 p-6 text-center">
-            <p className="text-gray-500">This match expired after 1 hour without starting.</p>
+            <p className="text-gray-500">Esta partida expirou após 1 hora sem ser iniciada.</p>
           </div>
         )}
       </div>
@@ -511,8 +513,8 @@ export default function MatchPage() {
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-500/10 ring-1 ring-yellow-500/20">
                 <Trophy className="h-6 w-6 text-yellow-400" />
               </div>
-              <h2 className="text-lg font-bold text-white">Who won?</h2>
-              <p className="text-sm text-gray-500">Select the winning team</p>
+              <h2 className="text-lg font-bold text-white">Quem venceu?</h2>
+              <p className="text-sm text-gray-500">Selecione o time vencedor</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -521,7 +523,7 @@ export default function MatchPage() {
                 className="flex flex-col items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 transition-all hover:border-blue-500/50 hover:bg-blue-500/20 hover:shadow-lg hover:shadow-blue-500/10"
               >
                 <Shield className="h-6 w-6 text-blue-400" />
-                <span className="font-bold text-blue-300">Blue Team</span>
+                <span className="font-bold text-blue-300">Time Azul</span>
               </button>
               <button
                 id="btn-win-red"
@@ -529,14 +531,14 @@ export default function MatchPage() {
                 className="flex flex-col items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4 transition-all hover:border-red-500/50 hover:bg-red-500/20 hover:shadow-lg hover:shadow-red-500/10"
               >
                 <Shield className="h-6 w-6 text-red-400" />
-                <span className="font-bold text-red-300">Red Team</span>
+                <span className="font-bold text-red-300">Time Vermelho</span>
               </button>
             </div>
             <button
               onClick={() => setShowFinishModal(false)}
               className="mt-3 w-full rounded-xl py-2.5 text-sm text-gray-500 transition-colors hover:text-gray-300"
             >
-              Cancel
+              Cancelar
             </button>
           </div>
         </div>

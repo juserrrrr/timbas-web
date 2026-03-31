@@ -28,7 +28,7 @@ export function DashboardSidebar() {
     return (
       <Link
         href={item.href}
-        className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 ${
+        className={`group relative flex w-full items-center rounded-xl px-3 py-2.5 transition-colors duration-200 ${expanded ? "gap-3" : "justify-center"} ${
           isActive
             ? `border ${item.active} ${item.glow} ${item.color}`
             : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
