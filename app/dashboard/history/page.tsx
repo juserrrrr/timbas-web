@@ -290,41 +290,26 @@ export default function HistoryPage() {
                     : "bg-gradient-to-r from-transparent via-white/10 to-transparent"
                   }`} />
 
-                  <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-gray-800/50 pb-4">
-                    <div className="flex items-center gap-4">
+                  {pending ? (
+                    <div className="mb-6 flex flex-col items-center gap-3 border-b border-gray-800/50 pb-4 text-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-700 bg-gradient-to-br from-blue-600/20 to-red-600/20">
                         <span className="text-xl font-bold text-white">#{matches.length - index}</span>
                       </div>
                       <div>
                         <h3 className="text-lg font-bold text-white">Partida {matches.length - index}</h3>
-                        <div className="flex items-center gap-1 text-sm text-gray-400">
+                        <div className="flex items-center justify-center gap-1 text-sm text-gray-400">
                           <Calendar className="h-3 w-3" />
                           {date.toLocaleDateString("pt-BR")} às{" "}
                           {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="border-gray-700 text-gray-300">
-                        {MATCH_TYPE_LABELS[match.matchType] ?? match.matchType}
-                      </Badge>
-                      {pending && (
+                      <div className="flex items-center gap-2 flex-wrap justify-center">
+                        <Badge variant="outline" className="border-gray-700 text-gray-300">
+                          {MATCH_TYPE_LABELS[match.matchType] ?? match.matchType}
+                        </Badge>
                         <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">
                           Em andamento
                         </Badge>
-                      )}
-                      {myTeamId !== null && !pending && (
-                        <Badge
-                          className={
-                            iWon
-                              ? "bg-green-500/20 text-green-400 border-green-500/50"
-                              : "bg-red-500/20 text-red-400 border-red-500/50"
-                          }
-                        >
-                          {iWon ? "Vitória" : "Derrota"}
-                        </Badge>
-                      )}
-                      {pending && (
                         <Link
                           href={`/dashboard/match/${match.id}`}
                           className="flex items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 text-xs font-semibold text-yellow-400 transition-all hover:border-yellow-500/50 hover:bg-yellow-500/20"
@@ -332,17 +317,49 @@ export default function HistoryPage() {
                           <ExternalLink className="h-3 w-3" />
                           Ver Lobby
                         </Link>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-gray-800/50 pb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-700 bg-gradient-to-br from-blue-600/20 to-red-600/20">
+                          <span className="text-xl font-bold text-white">#{matches.length - index}</span>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-white">Partida {matches.length - index}</h3>
+                          <div className="flex items-center gap-1 text-sm text-gray-400">
+                            <Calendar className="h-3 w-3" />
+                            {date.toLocaleDateString("pt-BR")} às{" "}
+                            {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="border-gray-700 text-gray-300">
+                          {MATCH_TYPE_LABELS[match.matchType] ?? match.matchType}
+                        </Badge>
+                        {myTeamId !== null && (
+                          <Badge
+                            className={
+                              iWon
+                                ? "bg-green-500/20 text-green-400 border-green-500/50"
+                                : "bg-red-500/20 text-red-400 border-red-500/50"
+                            }
+                          >
+                            {iWon ? "Vitória" : "Derrota"}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
-                  <div className="grid gap-6 md:grid-cols-2">
+                  <div className="grid gap-6 md:grid-cols-2 md:items-stretch">
                     <div
-                      className={`rounded-lg border p-4 ${
+                      className={`flex flex-col rounded-lg border p-4 ${
                         blueWon ? "border-blue-500/50 bg-blue-500/5" : "border-gray-800/50 bg-gray-900/30"
                       } ${inBlue ? "ring-1 ring-blue-500/30" : ""}`}
                     >
-                      <div className="mb-3 flex items-center justify-between">
+                      <div className="mb-3 flex min-h-[28px] items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="h-3 w-3 rounded-full bg-blue-500" />
                           <h4 className="font-bold text-blue-400">Time Azul</h4>
@@ -371,11 +388,11 @@ export default function HistoryPage() {
                     </div>
 
                     <div
-                      className={`rounded-lg border p-4 ${
+                      className={`flex flex-col rounded-lg border p-4 ${
                         redWon ? "border-red-500/50 bg-red-500/5" : "border-gray-800/50 bg-gray-900/30"
                       } ${inRed ? "ring-1 ring-red-500/30" : ""}`}
                     >
-                      <div className="mb-3 flex items-center justify-between">
+                      <div className="mb-3 flex min-h-[28px] items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="h-3 w-3 rounded-full bg-red-500" />
                           <h4 className="font-bold text-red-400">Time Vermelho</h4>
