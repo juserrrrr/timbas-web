@@ -326,7 +326,7 @@ export default function MatchPage() {
         )}
 
         {/* ── Teams Grid ──────────────────────────────────────────────────── */}
-        <div className="mb-6 grid grid-cols-[1fr_auto_1fr] gap-4">
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr]">
           {/* Blue Team */}
           <div className={`rounded-2xl border p-4 transition-all duration-500 ${
             winnerSide === "BLUE"
@@ -352,13 +352,13 @@ export default function MatchPage() {
           </div>
 
           {/* VS Divider */}
-          <div className="flex flex-col items-center justify-center gap-3 h-full">
-            <div className="flex-1 w-px bg-gradient-to-b from-transparent via-white/15 to-transparent min-h-[4rem]" />
-            <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-[#0d0d14] border border-white/10 shadow-2xl">
+          <div className="flex flex-row items-center justify-center gap-3 md:flex-col md:h-full">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/15 to-transparent md:h-auto md:w-px md:flex-1 md:bg-gradient-to-b" />
+            <div className="relative z-10 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#0d0d14] border border-white/10 shadow-2xl md:h-16 md:w-16">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/10 to-red-500/10 animate-pulse" />
-              <Swords className="relative h-7 w-7 text-gray-400 drop-shadow-md" />
+              <Swords className="relative h-5 w-5 text-gray-400 drop-shadow-md md:h-7 md:w-7" />
             </div>
-            <div className="flex-1 w-px bg-gradient-to-b from-transparent via-white/15 to-transparent min-h-[4rem]" />
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/15 to-transparent md:h-auto md:w-px md:flex-1 md:bg-gradient-to-b" />
           </div>
 
           {/* Red Team */}
@@ -367,12 +367,12 @@ export default function MatchPage() {
               ? "border-red-500/50 bg-red-500/10 shadow-xl shadow-red-500/15"
               : "border-red-500/15 bg-red-500/[0.04]"
           }`}>
-            <div className="mb-3 flex flex-row-reverse items-center gap-2">
+            <div className="mb-3 flex items-center gap-2 md:flex-row-reverse">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/20 ring-1 ring-red-500/30">
                 <Shield className="h-3.5 w-3.5 text-red-400" />
               </div>
               <span className="font-bold text-red-300">Time Vermelho</span>
-              {winnerSide === "RED" && <Crown className="h-4 w-4 text-yellow-400" />}
+              {winnerSide === "RED" && <Crown className="ml-auto h-4 w-4 text-yellow-400 md:ml-0" />}
             </div>
             <div className="space-y-2">
               {redSlots.map((pLayout, i) =>

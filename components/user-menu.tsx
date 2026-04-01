@@ -36,6 +36,12 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="group flex items-center gap-2 rounded-lg p-1 transition-all hover:bg-white/[0.05] focus:outline-none">
+          <div className="hidden flex-col items-end sm:flex">
+            <span className="max-w-[15ch] truncate text-sm font-semibold leading-tight text-white">
+              {user?.name ?? "—"}
+            </span>
+            <span className="text-[11px] leading-tight text-gray-500">User</span>
+          </div>
           <Avatar className="h-8 w-8 ring-1 ring-white/10 transition-all group-hover:ring-blue-500/30">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={user?.name ?? ""} />}
             <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-xs font-bold text-white">
