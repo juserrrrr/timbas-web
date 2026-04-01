@@ -15,6 +15,9 @@ import {
   Shield,
   Swords,
   Crown,
+  Mic,
+  MicOff,
+  MoveRight,
 } from "lucide-react"
 import { getToken, decodeToken, getDiscordAvatarUrl } from "@/lib/auth"
 import {
@@ -27,6 +30,11 @@ import {
   type CustomLeagueMatch,
   type UserTeamLeague,
 } from "@/lib/services/match"
+import {
+  getVoiceStatus,
+  moveToVoiceChannel,
+  type VoiceStatus,
+} from "@/lib/services/discord-voice"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -138,6 +146,9 @@ export default function MatchPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
   const [showFinishModal, setShowFinishModal] = useState(false)
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null)
+  const [voiceMoveLoading, setVoiceMoveLoading] = useState(false)
+  const [voiceMoveError, setVoiceMoveError] = useState<string | null>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const token = getToken()
   const me = token ? decodeToken(token) : null
@@ -186,6 +197,19 @@ export default function MatchPage() {
     return () => { es.close(); setConnected(false) }
   }, [matchIdNum])
 
+  // ── Voice status polling ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!token || !me?.discordId || !match?.ServerDiscordId) return
+    if (!['WAITING', 'STARTED'].includes(match.status)) return
+
+    const poll = () => {
+      getVoiceStatus(token, match.ServerDiscordId, me.discordId!).then(setVoiceStatus)
+    }
+    poll()
+    const interval = setInterval(poll, 6000)
+    return () => clearInterval(interval)
+  }, [match?.status, match?.ServerDiscordId, me?.discordId, token])
+
   // ── Auto-dismiss action error ────────────────────────────────────────────
   useEffect(() => {
     if (!actionError) return
@@ -208,7 +232,14 @@ export default function MatchPage() {
     }
   }, [token])
 
-  const handleJoin = () => runAction("join", () => joinMatch(token!, matchIdNum, me!.discordId!))
+  const handleJoin = () => {
+    // voiceStatus !== null means bot is online — enforce voice channel requirement
+    if (voiceStatus !== null && !voiceStatus.channelId) {
+      setActionError('Você precisa estar em um canal de voz no Discord para entrar na partida.')
+      return
+    }
+    runAction("join", () => joinMatch(token!, matchIdNum, me!.discordId!))
+  }
   const handleLeave = () => runAction("leave", () => leaveMatch(token!, matchIdNum, me!.discordId!))
   const handleDraw = () => runAction("draw", () => drawTeams(token!, matchIdNum, me!.discordId!))
   const handleStart = () => runAction("start", () => startMatch(token!, matchIdNum, me!.discordId!))
@@ -218,10 +249,33 @@ export default function MatchPage() {
     runAction("finish", () => finishMatch(token!, matchIdNum, me!.discordId!, winnerSide))
   }
 
+  const handleVoiceMove = async (target: 'WAITING' | 'BLUE' | 'RED') => {
+    if (!token || !me?.discordId || !match?.ServerDiscordId) return
+    setVoiceMoveLoading(true)
+    setVoiceMoveError(null)
+    const result = await moveToVoiceChannel(token, match.ServerDiscordId, me.discordId, target)
+    if (!result.success) setVoiceMoveError(result.error ?? 'Erro ao mover canal')
+    else {
+      setVoiceStatus((prev) => prev ? { ...prev, channelType: target, channelName: result.channelName ?? prev.channelName } : prev)
+    }
+    setVoiceMoveLoading(false)
+  }
+
   // ── Render helpers ─────────────────────────────────────────────────────
   const winnerSide = match?.winnerId 
       ? (match.winnerId === match.teamBlueId ? "BLUE" : "RED")
       : null
+
+  // Voice-related derived state
+  const myTeamSide: 'BLUE' | 'RED' | null = (() => {
+    if (!me?.discordId || !match) return null
+    const blueT = match.Teams.find(t => t.id === match.teamBlueId)
+    const redT = match.Teams.find(t => t.id === match.teamRedId)
+    if (blueT?.players.some(p => p.user.discordId === me.discordId)) return 'BLUE'
+    if (redT?.players.some(p => p.user.discordId === me.discordId)) return 'RED'
+    return null
+  })()
+  const showVoiceCard = !!me?.discordId && !!match?.ServerDiscordId && ['WAITING', 'STARTED'].includes(match?.status ?? '')
 
   const blueTeamObj = match?.Teams.find(t => t.id === match.teamBlueId)
   const redTeamObj = match?.Teams.find(t => t.id === match.teamRedId)
@@ -412,6 +466,69 @@ export default function MatchPage() {
           </div>
         )}
 
+        {/* ── Voice Status Card ─────────────────────────────────────────── */}
+        {showVoiceCard && (
+          <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Icon + channel info */}
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {voiceStatus?.channelId ? (
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-green-500/15 ring-1 ring-green-500/25">
+                    <Mic className="h-3.5 w-3.5 text-green-400" />
+                  </div>
+                ) : (
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/5 ring-1 ring-white/10">
+                    <MicOff className="h-3.5 w-3.5 text-gray-500" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-500">Seu canal de voz</p>
+                  <p className={`truncate text-sm font-semibold ${voiceStatus?.channelId ? 'text-white' : 'text-gray-600'}`}>
+                    {voiceStatus === null
+                      ? 'Bot offline'
+                      : voiceStatus.channelId
+                        ? voiceStatus.channelName
+                        : 'Não está em um canal de voz'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Move buttons */}
+              {voiceStatus !== null && (
+                <div className="flex flex-wrap gap-2">
+                  {match?.status === 'WAITING' && isInLobby && voiceStatus.channelType !== 'WAITING' && (
+                    <VoiceMoveBtn
+                      label="Ir p/ Aguardando"
+                      color="yellow"
+                      loading={voiceMoveLoading}
+                      onClick={() => handleVoiceMove('WAITING')}
+                    />
+                  )}
+                  {match?.status === 'STARTED' && myTeamSide === 'BLUE' && voiceStatus.channelType !== 'BLUE' && (
+                    <VoiceMoveBtn
+                      label="Ir p/ Time Azul"
+                      color="blue"
+                      loading={voiceMoveLoading}
+                      onClick={() => handleVoiceMove('BLUE')}
+                    />
+                  )}
+                  {match?.status === 'STARTED' && myTeamSide === 'RED' && voiceStatus.channelType !== 'RED' && (
+                    <VoiceMoveBtn
+                      label="Ir p/ Time Vermelho"
+                      color="red"
+                      loading={voiceMoveLoading}
+                      onClick={() => handleVoiceMove('RED')}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+            {voiceMoveError && (
+              <p className="mt-2 text-xs text-red-400">{voiceMoveError}</p>
+            )}
+          </div>
+        )}
+
         {/* ── Action Error ────────────────────────────────────────────────── */}
         {actionError && (
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -544,6 +661,40 @@ export default function MatchPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// ─── Voice Move Button ────────────────────────────────────────────────────────
+
+function VoiceMoveBtn({
+  label,
+  color,
+  loading,
+  onClick,
+}: {
+  label: string
+  color: 'yellow' | 'blue' | 'red'
+  loading: boolean
+  onClick: () => void
+}) {
+  const colorStyles = {
+    yellow: 'border-yellow-500/25 bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/20 hover:border-yellow-500/40',
+    blue:   'border-blue-500/25 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/40',
+    red:    'border-red-500/25 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:border-red-500/40',
+  }
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${colorStyles[color]} ${loading ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
+    >
+      {loading ? (
+        <span className="h-3 w-3 animate-spin rounded-full border-2 border-t-transparent border-current" />
+      ) : (
+        <MoveRight className="h-3 w-3" />
+      )}
+      {label}
+    </button>
   )
 }
 
