@@ -89,7 +89,7 @@ export function DashboardSidebar() {
           {/* Expand toggle */}
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-gray-600 transition-colors hover:bg-white/[0.04] hover:text-gray-300"
+            className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-gray-600 transition-colors hover:bg-white/[0.04] hover:text-gray-300"
           >
             <ChevronRight className={`h-[18px] w-[18px] flex-shrink-0 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
             <span className={`text-xs font-medium whitespace-nowrap transition-all duration-300 ${

@@ -8,7 +8,7 @@ export function ServerSelector() {
   const { selectedServer, setSelectedServer } = useServer()
   return (
     <Select value={selectedServer} onValueChange={setSelectedServer}>
-      <SelectTrigger className="h-8 w-[160px] gap-1.5 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm text-gray-300 hover:bg-white/[0.07] focus:ring-0">
+      <SelectTrigger className="h-8 w-[160px] cursor-pointer gap-1.5 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm text-gray-300 hover:bg-white/[0.07] focus:ring-0">
         <Server className="h-3.5 w-3.5 flex-shrink-0 text-blue-400" />
         <SelectValue />
       </SelectTrigger>
