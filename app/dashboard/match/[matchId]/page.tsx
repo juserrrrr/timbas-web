@@ -164,8 +164,8 @@ export default function MatchPage() {
 
   // ── SSE connection ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (isNaN(matchIdNum)) return
-    const url = getMatchEventsUrl(String(matchIdNum))
+    if (isNaN(matchIdNum) || !token) return
+    const url = `${getMatchEventsUrl(String(matchIdNum))}?token=${encodeURIComponent(token)}`
     const es = new EventSource(url)
     eventSourceRef.current = es
 
