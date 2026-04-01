@@ -20,6 +20,7 @@ import {
   MoveRight,
 } from "lucide-react"
 import { getToken, decodeToken, getDiscordAvatarUrl } from "@/lib/auth"
+import { apiFetch } from "@/lib/api"
 import {
   getMatch,
   joinMatch,
@@ -176,25 +177,41 @@ export default function MatchPage() {
   // ── SSE connection ──────────────────────────────────────────────────────
   useEffect(() => {
     if (isNaN(matchIdNum) || !token) return
-    const url = `${getMatchEventsUrl(String(matchIdNum))}?token=${encodeURIComponent(token)}`
-    const es = new EventSource(url)
-    eventSourceRef.current = es
+    let es: EventSource
+    let cancelled = false
 
-    es.onopen = () => setConnected(true)
-    es.onerror = () => setConnected(false)
+    apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/leagueMatch/${matchIdNum}/events/ticket`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    })
+      .then((res) => res.json())
+      .then(({ ticket }) => {
+        if (cancelled) return
+        const url = `${getMatchEventsUrl(String(matchIdNum))}?ticket=${encodeURIComponent(ticket)}`
+        es = new EventSource(url)
+        eventSourceRef.current = es
 
-    es.onmessage = (e) => {
-      try {
-        const event = JSON.parse(e.data)
-        if (["state", "player_joined", "player_left", "teams_drawn", "match_started", "match_finished"].includes(event.type)) {
-          setMatch(event.payload)
-        } else if (event.type === "match_expired") {
-          setMatch((prev) => prev ? { ...prev, status: "EXPIRED" } : prev)
+        es.onopen = () => setConnected(true)
+        es.onerror = () => setConnected(false)
+
+        es.onmessage = (e) => {
+          try {
+            const event = JSON.parse(e.data)
+            if (["state", "player_joined", "player_left", "teams_drawn", "match_started", "match_finished"].includes(event.type)) {
+              setMatch(event.payload)
+            } else if (event.type === "match_expired") {
+              setMatch((prev) => prev ? { ...prev, status: "EXPIRED" } : prev)
+            }
+          } catch {}
         }
-      } catch {}
-    }
+      })
+      .catch(() => setConnected(false))
 
-    return () => { es.close(); setConnected(false) }
+    return () => {
+      cancelled = true
+      es?.close()
+      setConnected(false)
+    }
   }, [matchIdNum])
 
   // ── Voice status polling ──────────────────────────────────────────────

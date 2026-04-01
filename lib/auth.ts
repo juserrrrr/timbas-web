@@ -8,7 +8,8 @@ function getCookie(key: string): string | null {
 }
 
 function setCookie(key: string, value: string, maxAge: number) {
-  document.cookie = `${key}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax`
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${key}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`
 }
 
 function deleteCookie(key: string) {
