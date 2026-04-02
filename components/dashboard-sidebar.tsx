@@ -23,37 +23,6 @@ export function DashboardSidebar() {
   const [expanded, setExpanded] = useState(false)
   const pathname = usePathname()
 
-  const NavItem = ({ item }: { item: typeof NAV[0] }) => {
-    const isActive = pathname === item.href
-    return (
-      <Link
-        href={item.href}
-        className={`group relative flex items-center rounded-xl transition-colors duration-200 ${expanded ? "w-full px-3 py-2.5 gap-3" : "w-10 h-10 justify-center mx-auto"} ${
-          isActive
-            ? `border ${item.active} ${item.glow} ${item.color}`
-            : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
-        }`}
-      >
-        {/* Icon — position never changes */}
-        <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
-
-        {/* Label — always in DOM, only width+opacity transitions */}
-        <span className={`text-sm font-medium whitespace-nowrap transition-all duration-300 ${
-          expanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0 overflow-hidden"
-        }`}>
-          {item.label}
-        </span>
-
-        {/* Tooltip when collapsed */}
-        {!expanded && (
-          <div className="pointer-events-none absolute left-full ml-3 z-50 hidden rounded-lg border border-white/[0.08] bg-[#0d0d12] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl group-hover:block whitespace-nowrap">
-            {item.label}
-          </div>
-        )}
-      </Link>
-    )
-  }
-
   return (
     <>
       {/* Mobile overlay */}
@@ -65,7 +34,7 @@ export function DashboardSidebar() {
 
         {/* Logo */}
         <div className="flex h-14 items-center border-b border-white/[0.06] px-3">
-          <Link href="/dashboard" className="flex items-center gap-3">
+          <Link href="/dashboard" prefetch={false} className="flex items-center gap-3">
             <div className="h-8 w-8 flex-shrink-0 rounded-lg overflow-hidden ring-1 ring-white/10">
               <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={32} height={32} className="object-cover" />
             </div>
@@ -79,12 +48,64 @@ export function DashboardSidebar() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5">
-          {NAV.map((item) => <NavItem key={item.href} item={item} />)}
+          {NAV.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                prefetch={false}
+                className={`group relative flex items-center rounded-xl transition-colors duration-200 ${expanded ? "w-full px-3 py-2.5 gap-3" : "w-10 h-10 justify-center mx-auto"} ${
+                  isActive
+                    ? `border ${item.active} ${item.glow} ${item.color}`
+                    : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
+                }`}
+              >
+                <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
+                <span className={`text-sm font-medium whitespace-nowrap transition-all duration-300 ${
+                  expanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0 overflow-hidden"
+                }`}>
+                  {item.label}
+                </span>
+                {!expanded && (
+                  <div className="pointer-events-none absolute left-full ml-3 z-50 hidden rounded-lg border border-white/[0.08] bg-[#0d0d12] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl group-hover:block whitespace-nowrap">
+                    {item.label}
+                  </div>
+                )}
+              </Link>
+            )
+          })}
         </nav>
 
         {/* Bottom */}
         <div className="border-t border-white/[0.06] p-2 space-y-0.5">
-          {BOTTOM.map((item) => <NavItem key={item.href} item={item} />)}
+          {BOTTOM.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                prefetch={false}
+                className={`group relative flex items-center rounded-xl transition-colors duration-200 ${expanded ? "w-full px-3 py-2.5 gap-3" : "w-10 h-10 justify-center mx-auto"} ${
+                  isActive
+                    ? `border ${item.active} ${item.glow} ${item.color}`
+                    : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
+                }`}
+              >
+                <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
+                <span className={`text-sm font-medium whitespace-nowrap transition-all duration-300 ${
+                  expanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0 overflow-hidden"
+                }`}>
+                  {item.label}
+                </span>
+                {!expanded && (
+                  <div className="pointer-events-none absolute left-full ml-3 z-50 hidden rounded-lg border border-white/[0.08] bg-[#0d0d12] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl group-hover:block whitespace-nowrap">
+                    {item.label}
+                  </div>
+                )}
+              </Link>
+            )
+          })}
 
           {/* Expand toggle */}
           <button

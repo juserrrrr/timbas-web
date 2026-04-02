@@ -73,13 +73,13 @@ export function UserMenu() {
         <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
 
         <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm text-gray-400 focus:bg-white/[0.05] focus:text-white">
-          <Link href="/dashboard/profile" className="flex items-center gap-2.5">
+          <Link href="/dashboard/profile" prefetch={false} className="flex items-center gap-2.5">
             <User className="h-4 w-4" />
             Meu Perfil
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm text-gray-400 focus:bg-white/[0.05] focus:text-white">
-          <Link href="/dashboard/settings" className="flex items-center gap-2.5">
+          <Link href="/dashboard/settings" prefetch={false} className="flex items-center gap-2.5">
             <Settings className="h-4 w-4" />
             Configurações
           </Link>
