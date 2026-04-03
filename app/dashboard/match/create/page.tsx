@@ -72,7 +72,7 @@ export default function CreateMatchPage() {
                 setSize(opt.value)
                 if (opt.value !== 5 && format === "ALEATORIO_COMPLETO") setFormat("ALEATORIO")
               }}
-              className={`rounded-xl border p-4 text-center transition-all ${
+              className={`cursor-pointer rounded-xl border p-4 text-center transition-all ${
                 size === opt.value
                   ? "border-red-500/40 bg-red-500/10 text-red-300"
                   : "border-white/[0.06] bg-white/[0.02] text-gray-400 hover:border-white/[0.12] hover:text-white"
@@ -102,8 +102,8 @@ export default function CreateMatchPage() {
                   disabled
                     ? "cursor-not-allowed border-white/[0.04] bg-white/[0.01] opacity-40"
                     : format === opt.value
-                      ? "border-purple-500/40 bg-purple-500/10 text-purple-300"
-                      : "border-white/[0.06] bg-white/[0.02] text-gray-400 hover:border-white/[0.12] hover:text-white"
+                      ? "cursor-pointer border-purple-500/40 bg-purple-500/10 text-purple-300"
+                      : "cursor-pointer border-white/[0.06] bg-white/[0.02] text-gray-400 hover:border-white/[0.12] hover:text-white"
                 }`}
               >
                 <div>
