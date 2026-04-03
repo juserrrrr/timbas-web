@@ -28,14 +28,10 @@ import {
   drawTeams,
   startMatch,
   finishMatch,
+  moveToRoom,
   type CustomLeagueMatch,
   type UserTeamLeague,
 } from "@/lib/services/match"
-import {
-  getVoiceStatus,
-  moveToVoiceChannel,
-  type VoiceStatus,
-} from "@/lib/services/discord-voice"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -480,58 +476,11 @@ export default function MatchPage() {
           </div>
         )}
 
-        {/* ── Voice Status Card ─────────────────────────────────────────── */}
-        {showVoiceCard && (
-          <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Icon + channel info */}
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                {voiceStatus?.channelId ? (
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-green-500/15 ring-1 ring-green-500/25">
-                    <Mic className="h-3.5 w-3.5 text-green-400" />
-                  </div>
-                ) : (
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/5 ring-1 ring-white/10">
-                    <MicOff className="h-3.5 w-3.5 text-gray-500" />
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-gray-500">Seu canal de voz</p>
-                  <p className={`truncate text-sm font-semibold ${voiceStatus?.channelId ? 'text-white' : 'text-gray-600'}`}>
-                    {voiceStatus === null
-                      ? 'Bot offline'
-                      : voiceStatus.channelId
-                        ? voiceStatus.channelName
-                        : 'Canal não detectado'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Move buttons */}
-              {voiceStatus !== null && (
-                <div className="flex flex-wrap gap-2">
-                  {match?.status === 'STARTED' && myTeamSide && voiceStatus.channelType !== myTeamSide && (
-                    <VoiceMoveBtn
-                      label={`Ir p/ Time ${myTeamSide === 'BLUE' ? 'Azul' : 'Vermelho'}`}
-                      color={myTeamSide === 'BLUE' ? 'blue' : 'red'}
-                      loading={voiceMoveLoading}
-                      onClick={() => handleVoiceMove()}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-            {voiceMoveError && (
-              <p className="mt-2 text-xs text-red-400">{voiceMoveError}</p>
-            )}
-          </div>
-        )}
-
         {/* ── Action Error ────────────────────────────────────────────────── */}
-        {actionError && (
+        {(actionError || voiceMoveError) && (
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
-            {actionError}
+            {actionError || voiceMoveError}
           </div>
         )}
 
@@ -557,6 +506,18 @@ export default function MatchPage() {
                 color="gray"
                 loading={actionLoading === "leave"}
                 onClick={handleLeave}
+              />
+            )}
+
+            {/* Move to Room Button */}
+            {match.status === "STARTED" && myTeamSide && (
+              <ActionBtn
+                id="btn-move-voice"
+                icon={<Mic className="h-4 w-4" />}
+                label={`Ir para a sala do Time ${myTeamSide === 'BLUE' ? 'Azul' : 'Vermelho'}`}
+                color={myTeamSide === 'BLUE' ? 'blue' : 'red'}
+                loading={voiceMoveLoading}
+                onClick={handleVoiceMove}
               />
             )}
 
@@ -731,7 +692,7 @@ function ActionBtn({
       id={id}
       onClick={onClick}
       disabled={loading || disabled}
-      className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 ${c.base} ${c.text} ${c.ring} ${disabled || loading ? "cursor-not-allowed opacity-40" : c.hover}`}
+      className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 cursor-pointer disabled:cursor-not-allowed ${c.base} ${c.text} ${c.ring} ${disabled || loading ? "opacity-40" : c.hover}`}
     >
       {loading ? (
         <span className={`h-4 w-4 animate-spin rounded-full border-2 border-t-transparent ${c.loader}`} />
