@@ -3,23 +3,24 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Trophy, History, Users, BarChart3, Swords, Settings, X, MoreHorizontal } from "lucide-react"
+import { Home, Trophy, History, Users, BarChart3, Swords, Settings, X, MoreHorizontal, Radio } from "lucide-react"
 
 const LEFT_NAV = [
-  { icon: Home,    label: "Início",    href: "/dashboard",          color: "text-blue-400",   active: "text-blue-400" },
-  { icon: History, label: "Histórico", href: "/dashboard/history",  color: "text-purple-400", active: "text-purple-400" },
+  { icon: Home,    label: "Início",    href: "/dashboard",        color: "text-blue-400",    active: "text-blue-400" },
+  { icon: Radio,   label: "Ao Vivo",  href: "/dashboard/active", color: "text-emerald-400", active: "text-emerald-400" },
 ]
 
 const RIGHT_NAV = [
-  { icon: Users, label: "Duplas", href: "/dashboard/teams", color: "text-green-400", active: "text-green-400" },
+  { icon: History, label: "Histórico", href: "/dashboard/history", color: "text-purple-400", active: "text-purple-400" },
 ]
 
 const RANKING = { icon: Trophy, label: "Ranking", href: "/dashboard/ranking" }
 
 const MORE_NAV = [
-  { icon: BarChart3, label: "Estatísticas", href: "/dashboard/stats",    color: "text-red-400",    glow: "bg-red-500/10",    active: "border-red-500/20" },
-  { icon: Swords,    label: "Comparação",   href: "/dashboard/versus",   color: "text-orange-400", glow: "bg-orange-500/10", active: "border-orange-500/20" },
-  { icon: Settings,  label: "Config",       href: "/dashboard/settings", color: "text-gray-400",   glow: "bg-white/5",       active: "border-white/10" },
+  { icon: Users,    label: "Duplas",       href: "/dashboard/teams",    color: "text-green-400",   glow: "bg-green-500/10",   active: "border-green-500/20" },
+  { icon: BarChart3,label: "Estatísticas", href: "/dashboard/stats",    color: "text-red-400",     glow: "bg-red-500/10",     active: "border-red-500/20" },
+  { icon: Swords,   label: "Comparação",  href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "border-orange-500/20" },
+  { icon: Settings, label: "Config",      href: "/dashboard/settings", color: "text-gray-400",    glow: "bg-white/5",        active: "border-white/10" },
 ]
 
 function NavItem({ icon: Icon, label, href, color, active }: { icon: React.ElementType; label: string; href: string; color: string; active: string }) {

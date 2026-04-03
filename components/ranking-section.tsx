@@ -7,15 +7,46 @@ import { Trophy, Medal, ChevronLeft, ChevronRight } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
 import { useServer, SERVERS } from "@/lib/server-context"
 import { PlayerAvatar } from "@/components/player-avatar"
+import { apiFetch } from "@/lib/api"
+import { getToken } from "@/lib/auth"
+import type { PlayerStats } from "@/lib/server-context"
+
+const MODE_TABS = [
+  { label: "Geral", value: undefined },
+  { label: "1v1", value: 1 },
+  { label: "3v3", value: 3 },
+  { label: "5v5", value: 5 },
+] as const
 
 export function RankingSection() {
-  const { selectedServer, ranking: players, dashboardLoading: isLoading } = useServer()
+  const { selectedServer, ranking: contextRanking, dashboardLoading: contextLoading } = useServer()
+  const [mode, setMode] = useState<number | undefined>(undefined)
+  const [players, setPlayers] = useState<PlayerStats[]>([])
+  const [modeLoading, setModeLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const playersPerPage = 10
+  const token = getToken()
 
+  // Use context data for "Geral" tab, fetch fresh for mode tabs
   useEffect(() => {
     setCurrentPage(1)
-  }, [selectedServer])
+    if (mode === undefined) {
+      setPlayers(contextRanking)
+      return
+    }
+    if (!selectedServer || !token) return
+    setModeLoading(true)
+    apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/leaderboard/${selectedServer}?mode=${mode}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    })
+      .then(res => res.json())
+      .then(setPlayers)
+      .catch(() => setPlayers([]))
+      .finally(() => setModeLoading(false))
+  }, [selectedServer, mode, contextRanking, token])
+
+  const isLoading = mode === undefined ? contextLoading : modeLoading
 
   const totalPages = Math.ceil(Math.max(0, players.length - 3) / playersPerPage)
   const topThree = players.slice(0, 3)
@@ -52,16 +83,8 @@ export function RankingSection() {
 
   const selectedServerName = SERVERS.find((s) => s.id === selectedServer)?.name || "Servidor"
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="size-8 text-blue-500" />
-      </div>
-    )
-  }
-
   return (
-    <div className="content-enter space-y-8">
+    <div className="content-enter space-y-6">
       {/* Header */}
       <div>
         <h1 className="mb-2 text-4xl font-bold md:text-5xl">
@@ -73,12 +96,35 @@ export function RankingSection() {
         <p className="text-gray-400">Os melhores jogadores da temporada</p>
       </div>
 
-      {players.length === 0 ? (
+      {/* Mode tabs */}
+      <div className="flex gap-2">
+        {MODE_TABS.map((tab) => (
+          <button
+            key={String(tab.value)}
+            onClick={() => setMode(tab.value)}
+            className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
+              mode === tab.value
+                ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-300"
+                : "border-white/[0.06] bg-white/[0.02] text-gray-500 hover:border-white/[0.1] hover:text-white"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center h-48">
+          <Spinner className="size-8 text-yellow-500" />
+        </div>
+      )}
+
+      {!isLoading && players.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-700 bg-gray-900/50 p-12 text-center">
           <h2 className="text-xl font-semibold text-gray-300">Ranking Vazio</h2>
           <p className="mt-2 text-gray-400">Ainda não há dados de ranking para este servidor.</p>
         </div>
-      ) : (
+      ) : !isLoading && (
         <>
           {/* Top 3 Podium */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

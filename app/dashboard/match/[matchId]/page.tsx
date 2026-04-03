@@ -158,11 +158,13 @@ export default function MatchPage() {
   const allPlayers = match ? [...match.queuePlayers, ...match.Teams.flatMap(t => t.players)] : []
   const isInLobby = me?.discordId && allPlayers.some((p) => p.user.discordId === me.discordId)
 
+  const playersPerTeam = match?.playersPerTeam ?? 5
+  const maxPlayers = playersPerTeam * 2
   const totalCapacity = match?.queuePlayers.length ?? 0
   const canDraw = isCreator && match?.status === "WAITING" && match?.matchType !== "LIVRE" && !match?.teamBlueId
-  const canStart = isCreator && match?.status === "WAITING" && totalCapacity >= 10
+  const canStart = isCreator && match?.status === "WAITING" && totalCapacity >= maxPlayers
   const canFinish = isCreator && match?.status === "STARTED"
-  const canJoin = match?.status === "WAITING" && totalCapacity < 10 && !isInLobby
+  const canJoin = match?.status === "WAITING" && totalCapacity < maxPlayers && !isInLobby
   const canLeave = match?.status === "WAITING" && isInLobby && match.queuePlayers.some(p => p.user.discordId === me?.discordId)
 
   // ── Load initial state ──────────────────────────────────────────────────
@@ -302,8 +304,8 @@ export default function MatchPage() {
   const qPlayers = match?.queuePlayers ?? []
 
   // Fill empty slots for display
-  const blueSlots = Array.from({ length: 5 }, (_, i) => blueTeam[i] ?? null)
-  const redSlots  = Array.from({ length: 5 }, (_, i) => redTeam[i]  ?? null)
+  const blueSlots = Array.from({ length: playersPerTeam }, (_, i) => blueTeam[i] ?? null)
+  const redSlots  = Array.from({ length: playersPerTeam }, (_, i) => redTeam[i]  ?? null)
 
   const statusConfig = {
     WAITING:  { label: "Aguardando",    color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20", dot: "bg-yellow-400 animate-pulse" },
@@ -356,7 +358,7 @@ export default function MatchPage() {
                 <h1 className="text-2xl font-black tracking-tight text-white">
                   Partida <span className="text-gray-500 text-lg font-mono">#{match.id}</span>
                 </h1>
-                <p className="text-xs text-gray-500">{FORMAT_LABELS[match.matchType]} · Online</p>
+                <p className="text-xs text-gray-500">{FORMAT_LABELS[match.matchType]} · {playersPerTeam}v{playersPerTeam} · Online</p>
               </div>
             </div>
           </div>
@@ -465,15 +467,15 @@ export default function MatchPage() {
                 <Clock className="h-4 w-4 text-gray-500" />
                 <span className="text-sm font-medium text-gray-400">Na fila</span>
               </div>
-              <span className={`text-sm font-bold tabular-nums ${qPlayers.length >= 10 ? "text-green-400" : "text-gray-400"}`}>
-                {qPlayers.length}/10
+              <span className={`text-sm font-bold tabular-nums ${qPlayers.length >= maxPlayers ? "text-green-400" : "text-gray-400"}`}>
+                {qPlayers.length}/{maxPlayers}
               </span>
             </div>
             <div className="flex flex-wrap gap-3 justify-center">
               {qPlayers.map((p) => (
                 <WaitingPlayer key={p.user.discordId} playerLayout={p} />
               ))}
-              {Array.from({ length: Math.max(0, 10 - qPlayers.length) }, (_, i) => (
+              {Array.from({ length: Math.max(0, maxPlayers - qPlayers.length) }, (_, i) => (
                 <div key={`slot-${i}`} className="flex flex-col items-center gap-1">
                   <div className="h-9 w-9 rounded-full border border-dashed border-white/10" />
                   <span className="text-[10px] text-gray-700">—</span>
@@ -590,7 +592,7 @@ export default function MatchPage() {
                     color="purple"
                     loading={actionLoading === "draw"}
                     onClick={handleDraw}
-                    disabled={qPlayers.length < 10}
+                    disabled={qPlayers.length < maxPlayers}
                   />
                 )}
                 <ActionBtn
@@ -619,9 +621,9 @@ export default function MatchPage() {
             {/* Player count pill */}
             {match.status === "WAITING" && !match.teamBlueId && (
               <div className="ml-auto rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-gray-500">
-                {qPlayers.length >= 10
+                {qPlayers.length >= maxPlayers
                   ? "✅ Pronto para sortear / iniciar"
-                  : `Aguardando mais ${10 - qPlayers.length} jogador${10 - qPlayers.length !== 1 ? "es" : ""}`}
+                  : `Aguardando mais ${maxPlayers - qPlayers.length} jogador${maxPlayers - qPlayers.length !== 1 ? "es" : ""}`}
               </div>
             )}
             {match.status === "WAITING" && match.teamBlueId && (

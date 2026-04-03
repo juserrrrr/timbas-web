@@ -33,6 +33,7 @@ export interface CustomLeagueMatch {
   creatorDiscordId: string | null
   status: MatchStatus
   matchType: MatchTypeEnum
+  playersPerTeam: number
   showDetails: boolean
   teamBlueId: number | null
   teamRedId: number | null
@@ -53,6 +54,29 @@ const h = (token?: string): HeadersInit => ({
 export async function getMatch(id: number, token?: string): Promise<CustomLeagueMatch> {
   const res = await apiFetch(`${API_URL}/leagueMatch/${id}`, { headers: h(token), cache: 'no-store' })
   if (!res.ok) throw new Error('Partida não encontrada')
+  return res.json()
+}
+
+export async function getActiveMatches(token: string, serverId: string): Promise<CustomLeagueMatch[]> {
+  const res = await apiFetch(`${API_URL}/leagueMatch/server/${serverId}/active`, { headers: h(token), cache: 'no-store' })
+  if (!res.ok) throw new Error('Erro ao buscar partidas ativas')
+  return res.json()
+}
+
+export async function createOnlineMatch(token: string, data: {
+  discordServerId: string
+  matchFormat?: string
+  playersPerTeam?: number
+}): Promise<CustomLeagueMatch> {
+  const res = await apiFetch(`${API_URL}/leagueMatch/online`, {
+    method: 'POST',
+    headers: h(token),
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Erro ao criar partida' }))
+    throw new Error(err.message || 'Erro ao criar partida')
+  }
   return res.json()
 }
 

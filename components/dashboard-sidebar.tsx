@@ -4,15 +4,16 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Trophy, History, Settings, BarChart3, Home, Users, ChevronRight, Swords } from "lucide-react"
+import { Trophy, History, Settings, BarChart3, Home, Users, ChevronRight, Swords, Radio } from "lucide-react"
 
 const NAV = [
-  { icon: Home,     label: "Início",        href: "/dashboard",          color: "text-blue-400",   glow: "bg-blue-500/10",   active: "border-blue-500/20" },
-  { icon: Trophy,   label: "Ranking",       href: "/dashboard/ranking",  color: "text-yellow-400", glow: "bg-yellow-500/10", active: "border-yellow-500/20" },
-  { icon: History,  label: "Histórico",     href: "/dashboard/history",  color: "text-purple-400", glow: "bg-purple-500/10", active: "border-purple-500/20" },
-  { icon: Users,    label: "Duplas",        href: "/dashboard/teams",    color: "text-green-400",  glow: "bg-green-500/10",  active: "border-green-500/20" },
-  { icon: BarChart3,label: "Estatísticas",  href: "/dashboard/stats",    color: "text-red-400",    glow: "bg-red-500/10",    active: "border-red-500/20" },
-  { icon: Swords,   label: "Comparação",    href: "/dashboard/versus",   color: "text-orange-400", glow: "bg-orange-500/10", active: "border-orange-500/20" },
+  { icon: Home,     label: "Início",        href: "/dashboard",          color: "text-blue-400",    glow: "bg-blue-500/10",    active: "border-blue-500/20" },
+  { icon: Radio,    label: "Ao Vivo",       href: "/dashboard/active",   color: "text-emerald-400", glow: "bg-emerald-500/10", active: "border-emerald-500/20" },
+  { icon: Trophy,   label: "Ranking",       href: "/dashboard/ranking",  color: "text-yellow-400",  glow: "bg-yellow-500/10",  active: "border-yellow-500/20" },
+  { icon: History,  label: "Histórico",     href: "/dashboard/history",  color: "text-purple-400",  glow: "bg-purple-500/10",  active: "border-purple-500/20" },
+  { icon: Users,    label: "Duplas",        href: "/dashboard/teams",    color: "text-green-400",   glow: "bg-green-500/10",   active: "border-green-500/20" },
+  { icon: BarChart3,label: "Estatísticas",  href: "/dashboard/stats",    color: "text-red-400",     glow: "bg-red-500/10",     active: "border-red-500/20" },
+  { icon: Swords,   label: "Comparação",    href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "border-orange-500/20" },
 ]
 
 const BOTTOM = [
