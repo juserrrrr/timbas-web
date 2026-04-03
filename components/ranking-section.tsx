@@ -4,38 +4,17 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trophy, Medal, ChevronLeft, ChevronRight } from "lucide-react"
-import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { Spinner } from "@/components/ui/spinner"
-import { getToken } from "@/lib/auth"
 import { useServer, SERVERS } from "@/lib/server-context"
 import { PlayerAvatar } from "@/components/player-avatar"
 
 export function RankingSection() {
-  const { selectedServer } = useServer()
-  const [players, setPlayers] = useState<PlayerStats[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { selectedServer, ranking: players, dashboardLoading: isLoading } = useServer()
   const [currentPage, setCurrentPage] = useState(1)
   const playersPerPage = 10
 
   useEffect(() => {
     setCurrentPage(1)
-    const fetchRanking = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const token = getToken()
-        if (!token) throw new Error("Usuário não autenticado.")
-        const data = await getRanking(token, selectedServer)
-        setPlayers(data)
-      } catch (err) {
-        setError("Falha ao carregar o ranking. Tente novamente mais tarde.")
-        console.error(err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchRanking()
   }, [selectedServer])
 
   const totalPages = Math.ceil(Math.max(0, players.length - 3) / playersPerPage)
@@ -77,15 +56,6 @@ export function RankingSection() {
     return (
       <div className="flex items-center justify-center h-64">
         <Spinner className="size-8 text-blue-500" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-red-500/50 bg-red-500/10 p-12 text-center">
-        <h2 className="text-xl font-semibold text-red-400">Ocorreu um erro</h2>
-        <p className="mt-2 text-gray-400">{error}</p>
       </div>
     )
   }

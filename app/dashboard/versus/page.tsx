@@ -5,7 +5,7 @@ import { Swords, User } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
-import { getRanking, PlayerStats } from "@/lib/services/ranking"
+import { PlayerStats } from "@/lib/services/ranking"
 import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
 import { getToken } from "@/lib/auth"
 import { useServer } from "@/lib/server-context"
@@ -59,7 +59,6 @@ function StatRow({
           {formatFn(right)}
         </span>
       </div>
-      {/* Bar */}
       <div className="flex h-1.5 overflow-hidden rounded-full bg-gray-800">
         <div
           className={`h-full rounded-l-full transition-all duration-500 ${
@@ -139,9 +138,7 @@ function SideBar({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function VersusPage() {
-  const { selectedServer } = useServer()
-  const [players, setPlayers] = useState<PlayerStats[]>([])
-  const [rankingLoading, setRankingLoading] = useState(true)
+  const { selectedServer, ranking: players, dashboardLoading } = useServer()
   const [leftId, setLeftId] = useState("")
   const [rightId, setRightId] = useState("")
   const [leftDetail, setLeftDetail] = useState<PlayerDetailStats | null>(null)
@@ -151,30 +148,15 @@ export default function VersusPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Carrega lista de jogadores ao trocar de servidor
+  // Reseta seleção ao trocar servidor
   useEffect(() => {
-    const fetchPlayers = async () => {
-      setRankingLoading(true)
-      setPlayers([])
-      setLeftId("")
-      setRightId("")
-      setLeftDetail(null)
-      setRightDetail(null)
-      setLeftPlayer(null)
-      setRightPlayer(null)
-      setError(null)
-      try {
-        const token = getToken()
-        if (!token) throw new Error("Não autenticado.")
-        const data = await getRanking(token, selectedServer)
-        setPlayers(data)
-      } catch {
-        setError("Falha ao carregar jogadores.")
-      } finally {
-        setRankingLoading(false)
-      }
-    }
-    fetchPlayers()
+    setLeftId("")
+    setRightId("")
+    setLeftDetail(null)
+    setRightDetail(null)
+    setLeftPlayer(null)
+    setRightPlayer(null)
+    setError(null)
   }, [selectedServer])
 
   // Busca detalhes quando ambos os jogadores estão selecionados
@@ -220,18 +202,16 @@ export default function VersusPage() {
 
   return (
     <div className="content-enter space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white">Comparação</h1>
         <p className="text-gray-400">Compare o desempenho de dois jogadores</p>
       </div>
 
-      {/* Selects */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <Select value={leftId} onValueChange={setLeftId} disabled={rankingLoading || players.length === 0}>
+        <Select value={leftId} onValueChange={setLeftId} disabled={dashboardLoading || players.length === 0}>
           <SelectTrigger className="border-blue-500/30 bg-blue-500/5 text-white hover:border-blue-500/50">
             <User className="mr-2 h-4 w-4 text-blue-400 shrink-0" />
-            <SelectValue placeholder={rankingLoading ? "Carregando..." : "Jogador 1"} />
+            <SelectValue placeholder={dashboardLoading ? "Carregando..." : "Jogador 1"} />
           </SelectTrigger>
           <SelectContent className="border-gray-700 bg-gray-900 text-white">
             {players.map((p) => (
@@ -253,10 +233,10 @@ export default function VersusPage() {
           </span>
         </div>
 
-        <Select value={rightId} onValueChange={setRightId} disabled={rankingLoading || players.length === 0}>
+        <Select value={rightId} onValueChange={setRightId} disabled={dashboardLoading || players.length === 0}>
           <SelectTrigger className="border-red-500/30 bg-red-500/5 text-white hover:border-red-500/50">
             <User className="mr-2 h-4 w-4 text-red-400 shrink-0" />
-            <SelectValue placeholder={rankingLoading ? "Carregando..." : "Jogador 2"} />
+            <SelectValue placeholder={dashboardLoading ? "Carregando..." : "Jogador 2"} />
           </SelectTrigger>
           <SelectContent className="border-gray-700 bg-gray-900 text-white">
             {players.map((p) => (
@@ -273,34 +253,28 @@ export default function VersusPage() {
         </Select>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="rounded-lg border border-dashed border-red-500/50 bg-red-500/10 p-4 text-center text-red-400">
           {error}
         </div>
       )}
 
-      {/* Prompt vazio */}
-      {!leftId && !rightId && !rankingLoading && !error && (
+      {!leftId && !rightId && !dashboardLoading && !error && (
         <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/50 p-14 text-center">
           <Swords className="mx-auto mb-3 h-10 w-10 text-gray-700" />
           <p className="text-gray-500">Selecione dois jogadores para comparar</p>
         </div>
       )}
 
-      {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center h-48">
           <Spinner className="size-8 text-blue-500" />
         </div>
       )}
 
-      {/* Comparison */}
       {showComparison && (
         <>
-          {/* Player headers */}
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            {/* Left player */}
             <Card
               className={`border p-5 text-center backdrop-blur-sm transition-all ${
                 winner === "left"
@@ -328,12 +302,10 @@ export default function VersusPage() {
               </div>
             </Card>
 
-            {/* VS center */}
             <div className="flex flex-col items-center gap-1">
               <Swords className="h-6 w-6 text-gray-600" />
             </div>
 
-            {/* Right player */}
             <Card
               className={`border p-5 text-center backdrop-blur-sm transition-all ${
                 winner === "right"
@@ -362,111 +334,37 @@ export default function VersusPage() {
             </Card>
           </div>
 
-          {/* Stats card */}
           <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm space-y-5">
             <h2 className="text-lg font-bold text-white">Estatísticas</h2>
-
-            <StatRow
-              label="Win Rate"
-              left={Math.round(leftPlayer.winRate * 100)}
-              right={Math.round(rightPlayer.winRate * 100)}
-              winner={compare(leftPlayer.winRate, rightPlayer.winRate)}
-              formatFn={(v) => `${v}%`}
-            />
-            <StatRow
-              label="Vitórias"
-              left={leftPlayer.wins}
-              right={rightPlayer.wins}
-              winner={compare(leftPlayer.wins, rightPlayer.wins)}
-            />
-            <StatRow
-              label="Derrotas"
-              left={leftPlayer.losses}
-              right={rightPlayer.losses}
-              winner={compare(leftPlayer.losses, rightPlayer.losses, true)}
-            />
-            <StatRow
-              label="Total de Jogos"
-              left={leftPlayer.totalGames}
-              right={rightPlayer.totalGames}
-              winner={compare(leftPlayer.totalGames, rightPlayer.totalGames)}
-            />
-            <StatRow
-              label="Pontuação"
-              left={leftPlayer.score}
-              right={rightPlayer.score}
-              winner={compare(leftPlayer.score, rightPlayer.score)}
-            />
-            <StatRow
-              label="Maior Streak"
-              left={leftDetail.longestWinStreak}
-              right={rightDetail.longestWinStreak}
-              winner={compare(leftDetail.longestWinStreak, rightDetail.longestWinStreak)}
-              formatFn={(v) => `${v}V`}
-            />
+            <StatRow label="Win Rate" left={Math.round(leftPlayer.winRate * 100)} right={Math.round(rightPlayer.winRate * 100)} winner={compare(leftPlayer.winRate, rightPlayer.winRate)} formatFn={(v) => `${v}%`} />
+            <StatRow label="Vitórias" left={leftPlayer.wins} right={rightPlayer.wins} winner={compare(leftPlayer.wins, rightPlayer.wins)} />
+            <StatRow label="Derrotas" left={leftPlayer.losses} right={rightPlayer.losses} winner={compare(leftPlayer.losses, rightPlayer.losses, true)} />
+            <StatRow label="Total de Jogos" left={leftPlayer.totalGames} right={rightPlayer.totalGames} winner={compare(leftPlayer.totalGames, rightPlayer.totalGames)} />
+            <StatRow label="Pontuação" left={leftPlayer.score} right={rightPlayer.score} winner={compare(leftPlayer.score, rightPlayer.score)} />
+            <StatRow label="Maior Streak" left={leftDetail.longestWinStreak} right={rightDetail.longestWinStreak} winner={compare(leftDetail.longestWinStreak, rightDetail.longestWinStreak)} formatFn={(v) => `${v}V`} />
           </Card>
 
-          {/* Forma recente */}
           <div className="grid grid-cols-2 gap-4">
             <Card className="border-gray-800/50 bg-gray-900/50 p-5 backdrop-blur-sm">
-              <h3 className="mb-3 font-semibold text-white text-sm">
-                Forma Recente —{" "}
-                <span className="text-blue-400">{leftPlayer.name}</span>
-              </h3>
+              <h3 className="mb-3 font-semibold text-white text-sm">Forma Recente — <span className="text-blue-400">{leftPlayer.name}</span></h3>
               <RecentForm form={leftDetail.recentForm} />
             </Card>
             <Card className="border-gray-800/50 bg-gray-900/50 p-5 backdrop-blur-sm">
-              <h3 className="mb-3 font-semibold text-white text-sm">
-                Forma Recente —{" "}
-                <span className="text-red-400">{rightPlayer.name}</span>
-              </h3>
+              <h3 className="mb-3 font-semibold text-white text-sm">Forma Recente — <span className="text-red-400">{rightPlayer.name}</span></h3>
               <RecentForm form={rightDetail.recentForm} />
             </Card>
           </div>
 
-          {/* Win Rate por lado */}
           <div className="grid grid-cols-2 gap-4">
             <Card className="border-gray-800/50 bg-gray-900/50 p-5 backdrop-blur-sm space-y-3">
-              <h3 className="font-semibold text-white text-sm">
-                WR por Lado — <span className="text-blue-400">{leftPlayer.name}</span>
-              </h3>
-              <SideBar
-                wins={leftDetail.blueSide.wins}
-                losses={leftDetail.blueSide.losses}
-                total={leftDetail.blueSide.total}
-                winRate={leftDetail.blueSide.winRate}
-                color="blue"
-                label="Lado Azul"
-              />
-              <SideBar
-                wins={leftDetail.redSide.wins}
-                losses={leftDetail.redSide.losses}
-                total={leftDetail.redSide.total}
-                winRate={leftDetail.redSide.winRate}
-                color="red"
-                label="Lado Vermelho"
-              />
+              <h3 className="font-semibold text-white text-sm">WR por Lado — <span className="text-blue-400">{leftPlayer.name}</span></h3>
+              <SideBar wins={leftDetail.blueSide.wins} losses={leftDetail.blueSide.losses} total={leftDetail.blueSide.total} winRate={leftDetail.blueSide.winRate} color="blue" label="Lado Azul" />
+              <SideBar wins={leftDetail.redSide.wins} losses={leftDetail.redSide.losses} total={leftDetail.redSide.total} winRate={leftDetail.redSide.winRate} color="red" label="Lado Vermelho" />
             </Card>
             <Card className="border-gray-800/50 bg-gray-900/50 p-5 backdrop-blur-sm space-y-3">
-              <h3 className="font-semibold text-white text-sm">
-                WR por Lado — <span className="text-red-400">{rightPlayer.name}</span>
-              </h3>
-              <SideBar
-                wins={rightDetail.blueSide.wins}
-                losses={rightDetail.blueSide.losses}
-                total={rightDetail.blueSide.total}
-                winRate={rightDetail.blueSide.winRate}
-                color="blue"
-                label="Lado Azul"
-              />
-              <SideBar
-                wins={rightDetail.redSide.wins}
-                losses={rightDetail.redSide.losses}
-                total={rightDetail.redSide.total}
-                winRate={rightDetail.redSide.winRate}
-                color="red"
-                label="Lado Vermelho"
-              />
+              <h3 className="font-semibold text-white text-sm">WR por Lado — <span className="text-red-400">{rightPlayer.name}</span></h3>
+              <SideBar wins={rightDetail.blueSide.wins} losses={rightDetail.blueSide.losses} total={rightDetail.blueSide.total} winRate={rightDetail.blueSide.winRate} color="blue" label="Lado Azul" />
+              <SideBar wins={rightDetail.redSide.wins} losses={rightDetail.redSide.losses} total={rightDetail.redSide.total} winRate={rightDetail.redSide.winRate} color="red" label="Lado Vermelho" />
             </Card>
           </div>
         </>

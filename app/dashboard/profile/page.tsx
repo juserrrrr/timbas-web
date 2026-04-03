@@ -6,38 +6,32 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getDiscordAvatarUrl } from "@/lib/auth"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken, decodeToken, TokenPayload } from "@/lib/auth"
-import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
 import { useServer } from "@/lib/server-context"
 
 export default function ProfilePage() {
-  const { selectedServer, serverName } = useServer()
-  const [payload, setPayload] = useState<TokenPayload | null>(null)
-  const [stats, setStats] = useState<PlayerStats | null>(null)
+  const { selectedServer, serverName, ranking, dashboardLoading } = useServer()
   const [detail, setDetail] = useState<PlayerDetailStats | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [detailLoading, setDetailLoading] = useState(true)
+
+  const token = getToken()
+  const payload: TokenPayload | null = token ? decodeToken(token) : null
+  const userId = payload ? Number(payload.sub) : null
+  const stats = userId !== null ? (ranking.find((p) => p.userId === userId) ?? null) : null
 
   useEffect(() => {
-    const load = async () => {
-      setIsLoading(true)
-      try {
-        const token = getToken()
-        if (!token) return
-        const decoded = decodeToken(token)
-        if (!decoded) return
-        setPayload(decoded)
-        const uid = Number(decoded.sub)
-        const [ranking, playerDetail] = await Promise.all([
-          getRanking(token, selectedServer),
-          getPlayerDetailStats(token, selectedServer, uid).catch(() => null),
-        ])
-        setStats(ranking.find((p) => p.userId === uid) ?? null)
-        setDetail(playerDetail)
-      } catch { /* silent */ }
-      finally { setIsLoading(false) }
+    if (!userId || !token) {
+      setDetailLoading(false)
+      return
     }
-    load()
-  }, [selectedServer])
+    setDetailLoading(true)
+    getPlayerDetailStats(token, selectedServer, userId)
+      .then(setDetail)
+      .catch(() => setDetail(null))
+      .finally(() => setDetailLoading(false))
+  }, [selectedServer, userId])
+
+  const isLoading = dashboardLoading || detailLoading
 
   if (isLoading) return <div className="flex h-64 items-center justify-center"><Spinner className="size-8 text-blue-500" /></div>
 
@@ -59,7 +53,6 @@ export default function ProfilePage() {
 
         {/* Avatar card */}
         <div className="flex flex-col items-center rounded-2xl border border-white/[0.07] bg-white/[0.02] p-7">
-          {/* Gradient border avatar */}
           <div className="mb-5 rounded-full p-[2px] bg-gradient-to-br from-blue-500/60 via-purple-500/30 to-red-500/50">
             <Avatar className="h-24 w-24">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={payload?.name ?? ""} />}
@@ -111,7 +104,6 @@ export default function ProfilePage() {
           {/* Streak + form */}
           {detail && (
             <div className="grid gap-3 sm:grid-cols-2">
-              {/* Streak */}
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
                 <div className="mb-3 flex items-center gap-2 text-xs text-gray-500">
                   <Flame className="h-3.5 w-3.5 text-orange-400" />
@@ -128,7 +120,6 @@ export default function ProfilePage() {
                 <p className="mt-1 text-xs text-gray-600">Melhor sequência: <span className="text-white font-semibold">{detail.longestWinStreak}V</span></p>
               </div>
 
-              {/* Recent form */}
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
                 <div className="mb-3 flex items-center gap-2 text-xs text-gray-500">
                   <Zap className="h-3.5 w-3.5 text-yellow-400" />

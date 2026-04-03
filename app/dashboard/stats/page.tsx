@@ -5,11 +5,11 @@ import { TrendingUp, Target, Zap, Shield, User } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
-import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
-import { getMatchHistory, Match } from "@/lib/services/matches"
 import { getToken, decodeToken } from "@/lib/auth"
 import { useServer } from "@/lib/server-context"
+import { Match } from "@/lib/services/matches"
+import { PlayerStats } from "@/lib/services/ranking"
 
 function computePositionStats(matches: Match[], userId: number) {
   const map: Record<string, { wins: number; games: number }> = {}
@@ -51,72 +51,46 @@ function computeMatchTypeStats(matches: Match[], userId: number) {
 }
 
 export default function StatsPage() {
-  const { selectedServer } = useServer()
-  const [players, setPlayers] = useState<PlayerStats[]>([])
+  const { selectedServer, ranking: players, matches, dashboardLoading } = useServer()
   const [selectedUserId, setSelectedUserId] = useState<string>("")
-  const [rankingLoading, setRankingLoading] = useState(true)
   const [statsLoading, setStatsLoading] = useState(false)
   const [detail, setDetail] = useState<PlayerDetailStats | null>(null)
-  const [matches, setMatches] = useState<Match[]>([])
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
 
-  useEffect(() => {
-    const token = getToken()
-    if (token) {
-      const payload = decodeToken(token)
-      if (payload) setCurrentUserId(Number(payload.sub))
-    }
-  }, [])
+  const token = getToken()
+  const payload = token ? decodeToken(token) : null
+  const currentUserId = payload ? Number(payload.sub) : null
 
+  // Pré-seleciona o usuário atual quando o ranking carregar
   useEffect(() => {
-    const fetchPlayers = async () => {
-      setRankingLoading(true)
-      setPlayers([])
-      setSelectedUserId("")
-      setDetail(null)
-      setSelectedPlayer(null)
-      setError(null)
-      try {
-        const token = getToken()
-        if (!token) throw new Error("Usuário não autenticado.")
-        const [data, matchData] = await Promise.all([
-          getRanking(token, selectedServer),
-          getMatchHistory(token, selectedServer),
-        ])
-        setPlayers(data)
-        setMatches(matchData)
-        if (currentUserId !== null) {
-          const me = data.find((p) => p.userId === currentUserId)
-          if (me) setSelectedUserId(String(me.userId))
-        }
-      } catch (err) {
-        setError("Falha ao carregar jogadores.")
-        console.error(err)
-      } finally {
-        setRankingLoading(false)
-      }
-    }
-    fetchPlayers()
-  }, [selectedServer, currentUserId])
+    if (players.length === 0 || currentUserId === null) return
+    const me = players.find((p) => p.userId === currentUserId)
+    if (me) setSelectedUserId(String(me.userId))
+  }, [players, currentUserId])
 
+  // Reseta seleção ao trocar servidor
   useEffect(() => {
-    if (!selectedUserId) return
+    setSelectedUserId("")
+    setDetail(null)
+    setSelectedPlayer(null)
+    setError(null)
+  }, [selectedServer])
+
+  // Busca stats detalhados ao selecionar jogador
+  useEffect(() => {
+    if (!selectedUserId || !token) return
     const fetchDetail = async () => {
       setStatsLoading(true)
       setDetail(null)
       setError(null)
       try {
-        const token = getToken()
-        if (!token) throw new Error("Usuário não autenticado.")
         const player = players.find((p) => String(p.userId) === selectedUserId)
         setSelectedPlayer(player ?? null)
         const data = await getPlayerDetailStats(token, selectedServer, Number(selectedUserId))
         setDetail(data)
-      } catch (err) {
+      } catch {
         setError("Falha ao carregar estatísticas.")
-        console.error(err)
       } finally {
         setStatsLoading(false)
       }
@@ -157,11 +131,11 @@ export default function StatsPage() {
         <Select
           value={selectedUserId}
           onValueChange={setSelectedUserId}
-          disabled={rankingLoading || players.length === 0}
+          disabled={dashboardLoading || players.length === 0}
         >
           <SelectTrigger className="w-full border-gray-700 bg-gray-800/50 text-white sm:w-[260px]">
             <User className="mr-2 h-4 w-4 text-purple-400" />
-            <SelectValue placeholder={rankingLoading ? "Carregando..." : "Selecione um jogador"} />
+            <SelectValue placeholder={dashboardLoading ? "Carregando..." : "Selecione um jogador"} />
           </SelectTrigger>
           <SelectContent className="border-gray-700 bg-gray-900 text-white">
             {players.map((p) => (
@@ -179,13 +153,13 @@ export default function StatsPage() {
         </div>
       )}
 
-      {!selectedUserId && !rankingLoading && !error && (
+      {!selectedUserId && !dashboardLoading && !error && (
         <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/50 p-12 text-center text-gray-400">
           Selecione um jogador para ver as estatísticas
         </div>
       )}
 
-      {statsLoading && (
+      {(dashboardLoading || statsLoading) && (
         <div className="flex items-center justify-center h-48">
           <Spinner className="size-8 text-blue-500" />
         </div>
@@ -315,25 +289,21 @@ export default function StatsPage() {
                 <p className="text-gray-500">Sem dados suficientes.</p>
               ) : (
                 <div className="space-y-1">
-                  {/* Legend */}
                   <div className="flex gap-4 mb-4 text-xs text-gray-400">
                     <span className="flex items-center gap-1.5"><span className="inline-block h-2 w-3 rounded-sm bg-green-500" />Vitórias</span>
                     <span className="flex items-center gap-1.5"><span className="inline-block h-2 w-3 rounded-sm bg-red-500" />Derrotas</span>
                   </div>
-                  {/* Bars */}
                   {(() => {
                     const maxVal = Math.max(...weeklyChartData.map((w) => w.Vitórias + w.Derrotas), 1)
                     return weeklyChartData.map((w, i) => (
                       <div key={i} className="flex items-center gap-3 group">
                         <span className="w-12 shrink-0 text-right text-xs text-gray-500">{w.week}</span>
                         <div className="flex-1 flex gap-0.5 h-6 items-end">
-                          {/* Vitórias bar */}
                           <div
                             className="bg-green-500 rounded-sm transition-all"
                             style={{ width: `${(w.Vitórias / maxVal) * 50}%`, height: "100%" }}
                             title={`${w.Vitórias} vitórias`}
                           />
-                          {/* Derrotas bar */}
                           <div
                             className="bg-red-500 rounded-sm transition-all"
                             style={{ width: `${(w.Derrotas / maxVal) * 50}%`, height: "100%" }}

@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import { Users, Trophy } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
-import { getMatchHistory, Match } from "@/lib/services/matches"
 import { getToken, decodeToken } from "@/lib/auth"
 import { useServer } from "@/lib/server-context"
 
@@ -17,37 +16,11 @@ interface DuoStat {
 }
 
 export default function TeamsPage() {
-  const { selectedServer } = useServer()
-  const [matches, setMatches] = useState<Match[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [userId, setUserId] = useState<number | null>(null)
+  const { matches, dashboardLoading } = useServer()
 
-  useEffect(() => {
-    const token = getToken()
-    if (!token) return
-    const payload = decodeToken(token)
-    if (payload) setUserId(Number(payload.sub))
-  }, [])
-
-  useEffect(() => {
-    const fetchMatches = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const token = getToken()
-        if (!token) throw new Error("Usuário não autenticado.")
-        const data = await getMatchHistory(token, selectedServer)
-        setMatches(data)
-      } catch (err) {
-        setError("Falha ao carregar dados. Tente novamente.")
-        console.error(err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchMatches()
-  }, [selectedServer])
+  const token = getToken()
+  const payload = token ? decodeToken(token) : null
+  const userId = payload ? Number(payload.sub) : null
 
   const duoStats = useMemo((): DuoStat[] => {
     if (userId === null || matches.length === 0) return []
@@ -90,13 +63,9 @@ export default function TeamsPage() {
         <p className="text-gray-400">Com quem você mais ganha partidas</p>
       </div>
 
-      {isLoading ? (
+      {dashboardLoading ? (
         <div className="flex items-center justify-center h-48">
           <Spinner className="size-8 text-blue-500" />
-        </div>
-      ) : error ? (
-        <div className="rounded-lg border border-dashed border-red-500/50 bg-red-500/10 p-12 text-center">
-          <p className="text-red-400">{error}</p>
         </div>
       ) : duoStats.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/50 p-12 text-center">

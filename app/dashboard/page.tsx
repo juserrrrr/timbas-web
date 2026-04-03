@@ -1,43 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { getToken, decodeToken } from "@/lib/auth"
-import { getRanking, PlayerStats } from "@/lib/services/ranking"
-import { getMatchHistory, Match } from "@/lib/services/matches"
 import { Spinner } from "@/components/ui/spinner"
 import { Calendar, Trophy, Swords, TrendingUp, Star } from "lucide-react"
 import { useServer } from "@/lib/server-context"
 
 export default function DashboardPage() {
-  const { selectedServer } = useServer()
-  const [stats, setStats] = useState<PlayerStats | null>(null)
-  const [recentMatches, setRecentMatches] = useState<Match[]>([])
-  const [userId, setUserId] = useState<number | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { ranking, matches, dashboardLoading } = useServer()
 
-  useEffect(() => {
-    const load = async () => {
-      setIsLoading(true)
-      try {
-        const token = getToken()
-        if (!token) return
-        const payload = decodeToken(token)
-        if (!payload) return
-        const uid = Number(payload.sub)
-        setUserId(uid)
-        const [ranking, matches] = await Promise.all([
-          getRanking(token, selectedServer),
-          getMatchHistory(token, selectedServer),
-        ])
-        setStats(ranking.find((p) => p.userId === uid) ?? null)
-        setRecentMatches(matches.slice(0, 5))
-      } catch { /* silent */ }
-      finally { setIsLoading(false) }
-    }
-    load()
-  }, [selectedServer])
+  const token = getToken()
+  const payload = token ? decodeToken(token) : null
+  const userId = payload ? Number(payload.sub) : null
+  const stats = userId !== null ? (ranking.find((p) => p.userId === userId) ?? null) : null
+  const recentMatches = matches.slice(0, 5)
 
-  if (isLoading) {
+  if (dashboardLoading) {
     return <div className="flex h-64 items-center justify-center"><Spinner className="size-8 text-blue-500" /></div>
   }
 
@@ -114,7 +91,6 @@ export default function DashboardPage() {
 
               return (
                 <div key={match.id} className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-white/[0.02]">
-                  {/* Result dot */}
                   <div className={`h-2 w-2 flex-shrink-0 rounded-full ${pending ? "bg-yellow-400" : won ? "bg-green-400" : "bg-red-400"}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white">Partida #{match.id}</p>

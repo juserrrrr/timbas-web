@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import { Calendar, Trophy, Users, ShieldHalf, Swords, BarChart2, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
-import { getMatchHistory, Match } from "@/lib/services/matches"
 import { getToken, decodeToken } from "@/lib/auth"
 import { useServer } from "@/lib/server-context"
 
@@ -26,37 +25,11 @@ interface PersonStat {
 }
 
 export default function HistoryPage() {
-  const { selectedServer } = useServer()
-  const [matches, setMatches] = useState<Match[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [userId, setUserId] = useState<number | null>(null)
+  const { matches, dashboardLoading } = useServer()
 
-  useEffect(() => {
-    const token = getToken()
-    if (!token) return
-    const payload = decodeToken(token)
-    if (payload) setUserId(Number(payload.sub))
-  }, [])
-
-  useEffect(() => {
-    const fetchMatches = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const token = getToken()
-        if (!token) throw new Error("Usuário não autenticado.")
-        const data = await getMatchHistory(token, selectedServer)
-        setMatches(data)
-      } catch (err) {
-        setError("Falha ao carregar histórico. Tente novamente mais tarde.")
-        console.error(err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchMatches()
-  }, [selectedServer])
+  const token = getToken()
+  const payload = token ? decodeToken(token) : null
+  const userId = payload ? Number(payload.sub) : null
 
   const stats = useMemo(() => {
     if (userId === null || matches.length === 0) {
@@ -67,7 +40,7 @@ export default function HistoryPage() {
     const opponentMap: Record<number, { name: string; games: number; wins: number }> = {}
     const typeMap: Record<string, { games: number; wins: number }> = {}
     let bWins = 0, bGames = 0, rWins = 0, rGames = 0
-    const myMatchList: Match[] = []
+    const myMatchList = []
 
     for (const match of matches) {
       const inBlue = match.blueTeam.players.some((p) => p.userId === userId)
@@ -137,13 +110,9 @@ export default function HistoryPage() {
         <p className="text-gray-400">Veja todas as partidas jogadas e seus resultados</p>
       </div>
 
-      {isLoading ? (
+      {dashboardLoading ? (
         <div className="flex items-center justify-center h-48">
           <Spinner className="size-8 text-blue-500" />
-        </div>
-      ) : error ? (
-        <div className="rounded-lg border border-dashed border-red-500/50 bg-red-500/10 p-12 text-center">
-          <p className="text-red-400">{error}</p>
         </div>
       ) : matches.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/50 p-12 text-center">
@@ -282,7 +251,6 @@ export default function HistoryPage() {
                         : "border border-gray-800/40"
                   }`}
                 >
-                  {/* subtle top glow line */}
                   <div className={`pointer-events-none absolute inset-x-0 top-0 h-px ${
                     pending ? "bg-gradient-to-r from-transparent via-yellow-500/40 to-transparent"
                     : myTeamId !== null && iWon ? "bg-gradient-to-r from-transparent via-green-500/30 to-transparent"
