@@ -1,5 +1,6 @@
 import type React from "react"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
+import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { UserMenu } from "@/components/user-menu"
 import { ServerSelector } from "@/components/server-selector"
 import { ServerProvider } from "@/lib/server-context"
@@ -15,18 +16,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-red-800 opacity-[0.07] blur-[120px]" />
         </div>
 
-        <DashboardSidebar />
+        {/* Sidebar — desktop only */}
+        <div className="hidden md:block">
+          <DashboardSidebar />
+        </div>
 
         {/* Top bar */}
-        <header className="fixed left-16 right-0 top-0 z-40 flex h-14 items-center justify-end gap-3 border-b border-white/[0.06] bg-[#050508]/80 px-6 backdrop-blur-xl">
+        <header className="fixed left-0 right-0 top-0 z-40 flex h-14 items-center justify-end gap-3 border-b border-white/[0.06] bg-[#050508]/80 px-6 backdrop-blur-xl md:left-16">
           <ServerSelector />
           <div className="h-6 w-px bg-white/[0.08]" />
           <UserMenu />
         </header>
 
-        <main className="ml-16 pt-14 min-h-screen">
-          <div className="mx-auto max-w-7xl px-6 py-8">{children}</div>
+        <main className="pt-14 min-h-screen pb-14 md:ml-16 md:pb-0">
+          <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">{children}</div>
         </main>
+
+        {/* Bottom nav — mobile only */}
+        <div className="md:hidden">
+          <MobileBottomNav />
+        </div>
       </div>
     </ServerProvider>
   )
