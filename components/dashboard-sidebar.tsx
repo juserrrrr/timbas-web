@@ -69,8 +69,11 @@ export function DashboardSidebar() {
                   {item.label}
                 </span>
                 {!expanded && (
-                  <div className="pointer-events-none absolute left-full ml-3 z-50 hidden rounded-lg border border-white/[0.08] bg-[#0d0d12] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl group-hover:block whitespace-nowrap">
-                    {item.label}
+                  <div className="pointer-events-none absolute left-full ml-3 z-50 flex items-center gap-2 opacity-0 translate-x-1 transition-all duration-200 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto">
+                    <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                    <div className="rounded-lg border border-white/[0.08] bg-[#0d0d14]/95 px-3 py-1.5 text-xs font-semibold text-white shadow-xl shadow-black/40 backdrop-blur-sm whitespace-nowrap ring-1 ring-inset ring-white/[0.04]">
+                      {item.label}
+                    </div>
                   </div>
                 )}
               </Link>
@@ -100,8 +103,11 @@ export function DashboardSidebar() {
                   {item.label}
                 </span>
                 {!expanded && (
-                  <div className="pointer-events-none absolute left-full ml-3 z-50 hidden rounded-lg border border-white/[0.08] bg-[#0d0d12] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl group-hover:block whitespace-nowrap">
-                    {item.label}
+                  <div className="pointer-events-none absolute left-full ml-3 z-50 flex items-center gap-2 opacity-0 translate-x-1 transition-all duration-200 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto">
+                    <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                    <div className="rounded-lg border border-white/[0.08] bg-[#0d0d14]/95 px-3 py-1.5 text-xs font-semibold text-white shadow-xl shadow-black/40 backdrop-blur-sm whitespace-nowrap ring-1 ring-inset ring-white/[0.04]">
+                      {item.label}
+                    </div>
                   </div>
                 )}
               </Link>
