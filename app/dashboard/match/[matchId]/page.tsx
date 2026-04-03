@@ -261,16 +261,18 @@ export default function MatchPage() {
     runAction("finish", () => finishMatch(token!, matchIdNum, me!.discordId!, winnerSide))
   }
 
-  const handleVoiceMove = async (target: 'WAITING' | 'BLUE' | 'RED') => {
-    if (!token || !me?.discordId || !match?.ServerDiscordId) return
+  const handleVoiceMove = async () => {
+    if (!token || !me?.discordId) return
     setVoiceMoveLoading(true)
     setVoiceMoveError(null)
-    const result = await moveToVoiceChannel(token, match.ServerDiscordId, me.discordId, target)
-    if (!result.success) setVoiceMoveError(result.error ?? 'Erro ao mover canal')
-    else {
-      setVoiceStatus((prev) => prev ? { ...prev, channelType: target, channelName: result.channelName ?? prev.channelName } : prev)
+    try {
+      const result = await moveToRoom(token, matchIdNum)
+      // Optionally handle success result
+    } catch (e: any) {
+      setVoiceMoveError(e.message || 'Erro ao mover canal')
+    } finally {
+      setVoiceMoveLoading(false)
     }
-    setVoiceMoveLoading(false)
   }
 
   // ── Render helpers ─────────────────────────────────────────────────────
@@ -508,28 +510,12 @@ export default function MatchPage() {
               {/* Move buttons */}
               {voiceStatus !== null && (
                 <div className="flex flex-wrap gap-2">
-                  {match?.status === 'WAITING' && isInLobby && voiceStatus.channelType !== 'WAITING' && (
+                  {match?.status === 'STARTED' && myTeamSide && voiceStatus.channelType !== myTeamSide && (
                     <VoiceMoveBtn
-                      label="Ir p/ Aguardando"
-                      color="yellow"
+                      label={`Ir p/ Time ${myTeamSide === 'BLUE' ? 'Azul' : 'Vermelho'}`}
+                      color={myTeamSide === 'BLUE' ? 'blue' : 'red'}
                       loading={voiceMoveLoading}
-                      onClick={() => handleVoiceMove('WAITING')}
-                    />
-                  )}
-                  {match?.status === 'STARTED' && myTeamSide === 'BLUE' && voiceStatus.channelType !== 'BLUE' && (
-                    <VoiceMoveBtn
-                      label="Ir p/ Time Azul"
-                      color="blue"
-                      loading={voiceMoveLoading}
-                      onClick={() => handleVoiceMove('BLUE')}
-                    />
-                  )}
-                  {match?.status === 'STARTED' && myTeamSide === 'RED' && voiceStatus.channelType !== 'RED' && (
-                    <VoiceMoveBtn
-                      label="Ir p/ Time Vermelho"
-                      color="red"
-                      loading={voiceMoveLoading}
-                      onClick={() => handleVoiceMove('RED')}
+                      onClick={() => handleVoiceMove()}
                     />
                   )}
                 </div>

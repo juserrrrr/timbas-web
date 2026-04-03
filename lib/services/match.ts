@@ -144,3 +144,15 @@ export async function finishMatch(token: string, id: number, requesterDiscordId:
   }
   return res.json()
 }
+
+export async function moveToRoom(token: string, id: number) {
+  const res = await apiFetch(`${API_URL}/leagueMatch/${id}/move-to-room`, {
+    method: 'POST',
+    headers: h(token),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Erro ao mover para a sala' }))
+    throw new Error(err.message || 'Erro ao mover para a sala')
+  }
+  return res.json()
+}

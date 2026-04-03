@@ -88,7 +88,7 @@ export default function ActiveMatchesPage() {
     setLoading(true)
     getActiveMatches(token, selectedServer)
       .then(setMatches)
-      .catch((e) => setError(e.message))
+      .catch(() => setError("Não foi possível carregar as partidas. Tente novamente."))
       .finally(() => setLoading(false))
   }, [selectedServer, token])
 
@@ -105,6 +105,7 @@ export default function ActiveMatchesPage() {
         </div>
         <Link
           href="/dashboard/match/create"
+          prefetch={false}
           className="flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm font-semibold text-blue-300 transition-all hover:border-blue-500/50 hover:bg-blue-500/20"
         >
           <Plus className="h-4 w-4" />
@@ -127,6 +128,7 @@ export default function ActiveMatchesPage() {
           <p className="mt-1 text-sm text-gray-600">Crie uma nova partida ou aguarde alguém criar via Discord.</p>
           <Link
             href="/dashboard/match/create"
+            prefetch={false}
             className="mt-5 flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300 transition-all hover:bg-blue-500/20"
           >
             <Plus className="h-4 w-4" />
