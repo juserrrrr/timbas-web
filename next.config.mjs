@@ -10,9 +10,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'cdn.discordapp.com' },
     ],
   },
-  experimental: {
-    reactCompiler: true,
-  },
+  reactCompiler: true,
 }
 
 export default nextConfig

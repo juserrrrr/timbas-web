@@ -20,7 +20,7 @@ function getTokenRole(token: string): string | null {
   return decodeTokenPayload(token)?.role ?? null
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const token = request.cookies.get('timbas_token')?.value
   const { pathname } = request.nextUrl
 
