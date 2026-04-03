@@ -201,6 +201,12 @@ export default function MatchPage() {
               setMatch(event.payload)
             } else if (event.type === "match_expired") {
               setMatch((prev) => prev ? { ...prev, status: "EXPIRED" } : prev)
+            } else if (event.type === "voice_status" && event.payload.discordId === me?.discordId) {
+              setVoiceStatus({
+                channelId: event.payload.channelId,
+                channelName: event.payload.channelName,
+                channelType: event.payload.channelType,
+              })
             }
           } catch {}
         }
@@ -214,18 +220,12 @@ export default function MatchPage() {
     }
   }, [matchIdNum])
 
-  // ── Voice status polling ──────────────────────────────────────────────
+  // ── Voice status: fetch inicial + updates via SSE (voiceStateUpdate) ──────
   useEffect(() => {
     if (!token || !me?.discordId || !match?.ServerDiscordId) return
     if (!['WAITING', 'STARTED'].includes(match.status)) return
-
-    const poll = () => {
-      getVoiceStatus(token, match.ServerDiscordId, me.discordId!).then(setVoiceStatus)
-    }
-    poll()
-    const interval = setInterval(poll, 6000)
-    return () => clearInterval(interval)
-  }, [match?.status, match?.ServerDiscordId, me?.discordId, token])
+    getVoiceStatus(token, match.ServerDiscordId, me.discordId!).then(setVoiceStatus)
+  }, [match?.ServerDiscordId, me?.discordId, token])
 
   // ── Auto-dismiss action error ────────────────────────────────────────────
   useEffect(() => {
