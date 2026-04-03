@@ -251,14 +251,7 @@ export default function MatchPage() {
     }
   }, [token])
 
-  const handleJoin = () => {
-    // voiceStatus !== null means bot is online — enforce voice channel requirement
-    if (voiceStatus !== null && !voiceStatus.channelId) {
-      setActionError('Você precisa estar em um canal de voz no Discord para entrar na partida.')
-      return
-    }
-    runAction("join", () => joinMatch(token!, matchIdNum, me!.discordId!))
-  }
+  const handleJoin = () => runAction("join", () => joinMatch(token!, matchIdNum, me!.discordId!))
   const handleLeave = () => runAction("leave", () => leaveMatch(token!, matchIdNum, me!.discordId!))
   const handleDraw = () => runAction("draw", () => drawTeams(token!, matchIdNum, me!.discordId!))
   const handleStart = () => runAction("start", () => startMatch(token!, matchIdNum, me!.discordId!))
@@ -507,7 +500,7 @@ export default function MatchPage() {
                       ? 'Bot offline'
                       : voiceStatus.channelId
                         ? voiceStatus.channelName
-                        : 'Não está em um canal de voz'}
+                        : 'Canal não detectado'}
                   </p>
                 </div>
               </div>
