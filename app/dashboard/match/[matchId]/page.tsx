@@ -111,12 +111,20 @@ function PlayerCard({
   )
 }
 
-function WaitingPlayer({ playerLayout }: { playerLayout: UserTeamLeague }) {
+function WaitingPlayer({
+  playerLayout,
+  isCreator,
+  onKick,
+}: {
+  playerLayout: UserTeamLeague
+  isCreator: boolean
+  onKick: (discordId: string) => void
+}) {
   const player = playerLayout.user
   const avatarUrl = getDiscordAvatarUrl(player.discordId, player.avatar || undefined, 40)
   return (
-    <div className="group relative flex flex-col items-center gap-1">
-      <div className="h-9 w-9 overflow-hidden rounded-full ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-110">
+    <div className="group relative flex w-14 flex-col items-center gap-1">
+      <div className="relative h-9 w-9 overflow-hidden rounded-full ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-110">
         {avatarUrl ? (
           <img src={avatarUrl} alt={player.name} className="h-full w-full object-cover" />
         ) : (
@@ -125,7 +133,16 @@ function WaitingPlayer({ playerLayout }: { playerLayout: UserTeamLeague }) {
           </div>
         )}
       </div>
-      <span className="max-w-[52px] truncate text-[10px] text-gray-500">{player.name}</span>
+      {isCreator && (
+        <button
+          onClick={() => onKick(player.discordId)}
+          className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white transition-all hover:bg-red-600 hover:scale-110 group-hover:flex"
+          title="Expulsar jogador"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+      <span className="w-full text-center truncate text-[10px] text-gray-500">{player.name}</span>
     </div>
   )
 }
@@ -255,6 +272,16 @@ export default function MatchPage() {
   const handleFinish = (winnerSide: "BLUE" | "RED") => {
     setShowFinishModal(false)
     runAction("finish", () => finishMatch(token!, matchIdNum, me!.discordId!, winnerSide))
+  }
+
+  const handleCancel = () => {
+    if (!confirm('Deseja realmente encerrar e apagar a partida?')) return
+    runAction("cancel", () => cancelMatch(token!, matchIdNum, me!.discordId!))
+  }
+
+  const handleKick = (discordId: string) => {
+    if (!confirm('Deseja realmente expulsar este jogador da fila?')) return
+    runAction("kick", () => kickPlayer(token!, matchIdNum, me!.discordId!, discordId))
   }
 
   const handleVoiceMove = async () => {
@@ -464,10 +491,10 @@ export default function MatchPage() {
             </div>
             <div className="flex flex-wrap gap-3 justify-center">
               {qPlayers.map((p) => (
-                <WaitingPlayer key={p.user.discordId} playerLayout={p} />
+                <WaitingPlayer key={p.user.discordId} playerLayout={p} isCreator={!!isCreator} onKick={handleKick} />
               ))}
               {Array.from({ length: Math.max(0, maxPlayers - qPlayers.length) }, (_, i) => (
-                <div key={`slot-${i}`} className="flex flex-col items-center gap-1">
+                <div key={`slot-${i}`} className="flex w-14 flex-col items-center gap-1">
                   <div className="h-9 w-9 rounded-full border border-dashed border-white/10" />
                   <span className="text-[10px] text-gray-700">—</span>
                 </div>
@@ -555,6 +582,17 @@ export default function MatchPage() {
                 color="red"
                 loading={actionLoading === "finish"}
                 onClick={() => setShowFinishModal(true)}
+              />
+            )}
+
+            {isCreator && match.status !== "FINISHED" && match.status !== "EXPIRED" && (
+              <ActionBtn
+                id="btn-cancel"
+                icon={<Trash className="h-4 w-4" />}
+                label="Encerrar"
+                color="red"
+                loading={actionLoading === "cancel"}
+                onClick={handleCancel}
               />
             )}
 

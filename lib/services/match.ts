@@ -145,6 +145,32 @@ export async function finishMatch(token: string, id: number, requesterDiscordId:
   return res.json()
 }
 
+export async function cancelMatch(token: string, id: number, requesterDiscordId: string) {
+  const res = await apiFetch(`${API_URL}/leagueMatch/${id}/cancel`, {
+    method: 'POST',
+    headers: h(token),
+    body: JSON.stringify({ requesterDiscordId }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Erro ao encerrar' }))
+    throw new Error(err.message || 'Erro ao encerrar a partida')
+  }
+  return res.json()
+}
+
+export async function kickPlayer(token: string, id: number, requesterDiscordId: string, targetDiscordId: string) {
+  const res = await apiFetch(`${API_URL}/leagueMatch/${id}/kick`, {
+    method: 'POST',
+    headers: h(token),
+    body: JSON.stringify({ requesterDiscordId, targetDiscordId }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Erro ao expulsar jogador' }))
+    throw new Error(err.message || 'Erro ao expulsar jogador')
+  }
+  return res.json()
+}
+
 export async function moveToRoom(token: string, id: number) {
   const res = await apiFetch(`${API_URL}/leagueMatch/${id}/move-to-room`, {
     method: 'POST',
