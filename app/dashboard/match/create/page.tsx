@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Swords, Users, Shuffle, ChevronRight } from "lucide-react"
+import { Swords, Shuffle, ChevronRight } from "lucide-react"
 import { getToken } from "@/lib/auth"
 import { createOnlineMatch } from "@/lib/services/match"
-import { useServer, SERVERS } from "@/lib/server-context"
+import { useServer } from "@/lib/server-context"
 
 const SIZE_OPTIONS = [
   { value: 1, label: "1v1", desc: "Duelo rápido entre dois jogadores" },
@@ -26,12 +26,11 @@ export default function CreateMatchPage() {
 
   const [size, setSize] = useState(5)
   const [format, setFormat] = useState("ALEATORIO")
-  const [server, setServer] = useState(selectedServer ?? SERVERS[0].id)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleCreate = async () => {
-    if (!token) return
+    if (!token || !selectedServer) return
     if (format === "ALEATORIO_COMPLETO" && size !== 5) {
       setError("Aleatório Completo só está disponível para 5v5.")
       return
@@ -40,7 +39,7 @@ export default function CreateMatchPage() {
     setError(null)
     try {
       const match = await createOnlineMatch(token, {
-        discordServerId: server,
+        discordServerId: selectedServer,
         matchFormat: format,
         playersPerTeam: size,
       })
@@ -58,28 +57,6 @@ export default function CreateMatchPage() {
       <div>
         <h1 className="text-3xl font-black text-white">Nova Partida</h1>
         <p className="mt-1 text-sm text-gray-500">Configure e crie uma partida online. O embed será enviado automaticamente para o canal do Discord.</p>
-      </div>
-
-      {/* Server */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-300">
-          <Users className="h-4 w-4 text-blue-400" /> Servidor
-        </h2>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
-          {SERVERS.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setServer(s.id)}
-              className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition-all ${
-                server === s.id
-                  ? "border-blue-500/40 bg-blue-500/10 text-blue-300"
-                  : "border-white/[0.06] bg-white/[0.02] text-gray-400 hover:border-white/[0.12] hover:text-white"
-              }`}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Size */}
