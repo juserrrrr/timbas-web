@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Swords, Shuffle, ChevronRight } from "lucide-react"
 import { getToken } from "@/lib/auth"
 import { createOnlineMatch } from "@/lib/services/match"
 import { useServer } from "@/lib/server-context"
+import { useNavigation } from "@/lib/navigation-context"
 
 const SIZE_OPTIONS = [
   { value: 1, label: "1v1", desc: "Duelo rápido entre dois jogadores" },
@@ -20,7 +20,7 @@ const FORMAT_OPTIONS = [
 ]
 
 export default function CreateMatchPage() {
-  const router = useRouter()
+  const { navigate } = useNavigation()
   const token = getToken()
   const { selectedServer } = useServer()
 
@@ -43,11 +43,10 @@ export default function CreateMatchPage() {
         matchFormat: format,
         playersPerTeam: size,
       })
-      router.push(`/dashboard/match/${match.id}`)
+      navigate(`/dashboard/match/${match.id}`)
     } catch (e: any) {
-      setError(e.message || "Erro ao criar partida")
-    } finally {
       setLoading(false)
+      setError(e.message || "Erro ao criar partida")
     }
   }
 
