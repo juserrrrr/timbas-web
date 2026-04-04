@@ -8,17 +8,17 @@ import { Trophy, History, Settings, BarChart3, Home, Users, ChevronRight, Swords
 import { useNavigation } from "@/lib/navigation-context"
 
 const NAV = [
-  { icon: Home,     label: "Início",        href: "/dashboard",          color: "text-blue-400",    glow: "bg-blue-500/10",    active: "border-blue-500/20" },
-  { icon: Radio,    label: "Ao Vivo",       href: "/dashboard/active",   color: "text-emerald-400", glow: "bg-emerald-500/10", active: "border-emerald-500/20" },
-  { icon: Trophy,   label: "Ranking",       href: "/dashboard/ranking",  color: "text-yellow-400",  glow: "bg-yellow-500/10",  active: "border-yellow-500/20" },
-  { icon: History,  label: "Histórico",     href: "/dashboard/history",  color: "text-purple-400",  glow: "bg-purple-500/10",  active: "border-purple-500/20" },
-  { icon: Users,    label: "Duplas",        href: "/dashboard/teams",    color: "text-green-400",   glow: "bg-green-500/10",   active: "border-green-500/20" },
-  { icon: BarChart3,label: "Estatísticas",  href: "/dashboard/stats",    color: "text-red-400",     glow: "bg-red-500/10",     active: "border-red-500/20" },
-  { icon: Swords,   label: "Comparação",    href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "border-orange-500/20" },
+  { icon: Home,     label: "Início",        href: "/dashboard",          color: "text-blue-400",    glow: "bg-blue-500/10",    active: "ring-blue-500/20" },
+  { icon: Radio,    label: "Ao Vivo",       href: "/dashboard/active",   color: "text-emerald-400", glow: "bg-emerald-500/10", active: "ring-emerald-500/20" },
+  { icon: Trophy,   label: "Ranking",       href: "/dashboard/ranking",  color: "text-yellow-400",  glow: "bg-yellow-500/10",  active: "ring-yellow-500/20" },
+  { icon: History,  label: "Histórico",     href: "/dashboard/history",  color: "text-purple-400",  glow: "bg-purple-500/10",  active: "ring-purple-500/20" },
+  { icon: Users,    label: "Duplas",        href: "/dashboard/teams",    color: "text-green-400",   glow: "bg-green-500/10",   active: "ring-green-500/20" },
+  { icon: BarChart3,label: "Estatísticas",  href: "/dashboard/stats",    color: "text-red-400",     glow: "bg-red-500/10",     active: "ring-red-500/20" },
+  { icon: Swords,   label: "Comparação",    href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "ring-orange-500/20" },
 ]
 
 const BOTTOM = [
-  { icon: Settings, label: "Configurações", href: "/dashboard/settings", color: "text-gray-400", glow: "bg-white/5", active: "border-white/10" },
+  { icon: Settings, label: "Configurações", href: "/dashboard/settings", color: "text-gray-400", glow: "bg-white/5", active: "ring-white/10" },
 ]
 
 type NavItem = typeof NAV[number]
@@ -29,10 +29,10 @@ function NavLink({ item, isActive, expanded }: { item: NavItem; isActive: boolea
     <Link
       href={item.href}
       onClick={() => { if (!isActive) start() }}
-      className={`group relative flex w-full items-center overflow-hidden rounded-xl border transition-all duration-300 ${
+      className={`group relative flex w-full items-center overflow-hidden rounded-xl ring-1 ring-inset transition-all duration-300 ${
         isActive
           ? `${item.active} ${item.glow} ${item.color}`
-          : "border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
+          : "ring-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
       }`}
     >
       {/* Icon — fixed size, never moves */}
