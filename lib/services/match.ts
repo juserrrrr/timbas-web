@@ -171,6 +171,21 @@ export async function kickPlayer(token: string, id: number, requesterDiscordId: 
   return res.json()
 }
 
+export interface VoiceStatus {
+  channelId: string | null
+  channelName: string | null
+  channelType: 'WAITING' | 'BLUE' | 'RED' | 'OTHER' | null
+}
+
+export async function getVoiceStatus(token: string, guildId: string, discordId: string): Promise<VoiceStatus | null> {
+  const res = await apiFetch(
+    `${API_URL}/leagueMatch/server/${encodeURIComponent(guildId)}/voice-status?discordId=${encodeURIComponent(discordId)}`,
+    { headers: h(token), cache: 'no-store' },
+  )
+  if (!res.ok) return null
+  return res.json()
+}
+
 export async function moveToRoom(token: string, id: number) {
   const res = await apiFetch(`${API_URL}/leagueMatch/${id}/move-to-room`, {
     method: 'POST',
