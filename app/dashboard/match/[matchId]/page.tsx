@@ -18,6 +18,8 @@ import {
   Mic,
   MicOff,
   MoveRight,
+  Trash,
+  X,
 } from "lucide-react"
 import { getToken, decodeToken, getDiscordAvatarUrl } from "@/lib/auth"
 import { apiFetch } from "@/lib/api"
@@ -28,6 +30,8 @@ import {
   drawTeams,
   startMatch,
   finishMatch,
+  cancelMatch,
+  kickPlayer,
   moveToRoom,
   type CustomLeagueMatch,
   type UserTeamLeague,
