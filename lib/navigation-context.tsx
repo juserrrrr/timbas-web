@@ -13,7 +13,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
 
   useEffect(() => {
-    setPending(false)
+    const t = setTimeout(() => setPending(false), 200)
+    return () => clearTimeout(t)
   }, [pathname])
 
   return (

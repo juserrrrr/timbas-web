@@ -29,7 +29,7 @@ function NavItem({ icon: Icon, label, href, color, active }: { icon: React.Eleme
   const isActive = pathname === href
   const { start } = useNavigation()
   return (
-    <Link href={href} prefetch={false} onClick={start} className="flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 py-1">
+    <Link href={href} prefetch={false} onClick={() => { if (!isActive) start() }} className="flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 py-1">
       <Icon className={`h-5 w-5 transition-colors ${isActive ? active : "text-gray-500"}`} />
       <span className={`text-[10px] font-medium transition-colors ${isActive ? "text-white" : "text-gray-600"}`}>{label}</span>
     </Link>
@@ -69,7 +69,7 @@ export function MobileBottomNav() {
                   key={item.href}
                   href={item.href}
                   prefetch={false}
-                  onClick={() => { start(); setOpen(false) }}
+                  onClick={() => { if (!isActive) start(); setOpen(false) }}
                   className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition-colors ${
                     isActive ? `${item.glow} border ${item.active} ${item.color}` : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
                   }`}
@@ -93,7 +93,7 @@ export function MobileBottomNav() {
         <Link
           href={RANKING.href}
           prefetch={false}
-          onClick={start}
+          onClick={() => { if (!isRankingActive) start() }}
           className="relative flex flex-1 cursor-pointer flex-col items-center justify-center"
         >
           <div className={`flex h-11 w-11 -translate-y-3 flex-col items-center justify-center rounded-full border transition-all duration-200 ${

@@ -86,7 +86,7 @@ function PlayerCard({
       side === "red" ? "flex-row-reverse" : ""
     } ${
       empty
-        ? "border-white/5 bg-white/[0.02] opacity-40"
+        ? "border-white/10 bg-white/[0.03] opacity-60"
         : `${sideBg} shadow-lg`
     }`}>
       {/* Avatar */}
@@ -94,7 +94,7 @@ function PlayerCard({
         {avatarUrl && !empty ? (
           <img src={avatarUrl} alt={player?.name} className="h-full w-full object-cover" />
         ) : (
-          <div className={`flex h-full w-full items-center justify-center text-xs font-bold ${empty ? "bg-white/5 text-gray-600" : `bg-gradient-to-br ${side === "blue" ? "from-blue-600/50 to-blue-900/50 text-blue-300" : "from-red-600/50 to-red-900/50 text-red-300"}`}`}>
+          <div className={`flex h-full w-full items-center justify-center text-xs font-bold ${empty ? "bg-white/10 text-gray-400" : `bg-gradient-to-br ${side === "blue" ? "from-blue-600/50 to-blue-900/50 text-blue-300" : "from-red-600/50 to-red-900/50 text-red-300"}`}`}>
             {empty ? "?" : player?.name.slice(0, 2).toUpperCase()}
           </div>
         )}
@@ -360,7 +360,7 @@ export default function MatchPage() {
 
   // ── Loading / Error ────────────────────────────────────────────────────
   if (loading) {
-    return <LoadingState message="Carregando partida" />
+    return <LoadingState />
   }
 
   if (error || !match) {
