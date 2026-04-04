@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { LogOut, Server, Info, Code2, MessageSquare, Zap, Shield, Clock, ExternalLink } from "lucide-react"
-import { LoadingState } from "@/components/ui/loading-state"
+
 import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
 import { useServer, SERVERS } from "@/lib/server-context"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -23,7 +23,7 @@ export default function SettingsPage() {
     router.push("/login")
   }
 
-  if (!user) return <LoadingState />
+  if (!user) return null
 
   return (
     <div className="animate-in fade-in duration-700 max-w-2xl space-y-6">

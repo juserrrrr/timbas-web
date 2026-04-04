@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { TrendingUp, Target, Zap, Shield, User } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { LoadingState } from "@/components/ui/loading-state"
 import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
 import { getToken, decodeToken } from "@/lib/auth"
 import { useServer } from "@/lib/server-context"
@@ -157,10 +156,6 @@ export default function StatsPage() {
         <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center text-sm text-gray-500 font-medium animate-in fade-in duration-500">
           Selecione um jogador para ver as estatísticas
         </div>
-      )}
-
-      {(dashboardLoading || statsLoading) && (
-        <LoadingState />
       )}
 
       {detail && selectedPlayer && !statsLoading && (

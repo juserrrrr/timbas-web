@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { Users, Trophy } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import { LoadingState } from "@/components/ui/loading-state"
+
 import { getToken, decodeToken } from "@/lib/auth"
 import { useServer } from "@/lib/server-context"
 
@@ -56,7 +56,7 @@ export default function TeamsPage() {
 
   const top3 = duoStats.slice(0, 3)
 
-  if (dashboardLoading) return <LoadingState />
+  if (dashboardLoading) return null
 
   return (
     <div className="animate-in fade-in duration-700 space-y-6">

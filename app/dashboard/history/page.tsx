@@ -5,7 +5,6 @@ import { Calendar, Trophy, Users, ShieldHalf, Swords, BarChart2, ExternalLink } 
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { LoadingState } from "@/components/ui/loading-state"
 import { getToken, decodeToken } from "@/lib/auth"
 import { useServer } from "@/lib/server-context"
 
@@ -110,9 +109,7 @@ export default function HistoryPage() {
         <p className="text-sm text-gray-500">Veja todas as partidas jogadas e seus resultados</p>
       </div>
 
-      {dashboardLoading ? (
-        <LoadingState />
-      ) : matches.length === 0 ? (
+      {dashboardLoading ? null : matches.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center animate-in fade-in zoom-in duration-500">
           <Users className="mx-auto mb-3 h-10 w-10 text-gray-600" />
           <p className="font-semibold text-gray-400">Nenhuma partida encontrada</p>

@@ -1,7 +1,7 @@
 "use client"
 
 import { getToken, decodeToken } from "@/lib/auth"
-import { LoadingState } from "@/components/ui/loading-state"
+
 import { Calendar, Trophy, Swords, TrendingUp, Star } from "lucide-react"
 import { useServer } from "@/lib/server-context"
 
@@ -14,9 +14,7 @@ export default function DashboardPage() {
   const stats = userId !== null ? (ranking.find((p) => p.userId === userId) ?? null) : null
   const recentMatches = matches.slice(0, 5)
 
-  if (dashboardLoading) {
-    return <LoadingState />
-  }
+  if (dashboardLoading) return null
 
   const statCards = [
     { label: "Partidas",   value: stats?.totalGames ?? "—", icon: Swords,     color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
