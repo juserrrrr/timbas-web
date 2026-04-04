@@ -5,14 +5,8 @@ import { getToken } from "@/lib/auth"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { getMatchHistory, Match } from "@/lib/services/matches"
 
-export const SERVERS = [
-  { id: "779382528821166100", name: "Timbas" },
-  { id: "465211051865276426", name: "Entrosa Não" },
-  { id: "1187881256508211321", name: "Fusão" },
-  { id: "4", name: "TimbasBot Official" },
-]
-
-export const SERVER_COOKIE = "timbas_server"
+import { SERVERS, SERVER_COOKIE } from "@/lib/servers"
+export { SERVERS, SERVER_COOKIE }
 
 function saveServerCookie(id: string) {
   if (typeof document === "undefined") return

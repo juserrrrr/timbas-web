@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Radio, Plus } from "lucide-react"
 import { ActiveMatchesList } from "./active-matches-list"
-import { SERVERS, SERVER_COOKIE } from "@/lib/server-context"
+import { SERVERS, SERVER_COOKIE } from "@/lib/servers"
 import type { CustomLeagueMatch } from "@/lib/services/match"
 
 export const dynamic = "force-dynamic"
@@ -20,6 +20,7 @@ export default async function ActiveMatchesPage() {
 
   let matches: CustomLeagueMatch[] = []
   let error: string | undefined
+  let status = 0
 
   try {
     const res = await fetch(
@@ -29,16 +30,18 @@ export default async function ActiveMatchesPage() {
         cache: "no-store",
       },
     )
+    status = res.status
     if (res.ok) {
       matches = await res.json()
-    } else if (res.status === 401) {
-      redirect("/login")
     } else {
       error = "Não foi possível carregar as partidas. Tente novamente."
     }
   } catch {
     error = "Não foi possível carregar as partidas. Tente novamente."
   }
+
+  // redirect fora do try/catch — Next.js redirect() lança NEXT_REDIRECT internamente
+  if (status === 401) redirect("/login")
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
