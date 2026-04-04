@@ -69,12 +69,12 @@ export function DashboardSidebar() {
         <div className="fixed inset-0 z-40 cursor-pointer bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setExpanded(false)} />
       )}
 
-      <aside className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-white/[0.06] bg-[#07070c] transition-[width] duration-300 ${expanded ? "w-[220px]" : "w-14"}`}>
+      <aside className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-white/[0.06] bg-[#07070c] transition-[width] duration-300 ${expanded ? "w-[220px]" : "w-16"}`}>
 
         {/* Logo */}
         <div className="flex h-14 flex-shrink-0 items-center overflow-hidden border-b border-white/[0.06]">
           <Link href="/dashboard" prefetch={false} className="flex items-center">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center">
+            <div className="flex h-14 w-16 flex-shrink-0 items-center justify-center">
               <div className="h-8 w-8 overflow-hidden rounded-lg ring-1 ring-white/10">
                 <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={32} height={32} className="object-cover" />
               </div>
@@ -88,14 +88,14 @@ export function DashboardSidebar() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-0.5 p-2">
+        <nav className="flex-1 space-y-0.5 py-2 px-3">
           {NAV.map((item) => (
             <NavLink key={item.href} item={item} isActive={pathname === item.href} expanded={expanded} />
           ))}
         </nav>
 
         {/* Bottom */}
-        <div className="flex-shrink-0 space-y-0.5 border-t border-white/[0.06] p-2">
+        <div className="flex-shrink-0 space-y-0.5 border-t border-white/[0.06] py-2 px-3">
           {BOTTOM.map((item) => (
             <NavLink key={item.href} item={item} isActive={pathname === item.href} expanded={expanded} />
           ))}

@@ -26,7 +26,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="content-enter space-y-8">
+    <div className="animate-in fade-in duration-700 space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>

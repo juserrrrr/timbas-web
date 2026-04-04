@@ -56,16 +56,16 @@ export default function TeamsPage() {
 
   const top3 = duoStats.slice(0, 3)
 
+  if (dashboardLoading) return <LoadingState />
+
   return (
-    <div className="content-enter space-y-6">
+    <div className="animate-in fade-in duration-700 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Melhores Duplas</h1>
         <p className="text-gray-400">Com quem você mais ganha partidas</p>
       </div>
 
-      {dashboardLoading ? (
-        <LoadingState className="min-h-[200px]" />
-      ) : duoStats.length === 0 ? (
+      {duoStats.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/50 p-12 text-center">
           <Users className="mx-auto mb-3 h-10 w-10 text-gray-600" />
           <p className="text-gray-400">Nenhuma partida encontrada para este servidor.</p>

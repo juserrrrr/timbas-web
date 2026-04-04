@@ -84,7 +84,7 @@ export function RankingSection() {
   const selectedServerName = SERVERS.find((s) => s.id === selectedServer)?.name || "Servidor"
 
   return (
-    <div className="content-enter space-y-6">
+    <div className="animate-in fade-in duration-700 space-y-6">
       {/* Header */}
       <div>
         <h1 className="mb-2 text-4xl font-bold md:text-5xl">

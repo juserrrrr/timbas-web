@@ -26,7 +26,7 @@ export default function SettingsPage() {
   if (!user) return <LoadingState />
 
   return (
-    <div className="content-enter max-w-2xl space-y-6">
+    <div className="animate-in fade-in duration-700 max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-black text-white">Configurações</h1>
         <p className="mt-1 text-sm text-gray-500">Preferências do dashboard</p>

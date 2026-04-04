@@ -201,7 +201,7 @@ export default function VersusPage() {
   const winner = overallWinner()
 
   return (
-    <div className="content-enter space-y-6">
+    <div className="animate-in fade-in duration-700 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Comparação</h1>
         <p className="text-gray-400">Compare o desempenho de dois jogadores</p>
