@@ -10,7 +10,7 @@ interface LoadingStateProps {
 
 export function LoadingState({ className, message }: LoadingStateProps) {
   return (
-    <div className={cn("-mx-6 -my-8 flex min-h-[400px] flex-1 items-center justify-center animate-in fade-in duration-700", className)}>
+    <div className={cn("-mx-6 -my-8 flex min-h-[400px] flex-1 items-center justify-center", className)}>
       <div className="flex flex-col items-center gap-4">
         <div className="relative flex h-20 w-20 items-center justify-center">
           {/* Camadas de brilho animadas */}
