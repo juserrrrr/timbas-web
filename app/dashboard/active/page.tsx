@@ -1,8 +1,8 @@
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import Link from "next/link"
-import { Radio, Plus } from "lucide-react"
+import { Radio } from "lucide-react"
 import { ActiveMatchesList } from "./active-matches-list"
+import { CreateMatchLink } from "./create-match-link"
 import { SERVERS, SERVER_COOKIE } from "@/lib/servers"
 import type { CustomLeagueMatch } from "@/lib/services/match"
 
@@ -55,14 +55,7 @@ export default async function ActiveMatchesPage() {
             Partidas ativas em <span className="text-gray-300">{serverName}</span>
           </p>
         </div>
-        <Link
-          href="/dashboard/match/create"
-          prefetch={false}
-          className="flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm font-semibold text-blue-300 transition-all hover:border-blue-500/50 hover:bg-blue-500/20"
-        >
-          <Plus className="h-4 w-4" />
-          Nova partida
-        </Link>
+        <CreateMatchLink />
       </div>
 
       <ActiveMatchesList matches={matches} serverName={serverName} error={error} />

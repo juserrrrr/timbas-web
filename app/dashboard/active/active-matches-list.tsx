@@ -79,6 +79,8 @@ interface Props {
 }
 
 export function ActiveMatchesList({ matches, serverName, error }: Props) {
+  const { start } = useNavigation()
+
   if (error) {
     return (
       <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center text-sm text-red-400">
@@ -98,6 +100,7 @@ export function ActiveMatchesList({ matches, serverName, error }: Props) {
         <Link
           href="/dashboard/match/create"
           prefetch={false}
+          onClick={start}
           className="mt-5 flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300 transition-all hover:bg-blue-500/20"
         >
           <Plus className="h-4 w-4" />
