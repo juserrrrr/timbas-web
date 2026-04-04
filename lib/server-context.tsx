@@ -12,6 +12,14 @@ export const SERVERS = [
   { id: "4", name: "TimbasBot Official" },
 ]
 
+export const SERVER_COOKIE = "timbas_server"
+
+function saveServerCookie(id: string) {
+  if (typeof document === "undefined") return
+  const secure = window.location.protocol === "https:" ? "; Secure" : ""
+  document.cookie = `${SERVER_COOKIE}=${encodeURIComponent(id)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax${secure}`
+}
+
 const CACHE_TTL = 5 * 60 * 1000
 
 interface CacheEntry {
@@ -42,7 +50,20 @@ const ServerContext = createContext<ServerContextType>({
 })
 
 export function ServerProvider({ children }: { children: React.ReactNode }) {
-  const [selectedServer, setSelectedServer] = useState(SERVERS[0].id)
+  const [selectedServer, setSelectedServerState] = useState(SERVERS[0].id)
+
+  useEffect(() => {
+    const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${SERVER_COOKIE}=([^;]*)`))
+    if (match) {
+      const saved = decodeURIComponent(match[1])
+      if (SERVERS.find((s) => s.id === saved)) setSelectedServerState(saved)
+    }
+  }, [])
+
+  const setSelectedServer = (id: string) => {
+    saveServerCookie(id)
+    setSelectedServerState(id)
+  }
   const [ranking, setRanking] = useState<PlayerStats[]>([])
   const [matches, setMatches] = useState<Match[]>([])
   const [dashboardLoading, setDashboardLoading] = useState(true)
