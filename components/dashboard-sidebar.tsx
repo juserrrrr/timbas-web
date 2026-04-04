@@ -29,6 +29,7 @@ function NavLink({ item, isActive, expanded }: { item: NavItem; isActive: boolea
     <Link
       href={item.href}
       onClick={(e) => { e.preventDefault(); if (!isActive) navigate(item.href) }}
+      prefetch={false}
       className={`group relative flex w-full items-center overflow-hidden rounded-xl ring-1 ring-inset transition-all duration-300 ${
         isActive
           ? `${item.active} ${item.glow} ${item.color}`
