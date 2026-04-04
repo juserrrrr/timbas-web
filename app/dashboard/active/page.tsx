@@ -1,47 +1,38 @@
-import { cookies } from "next/headers"
-import { redirect } from "next/navigation"
+"use client"
+
+import { useState, useEffect } from "react"
 import { Radio } from "lucide-react"
 import { ActiveMatchesList } from "./active-matches-list"
 import { CreateMatchLink } from "./create-match-link"
-import { SERVERS, SERVER_COOKIE } from "@/lib/servers"
+import { useServer } from "@/lib/server-context"
+import { getToken } from "@/lib/auth"
+import { apiFetch, authHeaders } from "@/lib/api"
 import type { CustomLeagueMatch } from "@/lib/services/match"
 
-export const dynamic = "force-dynamic"
+export default function ActiveMatchesPage() {
+  const { selectedServer, serverName } = useServer()
+  const [matches, setMatches] = useState<CustomLeagueMatch[] | null>(null)
+  const [error, setError] = useState<string | undefined>()
 
-export default async function ActiveMatchesPage() {
-  const cookieStore = await cookies()
-  const token = cookieStore.get("timbas_token")?.value
+  useEffect(() => {
+    const token = getToken()
+    if (!token) return
 
-  if (!token) redirect("/login")
+    setMatches(null)
+    setError(undefined)
 
-  const rawServer = cookieStore.get(SERVER_COOKIE)?.value
-  const selectedServer = SERVERS.find((s) => s.id === rawServer)?.id ?? SERVERS[0].id
-  const serverName = SERVERS.find((s) => s.id === selectedServer)?.name ?? "Servidor"
+    apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/leagueMatch/server/${selectedServer}/active`, {
+      headers: authHeaders(token),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error()
+        return res.json()
+      })
+      .then((data: CustomLeagueMatch[]) => setMatches(data))
+      .catch(() => setError("Não foi possível carregar as partidas. Tente novamente."))
+  }, [selectedServer])
 
-  let matches: CustomLeagueMatch[] = []
-  let error: string | undefined
-  let status = 0
-
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/leagueMatch/server/${selectedServer}/active`,
-      {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        cache: "no-store",
-      },
-    )
-    status = res.status
-    if (res.ok) {
-      matches = await res.json()
-    } else {
-      error = "Não foi possível carregar as partidas. Tente novamente."
-    }
-  } catch {
-    error = "Não foi possível carregar as partidas. Tente novamente."
-  }
-
-  // redirect fora do try/catch — Next.js redirect() lança NEXT_REDIRECT internamente
-  if (status === 401) redirect("/login")
+  if (matches === null && !error) return null
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
@@ -58,7 +49,7 @@ export default async function ActiveMatchesPage() {
         <CreateMatchLink />
       </div>
 
-      <ActiveMatchesList matches={matches} serverName={serverName} error={error} />
+      <ActiveMatchesList matches={matches ?? []} serverName={serverName} error={error} />
     </div>
   )
 }
