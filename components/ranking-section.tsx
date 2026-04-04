@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trophy, Medal, ChevronLeft, ChevronRight } from "lucide-react"
-import { Spinner } from "@/components/ui/spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 import { useServer, SERVERS } from "@/lib/server-context"
 import { PlayerAvatar } from "@/components/player-avatar"
 import { apiFetch } from "@/lib/api"
@@ -114,9 +114,7 @@ export function RankingSection() {
       </div>
 
       {isLoading && (
-        <div className="flex items-center justify-center h-48">
-          <Spinner className="size-8 text-yellow-500" />
-        </div>
+        <LoadingState className="min-h-[200px]" />
       )}
 
       {!isLoading && players.length === 0 ? (

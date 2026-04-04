@@ -38,6 +38,7 @@ import {
   type UserTeamLeague,
   type VoiceStatus,
 } from "@/lib/services/match"
+import { LoadingState } from "@/components/ui/loading-state"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -359,16 +360,7 @@ export default function MatchPage() {
 
   // ── Loading / Error ────────────────────────────────────────────────────
   if (loading) {
-    return (
-      <div className="-mx-6 -my-8 flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
-        <div className="relative flex h-16 w-16 items-center justify-center animate-in fade-in duration-500">
-          <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/20" />
-          <div className="relative flex h-full w-full items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-500/30 animate-pulse">
-            <Swords className="h-7 w-7 text-blue-400" />
-          </div>
-        </div>
-      </div>
-    )
+    return <LoadingState message="Carregando partida" />
   }
 
   if (error || !match) {
@@ -383,7 +375,7 @@ export default function MatchPage() {
   }
 
   return (
-    <div className="-mx-6 -my-8 min-h-[calc(100vh-3.5rem)] text-white animate-in fade-in duration-300">
+    <div className="-mx-6 -my-8 min-h-[calc(100vh-3.5rem)] text-white animate-in fade-in duration-700">
       <div className="relative px-4 py-6 sm:px-8 lg:py-8">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -421,7 +413,7 @@ export default function MatchPage() {
 
         {/* ── Winner Banner ───────────────────────────────────────────────── */}
         {winnerSide && (
-          <div className={`mb-6 flex items-center justify-center gap-3 rounded-2xl border p-5 ${
+          <div className={`mb-6 flex items-center justify-center gap-3 rounded-2xl border p-5 animate-in slide-in-from-top-4 duration-500 ${
             winnerSide === "BLUE"
               ? "border-blue-500/30 bg-gradient-to-r from-blue-500/15 to-blue-500/5 shadow-lg shadow-blue-500/10"
               : "border-red-500/30 bg-gradient-to-r from-red-500/15 to-red-500/5 shadow-lg shadow-red-500/10"
@@ -438,7 +430,7 @@ export default function MatchPage() {
         )}
 
         {/* ── Teams Grid ──────────────────────────────────────────────────── */}
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr]">
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr] animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Blue Team */}
           <div className={`rounded-2xl border p-4 transition-all duration-500 ${
             winnerSide === "BLUE"
@@ -500,7 +492,7 @@ export default function MatchPage() {
 
         {/* ── Waiting Players (queue) ─────────────────────────────────────── */}
         {match.status === "WAITING" && !match.teamBlueId && (
-          <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+          <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 animate-in fade-in duration-500">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-gray-500" />
@@ -515,7 +507,7 @@ export default function MatchPage() {
                 <WaitingPlayer key={p.user.discordId} playerLayout={p} isCreator={!!isCreator} isMe={p.user.discordId === me?.discordId} onKick={handleKick} />
               ))}
               {Array.from({ length: Math.max(0, maxPlayers - qPlayers.length) }, (_, i) => (
-                <div key={`slot-${i}`} className="flex w-14 flex-col items-center gap-1">
+                <div key={`slot-${i}`} className="flex w-14 flex-col items-center gap-1 opacity-20">
                   <div className="h-9 w-9 rounded-full border border-dashed border-white/10" />
                   <span className="text-[10px] text-gray-700">—</span>
                 </div>
@@ -526,7 +518,7 @@ export default function MatchPage() {
 
         {/* ── Action Error ────────────────────────────────────────────────── */}
         {(actionError || voiceMoveError) && (
-          <div className="mb-4 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 animate-in slide-in-from-top-2 duration-300">
             <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
             {actionError || voiceMoveError}
           </div>
@@ -534,7 +526,7 @@ export default function MatchPage() {
 
         {/* ── Actions Bar ─────────────────────────────────────────────────── */}
         {match.status !== "EXPIRED" && (
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 animate-in fade-in duration-500">
             {/* Join / Leave */}
             {token && canJoin && (
               <ActionBtn
@@ -634,7 +626,7 @@ export default function MatchPage() {
         )}
 
         {match.status === "EXPIRED" && (
-          <div className="mt-4 rounded-2xl border border-dashed border-white/10 p-6 text-center">
+          <div className="mt-4 rounded-2xl border border-dashed border-white/10 p-6 text-center animate-in zoom-in duration-500">
             <p className="text-gray-500">Esta partida expirou após 1 hora sem ser iniciada.</p>
           </div>
         )}
@@ -711,7 +703,7 @@ export default function MatchPage() {
       {/* ── Finish Modal ─────────────────────────────────────────────────── */}
       {showFinishModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="mx-4 w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0d0d14] p-6 shadow-2xl">
+          <div className="mx-4 w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0d0d14] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="mb-5 text-center">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-500/10 ring-1 ring-yellow-500/20">
                 <Trophy className="h-6 w-6 text-yellow-400" />
@@ -723,7 +715,7 @@ export default function MatchPage() {
               <button
                 id="btn-win-blue"
                 onClick={() => handleFinish("BLUE")}
-                className="flex flex-col items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 transition-all hover:border-blue-500/50 hover:bg-blue-500/20 hover:shadow-lg hover:shadow-blue-500/10"
+                className="flex flex-col items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 transition-all hover:border-blue-500/50 hover:bg-blue-500/20 hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer"
               >
                 <Shield className="h-6 w-6 text-blue-400" />
                 <span className="font-bold text-blue-300">Time Azul</span>
@@ -731,7 +723,7 @@ export default function MatchPage() {
               <button
                 id="btn-win-red"
                 onClick={() => handleFinish("RED")}
-                className="flex flex-col items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4 transition-all hover:border-red-500/50 hover:bg-red-500/20 hover:shadow-lg hover:shadow-red-500/10"
+                className="flex flex-col items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4 transition-all hover:border-red-500/50 hover:bg-red-500/20 hover:shadow-lg hover:shadow-red-500/10 cursor-pointer"
               >
                 <Shield className="h-6 w-6 text-red-400" />
                 <span className="font-bold text-red-300">Time Vermelho</span>
@@ -739,7 +731,7 @@ export default function MatchPage() {
             </div>
             <button
               onClick={() => setShowFinishModal(false)}
-              className="mt-3 w-full rounded-xl py-2.5 text-sm text-gray-500 transition-colors hover:text-gray-300"
+              className="mt-3 w-full rounded-xl py-2.5 text-sm text-gray-500 transition-colors hover:text-gray-300 cursor-pointer"
             >
               Cancelar
             </button>

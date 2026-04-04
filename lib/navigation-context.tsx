@@ -1,0 +1,33 @@
+"use client"
+
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { usePathname } from "next/navigation"
+import { LoadingState } from "@/components/ui/loading-state"
+
+type NavCtx = { start: () => void }
+
+const NavigationContext = createContext<NavCtx>({ start: () => {} })
+
+export function NavigationProvider({ children }: { children: ReactNode }) {
+  const [pending, setPending] = useState(false)
+  const pathname = usePathname()
+
+  useEffect(() => {
+    setPending(false)
+  }, [pathname])
+
+  return (
+    <NavigationContext.Provider value={{ start: () => setPending(true) }}>
+      {children}
+      {pending && (
+        <div className="fixed bottom-0 left-0 right-0 top-14 z-30 flex items-center justify-center bg-[#050508]/80 backdrop-blur-sm animate-in fade-in duration-150 md:left-16">
+          <LoadingState className="m-0 min-h-0" />
+        </div>
+      )}
+    </NavigationContext.Provider>
+  )
+}
+
+export function useNavigation() {
+  return useContext(NavigationContext)
+}

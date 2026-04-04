@@ -1,7 +1,7 @@
 "use client"
 
 import { getToken, decodeToken } from "@/lib/auth"
-import { Spinner } from "@/components/ui/spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 import { Calendar, Trophy, Swords, TrendingUp, Star } from "lucide-react"
 import { useServer } from "@/lib/server-context"
 
@@ -15,7 +15,7 @@ export default function DashboardPage() {
   const recentMatches = matches.slice(0, 5)
 
   if (dashboardLoading) {
-    return <div className="flex h-64 items-center justify-center"><Spinner className="size-8 text-blue-500" /></div>
+    return <LoadingState />
   }
 
   const statCards = [

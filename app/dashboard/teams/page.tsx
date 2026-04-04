@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { Users, Trophy } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import { Spinner } from "@/components/ui/spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 import { getToken, decodeToken } from "@/lib/auth"
 import { useServer } from "@/lib/server-context"
 
@@ -64,9 +64,7 @@ export default function TeamsPage() {
       </div>
 
       {dashboardLoading ? (
-        <div className="flex items-center justify-center h-48">
-          <Spinner className="size-8 text-blue-500" />
-        </div>
+        <LoadingState className="min-h-[200px]" />
       ) : duoStats.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/50 p-12 text-center">
           <Users className="mx-auto mb-3 h-10 w-10 text-gray-600" />

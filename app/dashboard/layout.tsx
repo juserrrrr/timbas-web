@@ -4,10 +4,12 @@ import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { UserMenu } from "@/components/user-menu"
 import { ServerSelector } from "@/components/server-selector"
 import { ServerProvider } from "@/lib/server-context"
+import { NavigationProvider } from "@/lib/navigation-context"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <ServerProvider>
+      <NavigationProvider>
       <div className="relative min-h-screen bg-[#050508] text-white">
         {/* Subtle background — same as landing */}
         <div className="fixed inset-0 -z-10">
@@ -37,6 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <MobileBottomNav />
         </div>
       </div>
+      </NavigationProvider>
     </ServerProvider>
   )
 }

@@ -6,6 +6,8 @@ import { Swords, Clock, Users, Plus, Radio } from "lucide-react"
 import { getToken } from "@/lib/auth"
 import { getActiveMatches, type CustomLeagueMatch } from "@/lib/services/match"
 import { useServer, SERVERS } from "@/lib/server-context"
+import { LoadingState } from "@/components/ui/loading-state"
+import { useNavigation } from "@/lib/navigation-context"
 
 const FORMAT_LABELS: Record<string, string> = {
   ALEATORIO: "Aleatório",
@@ -25,9 +27,10 @@ function MatchCard({ match }: { match: CustomLeagueMatch }) {
   const sc = STATUS_CONFIG[match.status] ?? STATUS_CONFIG.WAITING
   const totalPlayers = match.queuePlayers.length + match.Teams.flatMap(t => t.players).length
   const maxPlayers = match.playersPerTeam * 2
+  const { start } = useNavigation()
 
   return (
-    <Link href={`/dashboard/match/${match.id}`} className="group block">
+    <Link href={`/dashboard/match/${match.id}`} onClick={start} className="group block">
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.1] hover:bg-white/[0.04]">
         <div className="mb-3 flex items-start justify-between">
           <div className="flex items-center gap-2.5">
@@ -92,7 +95,7 @@ export default function ActiveMatchesPage() {
   }, [selectedServer, token])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-700">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -113,18 +116,11 @@ export default function ActiveMatchesPage() {
       </div>
 
       {loading ? (
-        <div className="-mx-6 -my-8 flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
-          <div className="relative flex h-16 w-16 items-center justify-center animate-in fade-in duration-500">
-            <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/20" />
-            <div className="relative flex h-full w-full items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-500/30 animate-pulse">
-              <Swords className="h-7 w-7 text-blue-400" />
-            </div>
-          </div>
-        </div>
+        <LoadingState />
       ) : error ? (
         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center text-sm text-red-400">{error}</div>
       ) : matches.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-16 text-center animate-in fade-in zoom-in duration-500">
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06]">
             <Swords className="h-6 w-6 text-gray-600" />
           </div>
@@ -140,7 +136,7 @@ export default function ActiveMatchesPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 animate-in slide-in-from-bottom-4 duration-500">
           {matches.map((match) => (
             <MatchCard key={match.id} match={match} />
           ))}

@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Trophy, History, Settings, BarChart3, Home, Users, ChevronRight, Swords, Radio } from "lucide-react"
+import { useNavigation } from "@/lib/navigation-context"
 
 const NAV = [
   { icon: Home,     label: "Início",        href: "/dashboard",          color: "text-blue-400",    glow: "bg-blue-500/10",    active: "border-blue-500/20" },
@@ -23,35 +24,35 @@ const BOTTOM = [
 type NavItem = typeof NAV[number]
 
 function NavLink({ item, isActive, expanded }: { item: NavItem; isActive: boolean; expanded: boolean }) {
+  const { start } = useNavigation()
   return (
     <Link
       href={item.href}
-      className={`group relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 ${
+      onClick={start}
+      className={`group relative flex cursor-pointer items-center rounded-xl transition-all duration-300 ${
+        expanded ? "w-full gap-3 px-3 py-2.5" : "mx-auto h-10 w-10 justify-center"
+      } ${
         isActive
-          ? expanded
-            ? `border ${item.active} ${item.glow} ${item.color}`
-            : item.color
+          ? `border ${item.active} ${item.glow} ${item.color}`
           : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
       }`}
     >
-      {/* Icon — tight highlight only when collapsed + active */}
-      <div className={`flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
-        isActive && !expanded ? `border ${item.active} ${item.glow}` : ""
-      }`}>
-        <item.icon className="h-[16px] w-[16px]" />
+      {/* Icon */}
+      <div className="flex flex-shrink-0 items-center justify-center transition-all duration-200">
+        <item.icon className={expanded ? "h-4 w-4" : "h-5 w-5"} />
       </div>
 
       {/* Label */}
-      <span className={`overflow-hidden text-sm font-medium whitespace-nowrap transition-all duration-300 ${
-        expanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0"
+      <span className={`overflow-hidden text-sm font-bold whitespace-nowrap transition-all duration-300 ${
+        expanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0 hidden"
       }`}>
         {item.label}
       </span>
 
       {/* Tooltip when collapsed */}
       {!expanded && (
-        <div className="pointer-events-none absolute left-full ml-2 z-[60] opacity-0 translate-x-1 transition-all duration-150 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto">
-          <div className="rounded-lg border border-white/[0.08] bg-[#0d0d14]/95 px-3 py-1.5 text-xs font-semibold text-white shadow-xl shadow-black/40 backdrop-blur-sm whitespace-nowrap ring-1 ring-inset ring-white/[0.04]">
+        <div className="pointer-events-none absolute left-full ml-3 z-[60] opacity-0 translate-x-1 transition-all duration-200 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto">
+          <div className="rounded-lg border border-white/[0.08] bg-[#0d0d14]/95 px-3 py-1.5 text-xs font-black text-white shadow-2xl shadow-black/40 backdrop-blur-md whitespace-nowrap ring-1 ring-inset ring-white/[0.04] uppercase tracking-wider">
             {item.label}
           </div>
         </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Trophy, Swords, TrendingUp, Star, Hash, Flame, Zap, BarChart3 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getDiscordAvatarUrl } from "@/lib/auth"
-import { Spinner } from "@/components/ui/spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 import { getToken, decodeToken, TokenPayload } from "@/lib/auth"
 import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
 import { useServer } from "@/lib/server-context"
@@ -33,7 +33,7 @@ export default function ProfilePage() {
 
   const isLoading = dashboardLoading || detailLoading
 
-  if (isLoading) return <div className="flex h-64 items-center justify-center"><Spinner className="size-8 text-blue-500" /></div>
+  if (isLoading) return <LoadingState />
 
   const initials = payload?.name ? payload.name.slice(0, 2).toUpperCase() : "?"
   const avatarUrl = getDiscordAvatarUrl(payload?.discordId, payload?.avatar, 256)

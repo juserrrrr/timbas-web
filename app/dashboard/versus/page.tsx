@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Swords, User } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Spinner } from "@/components/ui/spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 import { PlayerStats } from "@/lib/services/ranking"
 import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
 import { getToken } from "@/lib/auth"
@@ -267,9 +267,7 @@ export default function VersusPage() {
       )}
 
       {loading && (
-        <div className="flex items-center justify-center h-48">
-          <Spinner className="size-8 text-blue-500" />
-        </div>
+        <LoadingState className="min-h-[200px]" />
       )}
 
       {showComparison && (

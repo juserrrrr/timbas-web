@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { LogOut, Server, Info, Code2, MessageSquare, Zap, Shield, Clock, ExternalLink } from "lucide-react"
-import { Spinner } from "@/components/ui/spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
 import { useServer, SERVERS } from "@/lib/server-context"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -23,7 +23,7 @@ export default function SettingsPage() {
     router.push("/login")
   }
 
-  if (!user) return <div className="flex h-64 items-center justify-center"><Spinner className="size-8 text-blue-500" /></div>
+  if (!user) return <LoadingState />
 
   return (
     <div className="content-enter max-w-2xl space-y-6">
