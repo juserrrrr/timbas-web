@@ -102,7 +102,7 @@ export function RankingSection() {
           <button
             key={String(tab.value)}
             onClick={() => setMode(tab.value)}
-            className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
+            className={`cursor-pointer rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
               mode === tab.value
                 ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-300"
                 : "border-white/[0.06] bg-white/[0.02] text-gray-500 hover:border-white/[0.1] hover:text-white"

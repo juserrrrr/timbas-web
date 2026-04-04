@@ -130,7 +130,7 @@ export default function CreateMatchPage() {
       <button
         onClick={handleCreate}
         disabled={loading}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/10 py-4 text-base font-bold text-blue-300 transition-all hover:border-blue-500/50 hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/10 py-4 text-base font-bold text-blue-300 transition-all hover:border-blue-500/50 hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? (
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent border-blue-400" />

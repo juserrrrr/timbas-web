@@ -28,13 +28,13 @@ export function DashboardSidebar() {
     <>
       {/* Mobile overlay */}
       {expanded && (
-        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setExpanded(false)} />
+        <div className="fixed inset-0 z-40 cursor-pointer bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setExpanded(false)} />
       )}
 
       <aside className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-white/[0.06] bg-[#07070c] transition-all duration-300 ${expanded ? "w-[220px]" : "w-16"}`}>
 
         {/* Logo */}
-        <div className="flex h-14 items-center border-b border-white/[0.06] px-3">
+        <div className={`flex h-14 items-center border-b border-white/[0.06] ${expanded ? "px-3" : "justify-center"}`}>
           <Link href="/dashboard" prefetch={false} className="flex items-center gap-3">
             <div className="h-8 w-8 flex-shrink-0 rounded-lg overflow-hidden ring-1 ring-white/10">
               <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={32} height={32} className="object-cover" />
@@ -48,14 +48,16 @@ export function DashboardSidebar() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {NAV.map((item) => {
             const isActive = pathname === item.href
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group relative flex items-center rounded-xl transition-colors duration-200 ${expanded ? "w-full px-3 py-2.5 gap-3" : "w-10 h-10 justify-center mx-auto"} ${
+                className={`group relative flex w-full cursor-pointer items-center rounded-xl transition-colors duration-200 ${
+                  expanded ? "px-3 py-2.5 gap-3" : "h-10 justify-center"
+                } ${
                   isActive
                     ? `border ${item.active} ${item.glow} ${item.color}`
                     : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
@@ -88,7 +90,9 @@ export function DashboardSidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group relative flex items-center rounded-xl transition-colors duration-200 ${expanded ? "w-full px-3 py-2.5 gap-3" : "w-10 h-10 justify-center mx-auto"} ${
+                className={`group relative flex w-full cursor-pointer items-center rounded-xl transition-colors duration-200 ${
+                  expanded ? "px-3 py-2.5 gap-3" : "h-10 justify-center"
+                } ${
                   isActive
                     ? `border ${item.active} ${item.glow} ${item.color}`
                     : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
@@ -115,7 +119,9 @@ export function DashboardSidebar() {
           {/* Expand toggle */}
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-gray-600 transition-colors hover:bg-white/[0.04] hover:text-gray-300"
+            className={`flex w-full cursor-pointer items-center rounded-xl text-gray-600 transition-colors hover:bg-white/[0.04] hover:text-gray-300 ${
+              expanded ? "gap-3 px-3 py-2.5" : "h-10 justify-center"
+            }`}
           >
             <ChevronRight className={`h-[18px] w-[18px] flex-shrink-0 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
             <span className={`text-xs font-medium whitespace-nowrap transition-all duration-300 ${

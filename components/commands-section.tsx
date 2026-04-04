@@ -115,7 +115,7 @@ export function CommandsSection() {
                 </div>
                 <button
                   onClick={() => copyToClipboard(cmd.command, index)}
-                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] opacity-0 transition-all group-hover:opacity-100 hover:bg-white/[0.08] hover:border-white/20"
+                  className="flex h-9 w-9 cursor-pointer flex-shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] opacity-0 transition-all group-hover:opacity-100 hover:bg-white/[0.08] hover:border-white/20"
                   aria-label="Copiar comando"
                 >
                   {copiedIndex === index ? (

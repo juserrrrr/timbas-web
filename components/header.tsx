@@ -62,7 +62,7 @@ export function Header() {
               key={item.id}
               href={`#${item.id}`}
               onClick={(e) => item.isTop ? scrollToTop(e) : scrollToSection(e, item.id)}
-              className="rounded-lg px-3.5 py-2 text-sm text-gray-400 transition-colors hover:bg-white/[0.05] hover:text-white"
+              className="cursor-pointer rounded-lg px-3.5 py-2 text-sm text-gray-400 transition-colors hover:bg-white/[0.05] hover:text-white"
             >
               {item.label}
             </a>

@@ -25,18 +25,18 @@ export function Footer() {
           <div>
             <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-600">Navegação</h3>
             <ul className="space-y-3 text-sm text-gray-500">
-              <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
-              <li><a href="#how-it-works" className="hover:text-white transition-colors">Como Funciona</a></li>
-              <li><a href="#commands" className="hover:text-white transition-colors">Comandos</a></li>
-              <li><Link href="/login" className="hover:text-white transition-colors">Dashboard</Link></li>
+              <li><a href="#features" className="cursor-pointer hover:text-white transition-colors">Features</a></li>
+              <li><a href="#how-it-works" className="cursor-pointer hover:text-white transition-colors">Como Funciona</a></li>
+              <li><a href="#commands" className="cursor-pointer hover:text-white transition-colors">Comandos</a></li>
+              <li><Link href="/login" className="cursor-pointer hover:text-white transition-colors">Dashboard</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-600">Comunidade</h3>
             <ul className="space-y-3 text-sm text-gray-500">
-              <li><a href="#" className="hover:text-white transition-colors">Discord</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">GitHub</a></li>
+              <li><a href="#" className="cursor-pointer hover:text-white transition-colors">Discord</a></li>
+              <li><a href="#" className="cursor-pointer hover:text-white transition-colors">GitHub</a></li>
             </ul>
           </div>
         </div>
