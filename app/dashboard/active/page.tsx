@@ -6,7 +6,6 @@ import { Swords, Clock, Users, Plus, Radio } from "lucide-react"
 import { getToken } from "@/lib/auth"
 import { getActiveMatches, type CustomLeagueMatch } from "@/lib/services/match"
 import { useServer, SERVERS } from "@/lib/server-context"
-import { Spinner } from "@/components/ui/spinner"
 
 const FORMAT_LABELS: Record<string, string> = {
   ALEATORIO: "Aleatório",
@@ -115,7 +114,9 @@ export default function ActiveMatchesPage() {
 
       {loading ? (
         <div className="flex h-48 items-center justify-center">
-          <Spinner className="h-8 w-8 text-emerald-500" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-500/30 animate-in fade-in duration-300">
+            <Swords className="h-6 w-6 text-blue-400" />
+          </div>
         </div>
       ) : error ? (
         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center text-sm text-red-400">{error}</div>
