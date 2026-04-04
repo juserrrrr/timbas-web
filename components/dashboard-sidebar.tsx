@@ -55,7 +55,6 @@ export function DashboardSidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={false}
                 className={`group relative flex items-center rounded-xl transition-colors duration-200 ${expanded ? "w-full px-3 py-2.5 gap-3" : "w-10 h-10 justify-center mx-auto"} ${
                   isActive
                     ? `border ${item.active} ${item.glow} ${item.color}`
@@ -89,7 +88,6 @@ export function DashboardSidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={false}
                 className={`group relative flex items-center rounded-xl transition-colors duration-200 ${expanded ? "w-full px-3 py-2.5 gap-3" : "w-10 h-10 justify-center mx-auto"} ${
                   isActive
                     ? `border ${item.active} ${item.glow} ${item.color}`
