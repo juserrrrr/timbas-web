@@ -30,6 +30,8 @@ function NavLink({ item, isActive, expanded }: { item: NavItem; isActive: boolea
       href={item.href}
       onClick={() => { if (!isActive) start() }}
       className={`group relative flex w-full items-center overflow-hidden rounded-xl border transition-all duration-300 ${
+        expanded ? "justify-start" : "justify-center"
+      } ${
         isActive
           ? `${item.active} ${item.glow} ${item.color}`
           : "border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
@@ -102,7 +104,7 @@ export function DashboardSidebar() {
 
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex w-full cursor-pointer items-center overflow-hidden rounded-xl border border-transparent text-gray-600 transition-colors hover:bg-white/[0.04] hover:text-gray-300"
+            className={`flex w-full cursor-pointer items-center overflow-hidden rounded-xl border border-transparent text-gray-600 transition-colors hover:bg-white/[0.04] hover:text-gray-300 ${expanded ? "justify-start" : "justify-center"}`}
           >
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center">
               <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
