@@ -120,17 +120,19 @@ function PlayerCard({
 function WaitingPlayer({
   playerLayout,
   isCreator,
+  isMe,
   onKick,
 }: {
   playerLayout: UserTeamLeague
   isCreator: boolean
+  isMe: boolean
   onKick: (discordId: string) => void
 }) {
   const player = playerLayout.user
   const avatarUrl = getDiscordAvatarUrl(player.discordId, player.avatar || undefined, 40)
   return (
-    <div className="group relative flex w-14 flex-col items-center gap-1">
-      <div className="relative h-9 w-9 overflow-hidden rounded-full ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-110">
+    <div className="relative flex w-14 flex-col items-center gap-1">
+      <div className="relative h-9 w-9 overflow-hidden rounded-full ring-1 ring-white/20">
         {avatarUrl ? (
           <img src={avatarUrl} alt={player.name} className="h-full w-full object-cover" />
         ) : (
@@ -139,10 +141,10 @@ function WaitingPlayer({
           </div>
         )}
       </div>
-      {isCreator && (
+      {isCreator && !isMe && (
         <button
           onClick={() => onKick(player.discordId)}
-          className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white transition-all hover:bg-red-600 hover:scale-110 group-hover:flex"
+          className="absolute -right-1 -top-1 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
           title="Expulsar jogador"
         >
           <X className="h-3 w-3" />
@@ -166,6 +168,8 @@ export default function MatchPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
   const [showFinishModal, setShowFinishModal] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [kickTarget, setKickTarget] = useState<{ discordId: string; name: string; avatarUrl: string | null } | null>(null)
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null)
   const [voiceMoveLoading, setVoiceMoveLoading] = useState(false)
   const [voiceMoveError, setVoiceMoveError] = useState<string | null>(null)
@@ -280,13 +284,27 @@ export default function MatchPage() {
     runAction("finish", () => finishMatch(token!, matchIdNum, me!.discordId!, winnerSide))
   }
 
-  const handleCancel = () => {
-    if (!confirm('Deseja realmente encerrar e apagar a partida?')) return
+  const handleCancel = () => setShowCancelModal(true)
+
+  const confirmCancel = () => {
+    setShowCancelModal(false)
     runAction("cancel", () => cancelMatch(token!, matchIdNum, me!.discordId!))
   }
 
   const handleKick = (discordId: string) => {
-    if (!confirm('Deseja realmente expulsar este jogador da fila?')) return
+    const player = match?.queuePlayers.find(p => p.user.discordId === discordId)
+    if (!player) return
+    setKickTarget({
+      discordId,
+      name: player.user.name,
+      avatarUrl: getDiscordAvatarUrl(player.user.discordId, player.user.avatar || undefined, 64),
+    })
+  }
+
+  const confirmKick = () => {
+    if (!kickTarget) return
+    const { discordId } = kickTarget
+    setKickTarget(null)
     runAction("kick", () => kickPlayer(token!, matchIdNum, me!.discordId!, discordId))
   }
 
@@ -343,14 +361,8 @@ export default function MatchPage() {
   if (loading) {
     return (
       <div className="-mx-6 -my-8 flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
-        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
-          <div className="relative h-16 w-16">
-            <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/20" />
-            <div className="relative flex h-full w-full items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-500/30">
-              <Swords className="h-7 w-7 text-blue-400" />
-            </div>
-          </div>
-          <p className="text-sm text-gray-500">Carregando partida...</p>
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-500/30 animate-in fade-in duration-500">
+          <Swords className="h-7 w-7 text-blue-400" />
         </div>
       </div>
     )
@@ -497,7 +509,7 @@ export default function MatchPage() {
             </div>
             <div className="flex flex-wrap gap-3 justify-center">
               {qPlayers.map((p) => (
-                <WaitingPlayer key={p.user.discordId} playerLayout={p} isCreator={!!isCreator} onKick={handleKick} />
+                <WaitingPlayer key={p.user.discordId} playerLayout={p} isCreator={!!isCreator} isMe={p.user.discordId === me?.discordId} onKick={handleKick} />
               ))}
               {Array.from({ length: Math.max(0, maxPlayers - qPlayers.length) }, (_, i) => (
                 <div key={`slot-${i}`} className="flex w-14 flex-col items-center gap-1">
@@ -624,6 +636,74 @@ export default function MatchPage() {
           </div>
         )}
       </div>
+
+      {/* ── Cancel Modal ─────────────────────────────────────────────────── */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0d0d14] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="mb-5 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/20">
+                <Trash className="h-6 w-6 text-red-400" />
+              </div>
+              <h2 className="text-lg font-bold text-white">Encerrar Partida</h2>
+              <p className="mt-1 text-sm text-gray-500">Esta ação é irreversível. A partida será encerrada e removida para todos.</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-gray-300 transition-colors hover:bg-white/10 cursor-pointer"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={confirmCancel}
+                className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-600 cursor-pointer"
+              >
+                Encerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Kick Modal ───────────────────────────────────────────────────── */}
+      {kickTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0d0d14] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="mb-5 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/20">
+                <Trash className="h-6 w-6 text-red-400" />
+              </div>
+              <h2 className="text-lg font-bold text-white">Remover da Fila</h2>
+              <div className="mt-3 flex items-center justify-center gap-2.5">
+                {kickTarget.avatarUrl ? (
+                  <img src={kickTarget.avatarUrl} alt={kickTarget.name} className="h-8 w-8 rounded-full ring-1 ring-white/20" />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">
+                    {kickTarget.name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <span className="font-semibold text-white">{kickTarget.name}</span>
+              </div>
+              <p className="mt-2 text-sm text-gray-500">Tem certeza que deseja remover este jogador da fila?</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setKickTarget(null)}
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-gray-300 transition-colors hover:bg-white/10 cursor-pointer"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={confirmKick}
+                className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-600 cursor-pointer"
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Finish Modal ─────────────────────────────────────────────────── */}
       {showFinishModal && (
