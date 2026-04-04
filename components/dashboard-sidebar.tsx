@@ -30,8 +30,6 @@ function NavLink({ item, isActive, expanded }: { item: NavItem; isActive: boolea
       href={item.href}
       onClick={() => { if (!isActive) start() }}
       className={`group relative flex w-full items-center overflow-hidden rounded-xl border transition-all duration-300 ${
-        expanded ? "justify-start" : "justify-center"
-      } ${
         isActive
           ? `${item.active} ${item.glow} ${item.color}`
           : "border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
@@ -71,12 +69,12 @@ export function DashboardSidebar() {
         <div className="fixed inset-0 z-40 cursor-pointer bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setExpanded(false)} />
       )}
 
-      <aside className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-white/[0.06] bg-[#07070c] transition-[width] duration-300 ${expanded ? "w-[220px]" : "w-16"}`}>
+      <aside className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-white/[0.06] bg-[#07070c] transition-[width] duration-300 ${expanded ? "w-[220px]" : "w-[65px]"}`}>
 
         {/* Logo */}
         <div className="flex h-14 flex-shrink-0 items-center overflow-hidden border-b border-white/[0.06]">
           <Link href="/dashboard" prefetch={false} className="flex items-center">
-            <div className="flex h-14 w-16 flex-shrink-0 items-center justify-center">
+            <div className="flex h-14 w-[65px] flex-shrink-0 items-center justify-center">
               <div className="h-8 w-8 overflow-hidden rounded-lg ring-1 ring-white/10">
                 <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={32} height={32} className="object-cover" />
               </div>
@@ -104,7 +102,7 @@ export function DashboardSidebar() {
 
           <button
             onClick={() => setExpanded(!expanded)}
-            className={`flex w-full cursor-pointer items-center overflow-hidden rounded-xl border border-transparent text-gray-600 transition-colors hover:bg-white/[0.04] hover:text-gray-300 ${expanded ? "justify-start" : "justify-center"}`}
+            className="flex w-full cursor-pointer items-center overflow-hidden rounded-xl border border-transparent text-gray-600 transition-colors hover:bg-white/[0.04] hover:text-gray-300"
           >
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center">
               <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
