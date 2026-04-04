@@ -1,24 +1,25 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { usePathname } from "next/navigation"
+import { createContext, useContext, useTransition, useCallback, type ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import { LoadingState } from "@/components/ui/loading-state"
 
-type NavCtx = { start: () => void; pending: boolean }
+type NavCtx = { navigate: (href: string) => void }
 
-const NavigationContext = createContext<NavCtx>({ start: () => {} })
+const NavigationContext = createContext<NavCtx>({ navigate: () => {} })
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
-  const [pending, setPending] = useState(false)
-  const pathname = usePathname()
+  const [pending, startTransition] = useTransition()
+  const router = useRouter()
 
-  useEffect(() => {
-    const t = setTimeout(() => setPending(false), 200)
-    return () => clearTimeout(t)
-  }, [pathname])
+  const navigate = useCallback((href: string) => {
+    startTransition(() => {
+      router.push(href)
+    })
+  }, [router])
 
   return (
-    <NavigationContext.Provider value={{ start: () => setPending(true), pending }}>
+    <NavigationContext.Provider value={{ navigate }}>
       {children}
       {pending && (
         <div className="fixed bottom-0 left-0 right-0 top-14 z-30 flex items-center justify-center bg-[#050508]/80 backdrop-blur-sm animate-in fade-in duration-150 md:left-[65px]">

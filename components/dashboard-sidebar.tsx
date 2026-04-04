@@ -24,11 +24,11 @@ const BOTTOM = [
 type NavItem = typeof NAV[number]
 
 function NavLink({ item, isActive, expanded }: { item: NavItem; isActive: boolean; expanded: boolean }) {
-  const { start } = useNavigation()
+  const { navigate } = useNavigation()
   return (
     <Link
       href={item.href}
-      onClick={() => { if (!isActive) start() }}
+      onClick={(e) => { e.preventDefault(); if (!isActive) navigate(item.href) }}
       className={`group relative flex w-full items-center overflow-hidden rounded-xl ring-1 ring-inset transition-all duration-300 ${
         isActive
           ? `${item.active} ${item.glow} ${item.color}`
