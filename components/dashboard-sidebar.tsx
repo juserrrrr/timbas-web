@@ -20,6 +20,46 @@ const BOTTOM = [
   { icon: Settings, label: "Configurações", href: "/dashboard/settings", color: "text-gray-400", glow: "bg-white/5", active: "border-white/10" },
 ]
 
+type NavItem = typeof NAV[number]
+
+function NavLink({ item, isActive, expanded }: { item: NavItem; isActive: boolean; expanded: boolean }) {
+  return (
+    <Link
+      href={item.href}
+      className={`group relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 ${
+        isActive
+          ? expanded
+            ? `border ${item.active} ${item.glow} ${item.color}`
+            : item.color
+          : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
+      }`}
+    >
+      {/* Icon — tight highlight only when collapsed + active */}
+      <div className={`flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+        isActive && !expanded ? `border ${item.active} ${item.glow}` : ""
+      }`}>
+        <item.icon className="h-[16px] w-[16px]" />
+      </div>
+
+      {/* Label */}
+      <span className={`overflow-hidden text-sm font-medium whitespace-nowrap transition-all duration-300 ${
+        expanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0"
+      }`}>
+        {item.label}
+      </span>
+
+      {/* Tooltip when collapsed */}
+      {!expanded && (
+        <div className="pointer-events-none absolute left-full ml-2 z-[60] opacity-0 translate-x-1 transition-all duration-150 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto">
+          <div className="rounded-lg border border-white/[0.08] bg-[#0d0d14]/95 px-3 py-1.5 text-xs font-semibold text-white shadow-xl shadow-black/40 backdrop-blur-sm whitespace-nowrap ring-1 ring-inset ring-white/[0.04]">
+            {item.label}
+          </div>
+        </div>
+      )}
+    </Link>
+  )
+}
+
 export function DashboardSidebar() {
   const [expanded, setExpanded] = useState(false)
   const pathname = usePathname()
@@ -48,74 +88,24 @@ export function DashboardSidebar() {
 
         {/* Nav */}
         <nav className="flex-1 p-2 space-y-0.5">
-          {NAV.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`group relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 ${
-                  isActive
-                    ? `border ${item.active} ${item.glow} ${item.color}`
-                    : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
-                }`}
-              >
-                <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
-                <span className={`overflow-hidden text-sm font-medium whitespace-nowrap transition-all duration-300 ${
-                  expanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0"
-                }`}>
-                  {item.label}
-                </span>
-                {!expanded && (
-                  <div className="pointer-events-none absolute left-full ml-3 z-[60] flex items-center gap-2 opacity-0 translate-x-1 transition-all duration-150 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto">
-                    <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
-                    <div className="rounded-lg border border-white/[0.08] bg-[#0d0d14]/95 px-3 py-1.5 text-xs font-semibold text-white shadow-xl shadow-black/40 backdrop-blur-sm whitespace-nowrap ring-1 ring-inset ring-white/[0.04]">
-                      {item.label}
-                    </div>
-                  </div>
-                )}
-              </Link>
-            )
-          })}
+          {NAV.map((item) => (
+            <NavLink key={item.href} item={item} isActive={pathname === item.href} expanded={expanded} />
+          ))}
         </nav>
 
         {/* Bottom */}
         <div className="flex-shrink-0 border-t border-white/[0.06] p-2 space-y-0.5">
-          {BOTTOM.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`group relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 ${
-                  isActive
-                    ? `border ${item.active} ${item.glow} ${item.color}`
-                    : "border border-transparent text-gray-500 hover:bg-white/[0.04] hover:text-white"
-                }`}
-              >
-                <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
-                <span className={`overflow-hidden text-sm font-medium whitespace-nowrap transition-all duration-300 ${
-                  expanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0"
-                }`}>
-                  {item.label}
-                </span>
-                {!expanded && (
-                  <div className="pointer-events-none absolute left-full ml-3 z-[60] flex items-center gap-2 opacity-0 translate-x-1 transition-all duration-150 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto">
-                    <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
-                    <div className="rounded-lg border border-white/[0.08] bg-[#0d0d14]/95 px-3 py-1.5 text-xs font-semibold text-white shadow-xl shadow-black/40 backdrop-blur-sm whitespace-nowrap ring-1 ring-inset ring-white/[0.04]">
-                      {item.label}
-                    </div>
-                  </div>
-                )}
-              </Link>
-            )
-          })}
+          {BOTTOM.map((item) => (
+            <NavLink key={item.href} item={item} isActive={pathname === item.href} expanded={expanded} />
+          ))}
 
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-gray-600 transition-colors hover:bg-white/[0.04] hover:text-gray-300"
           >
-            <ChevronRight className={`h-[18px] w-[18px] flex-shrink-0 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
+            <div className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center">
+              <ChevronRight className={`h-[16px] w-[16px] transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
+            </div>
             <span className={`overflow-hidden text-xs font-medium whitespace-nowrap transition-all duration-300 ${
               expanded ? "max-w-[140px] opacity-100" : "max-w-0 opacity-0"
             }`}>

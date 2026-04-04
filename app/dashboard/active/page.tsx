@@ -113,9 +113,12 @@ export default function ActiveMatchesPage() {
       </div>
 
       {loading ? (
-        <div className="flex h-48 items-center justify-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-500/30 animate-in fade-in duration-300">
-            <Swords className="h-6 w-6 text-blue-400" />
+        <div className="-mx-6 -my-8 flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
+          <div className="relative flex h-16 w-16 items-center justify-center animate-in fade-in duration-500">
+            <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/20" />
+            <div className="relative flex h-full w-full items-center justify-center rounded-full bg-blue-500/10 ring-1 ring-blue-500/30 animate-pulse">
+              <Swords className="h-7 w-7 text-blue-400" />
+            </div>
           </div>
         </div>
       ) : error ? (
