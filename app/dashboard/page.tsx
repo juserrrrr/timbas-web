@@ -1,31 +1,29 @@
-"use client"
-
-import { getToken, decodeToken } from "@/lib/auth"
-
 import { Calendar, Trophy, Swords, TrendingUp, Star } from "lucide-react"
-import { useServer } from "@/lib/server-context"
+import { getSession } from "@/lib/session"
+import { fetchRanking, fetchMatchHistory } from "@/lib/services/leaderboard"
 
-export default function DashboardPage() {
-  const { ranking, matches, dashboardLoading } = useServer()
+export const dynamic = "force-dynamic"
 
-  const token = getToken()
-  const payload = token ? decodeToken(token) : null
-  const userId = payload ? Number(payload.sub) : null
-  const stats = userId !== null ? (ranking.find((p) => p.userId === userId) ?? null) : null
-  const recentMatches = matches.slice(0, 5)
+export default async function DashboardPage() {
+  const { token, serverId, userId } = await getSession()
 
-  if (dashboardLoading) return null
+  const [ranking, history] = await Promise.all([
+    fetchRanking(token, serverId).catch(() => []),
+    fetchMatchHistory(token, serverId, 1, 5).catch(() => ({ data: [], total: 0, page: 1, pages: 1, hasNext: false })),
+  ])
+
+  const stats = ranking.find((p) => p.userId === userId) ?? null
+  const recentMatches = history.data
 
   const statCards = [
-    { label: "Partidas",   value: stats?.totalGames ?? "—", icon: Swords,     color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
-    { label: "Vitórias",   value: stats?.wins ?? "—",       icon: Trophy,     color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/15"  },
-    { label: "Derrotas",   value: stats?.losses ?? "—",     icon: TrendingUp, color: "text-red-400",    bg: "bg-red-500/10",    border: "border-red-500/15"    },
-    { label: "Win Rate",   value: stats ? `${Math.round(stats.winRate * 100)}%` : "—", icon: Star, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/15" },
+    { label: "Partidas",  value: stats?.totalGames ?? "—", icon: Swords,     color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
+    { label: "Vitórias",  value: stats?.wins ?? "—",       icon: Trophy,     color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/15"  },
+    { label: "Derrotas",  value: stats?.losses ?? "—",     icon: TrendingUp, color: "text-red-400",    bg: "bg-red-500/10",    border: "border-red-500/15"    },
+    { label: "Win Rate",  value: stats ? `${Math.round(stats.winRate * 100)}%` : "—", icon: Star, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/15" },
   ]
 
   return (
     <div className="animate-in fade-in duration-700 space-y-8">
-      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-black text-white">Dashboard</h1>
@@ -39,7 +37,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map(({ label, value, icon: Icon, color, bg, border }) => (
           <div key={label} className={`rounded-2xl border ${border} bg-white/[0.02] p-5 transition-all hover:bg-white/[0.04]`}>
@@ -52,7 +49,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Score highlight */}
       {stats && (
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/[0.08] to-transparent p-5">
@@ -66,7 +62,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Recent matches */}
       <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
         <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-4">
           <Calendar className="h-4 w-4 text-gray-500" />
@@ -81,7 +76,7 @@ export default function DashboardPage() {
         ) : (
           <div className="divide-y divide-white/[0.04]">
             {recentMatches.map((match) => {
-              const inBlue = userId !== null && match.blueTeam.players.some((p) => p.userId === userId)
+              const inBlue = match.blueTeam.players.some((p) => p.userId === userId)
               const myTeamId = inBlue ? match.blueTeam.id : match.redTeam.id
               const won = match.winnerId === myTeamId
               const pending = match.winnerId === null

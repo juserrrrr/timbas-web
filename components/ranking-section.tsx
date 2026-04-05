@@ -7,7 +7,7 @@ import { Trophy, Medal, ChevronLeft, ChevronRight } from "lucide-react"
 import { LoadingState } from "@/components/ui/loading-state"
 import { useServer, SERVERS } from "@/lib/server-context"
 import { PlayerAvatar } from "@/components/player-avatar"
-import { apiFetch } from "@/lib/api"
+import { apiFetch, authHeaders } from "@/lib/api"
 import { getToken } from "@/lib/auth"
 import type { PlayerStats } from "@/lib/server-context"
 
@@ -18,35 +18,32 @@ const MODE_TABS = [
   { label: "5v5", value: 5 },
 ] as const
 
-export function RankingSection() {
-  const { selectedServer, ranking: contextRanking, dashboardLoading: contextLoading } = useServer()
+interface Props {
+  initialPlayers?: PlayerStats[]
+}
+
+export function RankingSection({ initialPlayers = [] }: Props) {
+  const { selectedServer } = useServer()
   const [mode, setMode] = useState<number | undefined>(undefined)
-  const [players, setPlayers] = useState<PlayerStats[]>([])
-  const [modeLoading, setModeLoading] = useState(false)
+  const [players, setPlayers] = useState<PlayerStats[]>(initialPlayers)
+  const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const playersPerPage = 10
-  const token = getToken()
 
-  // Use context data for "Geral" tab, fetch fresh for mode tabs
   useEffect(() => {
-    setCurrentPage(1)
-    if (mode === undefined) {
-      setPlayers(contextRanking)
-      return
-    }
+    const token = getToken()
     if (!selectedServer || !token) return
-    setModeLoading(true)
-    apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/leaderboard/${selectedServer}?mode=${mode}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-    })
+    setCurrentPage(1)
+    setIsLoading(true)
+    const url = mode !== undefined
+      ? `${process.env.NEXT_PUBLIC_API_URL}/leaderboard/${selectedServer}?mode=${mode}`
+      : `${process.env.NEXT_PUBLIC_API_URL}/leaderboard/${selectedServer}`
+    apiFetch(url, { headers: authHeaders(token) })
       .then(res => res.json())
       .then(setPlayers)
       .catch(() => setPlayers([]))
-      .finally(() => setModeLoading(false))
-  }, [selectedServer, mode, contextRanking, token])
-
-  const isLoading = mode === undefined ? contextLoading : modeLoading
+      .finally(() => setIsLoading(false))
+  }, [selectedServer, mode])
 
   const totalPages = Math.ceil(Math.max(0, players.length - 3) / playersPerPage)
   const topThree = players.slice(0, 3)

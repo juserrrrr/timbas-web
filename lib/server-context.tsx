@@ -1,12 +1,22 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect } from "react"
-import { getToken } from "@/lib/auth"
-import { getRanking, PlayerStats } from "@/lib/services/ranking"
-import { getMatchHistory, Match } from "@/lib/services/matches"
-
+import { useRouter } from "next/navigation"
 import { SERVERS, SERVER_COOKIE } from "@/lib/servers"
 export { SERVERS, SERVER_COOKIE }
+
+export interface PlayerStats {
+  rank: number
+  userId: number
+  name: string
+  discordId: string
+  avatar: string | null
+  score: number
+  wins: number
+  losses: number
+  totalGames: number
+  winRate: number
+}
 
 function saveServerCookie(id: string) {
   if (typeof document === "undefined") return
@@ -14,36 +24,20 @@ function saveServerCookie(id: string) {
   document.cookie = `${SERVER_COOKIE}=${encodeURIComponent(id)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax${secure}`
 }
 
-const CACHE_TTL = 5 * 60 * 1000
-
-interface CacheEntry {
-  ranking: PlayerStats[]
-  matches: Match[]
-  fetchedAt: number
-}
-
-// Módulo-level: sobrevive à navegação entre páginas no SPA
-const cache = new Map<string, CacheEntry>()
-
 interface ServerContextType {
   selectedServer: string
   setSelectedServer: (id: string) => void
   serverName: string
-  ranking: PlayerStats[]
-  matches: Match[]
-  dashboardLoading: boolean
 }
 
 const ServerContext = createContext<ServerContextType>({
   selectedServer: SERVERS[0].id,
   setSelectedServer: () => {},
   serverName: SERVERS[0].name,
-  ranking: [],
-  matches: [],
-  dashboardLoading: true,
 })
 
 export function ServerProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const [selectedServer, setSelectedServerState] = useState(SERVERS[0].id)
 
   useEffect(() => {
@@ -57,44 +51,13 @@ export function ServerProvider({ children }: { children: React.ReactNode }) {
   const setSelectedServer = (id: string) => {
     saveServerCookie(id)
     setSelectedServerState(id)
+    router.refresh()
   }
-  const [ranking, setRanking] = useState<PlayerStats[]>([])
-  const [matches, setMatches] = useState<Match[]>([])
-  const [dashboardLoading, setDashboardLoading] = useState(true)
 
   const serverName = SERVERS.find((s) => s.id === selectedServer)?.name ?? ""
 
-  useEffect(() => {
-    const cached = cache.get(selectedServer)
-    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
-      setRanking(cached.ranking)
-      setMatches(cached.matches)
-      setDashboardLoading(false)
-      return
-    }
-
-    setDashboardLoading(true)
-    const token = getToken()
-    if (!token) {
-      setDashboardLoading(false)
-      return
-    }
-
-    Promise.all([
-      getRanking(token, selectedServer),
-      getMatchHistory(token, selectedServer),
-    ])
-      .then(([r, m]) => {
-        cache.set(selectedServer, { ranking: r, matches: m, fetchedAt: Date.now() })
-        setRanking(r)
-        setMatches(m)
-      })
-      .catch(() => {})
-      .finally(() => setDashboardLoading(false))
-  }, [selectedServer])
-
   return (
-    <ServerContext.Provider value={{ selectedServer, setSelectedServer, serverName, ranking, matches, dashboardLoading }}>
+    <ServerContext.Provider value={{ selectedServer, setSelectedServer, serverName }}>
       {children}
     </ServerContext.Provider>
   )

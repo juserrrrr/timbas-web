@@ -1,62 +1,16 @@
-"use client"
-
-import { useMemo } from "react"
 import { Users, Trophy } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { getSession } from "@/lib/session"
+import { fetchDuoStats } from "@/lib/services/leaderboard"
 
-import { getToken, decodeToken } from "@/lib/auth"
-import { useServer } from "@/lib/server-context"
+export const dynamic = "force-dynamic"
 
-interface DuoStat {
-  userId: number
-  name: string
-  games: number
-  wins: number
-  winRate: number
-}
+export default async function TeamsPage() {
+  const { token, serverId, userId } = await getSession()
 
-export default function TeamsPage() {
-  const { matches, dashboardLoading } = useServer()
-
-  const token = getToken()
-  const payload = token ? decodeToken(token) : null
-  const userId = payload ? Number(payload.sub) : null
-
-  const duoStats = useMemo((): DuoStat[] => {
-    if (userId === null || matches.length === 0) return []
-
-    const map: Record<number, { name: string; games: number; wins: number }> = {}
-
-    for (const match of matches) {
-      const inBlue = match.blueTeam.players.some((p) => p.userId === userId)
-      const inRed = match.redTeam.players.some((p) => p.userId === userId)
-      if (!inBlue && !inRed) continue
-
-      const myTeam = inBlue ? match.blueTeam : match.redTeam
-      const won = match.winnerId !== null && match.winnerId === myTeam.id
-
-      for (const player of myTeam.players) {
-        if (player.userId === userId) continue
-        if (!map[player.userId]) map[player.userId] = { name: player.name, games: 0, wins: 0 }
-        map[player.userId].games++
-        if (won) map[player.userId].wins++
-      }
-    }
-
-    return Object.entries(map)
-      .map(([id, d]) => ({
-        userId: Number(id),
-        name: d.name,
-        games: d.games,
-        wins: d.wins,
-        winRate: d.games > 0 ? d.wins / d.games : 0,
-      }))
-      .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
-  }, [matches, userId])
-
+  const duoData = await fetchDuoStats(token, serverId, userId).catch(() => ({ partners: [], opponents: [] }))
+  const duoStats = duoData.partners
   const top3 = duoStats.slice(0, 3)
-
-  if (dashboardLoading) return null
 
   return (
     <div className="animate-in fade-in duration-700 space-y-6">
@@ -72,7 +26,6 @@ export default function TeamsPage() {
         </div>
       ) : (
         <>
-          {/* Top 3 podium */}
           <div className="grid gap-4 md:grid-cols-3">
             {top3.map((duo, idx) => {
               const medals = ["🥇", "🥈", "🥉"]
@@ -95,7 +48,7 @@ export default function TeamsPage() {
                     <div className="flex items-center gap-3 text-sm">
                       <span className="text-green-400">{duo.wins}V</span>
                       <span className="text-gray-500">/</span>
-                      <span className="text-red-400">{duo.games - duo.wins}D</span>
+                      <span className="text-red-400">{duo.losses}D</span>
                       <span className="text-gray-500">em {duo.games}</span>
                     </div>
                   </div>
@@ -104,7 +57,6 @@ export default function TeamsPage() {
             })}
           </div>
 
-          {/* Full leaderboard */}
           <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-4">
               <Trophy className="h-5 w-5 text-blue-400" />
@@ -123,12 +75,8 @@ export default function TeamsPage() {
                   <div className="flex items-center gap-4 text-sm">
                     <span className="text-gray-400 hidden sm:block">{duo.games} partidas</span>
                     <span className="text-green-400">{duo.wins}V</span>
-                    <span className="text-red-400">{duo.games - duo.wins}D</span>
-                    <span
-                      className={`font-bold w-12 text-right ${
-                        duo.winRate >= 0.5 ? "text-green-400" : "text-red-400"
-                      }`}
-                    >
+                    <span className="text-red-400">{duo.losses}D</span>
+                    <span className={`font-bold w-12 text-right ${duo.winRate >= 0.5 ? "text-green-400" : "text-red-400"}`}>
                       {Math.round(duo.winRate * 100)}%
                     </span>
                   </div>

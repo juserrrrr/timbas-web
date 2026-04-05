@@ -1,38 +1,27 @@
-"use client"
-
-import { useState, useEffect } from "react"
 import { Radio } from "lucide-react"
 import { ActiveMatchesList } from "./active-matches-list"
 import { CreateMatchLink } from "./create-match-link"
-import { useServer } from "@/lib/server-context"
-import { getToken } from "@/lib/auth"
-import { apiFetch, authHeaders } from "@/lib/api"
+import { getSession } from "@/lib/session"
 import type { CustomLeagueMatch } from "@/lib/services/match"
 
-export default function ActiveMatchesPage() {
-  const { selectedServer, serverName } = useServer()
-  const [matches, setMatches] = useState<CustomLeagueMatch[] | null>(null)
-  const [error, setError] = useState<string | undefined>()
+export const dynamic = "force-dynamic"
 
-  useEffect(() => {
-    const token = getToken()
-    if (!token) return
+export default async function ActiveMatchesPage() {
+  const { token, serverId, serverName } = await getSession()
 
-    setMatches(null)
-    setError(undefined)
+  let matches: CustomLeagueMatch[] = []
+  let error: string | undefined
 
-    apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/leagueMatch/server/${selectedServer}/active`, {
-      headers: authHeaders(token),
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/leagueMatch/server/${serverId}/active`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
     })
-      .then((res) => {
-        if (!res.ok) throw new Error()
-        return res.json()
-      })
-      .then((data: CustomLeagueMatch[]) => setMatches(data))
-      .catch(() => setError("Não foi possível carregar as partidas. Tente novamente."))
-  }, [selectedServer])
-
-  if (matches === null && !error) return null
+    if (!res.ok) throw new Error()
+    matches = await res.json()
+  } catch {
+    error = "Não foi possível carregar as partidas. Tente novamente."
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
@@ -49,7 +38,7 @@ export default function ActiveMatchesPage() {
         <CreateMatchLink />
       </div>
 
-      <ActiveMatchesList matches={matches ?? []} serverName={serverName} error={error} />
+      <ActiveMatchesList matches={matches} serverName={serverName} error={error} />
     </div>
   )
 }

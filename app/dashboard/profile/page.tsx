@@ -1,44 +1,26 @@
-"use client"
-
-import { useState, useEffect } from "react"
 import { Trophy, Swords, TrendingUp, Star, Hash, Flame, Zap, BarChart3 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getDiscordAvatarUrl } from "@/lib/auth"
-import { getToken, decodeToken, TokenPayload } from "@/lib/auth"
-import { getPlayerDetailStats, PlayerDetailStats } from "@/lib/services/playerStats"
-import { useServer } from "@/lib/server-context"
+import { getSession } from "@/lib/session"
+import { fetchRanking, fetchPlayerDetailStats } from "@/lib/services/leaderboard"
 
-export default function ProfilePage() {
-  const { selectedServer, serverName, ranking, dashboardLoading } = useServer()
-  const [detail, setDetail] = useState<PlayerDetailStats | null>(null)
-  const [detailLoading, setDetailLoading] = useState(true)
+export const dynamic = "force-dynamic"
 
-  const token = getToken()
-  const payload: TokenPayload | null = token ? decodeToken(token) : null
-  const userId = payload ? Number(payload.sub) : null
-  const stats = userId !== null ? (ranking.find((p) => p.userId === userId) ?? null) : null
+export default async function ProfilePage() {
+  const { token, serverId, serverName, userId, payload } = await getSession()
 
-  useEffect(() => {
-    if (!userId || !token) {
-      setDetailLoading(false)
-      return
-    }
-    setDetailLoading(true)
-    getPlayerDetailStats(token, selectedServer, userId)
-      .then(setDetail)
-      .catch(() => setDetail(null))
-      .finally(() => setDetailLoading(false))
-  }, [selectedServer, userId])
+  const [ranking, detail] = await Promise.all([
+    fetchRanking(token, serverId).catch(() => []),
+    fetchPlayerDetailStats(token, serverId, userId).catch(() => null),
+  ])
 
-  const isLoading = dashboardLoading || detailLoading
-
-  if (isLoading) return null
-
-  const initials = payload?.name ? payload.name.slice(0, 2).toUpperCase() : "?"
-  const avatarUrl = getDiscordAvatarUrl(payload?.discordId, payload?.avatar, 256)
+  const stats = ranking.find((p) => p.userId === userId) ?? null
   const winRatePct = stats ? Math.round(stats.winRate * 100) : 0
   const blueWinRatePct = detail ? Math.round(detail.blueSide.winRate * 100) : null
   const redWinRatePct = detail ? Math.round(detail.redSide.winRate * 100) : null
+
+  const initials = payload.name ? payload.name.slice(0, 2).toUpperCase() : "?"
+  const avatarUrl = getDiscordAvatarUrl(payload.discordId, payload.avatar, 256)
 
   return (
     <div className="animate-in fade-in duration-700 space-y-6">
@@ -47,21 +29,18 @@ export default function ProfilePage() {
         <p className="mt-1 text-sm text-gray-500">Desempenho em <span className="text-white">{serverName}</span></p>
       </div>
 
-      {/* Top row: avatar card + main stats */}
       <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
-
-        {/* Avatar card */}
         <div className="flex flex-col items-center rounded-2xl border border-white/[0.07] bg-white/[0.02] p-7">
           <div className="mb-5 rounded-full p-[2px] bg-gradient-to-br from-blue-500/60 via-purple-500/30 to-red-500/50">
             <Avatar className="h-24 w-24">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={payload?.name ?? ""} />}
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={payload.name ?? ""} />}
               <AvatarFallback className="bg-[#0d0d15] text-3xl font-black text-white">
                 {initials}
               </AvatarFallback>
             </Avatar>
           </div>
 
-          <h2 className="text-xl font-black text-white mb-1">{payload?.name ?? "—"}</h2>
+          <h2 className="text-xl font-black text-white mb-1">{payload.name ?? "—"}</h2>
 
           {stats && (
             <span className="mb-5 flex items-center gap-1.5 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-1 text-sm font-bold text-yellow-400">
@@ -80,9 +59,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Stats grid */}
         <div className="space-y-4">
-          {/* Main numbers */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: "Partidas",  value: stats?.totalGames ?? "—", icon: Swords,      color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
@@ -100,7 +77,6 @@ export default function ProfilePage() {
             ))}
           </div>
 
-          {/* Streak + form */}
           {detail && (
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
@@ -109,11 +85,11 @@ export default function ProfilePage() {
                   Sequência atual
                 </div>
                 <div className="flex items-end gap-2">
-                  <span className={`text-3xl font-black ${detail.currentStreakType === 'W' ? 'text-green-400' : detail.currentStreakType === 'L' ? 'text-red-400' : 'text-gray-500'}`}>
+                  <span className={`text-3xl font-black ${detail.currentStreakType === "W" ? "text-green-400" : detail.currentStreakType === "L" ? "text-red-400" : "text-gray-500"}`}>
                     {detail.currentStreakCount}
                   </span>
-                  <span className={`mb-1 text-sm font-bold ${detail.currentStreakType === 'W' ? 'text-green-500' : detail.currentStreakType === 'L' ? 'text-red-500' : 'text-gray-600'}`}>
-                    {detail.currentStreakType === 'W' ? 'vitórias' : detail.currentStreakType === 'L' ? 'derrotas' : '—'}
+                  <span className={`mb-1 text-sm font-bold ${detail.currentStreakType === "W" ? "text-green-500" : detail.currentStreakType === "L" ? "text-red-500" : "text-gray-600"}`}>
+                    {detail.currentStreakType === "W" ? "vitórias" : detail.currentStreakType === "L" ? "derrotas" : "—"}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-gray-600">Melhor sequência: <span className="text-white font-semibold">{detail.longestWinStreak}V</span></p>
@@ -129,7 +105,7 @@ export default function ProfilePage() {
                     <span className="text-xs text-gray-600">Sem dados</span>
                   ) : (
                     detail.recentForm.slice(0, 10).map((r, i) => (
-                      <span key={i} className={`flex h-7 w-7 items-center justify-center rounded-md text-xs font-black ${r === 'W' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                      <span key={i} className={`flex h-7 w-7 items-center justify-center rounded-md text-xs font-black ${r === "W" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
                         {r}
                       </span>
                     ))
@@ -139,7 +115,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Blue / Red side */}
           {detail && (
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
               <div className="mb-4 flex items-center gap-2 text-xs text-gray-500">

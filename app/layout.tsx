@@ -9,7 +9,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 
 export const metadata: Metadata = {
-  title: "TimbasBot - Discord Bot para Partidas 5v5",
+  title: "TimbasBot",
   description: "O melhor bot de Discord para organizar partidas competitivas entre amigos",
 }
 
