@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Trophy, History, Users, BarChart3, Swords, Settings, X, MoreHorizontal, Radio } from "lucide-react"
+import { Home, Trophy, History, Users, BarChart3, Swords, Settings, X, MoreHorizontal, Radio, ShieldAlert, ShieldCheck } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 
 const LEFT_NAV = [
@@ -20,8 +20,10 @@ const RANKING = { icon: Trophy, label: "Ranking", href: "/dashboard/ranking" }
 const MORE_NAV = [
   { icon: Users,    label: "Duplas",       href: "/dashboard/teams",    color: "text-green-400",   glow: "bg-green-500/10",   active: "border-green-500/20" },
   { icon: BarChart3,label: "Estatísticas", href: "/dashboard/stats",    color: "text-red-400",     glow: "bg-red-500/10",     active: "border-red-500/20" },
-  { icon: Swords,   label: "Comparação",  href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "border-orange-500/20" },
-  { icon: Settings, label: "Config",      href: "/dashboard/settings", color: "text-gray-400",    glow: "bg-white/5",        active: "border-white/10" },
+  { icon: Swords,      label: "Comparação",  href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "border-orange-500/20" },
+  { icon: ShieldAlert, label: "Clash Scout",  href: "/dashboard/clash",    color: "text-amber-400",   glow: "bg-amber-500/10",   active: "border-amber-500/20" },
+  { icon: ShieldCheck, label: "Verificar LoL", href: "/dashboard/verify", color: "text-emerald-400", glow: "bg-emerald-500/10", active: "border-emerald-500/20" },
+  { icon: Settings,    label: "Config",       href: "/dashboard/settings", color: "text-gray-400",    glow: "bg-white/5",        active: "border-white/10" },
 ]
 
 function NavItem({ icon: Icon, label, href, color, active }: { icon: React.ElementType; label: string; href: string; color: string; active: string }) {

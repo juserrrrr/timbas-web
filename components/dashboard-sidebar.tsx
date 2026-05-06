@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Trophy, History, Settings, BarChart3, Home, Users, ChevronRight, Swords, Radio } from "lucide-react"
+import { Trophy, History, Settings, BarChart3, Home, Users, ChevronRight, Swords, Radio, ShieldAlert, ShieldCheck } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 
 const NAV = [
@@ -14,7 +14,9 @@ const NAV = [
   { icon: History,  label: "Histórico",     href: "/dashboard/history",  color: "text-purple-400",  glow: "bg-purple-500/10",  active: "ring-purple-500/20" },
   { icon: Users,    label: "Duplas",        href: "/dashboard/teams",    color: "text-green-400",   glow: "bg-green-500/10",   active: "ring-green-500/20" },
   { icon: BarChart3,label: "Estatísticas",  href: "/dashboard/stats",    color: "text-red-400",     glow: "bg-red-500/10",     active: "ring-red-500/20" },
-  { icon: Swords,   label: "Comparação",    href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "ring-orange-500/20" },
+  { icon: Swords,      label: "Comparação",    href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "ring-orange-500/20" },
+  { icon: ShieldAlert, label: "Clash Scout",   href: "/dashboard/clash",    color: "text-amber-400",   glow: "bg-amber-500/10",   active: "ring-amber-500/20" },
+  { icon: ShieldCheck, label: "Verificar LoL", href: "/dashboard/verify",   color: "text-emerald-400", glow: "bg-emerald-500/10", active: "ring-emerald-500/20" },
 ]
 
 const BOTTOM = [
