@@ -571,7 +571,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 px-2.5 py-1 text-[10px] font-black text-red-400 uppercase tracking-wider">
                   <Flame className="h-3 w-3" />
-                  Powered by Claude
+                  Powered by Gemini
                 </span>
               </div>
 
@@ -611,7 +611,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
           {data.bans.length === 0 && !data.strategy && (
             <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
               <Brain className="h-4 w-4 text-gray-600" />
-              <p className="text-sm text-gray-500">Análise de IA indisponível. Configure ANTHROPIC_API_KEY no backend.</p>
+              <p className="text-sm text-gray-500">Análise de IA indisponível. Configure GEMINI_API_KEY no backend.</p>
             </div>
           )}
         </div>

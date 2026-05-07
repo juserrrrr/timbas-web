@@ -1,4 +1,4 @@
-# Timbas Web — Claude Context
+# Timbas Web — Agent Context
 
 ## Project Overview
 Next.js 14 frontend (App Router) for the Timbas platform. Consumes the `apiTimbas` REST API.
