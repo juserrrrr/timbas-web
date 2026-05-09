@@ -19,11 +19,18 @@ export interface QueueChampStat {
   kda: number
 }
 
+export interface RoleStat {
+  role: string
+  games: number
+  share: number
+}
+
 export interface QueuePerf {
   games: number
   winrate: number
   avgKda: number
   topChampions: QueueChampStat[]
+  roleDistribution: RoleStat[]
 }
 
 export interface MasteryChamp {
@@ -36,6 +43,7 @@ export interface MasteryChamp {
 export interface ScoutPlayer {
   riotId: string
   position: string
+  topPositions?: string[]
   profileIconId: number
   profileIconUrl: string
   soloRank: RankInfo
@@ -97,6 +105,21 @@ export async function scout(
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
   const params = new URLSearchParams({ gameName, tagLine })
   const res = await fetch(`${API_URL}/clash/scout?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const body = await res.json()
+  if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
+  return body
+}
+
+export async function getRiotPlayerStats(
+  token: string,
+  gameName: string,
+  tagLine: string,
+): Promise<{ player: ScoutPlayer }> {
+  if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
+  const params = new URLSearchParams({ gameName, tagLine })
+  const res = await fetch(`${API_URL}/player-stats/riot?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   const body = await res.json()
