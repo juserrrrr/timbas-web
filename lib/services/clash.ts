@@ -182,6 +182,9 @@ export async function unlinkAccount(token: string): Promise<{ message: string }>
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export function getChampionIconUrl(championName: string, championId?: number): string {
+  if (championId !== undefined) {
+    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${championId}.png`
+  }
   const specialNames: Record<string, string> = {
     "aurelionsol": "AurelionSol",
     "belveth": "Belveth",
@@ -207,7 +210,7 @@ export function getChampionIconUrl(championName: string, championId?: number): s
   }
   const compact = championName.replace(/[^a-z0-9]/gi, "").toLowerCase()
   const championKey = specialNames[compact] ?? championName.replace(/[^a-z0-9]/gi, "")
-  return `https://ddragon.leagueoflegends.com/cdn/15.10.1/img/champion/${championKey}.png`
+  return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championKey}_0.jpg`
 }
 
 export function getRankColor(tier: string): string {
