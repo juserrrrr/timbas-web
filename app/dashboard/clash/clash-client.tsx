@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import Image from "next/image"
 import {
   ShieldAlert, Trophy, Swords, Target, Brain,
   AlertCircle, Shield, RefreshCw, Search, Zap, Star,
-  TrendingUp, Flame, Crown,
+  TrendingUp, Flame, Crown, UserSearch,
 } from "lucide-react"
 import {
   scout as fetchScout,
@@ -60,8 +61,9 @@ function ChampionIcon({ name, championId, size = 32, ring }: { name: string; cha
 
 function SummonerIcon({ url, size = 48, posColor }: { url: string; size?: number; posColor?: string }) {
   const [err, setErr] = useState(false)
+  const src = url?.replace(/^http:\/\//, "https://")
   const border = posColor ?? "border-amber-500/50"
-  if (err || !url) {
+  if (err || !src) {
     return (
       <div
         className={`rounded-full bg-white/5 border-2 ${border} flex items-center justify-center flex-shrink-0`}
@@ -76,7 +78,7 @@ function SummonerIcon({ url, size = 48, posColor }: { url: string; size?: number
       className={`rounded-full overflow-hidden border-2 ${border} flex-shrink-0 shadow-lg`}
       style={{ width: size, height: size }}
     >
-      <Image src={url} alt="icon" width={size} height={size} className="object-cover w-full h-full" onError={() => setErr(true)} unoptimized />
+      <Image src={src} alt="icon" width={size} height={size} className="object-cover w-full h-full" onError={() => setErr(true)} unoptimized />
     </div>
   )
 }
@@ -439,15 +441,24 @@ export default function ClashScoutClient({ token }: { token: string }) {
             Digite o nick de qualquer jogador para ver o time, stats e análise de IA
           </p>
         </div>
-        {data && (
-          <button
-            onClick={() => { setData(null); setInput("") }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-bold text-gray-400 transition-all hover:border-white/[0.15] hover:text-white sm:w-auto"
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Link
+            href="/dashboard/lol-profile"
+            className="flex items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs font-black text-sky-300 transition-all hover:border-sky-500/35 hover:bg-sky-500/15"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Nova busca
-          </button>
-        )}
+            <UserSearch className="h-3.5 w-3.5" />
+            Perfil individual
+          </Link>
+          {data && (
+            <button
+              onClick={() => { setData(null); setInput("") }}
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-bold text-gray-400 transition-all hover:border-white/[0.15] hover:text-white"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Nova busca
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Search form ── */}

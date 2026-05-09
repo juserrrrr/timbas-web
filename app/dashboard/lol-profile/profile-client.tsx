@@ -20,6 +20,10 @@ function ChampionIcon({ name, championId, size = 34 }: { name: string; championI
   )
 }
 
+function ProfileIcon({ url, alt }: { url: string; alt: string }) {
+  return <Image src={url.replace(/^http:\/\//, "https://")} alt={alt} width={64} height={64} className="rounded-2xl border border-white/10" unoptimized />
+}
+
 function RankBadge({ player }: { player: ScoutPlayer }) {
   const color = getRankColor(player.soloRank.tier)
   const bg = getRankBg(player.soloRank.tier)
@@ -160,7 +164,7 @@ export default function LolProfileClient({ token }: { token: string }) {
         <div className="space-y-4">
           <div className="rounded-2xl border border-sky-500/20 bg-gradient-to-r from-sky-500/[0.08] to-transparent p-5">
             <div className="flex flex-wrap items-center gap-4">
-              <Image src={player.profileIconUrl} alt={player.riotId} width={64} height={64} className="rounded-2xl border border-white/10" unoptimized />
+              <ProfileIcon url={player.profileIconUrl} alt={player.riotId} />
               <div className="flex-1">
                 <p className="text-2xl font-black text-white">{player.riotId}</p>
                 <div className="mt-2 flex flex-wrap gap-2">

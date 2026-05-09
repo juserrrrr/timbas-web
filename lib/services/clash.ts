@@ -182,10 +182,32 @@ export async function unlinkAccount(token: string): Promise<{ message: string }>
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export function getChampionIconUrl(championName: string, championId?: number): string {
-  if (championId && championId > 0) {
-    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${championId}.png`
+  const specialNames: Record<string, string> = {
+    "aurelionsol": "AurelionSol",
+    "belveth": "Belveth",
+    "chogath": "Chogath",
+    "drmundo": "DrMundo",
+    "jarvaniv": "JarvanIV",
+    "kaisa": "Kaisa",
+    "khazix": "Khazix",
+    "kogmaw": "KogMaw",
+    "ksante": "KSante",
+    "leesin": "LeeSin",
+    "masteryi": "MasterYi",
+    "missfortune": "MissFortune",
+    "monkeyking": "MonkeyKing",
+    "nunu": "Nunu",
+    "reksai": "RekSai",
+    "renataglasc": "Renata",
+    "tahmkench": "TahmKench",
+    "twistedfate": "TwistedFate",
+    "velkoz": "Velkoz",
+    "wukong": "MonkeyKing",
+    "xinzhao": "XinZhao",
   }
-  return `https://ddragon.leagueoflegends.com/cdn/15.10.1/img/champion/${championName}.png`
+  const compact = championName.replace(/[^a-z0-9]/gi, "").toLowerCase()
+  const championKey = specialNames[compact] ?? championName.replace(/[^a-z0-9]/gi, "")
+  return `https://ddragon.leagueoflegends.com/cdn/15.10.1/img/champion/${championKey}.png`
 }
 
 export function getRankColor(tier: string): string {
