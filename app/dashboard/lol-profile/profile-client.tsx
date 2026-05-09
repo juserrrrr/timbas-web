@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { AlertCircle, BarChart3, RefreshCw, Search, Shield, Swords, Trophy } from "lucide-react"
+import { AlertCircle, BarChart3, RefreshCw, Search, Shield, ShieldAlert, Swords, Trophy } from "lucide-react"
 import {
   formatRank,
   getChampionIconUrl,
@@ -12,10 +12,10 @@ import {
   ScoutPlayer,
 } from "@/lib/services/clash"
 
-function ChampionIcon({ name, size = 34 }: { name: string; size?: number }) {
+function ChampionIcon({ name, championId, size = 34 }: { name: string; championId?: number; size?: number }) {
   return (
     <div className="overflow-hidden rounded-full border border-white/10 bg-white/[0.04]" style={{ width: size, height: size }}>
-      <Image src={getChampionIconUrl(name)} alt={name} width={size} height={size} className="h-full w-full object-cover" unoptimized />
+      <Image src={getChampionIconUrl(name, championId)} alt={name} width={size} height={size} className="h-full w-full object-cover" unoptimized />
     </div>
   )
 }
@@ -51,7 +51,7 @@ function QueueBlock({ title, queue }: { title: string; queue: ScoutPlayer["soloQ
       <div className="mt-3 flex flex-wrap gap-2">
         {queue.topChampions.slice(0, 6).map((champ) => (
           <div key={`${title}-${champ.championId}`} className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-[#07070c] px-2 py-2">
-            <ChampionIcon name={champ.championName} size={28} />
+            <ChampionIcon name={champ.championName} championId={champ.championId} size={28} />
             <div>
               <p className="text-xs font-bold text-white">{champ.championName}</p>
               <p className="text-[10px] text-gray-500">{champ.games}G • {champ.winrate}% WR</p>
@@ -59,6 +59,33 @@ function QueueBlock({ title, queue }: { title: string; queue: ScoutPlayer["soloQ
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+function getBanReason(champ: ScoutPlayer["combinedTopChamps"][number]) {
+  if (champ.winrate >= 60 && champ.games >= 4) return "Winrate alto no historico recente"
+  if (champ.kda >= 4 && champ.games >= 3) return "KDA acima da media"
+  if (champ.games >= 8) return "Muito volume nas ultimas partidas"
+  return "Prioridade por desempenho combinado"
+}
+
+function BanSuggestionCard({ champ, index }: { champ: ScoutPlayer["combinedTopChamps"][number]; index: number }) {
+  return (
+    <div className="rounded-2xl border border-red-500/10 bg-red-500/[0.035] p-3">
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <ChampionIcon name={champ.championName} championId={champ.championId} size={42} />
+          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-red-400/30 bg-[#07070c] text-[10px] font-black text-red-300">
+            {index + 1}
+          </span>
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black text-white">{champ.championName}</p>
+          <p className="text-[11px] font-bold text-red-200">{champ.games}G . {champ.winrate}% WR . {champ.kda} KDA</p>
+        </div>
+      </div>
+      <p className="mt-3 min-h-8 text-xs font-semibold leading-4 text-gray-400">{getBanReason(champ)}</p>
     </div>
   )
 }
@@ -152,6 +179,20 @@ export default function LolProfileClient({ token }: { token: string }) {
             <QueueBlock title="Clash recente" queue={player.clashHistory} />
           </div>
 
+          {player.combinedTopChamps.length > 0 && (
+            <div className="rounded-2xl border border-red-500/10 bg-[#07070c]/70 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-red-400" />
+                <p className="text-xs font-black uppercase tracking-widest text-gray-500">Possiveis bans</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                {player.combinedTopChamps.slice(0, 5).map((champ, index) => (
+                  <BanSuggestionCard key={`ban-${champ.championId}`} champ={champ} index={index} />
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
               <div className="mb-3 flex items-center gap-2">
@@ -159,7 +200,7 @@ export default function LolProfileClient({ token }: { token: string }) {
                 <p className="text-xs font-black uppercase tracking-widest text-gray-500">Campeões combinados</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {player.combinedTopChamps.slice(0, 10).map((champ) => <ChampionIcon key={champ.championId} name={champ.championName} />)}
+                {player.combinedTopChamps.slice(0, 10).map((champ) => <ChampionIcon key={champ.championId} name={champ.championName} championId={champ.championId} />)}
               </div>
             </div>
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
@@ -168,7 +209,7 @@ export default function LolProfileClient({ token }: { token: string }) {
                 <p className="text-xs font-black uppercase tracking-widest text-gray-500">Maestria</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {player.masteryTop10.slice(0, 10).map((champ) => <ChampionIcon key={champ.championId} name={champ.championName} />)}
+                {player.masteryTop10.slice(0, 10).map((champ) => <ChampionIcon key={champ.championId} name={champ.championName} championId={champ.championId} />)}
               </div>
             </div>
           </div>

@@ -28,7 +28,7 @@ const POSITION_COLORS: Record<string, { text: string; border: string; bg: string
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-function ChampionIcon({ name, size = 32, ring }: { name: string; size?: number; ring?: string }) {
+function ChampionIcon({ name, championId, size = 32, ring }: { name: string; championId?: number; size?: number; ring?: string }) {
   const [err, setErr] = useState(false)
   if (err || !name) {
     return (
@@ -46,7 +46,7 @@ function ChampionIcon({ name, size = 32, ring }: { name: string; size?: number; 
       style={{ width: size, height: size }}
     >
       <Image
-        src={getChampionIconUrl(name)}
+        src={getChampionIconUrl(name, championId)}
         alt={name}
         width={size}
         height={size}
@@ -121,7 +121,7 @@ function ChampionTip({ champ, size = 28 }: { champ: QueueChampStat; size?: numbe
   return (
     <div className="group/tip relative">
       <div className="transition-transform duration-150 group-hover/tip:scale-110">
-        <ChampionIcon name={champ.championName} size={size} />
+        <ChampionIcon name={champ.championName} championId={champ.championId} size={size} />
       </div>
       <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 opacity-0 group-hover/tip:opacity-100 transition-all duration-200 scale-95 group-hover/tip:scale-100">
         <div className="rounded-xl border border-white/10 bg-[#0a0a12]/98 px-3 py-2 text-center shadow-2xl backdrop-blur-xl whitespace-nowrap">
@@ -264,7 +264,7 @@ function PlayerCard({ player, index, counterplay, predictedPick }: {
             {player.masteryTop10.slice(0, 5).map((m) => (
               <div key={m.championId} className="group/tip relative">
                 <div className="transition-transform duration-150 group-hover/tip:scale-110">
-                  <ChampionIcon name={m.championName} size={24} ring="border-amber-500/40" />
+                  <ChampionIcon name={m.championName} championId={m.championId} size={24} ring="border-amber-500/40" />
                 </div>
                 <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 opacity-0 group-hover/tip:opacity-100 transition-all duration-200">
                   <div className="rounded-xl border border-amber-500/20 bg-[#0a0a12]/98 px-3 py-2 text-center shadow-2xl backdrop-blur-xl whitespace-nowrap">
@@ -367,7 +367,7 @@ function BanCard({ ban, rank }: { ban: BanSuggestion; rank: number }) {
       <div className={`absolute -top-3 left-1/2 -translate-x-1/2 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-black shadow-lg ${cfg.badge}`}>
         {p}
       </div>
-      <ChampionIcon name={ban.championName} size={52} ring={`${cfg.border}`} />
+      <ChampionIcon name={ban.championName} championId={ban.championId} size={52} ring={`${cfg.border}`} />
       <div className="text-center space-y-0.5">
         <p className={`text-sm font-black ${cfg.text}`}>{ban.championName}</p>
         <p className="text-[10px] text-gray-500">→ {ban.targetPlayer.split("#")[0]}</p>

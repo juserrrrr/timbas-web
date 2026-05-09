@@ -181,8 +181,11 @@ export async function unlinkAccount(token: string): Promise<{ message: string }>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-export function getChampionIconUrl(championName: string): string {
-  return `https://ddragon.leagueoflegends.com/cdn/img/champion/${championName}.png`
+export function getChampionIconUrl(championName: string, championId?: number): string {
+  if (championId && championId > 0) {
+    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${championId}.png`
+  }
+  return `https://ddragon.leagueoflegends.com/cdn/15.10.1/img/champion/${championName}.png`
 }
 
 export function getRankColor(tier: string): string {
