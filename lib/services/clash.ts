@@ -25,12 +25,27 @@ export interface RoleStat {
   share: number
 }
 
+export interface PlaystyleStats {
+  avgKills: number
+  avgDeaths: number
+  avgAssists: number
+  avgDamageToChampions: number
+  avgVisionScore: number
+  avgKillParticipation: number
+  avgTeamDragons: number
+  avgTeamBarons: number
+  avgDragonTakedowns: number
+  avgObjectiveSteals: number
+  avgEnemyJungleMonsterKills: number
+}
+
 export interface QueuePerf {
   games: number
   winrate: number
   avgKda: number
   topChampions: QueueChampStat[]
   roleDistribution: RoleStat[]
+  playstyle: PlaystyleStats
 }
 
 export interface MasteryChamp {
@@ -57,12 +72,21 @@ export interface ScoutPlayer {
   combinedTopChamps: QueueChampStat[]
 }
 
+export interface PlayerProfileAnalysis {
+  summary: string
+  fightPattern: string
+  objectivePattern: string
+  riskPattern: string
+  mapPattern: string
+  tips: string[]
+}
+
 export interface BanSuggestion {
   championId: number
   championName: string
   targetPlayer: string
   reason: string
-  priority: 1 | 2 | 3 | 4 | 5
+  priority: number
 }
 
 export interface CounterplayAdvice {
@@ -117,7 +141,7 @@ export async function getRiotPlayerStats(
   token: string,
   gameName: string,
   tagLine: string,
-): Promise<{ player: ScoutPlayer }> {
+): Promise<{ player: ScoutPlayer; analysis?: PlayerProfileAnalysis }> {
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
   const params = new URLSearchParams({ gameName, tagLine })
   const res = await fetch(`${API_URL}/player-stats/riot?${params}`, {

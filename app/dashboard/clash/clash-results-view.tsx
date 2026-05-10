@@ -483,7 +483,7 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
                 <ShieldAlert className="h-3.5 w-3.5 text-gray-500" />
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Bans Recomendados</p>
               </div>
-              <div className="grid grid-cols-2 gap-4 pt-2 sm:grid-cols-5">
+              <div className="grid grid-cols-2 gap-4 pt-2 sm:grid-cols-5 xl:grid-cols-10">
                 {[...data.bans].sort((a, b) => a.priority - b.priority).map((ban, i) => (
                   <BanCard key={i} ban={ban} rank={i} />
                 ))}
