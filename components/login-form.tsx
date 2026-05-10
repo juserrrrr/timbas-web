@@ -13,6 +13,17 @@ const DISCORD_SVG = (
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
 
+  const handleDevLogin = async () => {
+    setIsLoading(true)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/dev-token`)
+      const { token, refreshToken } = await res.json()
+      window.location.href = `/auth/callback?token=${token}&refreshToken=${refreshToken}`
+    } catch {
+      setIsLoading(false)
+    }
+  }
+
   const handleDiscordLogin = () => {
     setIsLoading(true)
     const urlParams = new URLSearchParams(window.location.search)
@@ -71,6 +82,18 @@ export function LoginForm() {
             )}
           </span>
         </button>
+
+        {/* Dev login — only in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            type="button"
+            onClick={handleDevLogin}
+            disabled={isLoading}
+            className="mt-3 w-full rounded-xl border border-dashed border-yellow-500/40 bg-yellow-500/5 px-6 py-3 text-sm font-semibold text-yellow-400 transition-colors hover:bg-yellow-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Dev Login (sem Discord)
+          </button>
+        )}
 
         {/* Divider */}
         <div className="my-7 flex items-center gap-3">

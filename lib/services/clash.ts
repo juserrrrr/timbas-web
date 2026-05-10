@@ -179,6 +179,26 @@ export async function unlinkAccount(token: string): Promise<{ message: string }>
   return body
 }
 
+export async function saveAnalysis(token: string, data: ScoutResult): Promise<{ id: string }> {
+  if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
+  const res = await fetch(`${API_URL}/clash/analysis`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  })
+  const body = await res.json()
+  if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
+  return body
+}
+
+export async function fetchSharedAnalysis(id: string): Promise<{ data: ScoutResult; teamName: string; createdAt: string }> {
+  if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
+  const res = await fetch(`${API_URL}/clash/analysis/${id}`)
+  const body = await res.json()
+  if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
+  return body
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export function getChampionIconUrl(championName: string, championId?: number): string {
@@ -210,7 +230,7 @@ export function getChampionIconUrl(championName: string, championId?: number): s
   }
   const compact = championName.replace(/[^a-z0-9]/gi, "").toLowerCase()
   const championKey = specialNames[compact] ?? championName.replace(/[^a-z0-9]/gi, "")
-  return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championKey}_0.jpg`
+  return `https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/${championKey}_0.jpg`
 }
 
 export function getRankColor(tier: string): string {
@@ -244,7 +264,7 @@ export function getRankBg(tier: string): string {
 }
 
 export function formatRank(rank: RankInfo): string {
-  if (!rank || rank.tier === 'UNRANKED' || !rank.tier) return 'Unranked'
+  if (!rank || rank.tier === 'UNRANKED' || !rank.tier) return 'Sem Rank'
   const tierPt: Record<string, string> = {
     IRON: 'Ferro', BRONZE: 'Bronze', SILVER: 'Prata', GOLD: 'Ouro',
     PLATINUM: 'Platina', EMERALD: 'Esmeralda', DIAMOND: 'Diamante',

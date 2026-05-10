@@ -69,7 +69,7 @@ export function getDiscordAvatarUrl(discordId?: string, avatar?: string, size = 
   if (discordId && avatar) {
     return `https://cdn.discordapp.com/avatars/${discordId}/${avatar}.png?size=${size}`
   }
-  if (discordId) {
+  if (discordId && /^\d+$/.test(discordId)) {
     const index = Number(BigInt(discordId) % BigInt(6))
     return `https://cdn.discordapp.com/embed/avatars/${index}.png`
   }

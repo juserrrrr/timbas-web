@@ -41,13 +41,13 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copia a pasta standalone gerada pelo build
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/dist/standalone ./
 
 # Copia a pasta public
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Copia os assets estáticos do build
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/dist/static ./dist/static
 
 # Define o usuário para executar a aplicação
 USER nextjs
