@@ -94,6 +94,10 @@ function StyleAnalysisCard({ analysis, player }: { analysis?: PlayerProfileAnaly
   const flex = player.flexQueue.playstyle
   const clash = player.clashHistory.playstyle
   const bestStyle = player.soloQueue.games >= player.flexQueue.games ? solo : flex
+  const map = player.mapProfile
+  const lanePressure = map?.likelyGankFocus ?? "inconclusivo"
+  const fightRegion = map?.mostFought ?? "inconclusivo"
+  const deathRegion = map?.mostDeaths ?? "inconclusivo"
 
   return (
     <div className="rounded-2xl border border-sky-500/15 bg-[#07070c]/70 p-4">
@@ -136,6 +140,30 @@ function StyleAnalysisCard({ analysis, player }: { analysis?: PlayerProfileAnaly
           <p className="text-[11px] text-gray-500">dragoes do time/jogo</p>
         </div>
       </div>
+
+      {map && map.games > 0 && (
+        <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-sky-400">Mapa por timeline ({map.games} jogos)</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg bg-white/[0.03] px-3 py-2">
+              <p className="text-[9px] uppercase tracking-widest text-gray-600">Pressao/gank</p>
+              <p className="text-sm font-black text-white">{lanePressure}</p>
+            </div>
+            <div className="rounded-lg bg-white/[0.03] px-3 py-2">
+              <p className="text-[9px] uppercase tracking-widest text-gray-600">Onde luta</p>
+              <p className="text-sm font-black text-white">{fightRegion}</p>
+            </div>
+            <div className="rounded-lg bg-white/[0.03] px-3 py-2">
+              <p className="text-[9px] uppercase tracking-widest text-gray-600">Onde morre</p>
+              <p className="text-sm font-black text-white">{deathRegion}</p>
+            </div>
+            <div className="rounded-lg bg-white/[0.03] px-3 py-2">
+              <p className="text-[9px] uppercase tracking-widest text-gray-600">Invade/obj</p>
+              <p className="text-sm font-black text-white">{map.invades} invade • {map.objectiveFights} obj</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {analysis && (
         <div className="mt-4 grid gap-3 lg:grid-cols-2">

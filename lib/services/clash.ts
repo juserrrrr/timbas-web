@@ -39,6 +39,29 @@ export interface PlaystyleStats {
   avgEnemyJungleMonsterKills: number
 }
 
+export interface MapRegionStats {
+  top: number
+  mid: number
+  bot: number
+  alliedJungle: number
+  enemyJungle: number
+  river: number
+  unknown: number
+}
+
+export interface MapProfile {
+  games: number
+  earlyPresence: MapRegionStats
+  fightRegions: MapRegionStats
+  deathRegions: MapRegionStats
+  objectiveFights: number
+  invades: number
+  mostVisited: string
+  mostFought: string
+  mostDeaths: string
+  likelyGankFocus: string
+}
+
 export interface QueuePerf {
   games: number
   winrate: number
@@ -70,6 +93,7 @@ export interface ScoutPlayer {
   flexQueue: QueuePerf
   clashHistory: QueuePerf
   combinedTopChamps: QueueChampStat[]
+  mapProfile?: MapProfile
 }
 
 export interface PlayerProfileAnalysis {
