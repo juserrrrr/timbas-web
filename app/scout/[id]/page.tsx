@@ -3,6 +3,9 @@ import type { Metadata } from "next"
 import { fetchSharedAnalysis } from "@/lib/services/clash"
 import SharedScoutView from "./shared-scout-view"
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 interface Props {
   params: Promise<{ id: string }>
 }

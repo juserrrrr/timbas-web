@@ -8,6 +8,9 @@ import "./globals.css"
 
 import { ThemeProvider } from "@/components/theme-provider"
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export const metadata: Metadata = {
   title: "TimbasBot",
   description: "O melhor bot de Discord para organizar partidas competitivas entre amigos",

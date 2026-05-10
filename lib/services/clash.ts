@@ -106,6 +106,7 @@ export async function scout(
   const params = new URLSearchParams({ gameName, tagLine })
   const res = await fetch(`${API_URL}/clash/scout?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
   })
   const body = await res.json()
   if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
@@ -121,6 +122,7 @@ export async function getRiotPlayerStats(
   const params = new URLSearchParams({ gameName, tagLine })
   const res = await fetch(`${API_URL}/player-stats/riot?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
   })
   const body = await res.json()
   if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
@@ -133,6 +135,7 @@ export async function getVerifyStatus(token: string): Promise<{ verified: boolea
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
   const res = await fetch(`${API_URL}/verify/status`, {
     headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
   })
   if (!res.ok) throw new Error('Falha ao buscar status')
   return res.json()
@@ -193,7 +196,7 @@ export async function saveAnalysis(token: string, data: ScoutResult): Promise<{ 
 
 export async function fetchSharedAnalysis(id: string): Promise<{ data: ScoutResult; teamName: string; createdAt: string }> {
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
-  const res = await fetch(`${API_URL}/clash/analysis/${id}`)
+  const res = await fetch(`${API_URL}/clash/analysis/${id}`, { cache: 'no-store' })
   const body = await res.json()
   if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
   return body
