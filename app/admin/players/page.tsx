@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import {
   Search, Trash2, ShieldCheck, ChevronDown,
-  RefreshCw, Users, UserCheck, Bot, Crown,
+  RefreshCw, Users, UserCheck, Bot, Crown, Clock, Wifi,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
@@ -45,6 +45,20 @@ function Avatar({ name }: { name: string }) {
       {name.slice(0, 2).toUpperCase()}
     </div>
   )
+}
+
+function formatLastAccess(value: string | null) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -93,7 +107,8 @@ export default function PlayersPage() {
       const matchSearch =
         u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.discordId.includes(search) ||
-        (u.email ?? "").toLowerCase().includes(search.toLowerCase())
+        (u.email ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (u.lastLoginIp ?? "").includes(search)
       const matchRole = filterRole === "ALL" || u.role === filterRole
       return matchSearch && matchRole
     })
@@ -220,7 +235,7 @@ export default function PlayersPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome, Discord ID ou e-mail..."
+            placeholder="Buscar por nome, Discord ID, e-mail ou IP..."
             className="w-full rounded-xl border border-gray-800 bg-gray-900/50 py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-600 outline-none transition focus:border-orange-500/40 focus:ring-1 focus:ring-orange-500/20"
           />
         </div>
@@ -244,6 +259,8 @@ export default function PlayersPage() {
                     <th className="px-5 py-3.5">Usuário</th>
                     <th className="px-5 py-3.5">Discord ID</th>
                     <th className="px-5 py-3.5">E-mail</th>
+                    <th className="px-5 py-3.5">Último acesso</th>
+                    <th className="px-5 py-3.5">IP recente</th>
                     <th className="px-5 py-3.5">Cargo</th>
                     <th className="px-5 py-3.5">Contas LoL</th>
                     <th className="px-5 py-3.5 text-right">Ações</th>
@@ -274,6 +291,26 @@ export default function PlayersPage() {
                       </td>
                       <td className="px-5 py-3.5 text-gray-400">
                         {user.email ?? <span className="text-gray-700">—</span>}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {formatLastAccess(user.lastLoginAt) ? (
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
+                            <Clock className="h-3.5 w-3.5 text-green-400" />
+                            {formatLastAccess(user.lastLoginAt)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-700">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {user.lastLoginIp ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.03] px-2 py-1 font-mono text-xs text-gray-400 ring-1 ring-white/[0.06]">
+                            <Wifi className="h-3.5 w-3.5 text-blue-400" />
+                            {user.lastLoginIp}
+                          </span>
+                        ) : (
+                          <span className="text-gray-700">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3.5">
                         <RoleBadge role={user.role} />

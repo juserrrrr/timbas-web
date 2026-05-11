@@ -26,6 +26,8 @@ export interface AdminUser {
   email: string | null
   role: Role
   discordId: string
+  lastLoginIp: string | null
+  lastLoginAt: string | null
   leagueAccounts: { id: number; puuid: string }[]
   TeamsLeague: unknown[]
 }
