@@ -29,7 +29,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   const matches = history.data
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <h1 className="text-3xl font-black text-white">Histórico de Partidas</h1>
         <p className="text-sm text-gray-500">Veja todas as partidas jogadas e seus resultados</p>

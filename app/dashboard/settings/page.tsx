@@ -26,7 +26,7 @@ export default function SettingsPage() {
   if (!user) return null
 
   return (
-    <div className="animate-in fade-in duration-700 max-w-2xl space-y-6">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-black text-white">Configurações</h1>
         <p className="mt-1 text-sm text-gray-500">Preferências do dashboard</p>

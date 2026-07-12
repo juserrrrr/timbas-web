@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trophy, Medal, ChevronLeft, ChevronRight } from "lucide-react"
-import { LoadingState } from "@/components/ui/loading-state"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useServer, SERVERS } from "@/lib/server-context"
 import { PlayerAvatar } from "@/components/player-avatar"
 import { apiFetch, authHeaders } from "@/lib/api"
@@ -29,10 +29,16 @@ export function RankingSection({ initialPlayers = [] }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const playersPerPage = 10
+  const skipNextFetch = useRef(initialPlayers.length > 0)
 
   useEffect(() => {
     const token = getToken()
     if (!selectedServer || !token) return
+    // dados iniciais já vieram renderizados do servidor — evita o refetch redundante no mount
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false
+      return
+    }
     setCurrentPage(1)
     setIsLoading(true)
     const url = mode !== undefined
@@ -81,7 +87,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
   const selectedServerName = SERVERS.find((s) => s.id === selectedServer)?.name || "Servidor"
 
   return (
-    <div className="animate-in fade-in duration-700 space-y-6">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
       {/* Header */}
       <div>
         <h1 className="mb-2 text-4xl font-bold md:text-5xl">
@@ -111,7 +117,14 @@ export function RankingSection({ initialPlayers = [] }: Props) {
       </div>
 
       {isLoading && players.length === 0 && (
-        <LoadingState className="min-h-[200px]" />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <Skeleton className="h-64 rounded-xl bg-white/[0.04] md:mt-4" />
+            <Skeleton className="h-72 rounded-xl bg-white/[0.04]" />
+            <Skeleton className="h-64 rounded-xl bg-white/[0.04] md:mt-4" />
+          </div>
+          <Skeleton className="h-80 rounded-xl bg-white/[0.04]" />
+        </div>
       )}
 
       {!isLoading && players.length === 0 ? (

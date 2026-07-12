@@ -157,7 +157,7 @@ export default function VerifyClient({ token }: { token: string }) {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-lg">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-lg">
 
       {/* Header */}
       <div>

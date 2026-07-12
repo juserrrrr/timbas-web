@@ -80,7 +80,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
   }
 
   return (
-    <div className="relative space-y-8">
+    <div className="relative space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* ── Header ── */}
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
         <div>

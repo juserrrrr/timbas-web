@@ -23,7 +23,7 @@ export default async function ProfilePage() {
   const avatarUrl = getDiscordAvatarUrl(payload.discordId, payload.avatar, 256)
 
   return (
-    <div className="animate-in fade-in duration-700 space-y-6">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
       <div>
         <h1 className="text-2xl font-black text-white">Meu Perfil</h1>
         <p className="mt-1 text-sm text-gray-500">Desempenho em <span className="text-white">{serverName}</span></p>
