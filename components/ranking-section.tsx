@@ -110,7 +110,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
         ))}
       </div>
 
-      {isLoading && (
+      {isLoading && players.length === 0 && (
         <LoadingState className="min-h-[200px]" />
       )}
 
@@ -119,8 +119,8 @@ export function RankingSection({ initialPlayers = [] }: Props) {
           <h2 className="text-xl font-semibold text-gray-300">Ranking Vazio</h2>
           <p className="mt-2 text-gray-400">Ainda não há dados de ranking para este servidor.</p>
         </div>
-      ) : !isLoading && (
-        <>
+      ) : players.length > 0 && (
+        <div className={`space-y-6 transition-opacity duration-300 ${isLoading ? "pointer-events-none opacity-50" : ""}`}>
           {/* Top 3 Podium */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {/* Render top 3 players, checking if they exist */}
@@ -315,7 +315,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
               </div>
             </div>
           </Card>
-        </>
+        </div>
       )}
     </div>
   )
