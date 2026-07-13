@@ -16,6 +16,7 @@ const SIZE_OPTIONS = [
 const FORMAT_OPTIONS = [
   { value: "ALEATORIO", label: "Aleatório", desc: "Times sorteados automaticamente" },
   { value: "LIVRE", label: "Livre", desc: "Jogadores escolhem os lados" },
+  { value: "BALANCEADO", label: "Balanceado", desc: "Times equilibrados pelo score do ranking" },
   { value: "ALEATORIO_COMPLETO", label: "Aleatório Completo", desc: "Times e lanes sorteados (só 5v5)" },
 ]
 
@@ -51,7 +52,7 @@ export default function CreateMatchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-black text-white">Nova Partida</h1>

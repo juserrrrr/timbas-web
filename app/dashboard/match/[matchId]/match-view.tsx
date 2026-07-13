@@ -356,7 +356,7 @@ export function MatchView({
   }
 
   return (
-    <div className="-mx-6 -my-8 min-h-[calc(100vh-3.5rem)] text-white animate-in fade-in duration-700">
+    <div className="-mx-6 -my-8 min-h-[calc(100vh-3.5rem)] text-white animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="relative px-4 py-6 sm:px-8 lg:py-8">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -526,7 +526,7 @@ export function MatchView({
             {isCreator && match.status === "WAITING" && (
               <>
                 {canDraw && (
-                  <ActionBtn id="btn-draw" icon={<Shuffle className="h-4 w-4" />} label="Sortear" color="purple" loading={actionLoading === "draw"} onClick={handleDraw} disabled={qPlayers.length < maxPlayers} />
+                  <ActionBtn id="btn-draw" icon={<Shuffle className="h-4 w-4" />} label={match?.matchType === "BALANCEADO" ? "Balancear" : "Sortear"} color="purple" loading={actionLoading === "draw"} onClick={handleDraw} disabled={qPlayers.length < maxPlayers} />
                 )}
                 <ActionBtn id="btn-start" icon={<Play className="h-4 w-4" />} label="Iniciar" color="blue" loading={actionLoading === "start"} onClick={handleStart} disabled={!canStart || actionLoading !== null} />
               </>
