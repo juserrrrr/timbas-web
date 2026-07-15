@@ -6,6 +6,7 @@ import {
   ShieldAlert, RefreshCw, Search, Zap, AlertCircle, UserSearch,
   Share2, Check, Copy, Brain,
 } from "lucide-react"
+import { BetaBadge } from "@/components/ui/beta-badge"
 import {
   scout as fetchScout,
   saveAnalysis,
@@ -80,7 +81,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
   }
 
   return (
-    <div className="relative space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="dashboard-view relative space-y-8">
       {/* ── Header ── */}
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
         <div>
@@ -91,6 +92,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
             <h1 className="text-3xl font-black text-white tracking-tight">
               Clash <span className="text-amber-400">Scout</span>
             </h1>
+            <BetaBadge className="text-[10px] px-2" />
           </div>
           <p className="text-sm text-gray-500 ml-[52px]">
             Digite o nick de qualquer jogador para ver o time, stats e análise de IA

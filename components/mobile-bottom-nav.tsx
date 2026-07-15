@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Trophy, History, Users, BarChart3, Swords, Settings, X, MoreHorizontal, Radio, ShieldAlert, ShieldCheck, UserSearch } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
+import { BetaBadge } from "@/components/ui/beta-badge"
 
 const LEFT_NAV = [
   { icon: Home,    label: "Início",    href: "/dashboard",        color: "text-blue-400",    active: "text-blue-400" },
@@ -17,13 +18,13 @@ const RIGHT_NAV = [
 
 const RANKING = { icon: Trophy, label: "Ranking", href: "/dashboard/ranking" }
 
-const MORE_NAV = [
+const MORE_NAV: { icon: React.ElementType; label: string; href: string; color: string; glow: string; active: string; beta?: boolean }[] = [
   { icon: Users,    label: "Duplas",       href: "/dashboard/teams",    color: "text-green-400",   glow: "bg-green-500/10",   active: "border-green-500/20" },
   { icon: BarChart3,label: "Estatísticas", href: "/dashboard/stats",    color: "text-red-400",     glow: "bg-red-500/10",     active: "border-red-500/20" },
-  { icon: UserSearch,label: "Perfil LoL",   href: "/dashboard/lol-profile", color: "text-sky-400", glow: "bg-sky-500/10",     active: "border-sky-500/20" },
+  { icon: UserSearch,label: "Perfil LoL",   href: "/dashboard/lol-profile", color: "text-sky-400", glow: "bg-sky-500/10",     active: "border-sky-500/20", beta: true },
   { icon: Swords,      label: "Comparação",  href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "border-orange-500/20" },
-  { icon: ShieldAlert, label: "Clash Scout",  href: "/dashboard/clash",    color: "text-amber-400",   glow: "bg-amber-500/10",   active: "border-amber-500/20" },
-  { icon: ShieldCheck, label: "Verificar LoL", href: "/dashboard/verify", color: "text-emerald-400", glow: "bg-emerald-500/10", active: "border-emerald-500/20" },
+  { icon: ShieldAlert, label: "Clash Scout",  href: "/dashboard/clash",    color: "text-amber-400",   glow: "bg-amber-500/10",   active: "border-amber-500/20", beta: true },
+  { icon: ShieldCheck, label: "Verificar LoL", href: "/dashboard/verify", color: "text-emerald-400", glow: "bg-emerald-500/10", active: "border-emerald-500/20", beta: true },
   { icon: Settings,    label: "Config",       href: "/dashboard/settings", color: "text-gray-400",    glow: "bg-white/5",        active: "border-white/10" },
 ]
 
@@ -84,6 +85,7 @@ export function MobileBottomNav() {
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium">{item.label}</span>
+                  {item.beta && <BetaBadge />}
                 </Link>
               )
             })}

@@ -356,7 +356,7 @@ export function MatchView({
   }
 
   return (
-    <div className="-mx-6 -my-8 min-h-[calc(100vh-3.5rem)] text-white animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="dashboard-view -mx-4 -my-5 min-h-[calc(100vh-3.5rem)] text-white sm:-mx-5 sm:-my-6 md:-mx-7 md:-my-8 xl:-mx-10">
       <div className="relative px-4 py-6 sm:px-8 lg:py-8">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}

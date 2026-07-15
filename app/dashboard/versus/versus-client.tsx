@@ -24,9 +24,9 @@ function StatRow({ label, left, right, winner, formatFn = (v: number) => String(
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-sm">
-        <span className={`tabular-nums font-bold text-lg w-24 text-right ${winner === "left" ? "text-blue-400" : winner === "tie" ? "text-gray-300" : "text-gray-500"}`}>{formatFn(left)}</span>
-        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider px-3 text-center w-32">{label}</span>
-        <span className={`tabular-nums font-bold text-lg w-24 text-left ${winner === "right" ? "text-red-400" : winner === "tie" ? "text-gray-300" : "text-gray-500"}`}>{formatFn(right)}</span>
+        <span className={`w-16 text-right text-base font-bold tabular-nums sm:w-24 sm:text-lg ${winner === "left" ? "text-blue-400" : winner === "tie" ? "text-gray-300" : "text-gray-500"}`}>{formatFn(left)}</span>
+        <span className="w-24 px-1 text-center text-[10px] font-medium uppercase text-gray-500 sm:w-32 sm:px-3 sm:text-xs">{label}</span>
+        <span className={`w-16 text-left text-base font-bold tabular-nums sm:w-24 sm:text-lg ${winner === "right" ? "text-red-400" : winner === "tie" ? "text-gray-300" : "text-gray-500"}`}>{formatFn(right)}</span>
       </div>
       <div className="flex h-1.5 overflow-hidden rounded-full bg-gray-800">
         <div className={`h-full rounded-l-full transition-all duration-500 ${winner === "left" ? "bg-blue-500" : "bg-blue-500/30"}`} style={{ width: `${leftPct}%` }} />
@@ -105,13 +105,13 @@ export function VersusClient({ players, serverId }: Props) {
   const winner: Winner = !leftPlayer || !rightPlayer ? "tie" : leftPlayer.winRate > rightPlayer.winRate ? "left" : rightPlayer.winRate > leftPlayer.winRate ? "right" : "tie"
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+    <div className="dashboard-view space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">Comparação</h1>
-        <p className="text-gray-400">Compare o desempenho de dois jogadores</p>
+        <h1 className="text-3xl font-black text-white">Comparação</h1>
+        <p className="mt-1 text-sm text-gray-500">Compare o desempenho de dois jogadores</p>
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+      <div className="grid grid-cols-1 items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:p-5">
         <Select value={leftId} onValueChange={setLeftId} disabled={players.length === 0}>
           <SelectTrigger className="border-blue-500/30 bg-blue-500/5 text-white hover:border-blue-500/50">
             <User className="mr-2 h-4 w-4 text-blue-400 shrink-0" />
@@ -126,7 +126,7 @@ export function VersusClient({ players, serverId }: Props) {
           </SelectContent>
         </Select>
 
-        <span className="rounded-xl bg-gray-800/80 px-4 py-2 text-sm font-black text-gray-400 tracking-widest ring-1 ring-white/10">VS</span>
+        <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.06] text-xs font-black text-gray-400 ring-1 ring-white/10 sm:h-auto sm:w-auto sm:rounded-xl sm:px-4 sm:py-2">VS</span>
 
         <Select value={rightId} onValueChange={setRightId} disabled={players.length === 0}>
           <SelectTrigger className="border-red-500/30 bg-red-500/5 text-white hover:border-red-500/50">
@@ -144,11 +144,11 @@ export function VersusClient({ players, serverId }: Props) {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-dashed border-red-500/50 bg-red-500/10 p-4 text-center text-red-400">{error}</div>
+        <div className="rounded-2xl border border-dashed border-red-500/40 bg-red-500/10 p-4 text-center text-red-400">{error}</div>
       )}
 
       {!leftId && !rightId && !error && (
-        <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/50 p-14 text-center">
+        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-10 text-center sm:p-14">
           <Swords className="mx-auto mb-3 h-10 w-10 text-gray-700" />
           <p className="text-gray-500">Selecione dois jogadores para comparar</p>
         </div>
@@ -156,7 +156,7 @@ export function VersusClient({ players, serverId }: Props) {
 
       {showComparison && (
         <>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+          <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[1fr_auto_1fr] sm:gap-4">
             <Card className={`border p-5 text-center backdrop-blur-sm transition-all ${winner === "left" ? "border-blue-500/40 bg-blue-500/10 shadow-lg shadow-blue-500/10" : "border-gray-800/50 bg-gray-900/50"}`}>
               <div className="flex flex-col items-center gap-2">
                 <PlayerAvatar name={leftPlayer.name} discordId={leftPlayer.discordId} avatar={leftPlayer.avatar} size={128} className={`h-14 w-14 ring-2 ${winner === "left" ? "ring-blue-500" : "ring-gray-700"}`} />
@@ -167,7 +167,7 @@ export function VersusClient({ players, serverId }: Props) {
                 </div>
               </div>
             </Card>
-            <Swords className="h-6 w-6 text-gray-600" />
+            <Swords className="mx-auto h-6 w-6 rotate-90 text-gray-600 sm:rotate-0" />
             <Card className={`border p-5 text-center backdrop-blur-sm transition-all ${winner === "right" ? "border-red-500/40 bg-red-500/10 shadow-lg shadow-red-500/10" : "border-gray-800/50 bg-gray-900/50"}`}>
               <div className="flex flex-col items-center gap-2">
                 <PlayerAvatar name={rightPlayer.name} discordId={rightPlayer.discordId} avatar={rightPlayer.avatar} size={128} className={`h-14 w-14 ring-2 ${winner === "right" ? "ring-red-500" : "ring-gray-700"}`} />
@@ -190,7 +190,7 @@ export function VersusClient({ players, serverId }: Props) {
             <StatRow label="Maior Streak" left={leftDetail.longestWinStreak} right={rightDetail.longestWinStreak} winner={compare(leftDetail.longestWinStreak, rightDetail.longestWinStreak)} formatFn={(v) => `${v}V`} />
           </Card>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Card className="border-gray-800/50 bg-gray-900/50 p-5 backdrop-blur-sm">
               <h3 className="mb-3 font-semibold text-white text-sm">Forma Recente — <span className="text-blue-400">{leftPlayer.name}</span></h3>
               <RecentForm form={leftDetail.recentForm} />
@@ -201,7 +201,7 @@ export function VersusClient({ players, serverId }: Props) {
             </Card>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Card className="border-gray-800/50 bg-gray-900/50 p-5 backdrop-blur-sm space-y-3">
               <h3 className="font-semibold text-white text-sm">WR por Lado — <span className="text-blue-400">{leftPlayer.name}</span></h3>
               <SideBar wins={leftDetail.blueSide.wins} losses={leftDetail.blueSide.losses} total={leftDetail.blueSide.total} winRate={leftDetail.blueSide.winRate} color="blue" label="Lado Azul" />

@@ -23,7 +23,7 @@ export default async function ProfilePage() {
   const avatarUrl = getDiscordAvatarUrl(payload.discordId, payload.avatar, 256)
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+    <div className="dashboard-view space-y-6">
       <div>
         <h1 className="text-2xl font-black text-white">Meu Perfil</h1>
         <p className="mt-1 text-sm text-gray-500">Desempenho em <span className="text-white">{serverName}</span></p>
@@ -100,7 +100,7 @@ export default async function ProfilePage() {
                   <Zap className="h-3.5 w-3.5 text-yellow-400" />
                   Forma recente
                 </div>
-                <div className="flex gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
                   {detail.recentForm.length === 0 ? (
                     <span className="text-xs text-gray-600">Sem dados</span>
                   ) : (
@@ -121,7 +121,7 @@ export default async function ProfilePage() {
                 <BarChart3 className="h-3.5 w-3.5 text-blue-400" />
                 Desempenho por lado
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {[
                   { label: "Lado Azul", wr: blueWinRatePct, games: detail.blueSide.total, wins: detail.blueSide.wins, color: "bg-blue-500", text: "text-blue-400" },
                   { label: "Lado Vermelho", wr: redWinRatePct, games: detail.redSide.total, wins: detail.redSide.wins, color: "bg-red-500", text: "text-red-400" },

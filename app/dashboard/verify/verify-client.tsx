@@ -7,6 +7,7 @@ import {
   Shield, CheckCircle2, AlertCircle, RefreshCw,
   Clock, ChevronRight, ShieldAlert, Link2, Unlink, ShieldCheck
 } from "lucide-react"
+import { BetaBadge } from "@/components/ui/beta-badge"
 import {
   getVerifyStatus, startVerification, confirmVerification, unlinkAccount
 } from "@/lib/services/clash"
@@ -149,7 +150,7 @@ export default function VerifyClient({ token }: { token: string }) {
 
   if (loading && step === "status") {
     return (
-      <div className="max-w-lg space-y-4 animate-pulse">
+      <div className="mx-auto max-w-lg space-y-4 animate-pulse">
         <div className="h-8 rounded-xl bg-white/[0.04] w-56" />
         <div className="h-48 rounded-2xl bg-white/[0.04]" />
       </div>
@@ -157,15 +158,16 @@ export default function VerifyClient({ token }: { token: string }) {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-lg">
+    <div className="dashboard-view mx-auto max-w-lg space-y-6">
 
       {/* Header */}
       <div>
-        <div className="flex items-center gap-3 mb-1">
+        <div className="mb-1 flex flex-wrap items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
             <ShieldCheck className="h-4 w-4 text-emerald-400" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">Verificar Conta LoL</h1>
+          <BetaBadge className="text-[10px] px-2" />
         </div>
         <p className="text-sm text-gray-500 ml-11">
           Vincule sua conta do League of Legends ao Timbas para acessar funcionalidades exclusivas

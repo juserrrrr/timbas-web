@@ -191,6 +191,107 @@
   animation: content-enter 0.18s ease-out both;
 }
 
+@keyframes dashboard-view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dashboard-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@layer components {
+  .dashboard-view {
+    width: 100%;
+    animation: dashboard-view-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .dashboard-view > * {
+    animation: dashboard-item-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .dashboard-view > :nth-child(2) { animation-delay: 60ms; }
+  .dashboard-view > :nth-child(3) { animation-delay: 110ms; }
+  .dashboard-view > :nth-child(4) { animation-delay: 160ms; }
+  .dashboard-view > :nth-child(5) { animation-delay: 210ms; }
+  .dashboard-view > :nth-child(n + 6) { animation-delay: 260ms; }
+
+  .dashboard-view :is(h1, h2) {
+    text-wrap: balance;
+    letter-spacing: 0;
+  }
+
+  .dashboard-view :where(.rounded-2xl.border, [data-slot="card"]) {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.025), 0 16px 50px -38px rgb(59 130 246 / 0.45);
+    transition-property: transform, border-color, background-color, box-shadow;
+    transition-duration: 260ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .dashboard-view :where(a, button):not(:disabled) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dashboard-view :where(a, button):focus-visible {
+    outline: 2px solid rgb(96 165 250 / 0.8);
+    outline-offset: 3px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .dashboard-view :where(a, button, [role="button"]):not(:disabled) {
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .dashboard-view :where(a, button, [role="button"]):not(:disabled):active {
+    transform: scale(0.98);
+  }
+}
+
+@media (max-width: 639px) {
+  .dashboard-view {
+    overflow-x: clip;
+  }
+
+  .dashboard-view h1 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+
+  .dashboard-view :where(.rounded-2xl.border, [data-slot="card"]) {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.02), 0 12px 35px -32px rgb(59 130 246 / 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-view,
+  .dashboard-view > * {
+    animation: none !important;
+  }
+
+  .dashboard-view *,
+  .dashboard-view *::before,
+  .dashboard-view *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @layer utilities {
   .rotating-border-glow {
     position: relative;

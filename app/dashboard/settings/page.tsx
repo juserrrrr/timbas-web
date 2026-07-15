@@ -26,7 +26,7 @@ export default function SettingsPage() {
   if (!user) return null
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl space-y-6">
+    <div className="dashboard-view mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-black text-white">Configurações</h1>
         <p className="mt-1 text-sm text-gray-500">Preferências do dashboard</p>
@@ -75,13 +75,13 @@ export default function SettingsPage() {
             { icon: Zap,     label: "Estatísticas",     desc: "Win rate, streaks, duplas e desempenho semanal",   status: "Ativo" },
             { icon: Server,  label: "Multi-servidor",   desc: "Dados isolados por servidor Discord",              status: "Ativo" },
           ].map(({ icon: Icon, label, desc, status }) => (
-            <div key={label} className="flex items-center gap-4 px-5 py-3.5">
+            <div key={label} className="flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-5">
               <Icon className="h-4 w-4 flex-shrink-0 text-gray-600" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white">{label}</p>
                 <p className="text-xs text-gray-600">{desc}</p>
               </div>
-              <span className="rounded-md border border-green-500/20 bg-green-500/10 px-2 py-0.5 text-[11px] font-semibold text-green-400">
+              <span className="flex-shrink-0 rounded-md border border-green-500/20 bg-green-500/10 px-2 py-0.5 text-[11px] font-semibold text-green-400">
                 {status}
               </span>
             </div>

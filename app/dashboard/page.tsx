@@ -1,4 +1,4 @@
-import { Calendar, Trophy, Swords, TrendingUp, Star } from "lucide-react"
+import { Calendar, Trophy, Swords, TrendingUp, Star, LayoutDashboard } from "lucide-react"
 import { getSession } from "@/lib/session"
 import { fetchRanking, fetchMatchHistory } from "@/lib/services/leaderboard"
 
@@ -23,11 +23,16 @@ export default async function DashboardPage() {
   ]
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-white">Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">Seu desempenho no servidor</p>
+    <div className="dashboard-view space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 shadow-lg shadow-blue-500/10">
+            <LayoutDashboard className="h-5 w-5 text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-white">Dashboard</h1>
+            <p className="mt-0.5 text-sm text-gray-500">Seu desempenho no servidor</p>
+          </div>
         </div>
         {stats && (
           <div className="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-2">
@@ -39,9 +44,9 @@ export default async function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map(({ label, value, icon: Icon, color, bg, border }) => (
-          <div key={label} className={`rounded-2xl border ${border} bg-white/[0.02] p-5 transition-all hover:bg-white/[0.04]`}>
+          <div key={label} className={`group rounded-2xl border ${border} bg-white/[0.02] p-5 transition-all hover:-translate-y-1 hover:bg-white/[0.045] hover:shadow-xl`}>
             <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl ${bg}`}>
-              <Icon className={`h-4 w-4 ${color}`} />
+              <Icon className={`h-4 w-4 transition-transform duration-300 group-hover:scale-110 ${color}`} />
             </div>
             <p className="text-xs text-gray-600 mb-1">{label}</p>
             <p className={`text-3xl font-black tabular-nums ${color}`}>{value}</p>

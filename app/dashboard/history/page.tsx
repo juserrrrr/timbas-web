@@ -29,7 +29,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   const matches = history.data
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="dashboard-view space-y-6">
       <div>
         <h1 className="text-3xl font-black text-white">Histórico de Partidas</h1>
         <p className="text-sm text-gray-500">Veja todas as partidas jogadas e seus resultados</p>
@@ -96,16 +96,16 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
               <div className="flex items-center gap-2 mb-4">
                 <ShieldHalf className="h-5 w-5 text-blue-400" />
                 <h2 className="text-lg font-bold text-white">Parceiros</h2>
-                <span className="text-xs text-gray-500 ml-1 font-medium uppercase tracking-wider">— ordenado por win rate</span>
+                <span className="hidden text-xs font-medium uppercase text-gray-500 sm:inline">— ordenado por win rate</span>
               </div>
               <div className="space-y-2">
                 {duoData.partners.map((p, idx) => (
-                  <div key={p.userId} className="flex items-center justify-between rounded-xl bg-black/40 px-4 py-3 ring-1 ring-white/[0.05] transition-colors hover:bg-black/60">
-                    <div className="flex items-center gap-3">
+                  <div key={p.userId} className="flex items-center justify-between gap-3 rounded-xl bg-black/40 px-3 py-3 ring-1 ring-white/[0.05] transition-colors hover:bg-black/60 sm:px-4">
+                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                       <span className="text-xs font-bold text-gray-600 w-5">{idx + 1}.</span>
-                      <span className="font-bold text-white">{p.name}</span>
+                      <span className="truncate font-bold text-white">{p.name}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex flex-shrink-0 items-center gap-2 text-xs sm:gap-4 sm:text-sm">
                       <span className="text-gray-500 hidden sm:block text-xs font-medium">{p.games} partidas</span>
                       <span className="text-green-400 font-bold">{p.wins}V</span>
                       <span className="text-red-400 font-bold">{p.losses}D</span>
@@ -125,16 +125,16 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
               <div className="flex items-center gap-2 mb-4">
                 <Swords className="h-5 w-5 text-red-400" />
                 <h2 className="text-lg font-bold text-white">Adversários</h2>
-                <span className="text-xs text-gray-500 ml-1 font-medium uppercase tracking-wider">— seu win rate contra eles</span>
+                <span className="hidden text-xs font-medium uppercase text-gray-500 sm:inline">— seu win rate contra eles</span>
               </div>
               <div className="space-y-2">
                 {duoData.opponents.map((p, idx) => (
-                  <div key={p.userId} className="flex items-center justify-between rounded-xl bg-black/40 px-4 py-3 ring-1 ring-white/[0.05] transition-colors hover:bg-black/60">
-                    <div className="flex items-center gap-3">
+                  <div key={p.userId} className="flex items-center justify-between gap-3 rounded-xl bg-black/40 px-3 py-3 ring-1 ring-white/[0.05] transition-colors hover:bg-black/60 sm:px-4">
+                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                       <span className="text-xs font-bold text-gray-600 w-5">{idx + 1}.</span>
-                      <span className="font-bold text-white">{p.name}</span>
+                      <span className="truncate font-bold text-white">{p.name}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex flex-shrink-0 items-center gap-2 text-xs sm:gap-4 sm:text-sm">
                       <span className="text-gray-500 hidden sm:block text-xs font-medium">{p.games} partidas</span>
                       <span className="text-green-400 font-bold">{p.wins}V</span>
                       <span className="text-red-400 font-bold">{p.losses}D</span>

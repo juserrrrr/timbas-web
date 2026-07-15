@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import { AlertCircle, BarChart3, Brain, Crosshair, Eye, RefreshCw, Search, Shield, ShieldAlert, Skull, Swords, Trophy } from "lucide-react"
+import { BetaBadge } from "@/components/ui/beta-badge"
 import {
   formatRank,
   getChampionIconUrl,
@@ -250,13 +251,14 @@ export default function LolProfileClient({ token }: { token: string }) {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="dashboard-view space-y-6">
       <div>
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10">
             <BarChart3 className="h-5 w-5 text-sky-400" />
           </div>
           <h1 className="text-3xl font-black text-white">Perfil LoL</h1>
+          <BetaBadge className="text-[10px] px-2" />
         </div>
         <p className="ml-[52px] mt-1 text-sm text-gray-500">Busque estatísticas recentes de qualquer Riot ID</p>
       </div>

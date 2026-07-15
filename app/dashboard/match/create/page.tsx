@@ -52,7 +52,7 @@ export default function CreateMatchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="dashboard-view mx-auto max-w-2xl space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-black text-white">Nova Partida</h1>
@@ -64,7 +64,7 @@ export default function CreateMatchPage() {
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-300">
           <Swords className="h-4 w-4 text-red-400" /> Tamanho da partida
         </h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
           {SIZE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -72,7 +72,7 @@ export default function CreateMatchPage() {
                 setSize(opt.value)
                 if (opt.value !== 5 && format === "ALEATORIO_COMPLETO") setFormat("ALEATORIO")
               }}
-              className={`cursor-pointer rounded-xl border p-4 text-center transition-all ${
+              className={`cursor-pointer rounded-xl border p-3 text-center transition-all sm:p-4 ${
                 size === opt.value
                   ? "border-red-500/40 bg-red-500/10 text-red-300"
                   : "border-white/[0.06] bg-white/[0.02] text-gray-400 hover:border-white/[0.12] hover:text-white"
