@@ -319,3 +319,15 @@
     animation: spin-glow-gap 1s linear infinite, pulse-glow 3s ease-in-out infinite;
   }
 }
+
+/* ── Cursor de clique ─────────────────────────────────────────────────────────
+   Tailwind v4 deixa <button> com cursor default; aqui todo elemento clicável
+   volta a mostrar a mãozinha. :where() mantém especificidade zero, então
+   utilitários explícitos (cursor-wait, cursor-not-allowed) continuam vencendo. */
+:where(button, [role="button"], [role="radio"], [role="tab"], [role="menuitem"], [type="button"], [type="submit"], [type="checkbox"], [type="radio"], select, summary, label[for]):not(:disabled) {
+  cursor: pointer;
+}
+
+:where(button, [type="button"], [type="submit"]):disabled {
+  cursor: not-allowed;
+}
