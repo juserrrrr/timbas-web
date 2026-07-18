@@ -485,6 +485,10 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
   )
   const focusId = plan?.focusTarget?.toLowerCase()
   const weakId = plan?.weakLink?.toLowerCase()
+  const focusPlayer = data.players.find((p) => p.riotId.toLowerCase() === focusId)
+  const weakPlayer = data.players.find((p) => p.riotId.toLowerCase() === weakId)
+  const jungler = data.players.find((p) => p.position === "JUNGLE")
+  const junglerMap = jungler?.mapProfile?.games ? jungler.mapProfile : undefined
 
   return (
     <div className="space-y-6">
@@ -520,6 +524,42 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
             </div>
           </div>
         </div>
+
+        {/* Resumo tático — as decisões de draft num relance */}
+        {(focusPlayer || weakPlayer || junglerMap) && (
+          <div className="relative mt-4 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4">
+            <span className="mr-1 text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">Resumo tático</span>
+            {focusPlayer && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/[0.08] px-2.5 py-1 text-[11px] font-bold text-red-400">
+                <Crosshair className="h-3 w-3" />
+                Focar: <span className="font-black text-white">{focusPlayer.riotId.split("#")[0]}</span>
+                <span className="text-red-500/80">· {POSITION_LABELS[focusPlayer.position] ?? focusPlayer.position}</span>
+              </span>
+            )}
+            {weakPlayer && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.07] px-2.5 py-1 text-[11px] font-bold text-emerald-400">
+                <Target className="h-3 w-3" />
+                Explorar: <span className="font-black text-white">{weakPlayer.riotId.split("#")[0]}</span>
+                <span className="text-emerald-500/80">· {POSITION_LABELS[weakPlayer.position] ?? weakPlayer.position}</span>
+              </span>
+            )}
+            {junglerMap && junglerMap.startSide && junglerMap.startSide !== "inconclusivo" && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/25 bg-sky-500/[0.07] px-2.5 py-1 text-[11px] font-bold text-sky-400">
+                <MapIcon className="h-3 w-3" />
+                Jungler começa pelo <span className="font-black text-white">{junglerMap.startSide}</span>
+              </span>
+            )}
+            {junglerMap && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/25 bg-sky-500/[0.07] px-2.5 py-1 text-[11px] font-bold text-sky-400">
+                <Swords className="h-3 w-3" />
+                Gank: <span className="font-black text-white">{junglerMap.likelyGankFocus}</span>
+                {junglerMap.earlyGanksPerGame !== undefined && (
+                  <span className="text-sky-500/80">· {junglerMap.earlyGanksPerGame}/jogo</span>
+                )}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Player grid */}

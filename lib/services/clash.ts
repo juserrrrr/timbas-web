@@ -188,6 +188,15 @@ export interface ScoutJob {
   progress: ScoutProgress
   result?: ScoutResult
   error?: string
+  analysisId?: string
+}
+
+export interface ScoutHistoryEntry {
+  id: string
+  teamName: string
+  createdAt: string
+  searchedRiotId: string | null
+  deep: boolean
 }
 
 export async function startScout(
@@ -228,6 +237,19 @@ export async function getRiotPlayerStats(
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
   const params = new URLSearchParams({ gameName, tagLine })
   const res = await fetch(`${API_URL}/player-stats/riot?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  const body = await res.json()
+  if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
+  return body
+}
+
+// Relatórios recentes gerados por qualquer membro — cada scout concluído é
+// salvo automaticamente no servidor.
+export async function getScoutHistory(token: string, limit = 8): Promise<ScoutHistoryEntry[]> {
+  if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
+  const res = await fetch(`${API_URL}/clash/analyses/recent?limit=${limit}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   })
