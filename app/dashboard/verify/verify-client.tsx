@@ -247,7 +247,7 @@ export default function VerifyClient({ token }: { token: string }) {
             {[
               { n: "1", label: "Digite seu Riot ID", desc: "No formato Nome#TAG (ex: Gabriel#BR1)" },
               { n: "2", label: "Equipe o ícone indicado", desc: "Abra o LoL e troque seu ícone de perfil" },
-              { n: "3", label: "Confirme a verificação", desc: "Clique em confirmar — pronto!" },
+              { n: "3", label: "Confirme a verificação", desc: "Clique em confirmar e pronto!" },
             ].map((s) => (
               <div key={s.n} className="flex items-start gap-3">
                 <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black text-emerald-400">
@@ -322,7 +322,7 @@ export default function VerifyClient({ token }: { token: string }) {
               className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-black text-black transition-all hover:bg-emerald-400 disabled:opacity-50"
             >
               {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              {loading ? "Verificando..." : "Já equipeI — Confirmar"}
+              {loading ? "Verificando..." : "Já equipei, confirmar"}
             </button>
             <button
               onClick={() => { setStep("status"); setError(null) }}

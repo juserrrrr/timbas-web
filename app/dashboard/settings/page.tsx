@@ -99,7 +99,7 @@ export default function SettingsPage() {
         </div>
         <div className="px-5 py-4 space-y-3">
           <p className="text-sm text-gray-500 leading-relaxed">
-            TimbasBot é um bot de Discord para organizar partidas 5v5 competitivas. Ranking, estatísticas detalhadas e histórico completo — tudo dentro do servidor.
+            TimbasBot é um bot de Discord para organizar partidas 5v5 competitivas. Ranking, estatísticas detalhadas e histórico completo, tudo dentro do servidor.
           </p>
           <div className="flex flex-wrap gap-3">
             <a

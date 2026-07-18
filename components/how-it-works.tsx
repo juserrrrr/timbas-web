@@ -62,7 +62,7 @@ export function HowItWorks() {
             {" "}em 4 passos
           </h2>
           <p className="mx-auto max-w-xl text-lg text-gray-500">
-            Tudo acontece dentro do Discord — sem apps externos, sem cadastro.
+            Tudo acontece dentro do Discord, sem apps externos e sem cadastro.
           </p>
         </div>
 

@@ -23,7 +23,7 @@ export interface Match {
 }
 
 export async function getMatchHistory(token: string, discordServerId: string): Promise<Match[]> {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL
+  const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL is not defined')
 
   const response = await apiFetch(`${API_URL}/leaderboard/${discordServerId}/matches`, {

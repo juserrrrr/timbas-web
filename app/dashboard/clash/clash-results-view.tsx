@@ -34,7 +34,7 @@ function averageRankLabel(players: ScoutPlayer[]): { label: string; tier: string
   const values = players
     .map((p) => rankValue(p.soloRank) ?? rankValue(p.flexRank))
     .filter((v): v is number => v !== null)
-  if (!values.length) return { label: "—", tier: "" }
+  if (!values.length) return { label: "N/D", tier: "" }
   const avg = values.reduce((a, b) => a + b, 0) / values.length
   const tierIndex = Math.min(TIER_SEQUENCE.length - 1, Math.floor(avg / 4))
   const divisions = ["IV", "III", "II", "I"]
@@ -222,7 +222,7 @@ function PlayerCard({ player, index, counterplay, predictedPick, threat, isFocus
         <div className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 ${isFocus ? "border-red-500/25 bg-red-500/[0.06]" : "border-emerald-500/20 bg-emerald-500/[0.05]"}`}>
           <Crosshair className={`h-3 w-3 flex-shrink-0 ${isFocus ? "text-red-400" : "text-emerald-400"}`} />
           <p className={`text-[9px] font-black uppercase tracking-widest ${isFocus ? "text-red-400" : "text-emerald-400"}`}>
-            {isFocus ? "Maior ameaça — focar" : "Elo fraco — explorar"}
+            {isFocus ? "Maior ameaça, foquem nele" : "Elo fraco, joguem em cima"}
           </p>
         </div>
       )}
@@ -512,7 +512,7 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
             </div>
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2 text-center">
               <p className="text-[9px] text-amber-700 uppercase tracking-wider mb-0.5">Tier</p>
-              <p className="font-black text-amber-400 text-sm">{data.team.tier || "—"}</p>
+              <p className="font-black text-amber-400 text-sm">{data.team.tier || "N/D"}</p>
             </div>
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-center">
               <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-0.5">Rank Médio</p>
@@ -599,7 +599,7 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
             </div>
             <div>
               <p className="font-black text-white tracking-tight">Plano de Jogo</p>
-              <p className="text-xs text-gray-500">Como vencer este time — condição de vitória, early game e teamfight</p>
+              <p className="text-xs text-gray-500">Como vencer este time: condição de vitória, early game e teamfight</p>
             </div>
           </div>
 

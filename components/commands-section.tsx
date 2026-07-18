@@ -6,7 +6,7 @@ import { useState } from "react"
 const commands = [
   {
     command: "/criarpartida",
-    description: "Cria uma partida Online (com registro) ou Offline — escolha o tamanho (1v1/3v3/5v5) e o formato (Aleatório, Livre ou Aleatório Completo).",
+    description: "Cria uma partida Online (com registro) ou Offline. Você escolhe o tamanho (1v1/3v3/5v5) e o formato (Aleatório, Livre ou Aleatório Completo).",
     example: "/criarpartida modo: Online tamanho: 5v5 formato: Aleatório",
     badge: "Partidas",
     badgeColor: "bg-purple-500/15 text-purple-300 border-purple-500/20",
@@ -77,7 +77,7 @@ export function CommandsSection() {
             </span>
           </h2>
           <p className="mx-auto max-w-xl text-lg text-gray-500">
-            Interface nativa do Discord — sem sair do servidor para nada.
+            Interface nativa do Discord, sem sair do servidor para nada.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ export function CommandsSection() {
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <Terminal className="h-3.5 w-3.5" />
-              <span>TimbasBot — Discord Commands</span>
+              <span>TimbasBot | Discord Commands</span>
             </div>
           </div>
 

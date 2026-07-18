@@ -46,7 +46,7 @@ export default function LoginPage() {
                 </span>
               </h1>
               <p className="text-gray-500 mb-10 max-w-sm leading-relaxed">
-                Dashboard completo para tudo que acontece nas suas partidas 5v5 — conectado direto ao seu Discord.
+                Dashboard completo para tudo que acontece nas suas partidas 5v5, conectado direto ao seu Discord.
               </p>
 
               {/* Feature items */}
@@ -71,7 +71,7 @@ export default function LoginPage() {
                   {
                     icon: Swords,
                     label: "Histórico de partidas",
-                    desc: "Reveja cada jogo — times, resultado, lado",
+                    desc: "Reveja cada jogo: times, resultado e lado",
                     iconBg: "bg-red-500/10",
                     iconColor: "text-red-400",
                     border: "border-red-500/15",
@@ -93,7 +93,7 @@ export default function LoginPage() {
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
                 <div className="flex items-center gap-2 border-b border-white/[0.05] px-4 py-3">
                   <Trophy className="h-3.5 w-3.5 text-yellow-400" />
-                  <span className="text-xs font-semibold text-gray-400">Top Ranking — Timbas</span>
+                  <span className="text-xs font-semibold text-gray-400">Top Ranking do Timbas</span>
                 </div>
                 <div className="divide-y divide-white/[0.04]">
                   {[

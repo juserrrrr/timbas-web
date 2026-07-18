@@ -299,7 +299,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
             <div className="space-y-1.5 text-center">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-600">Reconhecimento inimigo</p>
               <h2 className="text-xl font-black tracking-tight text-white sm:text-2xl">Quem você vai enfrentar?</h2>
-              <p className="text-xs text-gray-500">Digite o nick de um jogador — o time de Clash inteiro entra na mira</p>
+              <p className="text-xs text-gray-500">Digite o nick de um jogador e o time de Clash inteiro dele entra na mira</p>
             </div>
 
             <div className="mx-auto max-w-2xl space-y-2.5">
@@ -336,7 +336,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
                   </>
                 ) : (
                   <span className="text-gray-600">
-                    {trimmedInput ? "Falta a tag — o formato é Nick#TAG, ex.: Faker#BR1" : "Ex.: Faker#BR1 — qualquer jogador do servidor BR"}
+                    {trimmedInput ? "Falta a tag. O formato é Nick#TAG, tipo Faker#BR1" : "Pode ser qualquer jogador do servidor BR, tipo Faker#BR1"}
                   </span>
                 )}
               </div>
@@ -510,8 +510,8 @@ export default function ClashScoutClient({ token }: { token: string }) {
               </div>
 
               <p className="text-[11px] leading-relaxed text-gray-500">
-                A análise roda numa fila no servidor que respeita o limite da API da Riot — nenhum dado fica de fora.
-                Pode sair desta tela: quando voltar, o acompanhamento continua de onde parou.
+                A análise roda numa fila no servidor, respeitando o limite da API da Riot, então nada fica de fora.
+                Pode sair desta tela tranquilo: quando voltar, o acompanhamento continua de onde parou.
               </p>
             </div>
             <ScoutSkeleton />

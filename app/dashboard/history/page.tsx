@@ -96,7 +96,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
               <div className="flex items-center gap-2 mb-4">
                 <ShieldHalf className="h-5 w-5 text-blue-400" />
                 <h2 className="text-lg font-bold text-white">Parceiros</h2>
-                <span className="hidden text-xs font-medium uppercase text-gray-500 sm:inline">— ordenado por win rate</span>
+                <span className="hidden text-xs font-medium uppercase text-gray-500 sm:inline">ordenado por win rate</span>
               </div>
               <div className="space-y-2">
                 {duoData.partners.map((p, idx) => (
@@ -125,7 +125,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
               <div className="flex items-center gap-2 mb-4">
                 <Swords className="h-5 w-5 text-red-400" />
                 <h2 className="text-lg font-bold text-white">Adversários</h2>
-                <span className="hidden text-xs font-medium uppercase text-gray-500 sm:inline">— seu win rate contra eles</span>
+                <span className="hidden text-xs font-medium uppercase text-gray-500 sm:inline">seu win rate contra eles</span>
               </div>
               <div className="space-y-2">
                 {duoData.opponents.map((p, idx) => (

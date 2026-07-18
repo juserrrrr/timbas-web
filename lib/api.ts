@@ -1,6 +1,6 @@
 import { getToken, setToken, clearAllTokens, getRefreshToken, setRefreshToken } from './auth'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 async function tryRefresh(): Promise<string | null> {
   const refreshToken = getRefreshToken()

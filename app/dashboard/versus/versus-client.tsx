@@ -192,23 +192,23 @@ export function VersusClient({ players, serverId }: Props) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="border-gray-800/50 bg-gray-900/50 p-5 backdrop-blur-sm">
-              <h3 className="mb-3 font-semibold text-white text-sm">Forma Recente — <span className="text-blue-400">{leftPlayer.name}</span></h3>
+              <h3 className="mb-3 font-semibold text-white text-sm">Forma Recente de <span className="text-blue-400">{leftPlayer.name}</span></h3>
               <RecentForm form={leftDetail.recentForm} />
             </Card>
             <Card className="border-gray-800/50 bg-gray-900/50 p-5 backdrop-blur-sm">
-              <h3 className="mb-3 font-semibold text-white text-sm">Forma Recente — <span className="text-red-400">{rightPlayer.name}</span></h3>
+              <h3 className="mb-3 font-semibold text-white text-sm">Forma Recente de <span className="text-red-400">{rightPlayer.name}</span></h3>
               <RecentForm form={rightDetail.recentForm} />
             </Card>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="border-gray-800/50 bg-gray-900/50 p-5 backdrop-blur-sm space-y-3">
-              <h3 className="font-semibold text-white text-sm">WR por Lado — <span className="text-blue-400">{leftPlayer.name}</span></h3>
+              <h3 className="font-semibold text-white text-sm">WR por Lado de <span className="text-blue-400">{leftPlayer.name}</span></h3>
               <SideBar wins={leftDetail.blueSide.wins} losses={leftDetail.blueSide.losses} total={leftDetail.blueSide.total} winRate={leftDetail.blueSide.winRate} color="blue" label="Lado Azul" />
               <SideBar wins={leftDetail.redSide.wins} losses={leftDetail.redSide.losses} total={leftDetail.redSide.total} winRate={leftDetail.redSide.winRate} color="red" label="Lado Vermelho" />
             </Card>
             <Card className="border-gray-800/50 bg-gray-900/50 p-5 backdrop-blur-sm space-y-3">
-              <h3 className="font-semibold text-white text-sm">WR por Lado — <span className="text-red-400">{rightPlayer.name}</span></h3>
+              <h3 className="font-semibold text-white text-sm">WR por Lado de <span className="text-red-400">{rightPlayer.name}</span></h3>
               <SideBar wins={rightDetail.blueSide.wins} losses={rightDetail.blueSide.losses} total={rightDetail.blueSide.total} winRate={rightDetail.blueSide.winRate} color="blue" label="Lado Azul" />
               <SideBar wins={rightDetail.redSide.wins} losses={rightDetail.redSide.losses} total={rightDetail.redSide.total} winRate={rightDetail.redSide.winRate} color="red" label="Lado Vermelho" />
             </Card>

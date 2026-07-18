@@ -1,5 +1,5 @@
 const API = () => {
-  const url = process.env.NEXT_PUBLIC_API_URL
+  const url = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
   if (!url) throw new Error('NEXT_PUBLIC_API_URL not defined')
   return url
 }

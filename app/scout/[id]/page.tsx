@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const result = await fetchSharedAnalysis(id)
     return {
-      title: `Scout — ${result.teamName} | Timbas`,
+      title: `Scout de ${result.teamName} | Timbas`,
       description: `Análise de Clash do time ${result.teamName}`,
     }
   } catch {
