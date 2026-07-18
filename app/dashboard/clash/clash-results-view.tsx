@@ -5,14 +5,41 @@ import Image from "next/image"
 import {
   ShieldAlert, Trophy, Swords, Target, Brain,
   Shield, Star, TrendingUp, Flame, Crown,
+  Zap, Crosshair, Map as MapIcon,
 } from "lucide-react"
 import {
   ScoutResult, ScoutPlayer, BanSuggestion, CounterplayAdvice, PredictedPick,
-  QueueChampStat, getChampionIconUrl, getRankColor, getRankBg, formatRank, RankInfo,
+  QueueChampStat, ThreatAssessment, getChampionIconUrl, getRankColor, getRankBg, formatRank, RankInfo,
 } from "@/lib/services/clash"
 
 const POSITION_LABELS: Record<string, string> = {
   TOP: "Top", JUNGLE: "Jungle", MID: "Mid", ADC: "ADC", SUPPORT: "Support", FILL: "Fill",
+}
+
+const ROLE_ORDER = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT", "FILL"]
+
+// ─── Rank médio do time ───────────────────────────────────────────────────────
+
+const TIER_SEQUENCE = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"]
+const TIER_PT = ["Ferro", "Bronze", "Prata", "Ouro", "Platina", "Esmeralda", "Diamante", "Mestre", "Grão-Mestre", "Challenger"]
+const DIVISION_VALUE: Record<string, number> = { IV: 0, III: 1, II: 2, I: 3 }
+
+function rankValue(rank?: RankInfo): number | null {
+  const tierIndex = TIER_SEQUENCE.indexOf(rank?.tier?.toUpperCase() ?? "")
+  if (tierIndex < 0) return null
+  return tierIndex * 4 + (DIVISION_VALUE[rank?.rank?.toUpperCase() ?? ""] ?? 0)
+}
+
+function averageRankLabel(players: ScoutPlayer[]): { label: string; tier: string } {
+  const values = players
+    .map((p) => rankValue(p.soloRank) ?? rankValue(p.flexRank))
+    .filter((v): v is number => v !== null)
+  if (!values.length) return { label: "—", tier: "" }
+  const avg = values.reduce((a, b) => a + b, 0) / values.length
+  const tierIndex = Math.min(TIER_SEQUENCE.length - 1, Math.floor(avg / 4))
+  const divisions = ["IV", "III", "II", "I"]
+  const division = tierIndex >= 7 ? "" : ` ${divisions[Math.min(3, Math.round(avg - tierIndex * 4))]}`
+  return { label: `${TIER_PT[tierIndex]}${division}`, tier: TIER_SEQUENCE[tierIndex] }
 }
 
 const POSITION_COLORS: Record<string, { text: string; border: string; bg: string; glow: string }> = {
@@ -144,32 +171,61 @@ function StatRow({ label, value, highlight }: { label: string; value: string | n
   )
 }
 
-function PlayerCard({ player, index, counterplay, predictedPick }: {
+function ThreatDots({ level }: { level: number }) {
+  const color = level >= 5 ? "bg-red-400" : level >= 4 ? "bg-orange-400" : level >= 3 ? "bg-amber-400" : "bg-gray-500"
+  return (
+    <div className="flex items-center gap-0.5" title={`Ameaça ${level}/5`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className={`h-1.5 w-1.5 rounded-full ${i <= level ? color : "bg-white/[0.08]"}`} />
+      ))}
+    </div>
+  )
+}
+
+function PlayerCard({ player, index, counterplay, predictedPick, threat, isFocus, isWeakLink }: {
   player: ScoutPlayer
   index: number
   counterplay?: CounterplayAdvice
   predictedPick?: PredictedPick
+  threat?: ThreatAssessment
+  isFocus?: boolean
+  isWeakLink?: boolean
 }) {
   const pos = POSITION_COLORS[player.position] ?? POSITION_COLORS.FILL
   const [name, tag] = player.riotId.split("#")
 
   return (
     <div
-      className={`group flex flex-col gap-3 rounded-2xl border border-white/[0.07] bg-[#07070c]/80 p-4 shadow-black/20 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-white/[0.14] hover:shadow-2xl ${pos.glow}`}
+      className={`group flex flex-col gap-3 rounded-2xl border bg-[#07070c]/80 p-4 shadow-black/20 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl ${pos.glow} ${
+        isFocus ? "border-red-500/30 hover:border-red-500/45" : isWeakLink ? "border-emerald-500/25 hover:border-emerald-500/40" : "border-white/[0.07] hover:border-white/[0.14]"
+      }`}
       style={{ animationDelay: `${index * 80}ms` }}
     >
-      {/* Position badge + clash tag */}
-      <div className="flex items-center justify-between">
+      {/* Position badge + threat + clash tag */}
+      <div className="flex items-center justify-between gap-2">
         <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${pos.text} ${pos.border} ${pos.bg}`}>
           {POSITION_LABELS[player.position] ?? player.position}
         </span>
-        {player.clashHistory.games > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black text-amber-400 uppercase tracking-wider">
-            <Swords className="h-2.5 w-2.5" />
-            Clash
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {threat && <ThreatDots level={threat.level} />}
+          {player.clashHistory.games > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black text-amber-400 uppercase tracking-wider">
+              <Swords className="h-2.5 w-2.5" />
+              Clash
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* Foco / elo fraco */}
+      {(isFocus || isWeakLink) && (
+        <div className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 ${isFocus ? "border-red-500/25 bg-red-500/[0.06]" : "border-emerald-500/20 bg-emerald-500/[0.05]"}`}>
+          <Crosshair className={`h-3 w-3 flex-shrink-0 ${isFocus ? "text-red-400" : "text-emerald-400"}`} />
+          <p className={`text-[9px] font-black uppercase tracking-widest ${isFocus ? "text-red-400" : "text-emerald-400"}`}>
+            {isFocus ? "Maior ameaça — focar" : "Elo fraco — explorar"}
+          </p>
+        </div>
+      )}
 
       {/* Avatar + name */}
       <div className="flex items-center gap-3">
@@ -295,6 +351,38 @@ function PlayerCard({ player, index, counterplay, predictedPick }: {
         </div>
       )}
 
+      {/* Deep Scout: leitura de mapa via timeline */}
+      {player.mapProfile && player.mapProfile.games > 0 && (
+        <div className="rounded-xl border border-sky-500/15 bg-sky-500/[0.04] p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <MapIcon className="h-2.5 w-2.5 text-sky-400/70" />
+              <p className="text-[9px] font-black uppercase tracking-widest text-sky-500">Leitura de Mapa</p>
+            </div>
+            <span className="text-[9px] text-gray-600 tabular-nums">{player.mapProfile.games}G</span>
+          </div>
+          {player.position === "JUNGLE" && (
+            <>
+              <StatRow label="Foco de gank" value={player.mapProfile.likelyGankFocus} highlight />
+              {player.mapProfile.startSide && player.mapProfile.startSide !== "inconclusivo" && (
+                <StatRow label="Começa pelo" value={`lado ${player.mapProfile.startSide}`} highlight />
+              )}
+              {player.mapProfile.earlyGanksPerGame !== undefined && (
+                <StatRow
+                  label="Ganks early/jogo"
+                  value={`${player.mapProfile.earlyGanksPerGame} ${player.mapProfile.earlyGanksPerGame >= 2.5 ? "(ganka muito)" : player.mapProfile.earlyGanksPerGame < 1 ? "(farma)" : ""}`.trim()}
+                />
+              )}
+            </>
+          )}
+          <StatRow label="Luta mais em" value={player.mapProfile.mostFought} />
+          <StatRow label="Morre mais em" value={player.mapProfile.mostDeaths} />
+          {player.mapProfile.invades > 0 && (
+            <StatRow label="Invade/counter-jg" value={player.mapProfile.invades} />
+          )}
+        </div>
+      )}
+
       {/* AI: picks prováveis (counterplay + predicted) */}
       {(counterplay || predictedPick) && (
         <div className="rounded-xl border border-red-500/20 bg-gradient-to-b from-red-500/[0.06] to-red-500/[0.02] p-2.5 space-y-2 mt-auto">
@@ -387,6 +475,17 @@ function BanCard({ ban, rank }: { ban: BanSuggestion; rank: number }) {
 }
 
 export default function ClashResultsView({ data }: { data: ScoutResult }) {
+  const sortedPlayers = [...data.players].sort(
+    (a, b) => ROLE_ORDER.indexOf(a.position) - ROLE_ORDER.indexOf(b.position),
+  )
+  const avgRank = averageRankLabel(data.players)
+  const plan = data.gamePlan
+  const threatByRiotId = new Map(
+    (plan?.threats ?? []).map((t) => [t.riotId.toLowerCase(), t]),
+  )
+  const focusId = plan?.focusTarget?.toLowerCase()
+  const weakId = plan?.weakLink?.toLowerCase()
+
   return (
     <div className="space-y-6">
       {/* Team header */}
@@ -402,7 +501,7 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
               <p className="text-2xl font-black text-white tracking-tight">{data.team.name}</p>
             </div>
           </div>
-          <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-4">
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-center">
               <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-0.5">Sigla</p>
               <p className="font-black text-white text-sm">{data.team.abbreviation}</p>
@@ -410,6 +509,10 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2 text-center">
               <p className="text-[9px] text-amber-700 uppercase tracking-wider mb-0.5">Tier</p>
               <p className="font-black text-amber-400 text-sm">{data.team.tier || "—"}</p>
+            </div>
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-center">
+              <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-0.5">Rank Médio</p>
+              <p className={`font-black text-sm ${getRankColor(avgRank.tier)}`}>{avgRank.label}</p>
             </div>
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-center">
               <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-0.5">Jogadores</p>
@@ -421,7 +524,7 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
 
       {/* Player grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-        {data.players.map((player, i) => {
+        {sortedPlayers.map((player, i) => {
           const rid = player.riotId.toLowerCase()
           const counterplay =
             data.counterplays.find((c) => c.riotId.toLowerCase() === rid) ??
@@ -436,10 +539,92 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
               index={i}
               counterplay={counterplay}
               predictedPick={predictedPick}
+              threat={threatByRiotId.get(rid)}
+              isFocus={focusId === rid}
+              isWeakLink={weakId === rid}
             />
           )
         })}
       </div>
+
+      {/* Plano de Jogo */}
+      {plan && (
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-[#071009] to-[#07070c] p-6 space-y-5 shadow-2xl shadow-black/40">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(16,185,129,0.06),transparent_60%)]" />
+          <div className="absolute top-0 left-0 h-px w-1/2 bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+
+          <div className="relative flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 shadow-lg shadow-emerald-500/10">
+              <Target className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div>
+              <p className="font-black text-white tracking-tight">Plano de Jogo</p>
+              <p className="text-xs text-gray-500">Como vencer este time — condição de vitória, early game e teamfight</p>
+            </div>
+          </div>
+
+          <div className="relative grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4 lg:col-span-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy className="h-3.5 w-3.5 text-emerald-400" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Condição de Vitória</p>
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed">{plan.winCondition}</p>
+            </div>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="h-3.5 w-3.5 text-amber-400" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Primeiros 5 Minutos</p>
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed">{plan.earlyGame}</p>
+            </div>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Swords className="h-3.5 w-3.5 text-red-400" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Teamfight</p>
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed">{plan.teamfight}</p>
+            </div>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 lg:col-span-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="h-3.5 w-3.5 text-orange-400" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Perfil de Dano / Itemização</p>
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed">{plan.damageProfile}</p>
+            </div>
+          </div>
+
+          {plan.threats.length > 0 && (
+            <div className="relative space-y-2">
+              <div className="flex items-center gap-2">
+                <Crosshair className="h-3.5 w-3.5 text-gray-500" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Ranking de Ameaça</p>
+              </div>
+              <div className="space-y-1.5">
+                {[...plan.threats].sort((a, b) => b.level - a.level).map((t) => {
+                  const tid = t.riotId.toLowerCase()
+                  return (
+                    <div key={t.riotId} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-2">
+                      <span className={`w-16 text-[10px] font-black uppercase tracking-wider ${(POSITION_COLORS[t.position] ?? POSITION_COLORS.FILL).text}`}>
+                        {POSITION_LABELS[t.position] ?? t.position}
+                      </span>
+                      <span className="text-xs font-black text-white">{t.riotId.split("#")[0]}</span>
+                      <ThreatDots level={t.level} />
+                      {tid === focusId && (
+                        <span className="rounded-md border border-red-500/25 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase text-red-400">Focar</span>
+                      )}
+                      {tid === weakId && (
+                        <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase text-emerald-400">Explorar</span>
+                      )}
+                      <span className="min-w-0 flex-1 text-[11px] text-gray-500">{t.reason}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* AI analysis */}
       {(data.bans.length > 0 || data.counterplays.length > 0 || data.strategy) && (

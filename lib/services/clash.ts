@@ -56,6 +56,8 @@ export interface MapProfile {
   deathRegions: MapRegionStats
   objectiveFights: number
   invades: number
+  startSide?: string // 'topo' | 'baixo' | 'inconclusivo'
+  earlyGanksPerGame?: number
   mostVisited: string
   mostFought: string
   mostDeaths: string
@@ -128,6 +130,23 @@ export interface PredictedPick {
   option2: { champion: string; reason: string }
 }
 
+export interface ThreatAssessment {
+  riotId: string
+  position: string
+  level: number // 1 (fraco) a 5 (ameaça extrema)
+  reason: string
+}
+
+export interface GamePlan {
+  winCondition: string
+  earlyGame: string
+  teamfight: string
+  damageProfile: string
+  focusTarget: string
+  weakLink: string
+  threats: ThreatAssessment[]
+}
+
 export interface ScoutResult {
   team: {
     id: string
@@ -141,21 +160,61 @@ export interface ScoutResult {
   counterplays: CounterplayAdvice[]
   predictedPicks: PredictedPick[]
   strategy: string
+  gamePlan?: GamePlan
 }
 
-// ─── Scout API call ───────────────────────────────────────────────────────────
+// ─── Scout API calls (assíncrono via fila) ────────────────────────────────────
+//
+// O scout roda numa fila no servidor que respeita o rate limit da Riot.
+// startScout() retorna na hora com um job; o progresso/resultado vem por
+// polling em getScoutJob() — a tela não precisa ficar presa esperando.
 
-export async function scout(
+export interface ScoutProgress {
+  stage: string
+  message: string
+  percent: number
+  current?: number
+  total?: number
+}
+
+export type ScoutJobStatus = 'queued' | 'running' | 'done' | 'error'
+
+export interface ScoutJob {
+  id: string
+  riotId: string
+  status: ScoutJobStatus
+  deep?: boolean
+  queuePosition: number
+  progress: ScoutProgress
+  result?: ScoutResult
+  error?: string
+}
+
+export async function startScout(
   token: string,
   gameName: string,
   tagLine: string,
-): Promise<ScoutResult> {
+  deep = false,
+): Promise<ScoutJob> {
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
-  const params = new URLSearchParams({ gameName, tagLine })
-  const res = await fetch(`${API_URL}/clash/scout?${params}`, {
+  const res = await fetch(`${API_URL}/clash/scout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ gameName, tagLine, deep }),
+  })
+  const body = await res.json()
+  if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
+  return body
+}
+
+// Retorna null quando o job não existe mais (expirou ou o servidor reiniciou).
+export async function getScoutJob(token: string, jobId: string): Promise<ScoutJob | null> {
+  if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
+  const res = await fetch(`${API_URL}/clash/scout/jobs/${encodeURIComponent(jobId)}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   })
+  if (res.status === 404) return null
   const body = await res.json()
   if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
   return body
