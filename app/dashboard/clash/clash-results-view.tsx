@@ -614,7 +614,7 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
             <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="h-3.5 w-3.5 text-amber-400" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Primeiros 5 Minutos</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Early Game</p>
               </div>
               <p className="text-sm text-gray-300 leading-relaxed">{plan.earlyGame}</p>
             </div>
