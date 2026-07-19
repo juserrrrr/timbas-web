@@ -249,7 +249,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
     setRetryingAi(true)
     setAiRetryError(null)
     try {
-      const ai = await retryScoutAi(token, data.players)
+      const ai = await retryScoutAi(token, data.players, data.teamProfile)
       if (!ai.aiGenerated) {
         setAiRetryError("O Gemini não respondeu após 3 tentativas. Tente novamente em alguns instantes.")
         return
@@ -431,7 +431,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
                     <Zap className={`h-4 w-4 ${!deep ? "text-amber-400" : "text-gray-600"}`} />
                     <span className={`text-sm font-black ${!deep ? "text-amber-300" : "text-gray-400"}`}>Scout Rápido</span>
                   </div>
-                  <span className={`text-[10px] font-bold tabular-nums ${!deep ? "text-amber-500" : "text-gray-600"}`}>~2–3 min</span>
+                  <span className={`text-[10px] font-bold tabular-nums ${!deep ? "text-amber-500" : "text-gray-600"}`}>~4–6 min</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-gray-500">
                   Ranks, campeões, picks prováveis, bans e plano de jogo da IA.
@@ -456,7 +456,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
                     <Radar className={`h-4 w-4 ${deep ? "text-sky-400" : "text-gray-600"}`} />
                     <span className={`text-sm font-black ${deep ? "text-sky-300" : "text-gray-400"}`}>Deep Scout</span>
                   </div>
-                  <span className={`text-[10px] font-bold tabular-nums ${deep ? "text-sky-500" : "text-gray-600"}`}>~4–6 min</span>
+                  <span className={`text-[10px] font-bold tabular-nums ${deep ? "text-sky-500" : "text-gray-600"}`}>~6–10 min</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-gray-500">
                   Tudo do rápido + leitura de mapa: rota do jungler, ganks por jogo, zonas de morte e invades.

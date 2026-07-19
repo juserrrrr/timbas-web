@@ -359,26 +359,40 @@ function PlayerCard({ player, index, counterplay, predictedPick, threat, isFocus
               <MapIcon className="h-2.5 w-2.5 text-sky-400/70" />
               <p className="text-[9px] font-black uppercase tracking-widest text-sky-500">Leitura de Mapa</p>
             </div>
-            <span className="text-[9px] text-gray-600 tabular-nums">{player.mapProfile.games}G</span>
+            <span className="text-[9px] text-gray-600 tabular-nums">
+              {player.mapProfile.games}G{player.mapProfile.sampleConfidence ? ` · confiança ${player.mapProfile.sampleConfidence}` : ""}
+            </span>
           </div>
           {player.position === "JUNGLE" && (
             <>
-              <StatRow label="Foco de gank" value={player.mapProfile.likelyGankFocus} highlight />
+              <StatRow label="Foco estimado de gank" value={player.mapProfile.likelyGankFocus} highlight />
               {player.mapProfile.startSide && player.mapProfile.startSide !== "inconclusivo" && (
-                <StatRow label="Começa pelo" value={`lado ${player.mapProfile.startSide}`} highlight />
+                <StatRow label="Lado inicial provável" value={`${player.mapProfile.startSide} · ${player.mapProfile.startSideConfidence ?? 0}% confiança`} highlight />
               )}
               {player.mapProfile.earlyGanksPerGame !== undefined && (
                 <StatRow
-                  label="Ganks early/jogo"
-                  value={`${player.mapProfile.earlyGanksPerGame} ${player.mapProfile.earlyGanksPerGame >= 2.5 ? "(ganka muito)" : player.mapProfile.earlyGanksPerGame < 1 ? "(farma)" : ""}`.trim()}
+                  label="Ações de gank early/jogo"
+                  value={player.mapProfile.earlyGanksPerGame}
                 />
+              )}
+              {player.mapProfile.ganksByLane && player.mapProfile.ganksByLane.total > 0 && (
+                <StatRow label="Distribuição de ganks" value={`top ${player.mapProfile.ganksByLane.top} · mid ${player.mapProfile.ganksByLane.mid} · bot ${player.mapProfile.ganksByLane.bot}`} />
+              )}
+              {player.mapProfile.avgFirstGankMinute != null && (
+                <StatRow label="Primeiro gank estimado" value={`${player.mapProfile.firstGankFocus} · ${player.mapProfile.avgFirstGankMinute} min`} />
               )}
             </>
           )}
+          {player.position !== "JUNGLE" && (player.mapProfile.roamsPerGame ?? 0) > 0 && (
+            <StatRow label="Roams early/jogo" value={`${player.mapProfile.roamsPerGame} · foco ${player.mapProfile.roamFocus}`} highlight />
+          )}
           <StatRow label="Luta mais em" value={player.mapProfile.mostFought} />
           <StatRow label="Morre mais em" value={player.mapProfile.mostDeaths} />
-          {player.mapProfile.invades > 0 && (
-            <StatRow label="Invade/counter-jg" value={player.mapProfile.invades} />
+          {(player.mapProfile.invadeRate ?? 0) > 0 && (
+            <StatRow label="Invade em jogos" value={`${player.mapProfile.invadeRate}% (${player.mapProfile.invadeGames}G)`} />
+          )}
+          {player.mapProfile.objectiveBreakdown && player.mapProfile.objectiveFights > 0 && (
+            <StatRow label="Participação em objetivos" value={`drag ${player.mapProfile.objectiveBreakdown.dragons} · barão ${player.mapProfile.objectiveBreakdown.barons} · arauto ${player.mapProfile.objectiveBreakdown.heralds}`} />
           )}
         </div>
       )}
@@ -549,7 +563,8 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
             {junglerMap && junglerMap.startSide && junglerMap.startSide !== "inconclusivo" && (
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/25 bg-sky-500/[0.07] px-2.5 py-1 text-[11px] font-bold text-sky-400">
                 <MapIcon className="h-3 w-3" />
-                Jungler começa pelo <span className="font-black text-white">{junglerMap.startSide}</span>
+                Lado inicial provável: <span className="font-black text-white">{junglerMap.startSide}</span>
+                {junglerMap.startSideConfidence !== undefined && <span className="text-sky-500/80">· {junglerMap.startSideConfidence}%</span>}
               </span>
             )}
             {junglerMap && (
@@ -564,6 +579,28 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
           </div>
         )}
       </div>
+
+      {data.teamProfile && (
+        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-violet-400">Identidade coletiva medida</p>
+              <p className="text-xs text-gray-500">Partidas de Clash compartilhadas pelo núcleo atual</p>
+            </div>
+            <span className="text-[10px] text-gray-500">{data.teamProfile.games}G · confiança {data.teamProfile.sampleConfidence}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+            <StatRow label="Vitórias" value={`${data.teamProfile.winrate}%`} highlight />
+            <StatRow label="Duração média" value={`${data.teamProfile.avgDurationMinutes} min`} />
+            <StatRow label="K / D" value={`${data.teamProfile.avgKills} / ${data.teamProfile.avgDeaths}`} />
+            <StatRow label="Dragões" value={`${data.teamProfile.avgDragons}/jogo`} />
+            <StatRow label="Barões" value={`${data.teamProfile.avgBarons}/jogo`} />
+            <StatRow label="Torres" value={`${data.teamProfile.avgTowers}/jogo`} />
+            <StatRow label="First blood" value={`${data.teamProfile.firstBloodRate}%`} />
+            <StatRow label="Carry de dano" value={`${data.teamProfile.mainCarry.split("#")[0]} · ${data.teamProfile.mainCarryDamageShare}%`} highlight />
+          </div>
+        </div>
+      )}
 
       {/* Player grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">

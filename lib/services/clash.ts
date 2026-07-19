@@ -38,6 +38,13 @@ export interface PlaystyleStats {
   avgDragonTakedowns: number
   avgObjectiveSteals: number
   avgEnemyJungleMonsterKills: number
+  avgGoldEarned?: number
+  avgCs?: number
+  avgDamageTaken?: number
+  avgWardsPlaced?: number
+  avgWardsKilled?: number
+  avgControlWards?: number
+  avgTurretTakedowns?: number
 }
 
 export interface MapRegionStats {
@@ -63,6 +70,21 @@ export interface MapProfile {
   mostFought: string
   mostDeaths: string
   likelyGankFocus: string
+  ganksByLane?: { top: number; mid: number; bot: number; total: number }
+  firstGanksByLane?: { top: number; mid: number; bot: number; total: number }
+  firstGankFocus?: string
+  avgFirstGankMinute?: number | null
+  roamsByLane?: { top: number; mid: number; bot: number; total: number }
+  roamsPerGame?: number
+  roamFocus?: string
+  invadeGames?: number
+  invadeRate?: number
+  startSideGames?: { top: number; bottom: number; unknown: number }
+  startSideConfidence?: number
+  objectiveBreakdown?: { dragons: number; barons: number; heralds: number; other: number }
+  wardsPlaced?: number
+  visionFocus?: string
+  sampleConfidence?: 'baixa' | 'media' | 'alta'
 }
 
 export interface QueuePerf {
@@ -148,6 +170,23 @@ export interface GamePlan {
   threats: ThreatAssessment[]
 }
 
+export interface TeamTacticalProfile {
+  games: number
+  wins: number
+  winrate: number
+  avgDurationMinutes: number
+  avgKills: number
+  avgDeaths: number
+  avgDragons: number
+  avgBarons: number
+  avgTowers: number
+  firstBloodRate: number
+  firstTowerRate: number
+  mainCarry: string
+  mainCarryDamageShare: number
+  sampleConfidence: 'baixa' | 'media' | 'alta'
+}
+
 export interface ScoutResult {
   team: {
     id: string
@@ -157,6 +196,7 @@ export interface ScoutResult {
     tier: number
   }
   players: ScoutPlayer[]
+  teamProfile?: TeamTacticalProfile
   aiGenerated?: boolean
   bans: BanSuggestion[]
   counterplays: CounterplayAdvice[]
@@ -236,12 +276,12 @@ export async function getScoutJob(token: string, jobId: string): Promise<ScoutJo
   return body
 }
 
-export async function retryScoutAi(token: string, players: ScoutPlayer[]): Promise<ScoutAiResult> {
+export async function retryScoutAi(token: string, players: ScoutPlayer[], teamProfile?: TeamTacticalProfile): Promise<ScoutAiResult> {
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
   const res = await fetch(`${API_URL}/clash/analysis/retry-ai`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ players }),
+    body: JSON.stringify({ players, teamProfile }),
   })
   const body = await res.json()
   if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
