@@ -157,12 +157,18 @@ export interface ScoutResult {
     tier: number
   }
   players: ScoutPlayer[]
+  aiGenerated?: boolean
   bans: BanSuggestion[]
   counterplays: CounterplayAdvice[]
   predictedPicks: PredictedPick[]
   strategy: string
   gamePlan?: GamePlan
 }
+
+export type ScoutAiResult = Pick<
+  ScoutResult,
+  'aiGenerated' | 'bans' | 'counterplays' | 'predictedPicks' | 'strategy' | 'gamePlan'
+>
 
 // ─── Scout API calls (assíncrono via fila) ────────────────────────────────────
 //
@@ -225,6 +231,18 @@ export async function getScoutJob(token: string, jobId: string): Promise<ScoutJo
     cache: 'no-store',
   })
   if (res.status === 404) return null
+  const body = await res.json()
+  if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
+  return body
+}
+
+export async function retryScoutAi(token: string, players: ScoutPlayer[]): Promise<ScoutAiResult> {
+  if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')
+  const res = await fetch(`${API_URL}/clash/analysis/retry-ai`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ players }),
+  })
   const body = await res.json()
   if (!res.ok) throw new Error(body.message ?? `Erro ${res.status}`)
   return body

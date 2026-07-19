@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
   ShieldAlert, RefreshCw, Search, Zap, AlertCircle, UserSearch,
@@ -9,6 +9,7 @@ import {
 import { BetaBadge } from "@/components/ui/beta-badge"
 import {
   startScout,
+  retryScoutAi,
   getScoutJob,
   getScoutHistory,
   fetchSharedAnalysis,
@@ -49,6 +50,12 @@ function timeAgo(iso: string): string {
   return days === 1 ? "ontem" : `há ${days} dias`
 }
 
+function hasGeneratedAi(data: ScoutResult): boolean {
+  const legacyFallback = /^(gemini|configure gemini_api_key)/i.test(data.strategy.trim())
+  return data.aiGenerated === true
+    || (data.aiGenerated === undefined && Boolean(data.strategy) && !legacyFallback)
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function ScoutSkeleton() {
@@ -81,6 +88,10 @@ export default function ClashScoutClient({ token }: { token: string }) {
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [history, setHistory] = useState<ScoutHistoryEntry[]>([])
   const [openingId, setOpeningId] = useState<string | null>(null)
+  const [retryingAi, setRetryingAi] = useState(false)
+  const [aiRetryError, setAiRetryError] = useState<string | null>(null)
+  const requestVersionRef = useRef(0)
+  const expectedJobIdRef = useRef<string | null>(null)
 
   const activeJobId = job && (job.status === "queued" || job.status === "running") ? job.id : null
   const loading = starting || activeJobId !== null
@@ -113,6 +124,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
       const { jobId, input: savedInput } = JSON.parse(saved)
       if (savedInput) setInput(savedInput)
       if (jobId) {
+        expectedJobIdRef.current = jobId
         setJob({
           id: jobId,
           riotId: savedInput ?? "",
@@ -134,9 +146,10 @@ export default function ClashScoutClient({ token }: { token: string }) {
     const poll = async () => {
       try {
         const j = await getScoutJob(token, activeJobId)
-        if (cancelled) return
+        if (cancelled || expectedJobIdRef.current !== activeJobId) return
         if (!j) {
           localStorage.removeItem(SCOUT_JOB_STORAGE_KEY)
+          expectedJobIdRef.current = null
           setJob(null)
           setError("A análise expirou ou o servidor foi reiniciado. Faça a busca novamente.")
           return
@@ -144,12 +157,14 @@ export default function ClashScoutClient({ token }: { token: string }) {
         setJob(j)
         if (j.status === "done" && j.result) {
           localStorage.removeItem(SCOUT_JOB_STORAGE_KEY)
+          expectedJobIdRef.current = null
           setData(j.result)
           setAnalysisId(j.analysisId ?? null)
           setJob(null)
           refreshHistory()
         } else if (j.status === "error") {
           localStorage.removeItem(SCOUT_JOB_STORAGE_KEY)
+          expectedJobIdRef.current = null
           setError(j.error ?? "Erro ao buscar dados do time")
           setJob(null)
         }
@@ -175,12 +190,23 @@ export default function ClashScoutClient({ token }: { token: string }) {
     }
     const gameName = trimmed.slice(0, sep)
     const tagLine = trimmed.slice(sep + 1)
+    const requestedRiotId = `${gameName}#${tagLine}`.toLocaleLowerCase()
+    const requestVersion = ++requestVersionRef.current
+    expectedJobIdRef.current = null
+    localStorage.removeItem(SCOUT_JOB_STORAGE_KEY)
+    setJob(null)
     setStarting(true)
     setError(null)
     setData(null)
     setShareId(null)
+    setAnalysisId(null)
+    setAiRetryError(null)
     try {
       const j = await startScout(token, gameName, tagLine, deep)
+      if (requestVersion !== requestVersionRef.current) return
+      if (j.riotId.toLocaleLowerCase() !== requestedRiotId) {
+        throw new Error(`O servidor respondeu com ${j.riotId}, mas a busca atual é ${gameName}#${tagLine}. Tente novamente.`)
+      }
       if (j.status === "done" && j.result) {
         // resultado recente reaproveitado pelo servidor — mostra na hora
         setData(j.result)
@@ -188,6 +214,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
       } else if (j.status === "error") {
         setError(j.error ?? "Erro ao buscar dados do time")
       } else {
+        expectedJobIdRef.current = j.id
         setJob(j)
         localStorage.setItem(SCOUT_JOB_STORAGE_KEY, JSON.stringify({ jobId: j.id, input: trimmed }))
       }
@@ -217,9 +244,30 @@ export default function ClashScoutClient({ token }: { token: string }) {
     }
   }
 
+  const handleRetryAi = async () => {
+    if (!data || retryingAi) return
+    setRetryingAi(true)
+    setAiRetryError(null)
+    try {
+      const ai = await retryScoutAi(token, data.players)
+      if (!ai.aiGenerated) {
+        setAiRetryError("O Gemini não respondeu após 3 tentativas. Tente novamente em alguns instantes.")
+        return
+      }
+      setData({ ...data, ...ai })
+      setAnalysisId(null)
+      setShareId(null)
+    } catch (e: any) {
+      setAiRetryError(e.message ?? "Não foi possível tentar a IA novamente.")
+    } finally {
+      setRetryingAi(false)
+    }
+  }
+
   const openHistoryEntry = async (entry: ScoutHistoryEntry) => {
     setOpeningId(entry.id)
     setError(null)
+    setAiRetryError(null)
     try {
       const { data: saved } = await fetchSharedAnalysis(entry.id)
       setData(saved)
@@ -260,6 +308,19 @@ export default function ClashScoutClient({ token }: { token: string }) {
           </Link>
           {data && (
             <>
+              {!hasGeneratedAi(data) && (
+                <div className="flex flex-col items-stretch gap-1 sm:items-end">
+                  <button
+                    onClick={handleRetryAi}
+                    disabled={retryingAi}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-xs font-black text-violet-300 transition-all hover:border-violet-500/40 hover:bg-violet-500/15 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${retryingAi ? "animate-spin" : ""}`} />
+                    {retryingAi ? "Tentando IA (até 3x)..." : "Tentar IA novamente"}
+                  </button>
+                  {aiRetryError && <p className="max-w-xs text-right text-[10px] text-red-400">{aiRetryError}</p>}
+                </div>
+              )}
               <button
                 onClick={handleShare}
                 disabled={sharing}
@@ -269,7 +330,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
                 {sharing ? "Salvando..." : copied ? "Link copiado!" : "Compartilhar"}
               </button>
               <button
-                onClick={() => { setData(null); setInput(""); setShareId(null); setAnalysisId(null); setJob(null); localStorage.removeItem(SCOUT_JOB_STORAGE_KEY) }}
+                onClick={() => { requestVersionRef.current++; expectedJobIdRef.current = null; setData(null); setInput(""); setShareId(null); setAnalysisId(null); setAiRetryError(null); setJob(null); localStorage.removeItem(SCOUT_JOB_STORAGE_KEY) }}
                 className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-bold text-gray-400 transition-all hover:border-white/[0.15] hover:text-white"
               >
                 <RefreshCw className="h-3.5 w-3.5" />

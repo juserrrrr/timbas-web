@@ -479,7 +479,10 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
     (a, b) => ROLE_ORDER.indexOf(a.position) - ROLE_ORDER.indexOf(b.position),
   )
   const avgRank = averageRankLabel(data.players)
-  const plan = data.gamePlan
+  const legacyFallback = /^(gemini|configure gemini_api_key)/i.test(data.strategy.trim())
+  const aiGenerated = data.aiGenerated === true
+    || (data.aiGenerated === undefined && Boolean(data.strategy) && !legacyFallback)
+  const plan = aiGenerated ? data.gamePlan : undefined
   const threatByRiotId = new Map(
     (plan?.threats ?? []).map((t) => [t.riotId.toLowerCase(), t]),
   )
@@ -526,7 +529,7 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
         </div>
 
         {/* Resumo tático — as decisões de draft num relance */}
-        {(focusPlayer || weakPlayer || junglerMap) && (
+        {aiGenerated && (focusPlayer || weakPlayer || junglerMap) && (
           <div className="relative mt-4 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4">
             <span className="mr-1 text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">Resumo tático</span>
             {focusPlayer && (
@@ -566,12 +569,14 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
         {sortedPlayers.map((player, i) => {
           const rid = player.riotId.toLowerCase()
-          const counterplay =
+          const counterplay = aiGenerated ? (
             data.counterplays.find((c) => c.riotId.toLowerCase() === rid) ??
             data.counterplays.find((c) => c.position === player.position)
-          const predictedPick =
+          ) : undefined
+          const predictedPick = aiGenerated ? (
             data.predictedPicks.find((p) => p.riotId.toLowerCase() === rid) ??
             data.predictedPicks.find((p) => p.position === player.position)
+          ) : undefined
           return (
             <PlayerCard
               key={player.riotId}
@@ -667,7 +672,7 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
       )}
 
       {/* AI analysis */}
-      {(data.bans.length > 0 || data.counterplays.length > 0 || data.strategy) && (
+      {aiGenerated && (data.bans.length > 0 || data.counterplays.length > 0 || data.strategy) && (
         <div className="relative overflow-hidden rounded-2xl border border-red-500/20 bg-gradient-to-b from-[#0d0710] to-[#07070c] p-6 space-y-6 shadow-2xl shadow-black/40">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(239,68,68,0.06),transparent_60%)]" />
           <div className="absolute top-0 right-0 h-px w-1/2 bg-gradient-to-l from-transparent via-red-500/30 to-transparent" />
@@ -718,13 +723,6 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
         </div>
       )}
 
-      {/* No AI */}
-      {data.bans.length === 0 && data.counterplays.length === 0 && !data.strategy && (
-        <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <Brain className="h-4 w-4 text-gray-600" />
-          <p className="text-sm text-gray-500">Análise de IA indisponível. Configure GEMINI_API_KEY no backend.</p>
-        </div>
-      )}
     </div>
   )
 }
