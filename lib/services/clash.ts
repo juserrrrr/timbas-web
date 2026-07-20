@@ -66,21 +66,29 @@ export interface MapProfile {
   invades: number
   startSide?: string // 'topo' | 'baixo' | 'inconclusivo'
   earlyGanksPerGame?: number
+  gankWindowsPerGame?: number
   mostVisited: string
   mostFought: string
   mostDeaths: string
   likelyGankFocus: string
+  gankFocusShare?: number
+  gankPattern?: 'focado' | 'distribuido' | 'inconclusivo'
   ganksByLane?: { top: number; mid: number; bot: number; total: number }
   firstGanksByLane?: { top: number; mid: number; bot: number; total: number }
   firstGankFocus?: string
+  firstGankFocusShare?: number
+  firstGankPattern?: 'focado' | 'distribuido' | 'inconclusivo'
   avgFirstGankMinute?: number | null
   roamsByLane?: { top: number; mid: number; bot: number; total: number }
   roamsPerGame?: number
   roamFocus?: string
+  roamFocusShare?: number
+  roamPattern?: 'focado' | 'distribuido' | 'inconclusivo'
   invadeGames?: number
   invadeRate?: number
   startSideGames?: { top: number; bottom: number; unknown: number }
   startSideConfidence?: number
+  startSideEvidenceGames?: number
   objectiveBreakdown?: { dragons: number; barons: number; heralds: number; other: number }
   wardsPlaced?: number
   visionFocus?: string
@@ -185,6 +193,7 @@ export interface TeamTacticalProfile {
   mainCarry: string
   mainCarryDamageShare: number
   sampleConfidence: 'baixa' | 'media' | 'alta'
+  lineupPlayers?: number
 }
 
 export interface ScoutResult {

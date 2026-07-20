@@ -18,6 +18,13 @@ const POSITION_LABELS: Record<string, string> = {
 
 const ROLE_ORDER = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT", "FILL"]
 
+function tendencyLabel(focus?: string, share?: number, pattern?: string) {
+  if (!focus || focus === "inconclusivo") return "inconclusivo"
+  if (!pattern) return focus
+  if (pattern === "distribuido") return `distribuída · leve tendência ${focus} (${share ?? 0}%)`
+  return `${focus} · ${share ?? 0}% das jogadas`
+}
+
 // ─── Rank médio do time ───────────────────────────────────────────────────────
 
 const TIER_SEQUENCE = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"]
@@ -261,10 +268,12 @@ function PlayerCard({ player, index, counterplay, predictedPick, threat, isFocus
       {player.soloQueue.games > 0 && (
         <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-2.5 space-y-2">
           <p className="text-[9px] font-black uppercase tracking-widest text-gray-600">
-            Últimas {player.soloQueue.games} partidas
+            {player.soloQueue.games} partidas recentes como {POSITION_LABELS[player.position] ?? player.position}
           </p>
           <WinrateBar value={player.soloQueue.winrate} />
           <StatRow label="KDA médio" value={player.soloQueue.avgKda} />
+          <StatRow label="Mortes/jogo" value={player.soloQueue.playstyle.avgDeaths} />
+          <StatRow label="Participação em abates" value={`${player.soloQueue.playstyle.avgKillParticipation}%`} />
           <div className="flex flex-wrap gap-1 pt-0.5">
             {player.soloQueue.topChampions.slice(0, 4).map((c) => (
               <ChampionTip key={c.championId} champ={c} size={24} />
@@ -293,7 +302,7 @@ function PlayerCard({ player, index, counterplay, predictedPick, threat, isFocus
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5">
             <TrendingUp className="h-2.5 w-2.5 text-gray-600" />
-            <p className="text-[9px] font-black uppercase tracking-widest text-gray-600">Mais Jogados</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-gray-600">Pool combinado · Solo/Flex/Clash</p>
           </div>
           <div className="flex flex-wrap gap-1">
             {player.combinedTopChamps.slice(0, 5).map((c) => (
@@ -365,26 +374,26 @@ function PlayerCard({ player, index, counterplay, predictedPick, threat, isFocus
           </div>
           {player.position === "JUNGLE" && (
             <>
-              <StatRow label="Foco estimado de gank" value={player.mapProfile.likelyGankFocus} highlight />
+              <StatRow label="Distribuição da pressão" value={tendencyLabel(player.mapProfile.likelyGankFocus, player.mapProfile.gankFocusShare, player.mapProfile.gankPattern)} highlight />
               {player.mapProfile.startSide && player.mapProfile.startSide !== "inconclusivo" && (
-                <StatRow label="Lado inicial provável" value={`${player.mapProfile.startSide} · ${player.mapProfile.startSideConfidence ?? 0}% confiança`} highlight />
+                <StatRow label="Lado inicial provável" value={`${player.mapProfile.startSide} · ${player.mapProfile.startSideConfidence ?? 0}% (${player.mapProfile.startSideEvidenceGames ?? 0}/${player.mapProfile.games}G com sinal)`} highlight />
               )}
               {player.mapProfile.earlyGanksPerGame !== undefined && (
                 <StatRow
-                  label="Ações de gank early/jogo"
-                  value={player.mapProfile.earlyGanksPerGame}
+                  label="Jogadas com pressão early/jogo"
+                  value={player.mapProfile.gankWindowsPerGame ?? player.mapProfile.earlyGanksPerGame}
                 />
               )}
               {player.mapProfile.ganksByLane && player.mapProfile.ganksByLane.total > 0 && (
-                <StatRow label="Distribuição de ganks" value={`top ${player.mapProfile.ganksByLane.top} · mid ${player.mapProfile.ganksByLane.mid} · bot ${player.mapProfile.ganksByLane.bot}`} />
+                <StatRow label="Jogadas por rota" value={`top ${player.mapProfile.ganksByLane.top} · mid ${player.mapProfile.ganksByLane.mid} · bot ${player.mapProfile.ganksByLane.bot}`} />
               )}
               {player.mapProfile.avgFirstGankMinute != null && (
-                <StatRow label="Primeiro gank estimado" value={`${player.mapProfile.firstGankFocus} · ${player.mapProfile.avgFirstGankMinute} min`} />
+                <StatRow label="Primeira pressão com abate" value={`${tendencyLabel(player.mapProfile.firstGankFocus, player.mapProfile.firstGankFocusShare, player.mapProfile.firstGankPattern)} · ${player.mapProfile.avgFirstGankMinute} min`} />
               )}
             </>
           )}
           {player.position !== "JUNGLE" && (player.mapProfile.roamsPerGame ?? 0) > 0 && (
-            <StatRow label="Roams early/jogo" value={`${player.mapProfile.roamsPerGame} · foco ${player.mapProfile.roamFocus}`} highlight />
+            <StatRow label="Jogadas fora da rota early/jogo" value={`${player.mapProfile.roamsPerGame} · ${tendencyLabel(player.mapProfile.roamFocus, player.mapProfile.roamFocusShare, player.mapProfile.roamPattern)}`} highlight />
           )}
           <StatRow label="Luta mais em" value={player.mapProfile.mostFought} />
           <StatRow label="Morre mais em" value={player.mapProfile.mostDeaths} />
@@ -570,9 +579,9 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
             {junglerMap && (
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/25 bg-sky-500/[0.07] px-2.5 py-1 text-[11px] font-bold text-sky-400">
                 <Swords className="h-3 w-3" />
-                Gank: <span className="font-black text-white">{junglerMap.likelyGankFocus}</span>
+                Pressão early: <span className="font-black text-white">{tendencyLabel(junglerMap.likelyGankFocus, junglerMap.gankFocusShare, junglerMap.gankPattern)}</span>
                 {junglerMap.earlyGanksPerGame !== undefined && (
-                  <span className="text-sky-500/80">· {junglerMap.earlyGanksPerGame}/jogo</span>
+                  <span className="text-sky-500/80">· {junglerMap.gankWindowsPerGame ?? junglerMap.earlyGanksPerGame}/jogo</span>
                 )}
               </span>
             )}
@@ -585,7 +594,11 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-violet-400">Identidade coletiva medida</p>
-              <p className="text-xs text-gray-500">Partidas de Clash compartilhadas pelo núcleo atual</p>
+              <p className="text-xs text-gray-500">
+                {data.teamProfile.lineupPlayers
+                  ? `Partidas de Clash com os ${data.teamProfile.lineupPlayers} jogadores analisados juntos`
+                  : "Relatório legado: partidas compartilhadas pelo núcleo, sem confirmação dos cinco juntos"}
+              </p>
             </div>
             <span className="text-[10px] text-gray-500">{data.teamProfile.games}G · confiança {data.teamProfile.sampleConfidence}</span>
           </div>
