@@ -1,4 +1,5 @@
 import type { GameModeEnum } from '../game-mode'
+export type { GameModeEnum }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
@@ -120,9 +121,22 @@ async function serverFetch<T>(url: string, token: string): Promise<T> {
   return res.json()
 }
 
-export async function fetchRanking(token: string, serverId: string, mode?: number): Promise<PlayerStats[]> {
-  const url = `${API_URL}/leaderboard/${serverId}${mode ? `?mode=${mode}` : ""}`
-  return serverFetch<PlayerStats[]>(url, token)
+/** Omitir `mode` ou `gameMode` significa geral: todos os tamanhos ou todos os mapas. */
+export function buildRankingUrl(serverId: string, mode?: number, gameMode?: GameModeEnum): string {
+  const params = new URLSearchParams()
+  if (mode) params.set('mode', String(mode))
+  if (gameMode) params.set('gameMode', gameMode)
+  const query = params.toString()
+  return `${API_URL}/leaderboard/${serverId}${query ? `?${query}` : ''}`
+}
+
+export async function fetchRanking(
+  token: string,
+  serverId: string,
+  mode?: number,
+  gameMode?: GameModeEnum,
+): Promise<PlayerStats[]> {
+  return serverFetch<PlayerStats[]>(buildRankingUrl(serverId, mode, gameMode), token)
 }
 
 export async function fetchMatchHistory(

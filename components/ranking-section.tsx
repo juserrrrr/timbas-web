@@ -9,14 +9,15 @@ import { useServer, SERVERS } from "@/lib/server-context"
 import { PlayerAvatar } from "@/components/player-avatar"
 import { apiFetch, authHeaders } from "@/lib/api"
 import { getToken } from "@/lib/auth"
+import { buildRankingUrl } from "@/lib/services/leaderboard"
+import type { GameModeEnum } from "@/lib/game-mode"
+import {
+  DEFAULT_RANKING_GAME_MODE,
+  DEFAULT_RANKING_PLAYERS_PER_TEAM,
+  RANKING_GAME_MODE_TABS,
+  RANKING_SIZE_TABS,
+} from "@/lib/ranking-filters"
 import type { PlayerStats } from "@/lib/server-context"
-
-const MODE_TABS = [
-  { label: "Geral", value: undefined },
-  { label: "1v1", value: 1 },
-  { label: "3v3", value: 3 },
-  { label: "5v5", value: 5 },
-] as const
 
 interface Props {
   initialPlayers?: PlayerStats[]
@@ -24,7 +25,8 @@ interface Props {
 
 export function RankingSection({ initialPlayers = [] }: Props) {
   const { selectedServer } = useServer()
-  const [mode, setMode] = useState<number | undefined>(undefined)
+  const [mode, setMode] = useState<number | undefined>(DEFAULT_RANKING_PLAYERS_PER_TEAM)
+  const [gameMode, setGameMode] = useState<GameModeEnum | undefined>(DEFAULT_RANKING_GAME_MODE)
   const [players, setPlayers] = useState<PlayerStats[]>(initialPlayers)
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -41,15 +43,12 @@ export function RankingSection({ initialPlayers = [] }: Props) {
     }
     setCurrentPage(1)
     setIsLoading(true)
-    const url = mode !== undefined
-      ? `${process.env.NEXT_PUBLIC_API_URL}/leaderboard/${selectedServer}?mode=${mode}`
-      : `${process.env.NEXT_PUBLIC_API_URL}/leaderboard/${selectedServer}`
-    apiFetch(url, { headers: authHeaders(token) })
+    apiFetch(buildRankingUrl(selectedServer, mode, gameMode), { headers: authHeaders(token) })
       .then(res => res.json())
       .then(setPlayers)
       .catch(() => setPlayers([]))
       .finally(() => setIsLoading(false))
-  }, [selectedServer, mode])
+  }, [selectedServer, mode, gameMode])
 
   const totalPages = Math.ceil(Math.max(0, players.length - 3) / playersPerPage)
   const topThree = players.slice(0, 3)
@@ -99,21 +98,45 @@ export function RankingSection({ initialPlayers = [] }: Props) {
         <p className="text-gray-400">Os melhores jogadores da temporada</p>
       </div>
 
-      {/* Mode tabs */}
-      <div className="flex gap-2">
-        {MODE_TABS.map((tab) => (
-          <button
-            key={String(tab.value)}
-            onClick={() => setMode(tab.value)}
-            className={`cursor-pointer rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
-              mode === tab.value
-                ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-300"
-                : "border-white/[0.06] bg-white/[0.02] text-gray-500 hover:border-white/[0.1] hover:text-white"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Filtros */}
+      <div className="space-y-3">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-600">Mapa</p>
+          <div className="flex flex-wrap gap-2">
+            {RANKING_GAME_MODE_TABS.map((tab) => (
+              <button
+                key={String(tab.value)}
+                onClick={() => setGameMode(tab.value)}
+                className={`cursor-pointer rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
+                  gameMode === tab.value
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                    : "border-white/[0.06] bg-white/[0.02] text-gray-500 hover:border-white/[0.1] hover:text-white"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-600">Tamanho</p>
+          <div className="flex flex-wrap gap-2">
+            {RANKING_SIZE_TABS.map((tab) => (
+              <button
+                key={String(tab.value)}
+                onClick={() => setMode(tab.value)}
+                className={`cursor-pointer rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
+                  mode === tab.value
+                    ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-300"
+                    : "border-white/[0.06] bg-white/[0.02] text-gray-500 hover:border-white/[0.1] hover:text-white"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {isLoading && players.length === 0 && (
@@ -130,7 +153,11 @@ export function RankingSection({ initialPlayers = [] }: Props) {
       {!isLoading && players.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-700 bg-gray-900/50 p-12 text-center">
           <h2 className="text-xl font-semibold text-gray-300">Ranking Vazio</h2>
-          <p className="mt-2 text-gray-400">Ainda não há dados de ranking para este servidor.</p>
+          <p className="mt-2 text-gray-400">
+            {gameMode || mode
+              ? "Nenhuma partida com esse recorte ainda. Tente o filtro Geral."
+              : "Ainda não há dados de ranking para este servidor."}
+          </p>
         </div>
       ) : players.length > 0 && (
         <div className={`space-y-6 transition-opacity duration-300 ${isLoading ? "pointer-events-none opacity-50" : ""}`}>
