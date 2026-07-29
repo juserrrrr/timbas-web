@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Swords, Clock, Users, Plus } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 import type { CustomLeagueMatch } from "@/lib/services/match"
+import { gameModeLabel } from "@/lib/game-mode"
 
 const FORMAT_LABELS: Record<string, string> = {
   ALEATORIO: "Aleatório",
@@ -39,7 +40,7 @@ function MatchCard({ match }: { match: CustomLeagueMatch }) {
                 Partida <span className="font-mono text-gray-500">#{match.id}</span>
               </p>
               <p className="text-xs text-gray-500">
-                {FORMAT_LABELS[match.matchType]} · {match.playersPerTeam}v{match.playersPerTeam}
+                {gameModeLabel(match.gameMode)} · {FORMAT_LABELS[match.matchType]} · {match.playersPerTeam}v{match.playersPerTeam}
               </p>
             </div>
           </div>

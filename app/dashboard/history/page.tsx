@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { getSession } from "@/lib/session"
 import { fetchMatchHistory, fetchPlayerDetailStats, fetchDuoStats } from "@/lib/services/leaderboard"
+import { gameModeLabel } from "@/lib/game-mode"
 import { HistoryPagination } from "./history-pagination"
 
 export const dynamic = "force-dynamic"
@@ -67,6 +68,27 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                 <p className="text-sm text-gray-400">{detail.redSide.wins}V / {detail.redSide.losses}D em {detail.redSide.total} partidas</p>
               </Card>
             </div>
+          )}
+
+          {/* Game mode breakdown */}
+          {detail && detail.gameModeStats.length > 0 && (
+            <Card className="border-white/[0.06] bg-white/[0.02] p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 className="h-5 w-5 text-emerald-400" />
+                <h2 className="text-lg font-bold text-white">Por Mapa</h2>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {detail.gameModeStats.map((g) => (
+                  <div key={g.gameMode} className="rounded-xl bg-black/40 p-4 ring-1 ring-white/[0.05]">
+                    <p className="text-xs text-gray-500 mb-1 font-medium">{g.label} · {g.mapName}</p>
+                    <p className={`text-2xl font-black ${g.winRate >= 0.5 ? "text-green-400" : "text-red-400"}`}>
+                      {Math.round(g.winRate * 100)}%
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1 font-medium">{g.wins}V / {g.losses}D em {g.total}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
 
           {/* Match type breakdown */}
@@ -195,6 +217,9 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap justify-center">
+                        <Badge variant="outline" className="border-emerald-500/30 text-emerald-300 bg-emerald-500/10">
+                          {gameModeLabel(match.gameMode)}
+                        </Badge>
                         <Badge variant="outline" className="border-white/10 text-gray-300 bg-white/5">
                           {MATCH_TYPE_LABELS[match.matchType] ?? match.matchType}
                         </Badge>
@@ -227,6 +252,9 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="border-emerald-500/30 text-emerald-300 bg-emerald-500/10">
+                          {gameModeLabel(match.gameMode)}
+                        </Badge>
                         <Badge variant="outline" className="border-white/10 text-gray-300 bg-white/5">
                           {MATCH_TYPE_LABELS[match.matchType] ?? match.matchType}
                         </Badge>

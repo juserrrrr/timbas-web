@@ -1,4 +1,5 @@
 import { apiFetch } from '../api'
+import type { GameModeEnum } from '../game-mode'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
@@ -33,6 +34,7 @@ export interface CustomLeagueMatch {
   creatorDiscordId: string | null
   status: MatchStatus
   matchType: MatchTypeEnum
+  gameMode: GameModeEnum
   playersPerTeam: number
   showDetails: boolean
   teamBlueId: number | null
@@ -66,6 +68,7 @@ export async function getActiveMatches(token: string, serverId: string): Promise
 export async function createOnlineMatch(token: string, data: {
   discordServerId: string
   matchFormat?: string
+  gameMode?: GameModeEnum
   playersPerTeam?: number
 }): Promise<CustomLeagueMatch> {
   const res = await apiFetch(`${API_URL}/leagueMatch/online`, {

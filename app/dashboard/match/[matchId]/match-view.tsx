@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react"
 import { getToken, decodeToken, getDiscordAvatarUrl } from "@/lib/auth"
+import { gameModeLabel, gameModeMapName } from "@/lib/game-mode"
 import { apiFetch } from "@/lib/api"
 import {
   joinMatch,
@@ -370,7 +371,9 @@ export function MatchView({
                 <h1 className="text-2xl font-black tracking-tight text-white">
                   Partida <span className="text-gray-500 text-lg font-mono">#{match.id}</span>
                 </h1>
-                <p className="text-xs text-gray-500">{FORMAT_LABELS[match.matchType]} · {playersPerTeam}v{playersPerTeam} · Online</p>
+                <p className="text-xs text-gray-500">
+                  {gameModeLabel(match.gameMode)} · {gameModeMapName(match.gameMode)} · {FORMAT_LABELS[match.matchType]} · {playersPerTeam}v{playersPerTeam} · Online
+                </p>
               </div>
             </div>
           </div>

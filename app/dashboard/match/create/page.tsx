@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Swords, Shuffle, ChevronRight } from "lucide-react"
+import { Swords, Shuffle, ChevronRight, Map } from "lucide-react"
 import { getToken } from "@/lib/auth"
 import { createOnlineMatch } from "@/lib/services/match"
+import { GAME_MODE_OPTIONS, gameModeLabel, supportsLanes, type GameModeEnum } from "@/lib/game-mode"
 import { useServer } from "@/lib/server-context"
 import { useNavigation } from "@/lib/navigation-context"
 
@@ -27,6 +28,7 @@ export default function CreateMatchPage() {
 
   const [size, setSize] = useState(5)
   const [format, setFormat] = useState("ALEATORIO")
+  const [gameMode, setGameMode] = useState<GameModeEnum>("CLASSIC")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,12 +38,17 @@ export default function CreateMatchPage() {
       setError("Aleatório Completo só está disponível para 5v5.")
       return
     }
+    if (format === "ALEATORIO_COMPLETO" && !supportsLanes(gameMode)) {
+      setError("Aleatório Completo sorteia lanes e não funciona no ARAM.")
+      return
+    }
     setLoading(true)
     setError(null)
     try {
       const match = await createOnlineMatch(token, {
         discordServerId: selectedServer,
         matchFormat: format,
+        gameMode,
         playersPerTeam: size,
       })
       navigate(`/dashboard/match/${match.id}`)
@@ -57,6 +64,32 @@ export default function CreateMatchPage() {
       <div>
         <h1 className="text-3xl font-black text-white">Nova Partida</h1>
         <p className="mt-1 text-sm text-gray-500">Configure e crie uma partida online. O embed será enviado automaticamente para o canal do Discord.</p>
+      </div>
+
+      {/* Game mode / map */}
+      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-300">
+          <Map className="h-4 w-4 text-emerald-400" /> Mapa
+        </h2>
+        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
+          {GAME_MODE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                setGameMode(opt.value)
+                if (!supportsLanes(opt.value) && format === "ALEATORIO_COMPLETO") setFormat("ALEATORIO")
+              }}
+              className={`cursor-pointer rounded-xl border p-3 text-left transition-all sm:p-4 ${
+                gameMode === opt.value
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                  : "border-white/[0.06] bg-white/[0.02] text-gray-400 hover:border-white/[0.12] hover:text-white"
+              }`}
+            >
+              <div className="text-lg font-black">{opt.label}</div>
+              <div className="mt-1 text-xs text-gray-500">{opt.desc}</div>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Size */}
@@ -92,7 +125,7 @@ export default function CreateMatchPage() {
         </h2>
         <div className="flex flex-col gap-2">
           {FORMAT_OPTIONS.map((opt) => {
-            const disabled = opt.value === "ALEATORIO_COMPLETO" && size !== 5
+            const disabled = opt.value === "ALEATORIO_COMPLETO" && (size !== 5 || !supportsLanes(gameMode))
             return (
               <button
                 key={opt.value}
@@ -136,7 +169,7 @@ export default function CreateMatchPage() {
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent border-blue-400" />
         ) : (
           <>
-            Criar Partida {size}v{size}
+            Criar Partida {size}v{size} · {gameModeLabel(gameMode)}
             <ChevronRight className="h-4 w-4" />
           </>
         )}

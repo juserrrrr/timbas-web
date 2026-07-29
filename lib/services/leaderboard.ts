@@ -1,3 +1,5 @@
+import type { GameModeEnum } from '../game-mode'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 export interface PlayerStats {
@@ -37,6 +39,16 @@ export interface MatchTypeStat {
   winRate: number
 }
 
+export interface GameModeStat {
+  gameMode: GameModeEnum
+  label: string
+  mapName: string
+  wins: number
+  losses: number
+  total: number
+  winRate: number
+}
+
 export interface PlayerDetailStats {
   currentStreakCount: number
   currentStreakType: "W" | "L" | null
@@ -47,6 +59,7 @@ export interface PlayerDetailStats {
   weeklyPerformance: { week: string; wins: number; losses: number }[]
   positionStats: PositionStat[]
   matchTypeStats: MatchTypeStat[]
+  gameModeStats: GameModeStat[]
 }
 
 export interface DuoStat {
@@ -81,6 +94,7 @@ export interface MatchTeam {
 export interface Match {
   id: number
   matchType: string
+  gameMode: GameModeEnum
   playersPerTeam: number
   dateCreated: string
   winnerId: number | null

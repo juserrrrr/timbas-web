@@ -217,6 +217,28 @@ export function StatsClient({ players, serverId, currentUserId }: Props) {
             </Card>
           </div>
 
+          {detail.gameModeStats.length > 0 && (
+            <Card className="border-white/10 bg-white/[0.02] p-6 backdrop-blur-sm">
+              <h2 className="mb-4 text-xl font-black text-white">Win Rate por Mapa</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {detail.gameModeStats.map((g) => (
+                  <div key={g.gameMode} className="space-y-2">
+                    <div className="flex justify-between text-sm items-center">
+                      <span className="text-gray-300 font-bold">{g.label}</span>
+                      <span className="text-white font-bold">
+                        {g.wins}V / {g.losses}D <span className="text-gray-500 ml-1">({Math.round(g.winRate * 100)}%)</span>
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-white/5 ring-1 ring-white/5">
+                      <div className={`h-full rounded-full transition-all duration-1000 ${g.winRate >= 0.5 ? "bg-green-500" : "bg-red-500"}`} style={{ width: `${Math.round(g.winRate * 100)}%` }} />
+                    </div>
+                    <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{g.mapName} · {g.total} partidas</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {(detail.positionStats.length > 0 || detail.matchTypeStats.length > 0) && (
             <div className="grid gap-6 md:grid-cols-2">
               {detail.positionStats.length > 0 && (
