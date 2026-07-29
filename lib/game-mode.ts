@@ -1,33 +1,36 @@
-export type GameModeEnum = 'CLASSIC' | 'ARAM'
+export type GameModeEnum = 'SUMMONERS_RIFT' | 'LOL_CLASSIC' | 'ARAM'
 
 /**
  * Espelha apiTimbas/src/customLeagueMath/game-mode.constants.ts.
  * O mapa é derivado do modo, nunca guardado separado.
  */
 export const GAME_MODE_LABELS: Record<GameModeEnum, string> = {
-  CLASSIC: 'Clássico',
+  SUMMONERS_RIFT: 'Normal',
+  LOL_CLASSIC: 'League Classic',
   ARAM: 'ARAM',
 }
 
 export const GAME_MODE_MAP_NAMES: Record<GameModeEnum, string> = {
-  CLASSIC: "Summoner's Rift",
+  SUMMONERS_RIFT: "Summoner's Rift",
+  LOL_CLASSIC: "Summoner's Rift (2013)",
   ARAM: 'Howling Abyss',
 }
 
 export const GAME_MODE_OPTIONS: { value: GameModeEnum; label: string; desc: string }[] = [
-  { value: 'CLASSIC', label: 'Clássico', desc: "Summoner's Rift, o mapa padrão de 3 rotas" },
+  { value: 'SUMMONERS_RIFT', label: 'Normal', desc: "Summoner's Rift atual, o mapa padrão de 3 rotas" },
+  { value: 'LOL_CLASSIC', label: 'League Classic', desc: 'A Fenda da Season 3, com campeões, itens e runas antigos' },
   { value: 'ARAM', label: 'ARAM', desc: 'Howling Abyss, ponte única com campeões aleatórios' },
 ]
 
 /** ARAM tem uma rota só, então não dá para sortear lanes. */
 export function supportsLanes(gameMode: GameModeEnum): boolean {
-  return gameMode === 'CLASSIC'
+  return gameMode !== 'ARAM'
 }
 
 export function gameModeLabel(gameMode?: GameModeEnum | null): string {
-  return GAME_MODE_LABELS[gameMode ?? 'CLASSIC'] ?? 'Clássico'
+  return GAME_MODE_LABELS[gameMode ?? 'SUMMONERS_RIFT'] ?? GAME_MODE_LABELS.SUMMONERS_RIFT
 }
 
 export function gameModeMapName(gameMode?: GameModeEnum | null): string {
-  return GAME_MODE_MAP_NAMES[gameMode ?? 'CLASSIC'] ?? GAME_MODE_MAP_NAMES.CLASSIC
+  return GAME_MODE_MAP_NAMES[gameMode ?? 'SUMMONERS_RIFT'] ?? GAME_MODE_MAP_NAMES.SUMMONERS_RIFT
 }

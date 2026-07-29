@@ -77,7 +77,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                 <BarChart2 className="h-5 w-5 text-emerald-400" />
                 <h2 className="text-lg font-bold text-white">Por Mapa</h2>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {detail.gameModeStats.map((g) => (
                   <div key={g.gameMode} className="rounded-xl bg-black/40 p-4 ring-1 ring-white/[0.05]">
                     <p className="text-xs text-gray-500 mb-1 font-medium">{g.label} · {g.mapName}</p>

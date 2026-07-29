@@ -28,7 +28,7 @@ export default function CreateMatchPage() {
 
   const [size, setSize] = useState(5)
   const [format, setFormat] = useState("ALEATORIO")
-  const [gameMode, setGameMode] = useState<GameModeEnum>("CLASSIC")
+  const [gameMode, setGameMode] = useState<GameModeEnum>("SUMMONERS_RIFT")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -71,7 +71,7 @@ export default function CreateMatchPage() {
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-300">
           <Map className="h-4 w-4 text-emerald-400" /> Mapa
         </h2>
-        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {GAME_MODE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
