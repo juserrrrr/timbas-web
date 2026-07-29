@@ -10,6 +10,7 @@ export interface PlayerStats {
   losses: number
   score: number
   totalGames: number
+  mvpCount: number
   winRate: number
 }
 

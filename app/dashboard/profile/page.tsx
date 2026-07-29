@@ -1,4 +1,4 @@
-import { Trophy, Swords, TrendingUp, Star, Hash, Flame, Zap, BarChart3 } from "lucide-react"
+import { Trophy, Swords, TrendingUp, Star, Hash, Flame, Zap, BarChart3, Award } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getDiscordAvatarUrl } from "@/lib/auth"
 import { getSession } from "@/lib/session"
@@ -60,10 +60,11 @@ export default async function ProfilePage() {
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {[
               { label: "Partidas",  value: stats?.totalGames ?? "—", icon: Swords,      color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
               { label: "Vitórias",  value: stats?.wins ?? "—",       icon: Trophy,      color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/15"  },
+              { label: "MVPs",      value: stats?.mvpCount ?? "—",   icon: Award,       color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/15" },
               { label: "Win Rate",  value: stats ? `${winRatePct}%` : "—", icon: Star,  color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/15" },
               { label: "Pontos",    value: stats?.score ?? "—",      icon: TrendingUp,  color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
             ].map(({ label, value, icon: Icon, color, bg, border }) => (

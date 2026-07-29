@@ -163,7 +163,7 @@ export function RankingLanding() {
                         <p className="text-sm text-gray-400">{player.score} pts</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                    <div className="grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-4">
                       <div className="rounded-lg bg-black/30 p-2">
                         <div className="font-bold text-white">{player.totalGames}</div>
                         <div className="text-xs text-gray-500">Partidas</div>
@@ -171,6 +171,10 @@ export function RankingLanding() {
                       <div className="rounded-lg bg-black/30 p-2">
                         <div className="font-bold text-green-400">{player.wins}</div>
                         <div className="text-xs text-gray-500">Vitórias</div>
+                      </div>
+                      <div className="rounded-lg bg-black/30 p-2">
+                        <div className="font-bold text-yellow-400">{player.mvpCount}</div>
+                        <div className="text-xs text-gray-500">MVPs</div>
                       </div>
                       <div className="rounded-lg bg-black/30 p-2">
                         <div className="font-bold text-white">{Math.round(player.winRate * 100)}%</div>
@@ -200,6 +204,7 @@ export function RankingLanding() {
                     </Avatar>
                     <span className="flex-1 font-medium text-white">{player.name}</span>
                     <span className="text-sm text-blue-400 font-semibold">{player.score} pts</span>
+                    <span className="hidden text-sm font-semibold text-yellow-400 sm:block">{player.mvpCount} MVPs</span>
                     <span className="text-sm text-gray-400 hidden sm:block">{player.totalGames} partidas</span>
                     <span className={`text-sm font-bold w-12 text-right ${player.winRate >= 0.5 ? "text-green-400" : "text-red-400"}`}>
                       {Math.round(player.winRate * 100)}%

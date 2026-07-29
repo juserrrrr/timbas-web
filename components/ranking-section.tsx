@@ -177,6 +177,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
                   <div>
                     <h3 className="text-lg font-bold text-white">{topThree[1].name}</h3>
                     <p className="text-sm text-gray-400">{topThree[1].score} pts</p>
+                    <p className="text-xs font-semibold text-yellow-400">{topThree[1].mvpCount} MVPs</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -215,6 +216,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
                     <div>
                       <h3 className="text-xl font-bold text-white">{topThree[0].name}</h3>
                       <p className="text-sm text-gray-400">{topThree[0].score} pts</p>
+                      <p className="text-xs font-semibold text-yellow-400">{topThree[0].mvpCount} MVPs</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
@@ -251,6 +253,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
                   <div>
                     <h3 className="text-lg font-bold text-white">{topThree[2].name}</h3>
                     <p className="text-sm text-gray-400">{topThree[2].score} pts</p>
+                    <p className="text-xs font-semibold text-yellow-400">{topThree[2].mvpCount} MVPs</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -285,6 +288,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
                     <th className="p-4 font-medium">Jogador</th>
                     <th className="p-4 font-medium">Pontos</th>
                     <th className="p-4 font-medium">V/D</th>
+                    <th className="p-4 font-medium">MVPs</th>
                     <th className="p-4 font-medium">Partidas</th>
                     <th className="p-4 font-medium">Win Rate</th>
                     <th className="p-4 font-medium">Tendência</th>
@@ -311,6 +315,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
                           <span className="text-gray-500"> / </span>
                           <span className="text-red-400">{player.losses}</span>
                         </td>
+                        <td className="p-4 font-semibold text-yellow-400">{player.mvpCount}</td>
                         <td className="p-4 font-medium text-white">{player.totalGames}</td>
                         <td className="p-4 font-medium text-white">{Math.round(player.winRate * 100)}%</td>
                         <td className="p-4">

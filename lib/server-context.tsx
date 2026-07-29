@@ -15,6 +15,7 @@ export interface PlayerStats {
   wins: number
   losses: number
   totalGames: number
+  mvpCount: number
   winRate: number
 }
 
