@@ -18,7 +18,7 @@ export const GAME_MODE_MAP_NAMES: Record<GameModeEnum, string> = {
 
 export const GAME_MODE_OPTIONS: { value: GameModeEnum; label: string; desc: string }[] = [
   { value: 'SUMMONERS_RIFT', label: 'Normal', desc: "Summoner's Rift atual, o mapa padrão de 3 rotas" },
-  { value: 'LOL_CLASSIC', label: 'League Classic', desc: 'A Fenda da Season 3, com campeões, itens e runas antigos' },
+  { value: 'LOL_CLASSIC', label: 'League Classic', desc: "Summoner's Rift de 2013, com campeões, itens e runas antigos" },
   { value: 'ARAM', label: 'ARAM', desc: 'Howling Abyss, ponte única com campeões aleatórios' },
 ]
 
