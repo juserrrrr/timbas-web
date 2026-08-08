@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ShieldAlert,
   LogOut,
+  Gamepad2,
 } from "lucide-react"
 import { Toaster, toast } from "sonner"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -22,6 +23,7 @@ const NAV = [
   { icon: LayoutDashboard, label: "Visão Geral",  href: "/admin",          color: "text-orange-400", glow: "bg-orange-500/10", active: "border-orange-500/20" },
   { icon: Users,           label: "Jogadores",    href: "/admin/players",  color: "text-blue-400",   glow: "bg-blue-500/10",   active: "border-blue-500/20" },
   { icon: Server,          label: "Servidores",   href: "/admin/servers",  color: "text-green-400",  glow: "bg-green-500/10",  active: "border-green-500/20" },
+  { icon: Gamepad2,        label: "EA FC Clubs",  href: "/admin/ea-clubs", color: "text-blue-400",   glow: "bg-blue-500/10",   active: "border-blue-500/20" },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -141,7 +143,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5">
+        <nav className="flex-1 p-2 space-y-0.5">
           {NAV.map((item) => {
             const isActive = pathname === item.href
             return (
