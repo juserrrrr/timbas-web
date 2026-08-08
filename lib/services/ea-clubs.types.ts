@@ -10,6 +10,7 @@ export interface EaClub {
   createdAt: string
   updatedAt: string
   lastSyncAt?: string | null
+  eaStatsUpdatedAt?: string | null
 }
 
 export interface EaClubPreview {
@@ -28,6 +29,17 @@ export interface EaClubDashboard {
   goalsFor: number
   goalsAgainst: number
   recentMatches: EaClubMatch[]
+  trackingStartedAt: string
+  earliestImportedMatchAt?: string | null
+  eaAllTimeStats?: {
+    gamesPlayed?: number | null
+    wins?: number | null
+    draws?: number | null
+    losses?: number | null
+    goalsFor?: number | null
+    goalsAgainst?: number | null
+    updatedAt?: string | null
+  } | null
 }
 
 export interface EaClubMatch {
@@ -75,6 +87,12 @@ export interface EaClubPlayer {
   externalPlayerId?: string | null
   playerName: string
   appearances?: number
+  careerGames?: number | null
+  careerGoals?: number | null
+  careerAssists?: number | null
+  careerMvps?: number | null
+  careerRating?: number | null
+  careerStatsUpdatedAt?: string | null
 }
 
 export interface EaClubPlayerProfile extends EaClubPlayer {
@@ -108,6 +126,7 @@ export interface EaLeaderboardCategory {
   label: string
   entries: EaLeaderboardEntry[]
   minimumMatches?: number
+  source?: "EA_CAREER"
 }
 
 export interface EaMatchFilters {
