@@ -127,6 +127,7 @@ export interface EaClubPlayerProfile extends EaClubPlayer {
   goalContributionsPerMatch: number
   passAccuracy?: number | null
   tackleAccuracy?: number | null
+  matchHistory: Array<Omit<EaMatchPlayerStat, "player"> & { match: EaClubMatch }>
 }
 
 export interface EaLeaderboardEntry {

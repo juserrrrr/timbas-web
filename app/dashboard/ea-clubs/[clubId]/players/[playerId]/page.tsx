@@ -1,9 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import { useParams } from "next/navigation"
 import { Activity, Crosshair, Goal, Hand, Medal, Percent, Shield, Star, Target, Trophy } from "lucide-react"
-import { ClubPageHeader, ErrorState, PageLoading } from "@/components/ea-clubs/shared"
+import { ClubPageHeader, ErrorState, formatDate, PageLoading, resultStyle } from "@/components/ea-clubs/shared"
 import { Card } from "@/components/ui/card"
 import { getEaClub, getEaClubPlayer } from "@/lib/services/ea-clubs"
 import type { EaClub, EaClubPlayerProfile } from "@/lib/services/ea-clubs.types"
@@ -80,6 +81,9 @@ export default function EaClubPlayerPage() {
     {clubTotals.length > 0 && <StatSection title="Histórico no clube informado pela EA" description="Acumulado da passagem do jogador pelo clube atual." items={clubTotals} color="emerald" />}
     <section><p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-blue-400">Calculado pelas partidas armazenadas</p><div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">{metrics.map(({ label, value, icon: Icon }) => <Card key={label} className="border-white/[0.07] bg-white/[0.025] p-4"><Icon className="mb-3 h-4 w-4 text-blue-400" /><p className="text-2xl font-black tabular-nums text-white">{value}</p><p className="text-xs text-gray-500">{label}</p></Card>)}</div></section>
     <Card className="border-white/[0.07] bg-white/[0.025] p-5"><div className="mb-4 flex items-center gap-2"><Percent className="h-5 w-5 text-blue-400" /><h2 className="font-black text-white">Médias e eficiência monitoradas</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{rates.map((rate) => <div key={rate.label} className="rounded-xl border border-white/[0.06] bg-black/30 p-4"><p className="text-xl font-black text-white">{rate.value}</p><p className="mt-1 text-xs text-gray-500">{rate.label}</p></div>)}</div></Card>
+    <section className="space-y-3"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-400">Partidas com detalhes armazenados</p><h2 className="text-xl font-black text-white">Atuação jogo a jogo</h2><p className="mt-1 text-sm text-gray-500">{player.matchHistory.length} {player.matchHistory.length === 1 ? "partida detalhada" : "partidas detalhadas"} disponível(is).</p></div>{player.matchHistory.length > 0 ? <div className="space-y-3">{player.matchHistory.map((stat) => { const result = resultStyle(stat.match.result); return <Link key={stat.matchId} href={`/dashboard/ea-clubs/${clubId}/matches/${stat.match.id}`} className="block rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 transition hover:border-blue-500/25 hover:bg-blue-500/[0.04]"><div className="flex flex-col gap-3 border-b border-white/[0.06] pb-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-black text-white">{club?.nickname || club?.name} <span className="mx-2 text-blue-400">{stat.match.goalsFor} × {stat.match.goalsAgainst}</span> {stat.match.opponentName}</p><p className="mt-1 text-xs text-gray-500">{formatDate(stat.match.playedAt, true)}</p></div><span className={`w-fit rounded-full border px-2.5 py-1 text-xs font-bold ${result.classes}`}>{result.label}</span></div><div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-9">{[
+      ["POS", stat.position || "—"], ["Nota", display(stat.rating, 1)], ["Gols", stat.goals], ["Assist.", stat.assists], ["Chutes", display(stat.shots)], ["Passes", stat.passesCompleted == null ? "—" : `${stat.passesCompleted}/${stat.passesAttempted ?? "—"}`], ["Desarmes", stat.tacklesCompleted == null ? "—" : `${stat.tacklesCompleted}/${stat.tacklesAttempted ?? "—"}`], ["Defesas", display(stat.saves)], ["MVP", stat.manOfTheMatch ? "Sim" : "—"],
+    ].map(([label, value]) => <div key={label} className="rounded-lg bg-black/25 p-2 text-center"><p className="font-bold text-white">{value}</p><p className="text-[10px] uppercase text-gray-600">{label}</p></div>)}</div></Link>})}</div> : <Card className="border-dashed border-white/10 bg-white/[0.02] p-8 text-center text-sm text-gray-500">A EA informou os totais deste jogador, mas as partidas antigas já não estão disponíveis para detalhamento.</Card>}</section>
   </div>
 }
 

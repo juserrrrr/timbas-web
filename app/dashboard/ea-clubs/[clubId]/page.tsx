@@ -9,12 +9,12 @@ import type { EaClubDashboard, EaLeaderboardCategory } from "@/lib/services/ea-c
 import { ClubPageHeader, ErrorState, formatDate, MatchRow, PageLoading } from "@/components/ea-clubs/shared"
 
 const HIGHLIGHTS = [
-  { key: "goals", label: "Artilheiro", icon: Goal, color: "text-emerald-400", suffix: "gols" },
-  { key: "assists", label: "Garçom", icon: Target, color: "text-sky-400", suffix: "assistências" },
+  { key: "eaClubGoals", label: "Artilheiro", icon: Goal, color: "text-emerald-400", suffix: "gols no clube" },
+  { key: "eaClubAssists", label: "Garçom", icon: Target, color: "text-sky-400", suffix: "assistências no clube" },
   { key: "defenders", label: "Melhor defensor", icon: Shield, color: "text-blue-400", suffix: "de nota" },
-  { key: "tackles", label: "Rei dos desarmes", icon: ShieldCheck, color: "text-orange-400", suffix: "desarmes" },
+  { key: "eaClubTackles", label: "Rei dos desarmes", icon: ShieldCheck, color: "text-orange-400", suffix: "desarmes no clube" },
   { key: "saves", label: "Paredão", icon: Hand, color: "text-purple-400", suffix: "defesas" },
-  { key: "averageRating", label: "Craque do clube", icon: Star, color: "text-amber-400", suffix: "de nota" },
+  { key: "eaClubRating", label: "Craque do clube", icon: Star, color: "text-amber-400", suffix: "de nota no clube" },
 ] as const
 
 export default function EaClubDashboardPage({ params }: { params: Promise<{ clubId: string }> }) {
