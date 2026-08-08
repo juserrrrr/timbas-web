@@ -109,7 +109,7 @@ export function DashboardSidebar() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-0.5 overflow-y-auto py-2 px-3">
+        <nav className="flex-1 space-y-0.5 py-2 px-3">
           {NAV.map((item) => (
             <NavLink key={item.href} item={item} isActive={item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href)} expanded={expanded} />
           ))}
