@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, usePathname, useRouter } from "next/navigation"
-import { BarChart3, History, LayoutDashboard, Users } from "lucide-react"
+import { BarChart3, LayoutDashboard, Users } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getEaClubs } from "@/lib/services/ea-clubs"
 import type { EaClub } from "@/lib/services/ea-clubs.types"
 
 const tabs = [
   { suffix: "", label: "Visão geral", icon: LayoutDashboard },
-  { suffix: "/matches", label: "Partidas", icon: History },
   { suffix: "/players", label: "Jogadores", icon: Users },
   { suffix: "/leaderboard", label: "Ranking", icon: BarChart3 },
 ]

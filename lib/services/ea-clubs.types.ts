@@ -1,5 +1,4 @@
 export type EaClubPlatform = "common-gen5" | (string & {})
-export type EaMatchResult = "WIN" | "DRAW" | "LOSS"
 
 export interface EaClub {
   id: string
@@ -21,16 +20,6 @@ export interface EaClubPreview {
 
 export interface EaClubDashboard {
   club: EaClub
-  matches: number
-  wins: number
-  draws: number
-  losses: number
-  winRate: number
-  goalsFor: number
-  goalsAgainst: number
-  recentMatches: EaClubMatch[]
-  trackingStartedAt: string
-  earliestImportedMatchAt?: string | null
   eaAllTimeStats?: {
     gamesPlayed?: number | null
     wins?: number | null
@@ -40,45 +29,6 @@ export interface EaClubDashboard {
     goalsAgainst?: number | null
     updatedAt?: string | null
   } | null
-}
-
-export interface EaClubMatch {
-  id: string
-  externalMatchId: string
-  clubId: string
-  playedAt: string
-  opponentExternalId?: string | null
-  opponentName: string
-  goalsFor: number
-  goalsAgainst: number
-  result: EaMatchResult
-  isHome: boolean
-  homeClubId?: string
-  awayClubId?: string
-  homeClubName?: string
-  awayClubName?: string
-  homeScore?: number
-  awayScore?: number
-}
-
-export interface EaMatchPlayerStat {
-  player: EaClubPlayer
-  position?: string | null
-  rating?: number | null
-  goals: number
-  assists: number
-  shots?: number | null
-  passesAttempted?: number | null
-  passesCompleted?: number | null
-  tacklesAttempted?: number | null
-  tacklesCompleted?: number | null
-  saves?: number | null
-  manOfTheMatch?: boolean | null
-}
-
-export interface EaClubMatchDetail extends EaClubMatch {
-  club: EaClub
-  players: EaMatchPlayerStat[]
 }
 
 export interface EaClubPlayer {
@@ -123,23 +73,6 @@ export interface EaLeaderboardCategory {
   entries: EaLeaderboardEntry[]
   minimumMatches?: number
   source?: "EA_CAREER" | "EA_CLUB"
-}
-
-export interface EaMatchFilters {
-  from?: string
-  to?: string
-  result?: EaMatchResult
-  opponent?: string
-  playerId?: string
-  page?: number
-  limit?: number
-}
-
-export interface Paginated<T> {
-  data: T[]
-  page: number
-  pages: number
-  total: number
 }
 
 export interface EaSyncResult {

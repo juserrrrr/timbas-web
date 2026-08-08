@@ -1,9 +1,8 @@
 import { apiFetch, authHeaders } from "@/lib/api"
 import { getToken } from "@/lib/auth"
 import type {
-  EaClub, EaClubDashboard, EaClubMatch, EaClubMatchDetail, EaClubPlayer,
-  EaClubPlayerProfile, EaClubPreview, EaLeaderboardCategory, EaMatchFilters,
-  EaSyncResult, Paginated,
+  EaClub, EaClubDashboard, EaClubPlayer, EaClubPlayerProfile, EaClubPreview,
+  EaLeaderboardCategory, EaSyncResult,
 } from "./ea-clubs.types"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "")
@@ -57,22 +56,7 @@ export function syncEaClub(clubId: string): Promise<EaSyncResult> {
 }
 
 export function getEaClubDashboard(clubId: string): Promise<EaClubDashboard> {
-  return request<EaClubDashboard & { pointsPercentage?: number }>(`/ea-clubs/${encodeURIComponent(clubId)}/dashboard`).then(body => ({ ...body, winRate: body.pointsPercentage ?? body.winRate }))
-}
-
-export async function getEaClubMatches(clubId: string, filters: EaMatchFilters = {}): Promise<Paginated<EaClubMatch>> {
-  const params = new URLSearchParams()
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== "") params.set(key, String(value))
-  })
-  const body = await request<Paginated<EaClubMatch> | (Omit<Paginated<EaClubMatch>, "data" | "pages"> & { items: EaClubMatch[]; perPage: number }) | EaClubMatch[]>(`/ea-clubs/${encodeURIComponent(clubId)}/matches?${params}`)
-  if (Array.isArray(body)) return { data: body, page: 1, pages: 1, total: body.length }
-  if ("data" in body) return body
-  return { data: body.items, page: body.page, total: body.total, pages: Math.ceil(body.total / body.perPage) }
-}
-
-export function getEaClubMatch(clubId: string, matchId: string): Promise<EaClubMatchDetail> {
-  return request(`/ea-clubs/${encodeURIComponent(clubId)}/matches/${encodeURIComponent(matchId)}`)
+  return request(`/ea-clubs/${encodeURIComponent(clubId)}/dashboard`)
 }
 
 export async function getEaClubPlayers(clubId: string): Promise<EaClubPlayer[]> {
