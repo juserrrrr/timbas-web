@@ -59,7 +59,27 @@ export interface EaClubPlayer {
   eaClubStatsUpdatedAt?: string | null
 }
 
-export type EaClubPlayerProfile = EaClubPlayer
+export interface EaPlayerPositionAnalysis {
+  position: string
+  appearances: number
+  averageRating?: number | null
+  goals: number
+  assists: number
+  goalContributions: number
+  passesCompleted: number
+  passAccuracy?: number | null
+  tacklesCompleted: number
+  tackleAccuracy?: number | null
+  saves: number
+  mvps: number
+}
+
+export interface EaClubPlayerProfile extends EaClubPlayer {
+  positionAnalysis: EaPlayerPositionAnalysis[]
+  mostPlayedPosition?: string | null
+  bestPosition?: string | null
+  positionAnalysisMinimumAppearances: number
+}
 
 export interface EaLeaderboardEntry {
   player: EaClubPlayer

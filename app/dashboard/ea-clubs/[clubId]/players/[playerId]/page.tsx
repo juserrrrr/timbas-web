@@ -11,6 +11,18 @@ function display(value?: number | null, decimals = 0) {
   return value == null ? "—" : value.toFixed(decimals)
 }
 
+const positionNames: Record<string, string> = {
+  goalkeeper: "Goleiro",
+  defender: "Defensor",
+  midfielder: "Meio-campista",
+  forward: "Atacante",
+}
+
+function positionName(position?: string | null) {
+  if (!position) return "—"
+  return positionNames[position] ?? position.toUpperCase()
+}
+
 export default function EaClubPlayerPage() {
   const { clubId, playerId } = useParams<{ clubId: string; playerId: string }>()
   const [club, setClub] = useState<EaClub | null>(null)
@@ -66,5 +78,18 @@ export default function EaClubPlayerPage() {
         {totals.map((item) => <Card key={item.label} className="border-emerald-500/10 bg-emerald-500/[0.035] p-5 text-center"><p className="text-2xl font-black text-white">{item.value ?? "—"}</p><p className="mt-1 text-xs text-gray-500">{item.label}</p></Card>)}
       </div>
     </section> : <Card className="border-dashed border-white/10 bg-white/[0.02] p-10 text-center"><p className="font-bold text-white">Estatísticas ainda indisponíveis</p><p className="mt-1 text-sm text-gray-500">Os totais deste jogador serão preenchidos na próxima sincronização com a EA.</p></Card>}
+
+    <section className="space-y-4">
+      <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-400">Análise por posição</p><h2 className="text-xl font-black text-white">Onde rende melhor</h2><p className="mt-1 text-sm text-gray-500">Análise agregada das atuações capturadas, sem exibir o histórico das partidas.</p></div>
+      {player.positionAnalysis.length > 0 ? <>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card className="border-blue-500/15 bg-blue-500/[0.05] p-5"><p className="text-xs font-bold uppercase tracking-wider text-blue-400">Posição mais jogada</p><p className="mt-2 text-2xl font-black text-white">{positionName(player.mostPlayedPosition)}</p><p className="mt-1 text-sm text-gray-500">{player.positionAnalysis.find((item) => item.position === player.mostPlayedPosition)?.appearances ?? 0} atuações registradas</p></Card>
+          <Card className="border-amber-500/15 bg-amber-500/[0.05] p-5"><p className="text-xs font-bold uppercase tracking-wider text-amber-400">Melhor desempenho</p><p className="mt-2 text-2xl font-black text-white">{positionName(player.bestPosition)}</p><p className="mt-1 text-sm text-gray-500">Considera posições com pelo menos {player.positionAnalysisMinimumAppearances} atuações</p></Card>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2">{player.positionAnalysis.map((position) => <Card key={position.position} className="border-white/[0.07] bg-white/[0.025] p-5"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-gray-500">Posição</p><h3 className="mt-1 text-xl font-black text-white">{positionName(position.position)}</h3></div><span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-300">{position.appearances} jogos</span></div><div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">{[
+          ["Nota", display(position.averageRating, 1)], ["Gols", position.goals], ["Assist.", position.assists], ["G+A", position.goalContributions], ["MVP", position.mvps], ["Passes", position.passesCompleted], ["Prec. passe", position.passAccuracy == null ? "—" : `${display(position.passAccuracy, 1)}%`], ["Desarmes", position.tacklesCompleted], ["Prec. desarme", position.tackleAccuracy == null ? "—" : `${display(position.tackleAccuracy, 1)}%`], ["Defesas", position.saves],
+        ].map(([label, value]) => <div key={label} className="rounded-lg bg-black/25 p-2 text-center"><p className="font-bold text-white">{value}</p><p className="mt-0.5 text-[10px] uppercase text-gray-600">{label}</p></div>)}</div></Card>)}</div>
+      </> : <Card className="border-dashed border-white/10 bg-white/[0.02] p-8 text-center"><p className="font-bold text-white">Análise por posição ainda indisponível</p><p className="mt-1 text-sm text-gray-500">Ela será formada conforme novas atuações forem capturadas.</p></Card>}
+    </section>
   </div>
 }
