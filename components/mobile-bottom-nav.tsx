@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Trophy, History, Users, BarChart3, Swords, Settings, X, MoreHorizontal, Radio, ShieldAlert, ShieldCheck, UserSearch } from "lucide-react"
+import { Home, Trophy, History, Users, BarChart3, Swords, Settings, X, MoreHorizontal, Radio, ShieldAlert, ShieldCheck, UserSearch, Gamepad2 } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge } from "@/components/ui/beta-badge"
 
@@ -25,6 +25,7 @@ const MORE_NAV: { icon: React.ElementType; label: string; href: string; color: s
   { icon: Swords,      label: "Comparação",  href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "border-orange-500/20" },
   { icon: ShieldAlert, label: "Clash Scout",  href: "/dashboard/clash",    color: "text-amber-400",   glow: "bg-amber-500/10",   active: "border-amber-500/20", beta: true },
   { icon: ShieldCheck, label: "Verificar LoL", href: "/dashboard/verify", color: "text-emerald-400", glow: "bg-emerald-500/10", active: "border-emerald-500/20", beta: true },
+  { icon: Gamepad2, label: "EA FC Clubs", href: "/dashboard/ea-clubs", color: "text-blue-400", glow: "bg-blue-500/10", active: "border-blue-500/20" },
   { icon: Settings,    label: "Config",       href: "/dashboard/settings", color: "text-gray-400",    glow: "bg-white/5",        active: "border-white/10" },
 ]
 
@@ -72,7 +73,7 @@ export function MobileBottomNav() {
           </div>
           <div className="flex flex-col gap-1">
             {MORE_NAV.map((item) => {
-              const isActive = pathname === item.href
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
               return (
                 <Link
                   key={item.href}

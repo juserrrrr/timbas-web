@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Trophy, History, Settings, BarChart3, Home, Users, ChevronRight, Swords, Radio, ShieldAlert, ShieldCheck, UserSearch } from "lucide-react"
+import { Trophy, History, Settings, BarChart3, Home, Users, ChevronRight, Swords, Radio, ShieldAlert, ShieldCheck, UserSearch, Gamepad2 } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge } from "@/components/ui/beta-badge"
 
@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { icon: Swords,      label: "Comparação",    href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "ring-orange-500/20" },
   { icon: ShieldAlert, label: "Clash Scout",   href: "/dashboard/clash",    color: "text-amber-400",   glow: "bg-amber-500/10",   active: "ring-amber-500/20", beta: true },
   { icon: ShieldCheck, label: "Verificar LoL", href: "/dashboard/verify",   color: "text-emerald-400", glow: "bg-emerald-500/10", active: "ring-emerald-500/20", beta: true },
+  { icon: Gamepad2, label: "EA FC Clubs", href: "/dashboard/ea-clubs", color: "text-blue-400", glow: "bg-blue-500/10", active: "ring-blue-500/20" },
 ]
 
 const BOTTOM: NavItem[] = [
@@ -108,9 +109,9 @@ export function DashboardSidebar() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-0.5 py-2 px-3">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto py-2 px-3">
           {NAV.map((item) => (
-            <NavLink key={item.href} item={item} isActive={pathname === item.href} expanded={expanded} />
+            <NavLink key={item.href} item={item} isActive={item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href)} expanded={expanded} />
           ))}
         </nav>
 
