@@ -109,26 +109,7 @@ export interface EaClubPlayer {
   eaClubStatsUpdatedAt?: string | null
 }
 
-export interface EaClubPlayerProfile extends EaClubPlayer {
-  matches: number
-  goals: number
-  assists: number
-  goalContributions: number
-  averageRating?: number | null
-  manOfTheMatch: number
-  shots?: number | null
-  passesAttempted?: number | null
-  passesCompleted?: number | null
-  tacklesAttempted?: number | null
-  tacklesCompleted?: number | null
-  saves?: number | null
-  goalsPerMatch: number
-  assistsPerMatch: number
-  goalContributionsPerMatch: number
-  passAccuracy?: number | null
-  tackleAccuracy?: number | null
-  matchHistory: Array<Omit<EaMatchPlayerStat, "player"> & { match: EaClubMatch }>
-}
+export type EaClubPlayerProfile = EaClubPlayer
 
 export interface EaLeaderboardEntry {
   player: EaClubPlayer
