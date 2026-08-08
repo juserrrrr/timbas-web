@@ -93,6 +93,20 @@ export interface EaClubPlayer {
   careerMvps?: number | null
   careerRating?: number | null
   careerStatsUpdatedAt?: string | null
+  eaClubGames?: number | null
+  eaClubGoals?: number | null
+  eaClubAssists?: number | null
+  eaClubMvps?: number | null
+  eaClubRating?: number | null
+  eaClubPassesMade?: number | null
+  eaClubPassSuccessRate?: number | null
+  eaClubTacklesMade?: number | null
+  eaClubTackleSuccessRate?: number | null
+  eaClubShotSuccessRate?: number | null
+  eaClubCleanSheetsDef?: number | null
+  eaClubCleanSheetsGk?: number | null
+  eaClubRedCards?: number | null
+  eaClubStatsUpdatedAt?: string | null
 }
 
 export interface EaClubPlayerProfile extends EaClubPlayer {
@@ -126,7 +140,7 @@ export interface EaLeaderboardCategory {
   label: string
   entries: EaLeaderboardEntry[]
   minimumMatches?: number
-  source?: "EA_CAREER"
+  source?: "EA_CAREER" | "EA_CLUB"
 }
 
 export interface EaMatchFilters {
