@@ -10,10 +10,10 @@ export function Footer() {
           <div className="col-span-1 md:col-span-2">
             <div className="mb-4 flex items-center gap-2.5">
               <div className="h-9 w-9 rounded-xl overflow-hidden ring-1 ring-white/10">
-                <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={36} height={36} className="object-cover" />
+                <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="Timbas" width={36} height={36} className="object-cover" />
               </div>
               <span className="text-base font-black tracking-tight text-white">
-                Timbas<span className="text-blue-400">Bot</span>
+                Timbas
               </span>
             </div>
             <p className="max-w-sm text-sm leading-relaxed text-gray-600">
@@ -42,7 +42,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/[0.05] pt-8 text-xs text-gray-700 sm:flex-row">
-          <p>&copy; 2025 TimbasBot. Todos os direitos reservados.</p>
+          <p>&copy; 2025 Timbas. Todos os direitos reservados.</p>
           <p>Feito com ♥ para a comunidade LoL</p>
         </div>
       </div>

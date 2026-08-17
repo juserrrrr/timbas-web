@@ -43,10 +43,10 @@ export function Header() {
           className="flex items-center gap-2.5 transition-opacity hover:opacity-80 cursor-pointer"
         >
           <div className="h-8 w-8 rounded-xl overflow-hidden ring-1 ring-white/10">
-            <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={32} height={32} className="object-cover" />
+            <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="Timbas" width={32} height={32} className="object-cover" />
           </div>
           <span className="text-base font-black tracking-tight text-white">
-            Timbas<span className="text-blue-400">Bot</span>
+            Timbas
           </span>
         </a>
 

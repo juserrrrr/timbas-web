@@ -70,7 +70,7 @@ export default function AdminLoginPage() {
             <div className="flex flex-col items-center gap-4 text-center">
               <div className="relative">
                 <div className="h-16 w-16 rounded-2xl overflow-hidden ring-1 ring-white/10">
-                  <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={64} height={64} className="object-cover" />
+                  <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="Timbas" width={64} height={64} className="object-cover" />
                 </div>
                 <div className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 ring-2 ring-[#0a0a0f]">
                   <ShieldAlert className="h-3.5 w-3.5 text-white" />

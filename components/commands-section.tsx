@@ -21,7 +21,7 @@ const commands = [
   {
     command: "/versus",
     description: "Compara as estatísticas de dois jogadores do servidor lado a lado.",
-    example: "/versus jogador1: @TimbasBot jogador2: @Amigo",
+    example: "/versus jogador1: @Timbas jogador2: @Amigo",
     badge: "Stats",
     badgeColor: "bg-yellow-500/15 text-yellow-300 border-yellow-500/20",
   },
@@ -92,7 +92,7 @@ export function CommandsSection() {
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <Terminal className="h-3.5 w-3.5" />
-              <span>TimbasBot | Discord Commands</span>
+              <span>Timbas | Discord Commands</span>
             </div>
           </div>
 

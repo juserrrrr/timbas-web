@@ -30,7 +30,7 @@ export function DashboardHeader() {
             <Bot className="h-6 w-6 text-white" />
           </div>
           <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-xl font-bold text-transparent">
-            TimbasBot
+            Timbas
           </span>
         </Link>
 

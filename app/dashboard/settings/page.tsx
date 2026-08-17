@@ -89,17 +89,17 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Sobre o TimbasBot */}
+      {/* Sobre o Timbas */}
       <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
         <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-5 py-4">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-yellow-500/10">
             <Info className="h-3.5 w-3.5 text-yellow-400" />
           </div>
-          <h2 className="text-sm font-semibold text-white">Sobre o TimbasBot</h2>
+          <h2 className="text-sm font-semibold text-white">Sobre o Timbas</h2>
         </div>
         <div className="px-5 py-4 space-y-3">
           <p className="text-sm text-gray-500 leading-relaxed">
-            TimbasBot é um bot de Discord para organizar partidas 5v5 competitivas. Ranking, estatísticas detalhadas e histórico completo, tudo dentro do servidor.
+            O Timbas organiza partidas 5v5 competitivas com o nosso bot no Discord. Ranking, estatísticas detalhadas e histórico completo, tudo dentro do servidor.
           </p>
           <div className="flex flex-wrap gap-3">
             <a
@@ -120,7 +120,7 @@ export default function SettingsPage() {
             </a>
           </div>
           <div className="flex items-center gap-3 text-xs text-gray-700">
-            <span>TimbasBot © 2025</span>
+            <span>Timbas © 2025</span>
             <span>·</span>
             <span>v1.0.0</span>
           </div>

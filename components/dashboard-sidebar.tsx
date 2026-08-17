@@ -183,7 +183,7 @@ export function DashboardSidebar() {
           <Link href="/dashboard" prefetch={false} onClick={close} className="flex items-center">
             <span className="flex h-14 w-[65px] flex-shrink-0 items-center justify-center">
               <span className="block h-8 w-8 overflow-hidden rounded-lg ring-1 ring-white/10">
-                <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={32} height={32} className="object-cover" />
+                <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="Timbas" width={32} height={32} className="object-cover" />
               </span>
             </span>
             <span
@@ -192,7 +192,7 @@ export function DashboardSidebar() {
                 expanded ? "opacity-100 delay-100" : "opacity-0"
               }`}
             >
-              Timbas<span className="text-blue-400">Bot</span>
+              Timbas
             </span>
           </Link>
 

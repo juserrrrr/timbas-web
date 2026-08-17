@@ -40,10 +40,10 @@ export function LoginForm() {
         {/* Logo, mobile */}
         <div className="mb-8 flex flex-col items-center text-center lg:hidden">
           <div className="mb-4 h-14 w-14 rounded-xl overflow-hidden ring-1 ring-white/10">
-            <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={56} height={56} className="object-cover" />
+            <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="Timbas" width={56} height={56} className="object-cover" />
           </div>
           <span className="text-xl font-black tracking-tight">
-            Timbas<span className="text-blue-400">Bot</span>
+            Timbas
           </span>
         </div>
 

@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 export const metadata: Metadata = {
-  title: "TimbasBot",
-  description: "O melhor bot de Discord para organizar partidas competitivas entre amigos",
+  title: "Timbas",
+  description: "Organize partidas competitivas entre amigos, com ranking, estatísticas e o nosso bot no Discord",
 }
 
 export default function RootLayout({

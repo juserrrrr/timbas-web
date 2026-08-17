@@ -49,7 +49,7 @@ export function HeroSection() {
             </h1>
 
             <p className="mb-10 max-w-[480px] text-lg leading-relaxed text-gray-400">
-              TimbasBot cria partidas 5v5 personalizadas direto no seu servidor Discord, com ranking, estatísticas detalhadas e histórico completo.
+              O Timbas cria partidas 5v5 personalizadas direto no seu servidor Discord, pelo nosso bot, com ranking, estatísticas detalhadas e histórico completo.
             </p>
 
             <div className="flex flex-wrap gap-3 mb-12">
@@ -114,7 +114,7 @@ export function HeroSection() {
                       <div className="h-4 w-4 rounded overflow-hidden">
                         <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="" width={16} height={16} className="object-cover" />
                       </div>
-                      <span className="text-xs font-semibold text-gray-300">TimbasBot</span>
+                      <span className="text-xs font-semibold text-gray-300">Timbas</span>
                       <span className="rounded bg-blue-600/40 px-1.5 py-0.5 text-[10px] font-bold text-blue-300 tracking-wide">BOT</span>
                     </div>
                   </div>
@@ -138,7 +138,7 @@ export function HeroSection() {
                   <div className="flex-1 bg-[#313338]">
                     <Image
                       src="/timbasBot.png"
-                      alt="TimbasBot, partida personalizada no Discord"
+                      alt="Timbas, partida personalizada no Discord"
                       width={560}
                       height={600}
                       className="w-full object-cover"

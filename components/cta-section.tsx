@@ -18,7 +18,7 @@ export function CTASection() {
           <div className="relative z-10 flex flex-col items-center text-center">
             {/* Logo */}
             <div className="mb-8 h-20 w-20 rounded-2xl overflow-hidden shadow-2xl shadow-blue-600/20 ring-1 ring-white/10">
-              <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={80} height={80} className="object-cover" />
+              <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="Timbas" width={80} height={80} className="object-cover" />
             </div>
 
             <h2 className="mb-5 max-w-2xl text-4xl font-black text-white md:text-5xl leading-tight">
@@ -29,7 +29,7 @@ export function CTASection() {
             </h2>
 
             <p className="mb-10 max-w-lg text-lg text-gray-400">
-              Junte-se à comunidade que já usa o TimbasBot para organizar partidas épicas e acompanhar a evolução de cada jogador.
+              Junte-se à comunidade que já usa o Timbas para organizar partidas épicas e acompanhar a evolução de cada jogador.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-4">

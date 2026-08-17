@@ -30,10 +30,10 @@ export default function LoginPage() {
             {/* Logo */}
             <div className="flex items-center gap-3 mb-12">
               <div className="h-10 w-10 rounded-xl overflow-hidden ring-1 ring-white/10">
-                <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={40} height={40} className="object-cover" />
+                <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="Timbas" width={40} height={40} className="object-cover" />
               </div>
               <span className="text-xl font-black tracking-tight">
-                Timbas<span className="text-blue-400">Bot</span>
+                Timbas
               </span>
             </div>
 
