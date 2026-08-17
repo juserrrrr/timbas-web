@@ -145,7 +145,7 @@ export default function DemoLabPage() {
   const [rosterSize, setRosterSize] = useState(25)
   const [draftStage, setDraftStage] = useState<DemoDraftStage>("ACTIVE")
   const [draftResultMode, setDraftResultMode] = useState<DraftResultMode>("SIMULATED")
-  const [startingBudget, setStartingBudget] = useState(200_000_000)
+  const [startingBudget, setStartingBudget] = useState(800_000_000)
   const [paySalaries, setPaySalaries] = useState(true)
   const [vacantRosters, setVacantRosters] = useState(0)
   const [auctionsEnabled, setAuctionsEnabled] = useState(true)
@@ -396,7 +396,7 @@ export default function DemoLabPage() {
             <div className="space-y-1.5">
               <Label>Caixa inicial de cada elenco</Label>
               <Chips
-                    options={[50_000_000, 200_000_000, 800_000_000]}
+                    options={[200_000_000, 800_000_000, 2_000_000_000]}
                     value={startingBudget}
                     onChange={setStartingBudget}
                     render={(value) => formatMoney(value)}

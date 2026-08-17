@@ -9,14 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { EmptyState, ErrorState, PageLoading, StatusPill } from "@/components/competitions/shared"
 import { formatMoney } from "@/lib/money"
+import { OVERALL_TIERS, groupByTier, tierOf, type OverallTierId } from "@/lib/tiers"
 import { CatalogImportDialog } from "@/components/competitions/catalog-import-dialog"
-import {
-  ATTRIBUTE_KEYS,
-  attributeLongLabels,
-  attributeRow,
-  attributeTone,
-  hasAttributes,
-} from "@/lib/attributes"
+import { ATTRIBUTE_KEYS, attributeLongLabels, attributeRow, attributeTone, hasAttributes } from "@/lib/attributes"
 import {
   createBasePlayer,
   createCompetition,
@@ -185,6 +180,7 @@ export function CatalogPanel() {
 
   const [search, setSearch] = useState("")
   const [onlyMissing, setOnlyMissing] = useState(false)
+  const [tier, setTier] = useState<OverallTierId | "">("")
   const [name, setName] = useState("")
   const [position, setPosition] = useState("ATA")
   const [realTeam, setRealTeam] = useState("")
@@ -247,6 +243,14 @@ export function CatalogPanel() {
   }
 
   const missing = total - withAttributes
+
+  // A base cresce rápido e vira uma lista sem relevo. Separada em faixas de dez
+  // dá para ver quantos craques existem e onde falta gente.
+  const tierCounts = OVERALL_TIERS.map((option) => ({
+    ...option,
+    count: players.filter((player) => tierOf(player.overall).id === option.id).length,
+  })).filter((option) => option.count > 0)
+  const groups = groupByTier(tier ? players.filter((player) => tierOf(player.overall).id === tier) : players)
 
   return (
     <div className="space-y-5">
@@ -355,8 +359,8 @@ export function CatalogPanel() {
         <Card className="border-sky-500/20 bg-sky-500/[0.04] p-4">
           <h4 className="mb-1 text-sm font-bold text-white">Trazer elencos de uma API</h4>
           <p className="mb-3 text-[11px] leading-snug text-gray-500">
-            Os jogadores chegam com nome, posição, nacionalidade e nascimento. Atributo não vem de fora, ele é
-            estimado aqui depois, e só a liga simulada precisa dele.
+            Os jogadores chegam com nome, posição, nacionalidade e nascimento. Atributo não vem de fora, ele é estimado
+            aqui depois, e só a liga simulada precisa dele.
           </p>
 
           <div className="grid gap-2 sm:grid-cols-2">
@@ -372,7 +376,7 @@ export function CatalogPanel() {
                 {
                   id: "GENERIC" as const,
                   title: "URL própria",
-                  hint: 'Qualquer endereço que devolva JSON com times e seus jogadores.',
+                  hint: "Qualquer endereço que devolva JSON com times e seus jogadores.",
                 },
               ] as const
             ).map((option) => (
@@ -474,6 +478,33 @@ export function CatalogPanel() {
         </label>
       </div>
 
+      {tierCounts.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setTier("")}
+            className={`cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+              tier === ""
+                ? "border-white/20 bg-white/[0.08] text-white"
+                : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
+            }`}
+          >
+            Todos os níveis
+          </button>
+          {tierCounts.map((option) => (
+            <button
+              key={option.id}
+              onClick={() => setTier(tier === option.id ? "" : option.id)}
+              className={`cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+                tier === option.id ? option.chip : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
+              }`}
+            >
+              {option.short}
+              <span className="ml-1.5 text-[10px] font-black opacity-60">{option.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {players.length === 0 ? (
         <EmptyState
           icon={Database}
@@ -481,26 +512,43 @@ export function CatalogPanel() {
           description="Adicione jogadores um por um aí em cima, ou cole uma lista de uma vez pelo botão de colar."
         />
       ) : (
-        <div className="space-y-1">
-          {players.map((player) => (
-            <PlayerRow
-              key={player.id}
-              player={player}
-              busy={busy}
-              onEstimate={() =>
-                void run(
-                  `attr-${player.id}`,
-                  () => estimatePlayerAttributes(player.id),
-                  `Atributos de ${player.name} estimados.`,
-                )
-              }
-              onSave={(input) =>
-                void run(`save-${player.id}`, () => updateCatalogPlayer(player.id, input), `${player.name} atualizado.`)
-              }
-              onRemove={() =>
-                void run(`del-${player.id}`, () => removeCatalogPlayer(player.id), `${player.name} removido.`)
-              }
-            />
+        <div className="space-y-4">
+          {groups.map((group) => (
+            <div key={group.tier.id}>
+              <div className="mb-1.5 flex items-center gap-2">
+                <h4 className={`text-xs font-black uppercase tracking-wide ${group.tier.tone}`}>{group.tier.label}</h4>
+                <span className="text-[11px] font-bold text-gray-600">{group.tier.short}</span>
+                <span className="h-px flex-1 bg-white/[0.06]" />
+                <span className="text-[11px] text-gray-600">{group.players.length}</span>
+              </div>
+
+              <div className="space-y-1">
+                {group.players.map((player) => (
+                  <PlayerRow
+                    key={player.id}
+                    player={player}
+                    busy={busy}
+                    onEstimate={() =>
+                      void run(
+                        `attr-${player.id}`,
+                        () => estimatePlayerAttributes(player.id),
+                        `Atributos de ${player.name} estimados.`,
+                      )
+                    }
+                    onSave={(input) =>
+                      void run(
+                        `save-${player.id}`,
+                        () => updateCatalogPlayer(player.id, input),
+                        `${player.name} atualizado.`,
+                      )
+                    }
+                    onRemove={() =>
+                      void run(`del-${player.id}`, () => removeCatalogPlayer(player.id), `${player.name} removido.`)
+                    }
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -554,8 +602,8 @@ export function CatalogPanel() {
             </Button>
           </div>
           <p className="mt-2 text-[11px] text-gray-500">
-            Só aparecem ligas que ainda não começaram o draft, porque depois disso o pool fica travado. Depois do
-            draft, cada jogador fica no elenco de quem o escolheu.
+            Só aparecem ligas que ainda não começaram o draft, porque depois disso o pool fica travado. Depois do draft,
+            cada jogador fica no elenco de quem o escolheu.
           </p>
         </Card>
       )}

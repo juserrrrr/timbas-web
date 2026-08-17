@@ -32,7 +32,7 @@ const DEFAULTS = {
   pickSeconds: 120,
   matchDays: [0, 3],
   matchHour: 21,
-  startingBudget: 200_000_000,
+  startingBudget: 800_000_000,
   paySalaries: true,
   marketAutoManaged: true,
   marketClosesMinutesBefore: 180,
@@ -42,9 +42,9 @@ const DEFAULTS = {
   auctionAntiSnipeMinutes: 5,
   pointsWin: 3,
   pointsDraw: 1,
-  coinsWin: 3_000_000,
-  coinsDraw: 1_000_000,
-  coinsLoss: 400_000,
+  coinsWin: 15_000_000,
+  coinsDraw: 6_000_000,
+  coinsLoss: 2_000_000,
 }
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -403,8 +403,8 @@ export function CreateDraftLeagueDialog({
                 label="Caixa inicial de cada elenco"
                 value={startingBudget}
                 onChange={setStartingBudget}
-                step={100}
-                hint="1000 dá para um reforço caro ou dois medianos."
+                step={50_000_000}
+                hint={`${formatMoney(startingBudget)} por elenco. Paga a folha de uma temporada e ainda dá para um titular de time grande.`}
               />
               <label className="flex h-fit cursor-pointer items-center justify-between gap-3 self-end rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
                 <span className="min-w-0">
@@ -423,7 +423,7 @@ export function CreateDraftLeagueDialog({
                 label="Prêmio por vitória"
                 value={coinsWin}
                 onChange={setCoinsWin}
-                step={100_000}
+                step={1_000_000}
                 hint={formatMoney(coinsWin)}
               />
               <NumberField
@@ -431,7 +431,7 @@ export function CreateDraftLeagueDialog({
                 label="Por empate"
                 value={coinsDraw}
                 onChange={setCoinsDraw}
-                step={100_000}
+                step={1_000_000}
                 hint={formatMoney(coinsDraw)}
               />
               <NumberField
@@ -439,7 +439,7 @@ export function CreateDraftLeagueDialog({
                 label="Por derrota"
                 value={coinsLoss}
                 onChange={setCoinsLoss}
-                step={100_000}
+                step={1_000_000}
                 hint={formatMoney(coinsLoss)}
               />
             </div>
