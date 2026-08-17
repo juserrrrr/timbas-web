@@ -12,6 +12,7 @@ import {
   PageLoading,
   StatusPill,
 } from "@/components/competitions/shared"
+import { decodeToken, getToken } from "@/lib/auth"
 import { listDraftLeagues } from "@/lib/services/draft"
 import { DRAFT_STATUS_LABELS, WEEKDAY_SHORT, type DraftLeagueStatus, type DraftLeagueSummary } from "@/lib/services/draft.types"
 import { CreateDraftLeagueDialog } from "./create-draft-league-dialog"
@@ -29,6 +30,12 @@ export default function DraftLeaguesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [creating, setCreating] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    const token = getToken()
+    setIsAdmin(token ? decodeToken(token)?.role === "ADMIN" : false)
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -59,10 +66,12 @@ export default function DraftLeaguesPage() {
         accent="text-emerald-400"
         accentBg="bg-emerald-500/10 border-emerald-500/20"
         actions={
-          <Button onClick={() => setCreating(true)} className="bg-emerald-500 text-black hover:bg-emerald-400">
-            <Plus className="mr-1.5 h-4 w-4" />
-            Criar liga
-          </Button>
+          isAdmin && (
+            <Button onClick={() => setCreating(true)} className="bg-emerald-500 text-black hover:bg-emerald-400">
+              <Plus className="mr-1.5 h-4 w-4" />
+              Criar liga
+            </Button>
+          )
         }
       />
 
@@ -70,12 +79,18 @@ export default function DraftLeaguesPage() {
         <EmptyState
           icon={Users}
           title="Nenhuma liga de draft ainda"
-          description="Crie uma liga, monte o pool de jogadores e chame a galera. Cada participante escolhe seu elenco na sala do draft."
+          description={
+            isAdmin
+              ? "Crie uma liga, monte o pool de jogadores e chame a galera. Cada participante escolhe seu elenco na sala do draft."
+              : "As ligas são abertas pela administração. Assim que uma existir, ela aparece aqui para você entrar."
+          }
           action={
-            <Button onClick={() => setCreating(true)} className="bg-emerald-500 text-black hover:bg-emerald-400">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Criar liga
-            </Button>
+            isAdmin && (
+              <Button onClick={() => setCreating(true)} className="bg-emerald-500 text-black hover:bg-emerald-400">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Criar liga
+              </Button>
+            )
           }
         />
       ) : (
