@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  ClipboardList,
   Gamepad2,
   History,
   Home,
@@ -75,7 +76,7 @@ export const NAV_GROUPS: NavGroup[] = [
         beta: true,
       },
       {
-        icon: Users,
+        icon: ClipboardList,
         label: "Liga Draft",
         description: "Monte seu elenco no draft e dispute as rodadas",
         href: "/dashboard/draft",

@@ -1,6 +1,6 @@
 import { patch, post, remove, request } from "./http"
 
-export type CatalogSource = "MANUAL" | "FOOTBALL_DATA" | "GENERIC"
+export type CatalogSource = "MANUAL" | "FOOTBALL_DATA" | "GENERIC" | "WIKIPEDIA"
 
 export interface CatalogCompetition {
   id: string
@@ -72,6 +72,7 @@ export const SOURCE_LABELS: Record<CatalogSource, string> = {
   MANUAL: "Manual",
   FOOTBALL_DATA: "football-data.org",
   GENERIC: "URL própria",
+  WIKIPEDIA: "Wikipedia",
 }
 
 export interface BasePlayer extends CatalogPlayer {
@@ -136,6 +137,10 @@ export function removeCompetition(id: string) {
 
 export function syncCompetition(id: string): Promise<{ teams: number; players: number }> {
   return post(`/admin/catalog/competitions/${id}/sync`)
+}
+
+export function syncWikipediaSquads(teams: string[]): Promise<{ teams: number; players: number; failures: string[] }> {
+  return post("/admin/catalog/wikipedia/sync", { teams })
 }
 
 export function listCatalogTeams(competitionId: string): Promise<CatalogTeam[]> {

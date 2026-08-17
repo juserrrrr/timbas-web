@@ -40,7 +40,9 @@ function NavLink({
         onNavigate()
         if (!isActive) navigate(item.href)
       }}
-      className={`group relative flex h-11 w-full items-center overflow-hidden rounded-xl transition-colors duration-200 ${
+      className={`group relative flex w-full items-center overflow-hidden rounded-xl transition-colors duration-200 ${
+        expanded ? "h-11" : "h-[41px]"
+      } ${
         isActive
           ? `${accent.bg} ${accent.text} ${expanded ? `ring-1 ring-inset ${accent.ring}` : ""}`
           : "text-gray-500 hover:bg-white/[0.05] hover:text-white"
@@ -52,7 +54,7 @@ function NavLink({
 
       <span className="relative flex h-11 w-[41px] flex-shrink-0 items-center justify-center">
         <item.icon className="h-[18px] w-[18px]" />
-        {item.beta && !expanded && <BetaMark className="absolute right-0 top-1.5" />}
+        {item.beta && !expanded && <BetaMark className="absolute right-0.5 top-1" />}
       </span>
 
       <span

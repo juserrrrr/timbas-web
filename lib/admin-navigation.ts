@@ -1,5 +1,6 @@
 import {
   Brain,
+  ClipboardList,
   FlaskConical,
   Gamepad2,
   LayoutDashboard,
@@ -48,7 +49,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         permission: "tournament.create",
       },
       {
-        icon: Users,
+        icon: ClipboardList,
         label: "Liga Draft",
         description: "Ligas, pool e base de jogadores",
         href: "/admin/draft",

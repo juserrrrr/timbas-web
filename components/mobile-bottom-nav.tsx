@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, MoreHorizontal, Radio, Trophy, Users, X } from "lucide-react"
+import { ClipboardList, Home, MoreHorizontal, Radio, Trophy, X } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge } from "@/components/ui/beta-badge"
 import { ACCENTS, FOOTER_ITEMS, NAV_GROUPS, isNavItemActive, type NavItem } from "@/lib/navigation"
@@ -14,7 +14,7 @@ const QUICK_ICONS: Record<string, typeof Home> = {
   "/dashboard": Home,
   "/dashboard/active": Radio,
   "/dashboard/tournaments": Trophy,
-  "/dashboard/draft": Users,
+  "/dashboard/draft": ClipboardList,
 }
 
 function BarItem({ item, isActive }: { item: NavItem; isActive: boolean }) {

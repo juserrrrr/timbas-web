@@ -22,6 +22,7 @@ import {
   listCompetitions,
   removeCatalogPlayer,
   syncCompetition,
+  syncWikipediaSquads,
   updateCatalogPlayer,
   type BasePlayer,
 } from "@/lib/services/catalog"
@@ -187,10 +188,11 @@ export function CatalogPanel() {
 
   const [importOpen, setImportOpen] = useState(false)
   const [apiOpen, setApiOpen] = useState(false)
-  const [apiSource, setApiSource] = useState<"FOOTBALL_DATA" | "GENERIC">("FOOTBALL_DATA")
+  const [apiSource, setApiSource] = useState<"FOOTBALL_DATA" | "GENERIC" | "WIKIPEDIA">("FOOTBALL_DATA")
   const [apiCode, setApiCode] = useState("BSA")
   const [apiName, setApiName] = useState("Brasileirão Série A")
   const [apiUrl, setApiUrl] = useState("")
+  const [wikipediaTeams, setWikipediaTeams] = useState("")
   const [footballDataReady, setFootballDataReady] = useState(false)
   const [importLeagueId, setImportLeagueId] = useState("")
   const [importReplace, setImportReplace] = useState(true)
@@ -378,6 +380,11 @@ export function CatalogPanel() {
                   title: "URL própria",
                   hint: "Qualquer endereço que devolva JSON com times e seus jogadores.",
                 },
+                {
+                  id: "WIKIPEDIA" as const,
+                  title: "Wikipedia",
+                  hint: "Cole uma lista de clubes e buscamos o elenco principal atual de cada um.",
+                },
               ] as const
             ).map((option) => (
               <button
@@ -407,7 +414,19 @@ export function CatalogPanel() {
                 className="border-white/10 bg-white/[0.03]"
               />
             </div>
-            {apiSource === "FOOTBALL_DATA" ? (
+            {apiSource === "WIKIPEDIA" ? (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="wikipedia-teams">Times, um por linha</Label>
+                <textarea
+                  id="wikipedia-teams"
+                  value={wikipediaTeams}
+                  onChange={(event) => setWikipediaTeams(event.target.value)}
+                  placeholder={"Flamengo\nPalmeiras\nReal Madrid"}
+                  className="min-h-28 w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-white outline-none focus:border-sky-500/50"
+                />
+                <p className="text-[11px] text-gray-500">A busca usa a Wikipedia em inglês e importa todos os jogadores encontrados no elenco principal.</p>
+              </div>
+            ) : apiSource === "FOOTBALL_DATA" ? (
               <div className="space-y-1.5">
                 <Label htmlFor="api-code">Código da competição</Label>
                 <Input
@@ -433,11 +452,28 @@ export function CatalogPanel() {
           </div>
 
           <Button
-            disabled={busy !== "" || apiName.trim().length < 3 || (apiSource === "GENERIC" && !apiUrl.trim())}
+            disabled={
+              busy !== "" ||
+              (apiSource === "WIKIPEDIA"
+                ? !wikipediaTeams.split("\n").some((team) => team.trim().length >= 2)
+                : apiName.trim().length < 3 || (apiSource === "GENERIC" && !apiUrl.trim()))
+            }
             onClick={() =>
               void run(
                 "api",
                 async () => {
+                  if (apiSource === "WIKIPEDIA") {
+                    const result = await syncWikipediaSquads(
+                      wikipediaTeams
+                        .split("\n")
+                        .map((team) => team.trim())
+                        .filter(Boolean),
+                    )
+                    setNotice(
+                      `${result.players} jogadores vieram da Wikipedia.${result.failures.length ? ` ${result.failures.length} time(s) precisaram de ajuste.` : ""}`,
+                    )
+                    return
+                  }
                   const competition = await createCompetition({
                     code: apiSource === "FOOTBALL_DATA" ? apiCode.trim() : `URL${Date.now().toString().slice(-6)}`,
                     name: apiName.trim(),
