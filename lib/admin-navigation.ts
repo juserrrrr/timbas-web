@@ -1,0 +1,120 @@
+import {
+  Brain,
+  Database,
+  FlaskConical,
+  Gamepad2,
+  LayoutDashboard,
+  Server,
+  ShieldCheck,
+  Trophy,
+  Users,
+} from "lucide-react"
+import type { NavGroup, NavItem } from "@/lib/navigation"
+
+/// Navegação do painel, nas mesmas categorias do dashboard. `permission` diz quem
+/// vê o item: sem permissão, o item nem aparece, e a API recusa de qualquer jeito.
+export type AdminNavItem = NavItem & { permission?: string }
+export type AdminNavGroup = Omit<NavGroup, "items"> & { items: AdminNavItem[] }
+
+export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
+  {
+    id: "geral",
+    title: "Geral",
+    items: [
+      {
+        icon: LayoutDashboard,
+        label: "Visão geral",
+        description: "Números da plataforma e atalhos",
+        href: "/admin",
+        accent: "orange",
+      },
+    ],
+  },
+  {
+    id: "partida-customizada",
+    title: "Partida Customizada",
+    items: [
+      { icon: Users, label: "Jogadores", description: "Contas, cargos e histórico", href: "/admin/players", accent: "blue" },
+      { icon: Server, label: "Servidores", description: "Servidores do Discord registrados", href: "/admin/servers", accent: "emerald" },
+    ],
+  },
+  {
+    id: "competicoes",
+    title: "Competições",
+    items: [
+      {
+        icon: Trophy,
+        label: "Campeonatos",
+        description: "Criar e acompanhar chaves",
+        href: "/admin/competitions",
+        accent: "amber",
+        permission: "tournament.create",
+      },
+      {
+        icon: Users,
+        label: "Liga Draft",
+        description: "Ligas, pool e base de jogadores",
+        href: "/admin/draft",
+        accent: "emerald",
+        permission: "draft.create",
+      },
+      {
+        icon: Database,
+        label: "Base de jogadores",
+        description: "Competições, elencos e atributos",
+        href: "/admin/draft?tab=catalog",
+        accent: "sky",
+        permission: "catalog.manage",
+      },
+    ],
+  },
+  {
+    id: "ea-fc",
+    title: "EA FC",
+    items: [
+      { icon: Gamepad2, label: "EA FC Clubs", description: "Clubes sincronizados", href: "/admin/ea-clubs", accent: "blue" },
+    ],
+  },
+  {
+    id: "plataforma",
+    title: "Plataforma",
+    items: [
+      {
+        icon: ShieldCheck,
+        label: "Acessos",
+        description: "Aprovação de entrada, grupos e permissões",
+        href: "/admin/access",
+        accent: "violet",
+        permission: "users.approve",
+      },
+      { icon: Brain, label: "IA", description: "Provedor, modelo e recursos", href: "/admin/ai", accent: "violet", permission: "ai.manage" },
+      {
+        icon: FlaskConical,
+        label: "Laboratório",
+        description: "Dados de teste com debug na tela",
+        href: "/admin/lab",
+        accent: "orange",
+        permission: "demo.manage",
+      },
+    ],
+  },
+]
+
+export const ADMIN_FOOTER_ITEMS: NavItem[] = [
+  {
+    icon: LayoutDashboard,
+    label: "Voltar ao Timbas",
+    description: "Sai do painel e volta a jogar",
+    href: "/dashboard",
+    accent: "slate",
+  },
+]
+
+/// Esconde o que a pessoa não pode usar. Item sem permissão declarada aparece
+/// para quem já entrou no painel.
+export function visibleAdminGroups(permissions: string[]): AdminNavGroup[] {
+  return ADMIN_NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.permission || permissions.includes(item.permission)),
+  })).filter((group) => group.items.length > 0)
+}
