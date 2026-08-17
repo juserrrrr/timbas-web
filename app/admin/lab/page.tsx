@@ -14,6 +14,7 @@ import {
   StatusPill,
   formatDateTime,
 } from "@/components/competitions/shared"
+import { advancePerGroupOptions, groupCountOptions, pickOption } from "@/lib/group-plan"
 import {
   buildDemoDraft,
   buildDemoTournament,
@@ -27,8 +28,6 @@ import { FORMAT_LABELS, type TournamentFormat } from "@/lib/services/tournaments
 
 const FORMATS = Object.keys(FORMAT_LABELS) as TournamentFormat[]
 const TEAM_COUNTS = [4, 5, 8, 12, 16]
-const GROUP_COUNTS = [2, 3, 4, 6, 8]
-const ADVANCE_COUNTS = [1, 2, 3, 4]
 
 const TOURNAMENT_STAGES: Array<{ id: DemoTournamentStage; label: string; hint: string }> = [
   { id: "REGISTRATION", label: "Só inscrito", hint: "Times cadastrados, chave ainda não gerada" },
@@ -128,6 +127,11 @@ export default function DemoLabPage() {
   const [rosterCount, setRosterCount] = useState(4)
   const [rosterSize, setRosterSize] = useState(5)
   const [draftStage, setDraftStage] = useState<DemoDraftStage>("ACTIVE")
+
+  const groupOptions = groupCountOptions(teamCount)
+  const activeGroupCount = pickOption(groupOptions, groupCount, 2)
+  const advanceOptions = advancePerGroupOptions(teamCount, activeGroupCount)
+  const activeAdvance = pickOption(advanceOptions, advancePerGroup, 1)
 
   const load = useCallback(async () => {
     try {
@@ -242,17 +246,28 @@ export default function DemoLabPage() {
               </p>
             </div>
 
-            {format === "GROUPS_KNOCKOUT" && (
+            {format === "GROUPS_KNOCKOUT" && groupOptions.length === 0 && (
+              <p className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] text-amber-200">
+                {teamCount} times não dividem em grupos do mesmo tamanho. Escolha outro total de times.
+              </p>
+            )}
+
+            {format === "GROUPS_KNOCKOUT" && groupOptions.length > 0 && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Grupos</Label>
-                  <Chips options={GROUP_COUNTS} value={groupCount} onChange={setGroupCount} />
+                  <Chips
+                    options={groupOptions}
+                    value={activeGroupCount}
+                    onChange={setGroupCount}
+                    render={(count) => `${count} de ${teamCount / count}`}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Classificados por grupo</Label>
-                  <Chips options={ADVANCE_COUNTS} value={advancePerGroup} onChange={setAdvancePerGroup} />
+                  <Chips options={advanceOptions} value={activeAdvance} onChange={setAdvancePerGroup} />
                   <p className="text-[11px] text-gray-600">
-                    Cada grupo joga entre si e os melhores se cruzam no mata-mata, líder de um grupo contra
+                    {activeGroupCount * activeAdvance} times no mata-mata, cruzando líder de um grupo com
                     classificado de outro.
                   </p>
                 </div>
@@ -272,15 +287,15 @@ export default function DemoLabPage() {
             </div>
 
             <Button
-              disabled={busy !== ""}
+              disabled={busy !== "" || (format === "GROUPS_KNOCKOUT" && groupOptions.length === 0)}
               onClick={() =>
                 void run("tournament", () =>
                   buildDemoTournament({
                     format,
                     teamCount,
                     thirdPlace,
-                    groupCount,
-                    advancePerGroup,
+                    groupCount: activeGroupCount,
+                    advancePerGroup: activeAdvance,
                     stage: tournamentStage,
                   }),
                 )

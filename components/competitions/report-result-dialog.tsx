@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Camera, Loader2, ScanLine, ShieldCheck, Trash2, TriangleAlert } from "lucide-react"
+import { Camera, Loader2, ScanLine, ShieldCheck, Trash2, TriangleAlert, UserX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { prepareScoreboardImage, type PreparedImage } from "@/lib/image-upload"
@@ -21,6 +21,7 @@ export function ReportResultDialog({
   requireProof,
   canModerate,
   onSubmit,
+  onWalkover,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -31,12 +32,16 @@ export function ReportResultDialog({
   requireProof: boolean
   canModerate: boolean
   onSubmit: (input: { homeScore: number; awayScore: number; imageBase64?: string; mimeType?: string }) => Promise<ReportOutcome>
+  onWalkover?: (input: { winner: "HOME" | "AWAY"; reason?: string }) => Promise<void>
 }) {
   const [homeScore, setHomeScore] = useState("")
   const [awayScore, setAwayScore] = useState("")
   const [image, setImage] = useState<PreparedImage | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const [walkoverOpen, setWalkoverOpen] = useState(false)
+  const [walkoverWinner, setWalkoverWinner] = useState<"HOME" | "AWAY">("HOME")
+  const [walkoverReason, setWalkoverReason] = useState("")
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -44,6 +49,9 @@ export function ReportResultDialog({
     setHomeScore("")
     setAwayScore("")
     setError("")
+    setWalkoverOpen(false)
+    setWalkoverWinner("HOME")
+    setWalkoverReason("")
     setImage((current) => {
       if (current) URL.revokeObjectURL(current.previewUrl)
       return null
@@ -81,6 +89,20 @@ export function ReportResultDialog({
       onOpenChange(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível enviar o resultado.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const declareWalkover = async () => {
+    if (!onWalkover) return
+    setBusy(true)
+    setError("")
+    try {
+      await onWalkover({ winner: walkoverWinner, reason: walkoverReason.trim() || undefined })
+      onOpenChange(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível declarar o W.O.")
     } finally {
       setBusy(false)
     }
@@ -179,6 +201,58 @@ export function ReportResultDialog({
               <ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
               Como você é da organização, o resultado é contabilizado direto, com ou sem foto.
             </p>
+          )}
+
+          {onWalkover && (
+            <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+              {walkoverOpen ? (
+                <div className="space-y-3">
+                  <p className="text-[12px] font-bold text-white">Quem levou a vaga no W.O.?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["HOME", "AWAY"] as const).map((side) => (
+                      <button
+                        key={side}
+                        onClick={() => setWalkoverWinner(side)}
+                        className={`cursor-pointer truncate rounded-lg border px-3 py-2 text-xs font-bold transition ${
+                          walkoverWinner === side
+                            ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                            : "border-white/[0.07] bg-white/[0.02] text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        {side === "HOME" ? homeName : awayName}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    value={walkoverReason}
+                    onChange={(event) => setWalkoverReason(event.target.value.slice(0, 240))}
+                    placeholder="Motivo, por exemplo: adversário não apareceu"
+                    className="h-9 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-[12px] text-white outline-none placeholder:text-gray-600 focus:border-amber-500/50"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={() => setWalkoverOpen(false)} disabled={busy}>
+                      Voltar
+                    </Button>
+                    <Button
+                      onClick={() => void declareWalkover()}
+                      disabled={busy}
+                      className="bg-red-500 text-white hover:bg-red-400"
+                    >
+                      {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Confirmar W.O.
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setWalkoverOpen(true)}
+                  className="flex w-full cursor-pointer items-center gap-2 text-left text-[11px] text-gray-500 transition hover:text-white"
+                >
+                  <UserX className="h-3.5 w-3.5 flex-shrink-0" />
+                  Um dos times não jogou? Declarar W.O. e passar a vaga adiante.
+                </button>
+              )}
+            </div>
           )}
 
           {error && (

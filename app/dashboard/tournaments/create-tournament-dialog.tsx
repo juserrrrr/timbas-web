@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { advancePerGroupOptions, groupCountOptions, pickOption } from "@/lib/group-plan"
 import { createTournament } from "@/lib/services/tournaments"
 import {
   FORMAT_DESCRIPTIONS,
@@ -101,6 +102,11 @@ export function CreateTournamentDialog({
   const isKnockout = format === "SINGLE_ELIMINATION" || isGroups
   const canAdvance = step > 0 || name.trim().length >= 3
 
+  const groupOptions = groupCountOptions(maxTeams)
+  const activeGroupCount = pickOption(groupOptions, groupCount, 2)
+  const advanceOptions = advancePerGroupOptions(maxTeams, activeGroupCount)
+  const activeAdvance = pickOption(advanceOptions, advancePerGroup, 1)
+
   const reset = () => {
     setStep(0)
     setError("")
@@ -117,8 +123,8 @@ export function CreateTournamentDialog({
         gameLabel: game === "OTHER" ? gameLabel.trim() || undefined : undefined,
         format,
         maxTeams,
-        groupCount: isGroups ? groupCount : undefined,
-        advancePerGroup: isGroups ? advancePerGroup : undefined,
+        groupCount: isGroups ? activeGroupCount : undefined,
+        advancePerGroup: isGroups ? activeAdvance : undefined,
         legs: isLeague ? legs : 1,
         thirdPlace: isKnockout ? thirdPlace : false,
         registrationEndsAt: registrationEndsAt ? new Date(registrationEndsAt).toISOString() : undefined,
@@ -258,30 +264,35 @@ export function CreateTournamentDialog({
               </div>
 
               {isGroups && (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label htmlFor="group-count">Grupos</Label>
-                    <Input
-                      id="group-count"
-                      type="number"
-                      min={2}
-                      max={8}
-                      value={groupCount}
-                      onChange={(event) => setGroupCount(Number(event.target.value))}
-                      className="border-white/10 bg-white/[0.03]"
-                    />
+                    <Label>Grupos</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {groupOptions.map((count) => (
+                        <Chip key={count} active={activeGroupCount === count} onClick={() => setGroupCount(count)}>
+                          {count} grupos de {maxTeams / count}
+                        </Chip>
+                      ))}
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="advance-per-group">Classificados por grupo</Label>
-                    <Input
-                      id="advance-per-group"
-                      type="number"
-                      min={1}
-                      max={4}
-                      value={advancePerGroup}
-                      onChange={(event) => setAdvancePerGroup(Number(event.target.value))}
-                      className="border-white/10 bg-white/[0.03]"
-                    />
+                    <Label>Classificados por grupo</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {advanceOptions.map((count) => (
+                        <Chip
+                          key={count}
+                          active={activeAdvance === count}
+                          onClick={() => setAdvancePerGroup(count)}
+                        >
+                          {count === 1 ? "só o líder" : `${count} primeiros`}
+                        </Chip>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-gray-500">
+                      {activeGroupCount * activeAdvance} times vão para o mata-mata, e o líder de um grupo cruza
+                      com classificado de outro. Só aparecem as divisões que deixam todos os grupos do mesmo
+                      tamanho.
+                    </p>
                   </div>
                 </div>
               )}

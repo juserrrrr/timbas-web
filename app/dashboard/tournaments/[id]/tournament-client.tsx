@@ -25,7 +25,7 @@ import {
   StatusPill,
 } from "@/components/competitions/shared"
 import { ReportResultDialog } from "@/components/competitions/report-result-dialog"
-import { getTournament, reportResult, startTournament } from "@/lib/services/tournaments"
+import { declareWalkover, getTournament, reportResult, startTournament } from "@/lib/services/tournaments"
 import {
   FORMAT_LABELS,
   GAME_LABELS,
@@ -244,6 +244,18 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
             )
             return { autoApproved: result.autoApproved }
           }}
+          onWalkover={
+            tournament.access.canModerate
+              ? async ({ winner, reason }) => {
+                  const winnerTeamId =
+                    winner === "HOME" ? selectedMatch.homeTeamId : selectedMatch.awayTeamId
+                  if (!winnerTeamId) return
+                  await declareWalkover(tournament.id, selectedMatch.id, winnerTeamId, reason)
+                  await load()
+                  setNotice("W.O. registrado. A vaga seguiu para a fase seguinte.")
+                }
+              : undefined
+          }
         />
       )}
     </div>
