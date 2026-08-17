@@ -1,9 +1,13 @@
 import { post, remove, request } from "./http"
 import type { TournamentFormat, TournamentStatus } from "./tournaments.types"
-import type { DraftLeagueStatus } from "./draft.types"
+import type { DraftLeagueStatus, DraftResultMode } from "./draft.types"
 
 export type DemoTournamentStage = "REGISTRATION" | "STARTED" | "PARTIAL" | "FINISHED"
 export type DemoDraftStage = "SETUP" | "DRAFTING" | "ACTIVE" | "PLAYED"
+
+/// Cada valor do debug vira uma linha na tela de admin, então texto, número e
+/// lista já chegam prontos para exibir.
+export type DemoDebug = Record<string, string | number | boolean | string[] | Record<string, number>>
 
 export interface DemoTournamentResult {
   message: string
@@ -14,6 +18,7 @@ export interface DemoTournamentResult {
   teams: number
   matches: number
   url: string
+  debug: DemoDebug
 }
 
 export interface DemoDraftResult {
@@ -25,6 +30,7 @@ export interface DemoDraftResult {
   players: number
   matches: number
   url: string
+  debug: DemoDebug
 }
 
 export interface DemoInventory {
@@ -51,6 +57,9 @@ export function buildDemoTournament(input: {
 export function buildDemoDraft(input: {
   rosterCount?: number
   rosterSize?: number
+  resultMode?: DraftResultMode
+  startingBudget?: number
+  paySalaries?: boolean
   stage: DemoDraftStage
 }): Promise<DemoDraftResult> {
   return post("/admin/demo/draft", input)

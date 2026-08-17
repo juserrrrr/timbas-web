@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowUpRight, FlaskConical, Loader2, Play, Trash2, Trophy, Users } from "lucide-react"
+import { ArrowUpRight, Bug, FlaskConical, Loader2, Play, Trash2, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -20,14 +20,28 @@ import {
   buildDemoTournament,
   clearDemoData,
   listDemoData,
+  type DemoDebug,
   type DemoDraftStage,
   type DemoInventory,
   type DemoTournamentStage,
 } from "@/lib/services/demo"
+import { RESULT_MODE_LABELS, type DraftResultMode } from "@/lib/services/draft.types"
 import { FORMAT_LABELS, type TournamentFormat } from "@/lib/services/tournaments.types"
 
 const FORMATS = Object.keys(FORMAT_LABELS) as TournamentFormat[]
 const TEAM_COUNTS = [4, 5, 8, 12, 16]
+
+/// O debug vem do servidor com número, texto, lista ou mapa. Aqui tudo vira uma
+/// linha legível, sem JSON cru na tela.
+function formatDebugValue(value: string | number | boolean | string[] | Record<string, number>): string {
+  if (typeof value === "boolean") return value ? "sim" : "não"
+  if (Array.isArray(value)) return value.length > 0 ? value.join(" · ") : "vazio"
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value)
+    return entries.length > 0 ? entries.map(([key, amount]) => `${key}: ${amount}`).join(" · ") : "nada"
+  }
+  return String(value)
+}
 
 const TOURNAMENT_STAGES: Array<{ id: DemoTournamentStage; label: string; hint: string }> = [
   { id: "REGISTRATION", label: "Só inscrito", hint: "Times cadastrados, chave ainda não gerada" },
@@ -124,9 +138,14 @@ export default function DemoLabPage() {
   const [advancePerGroup, setAdvancePerGroup] = useState(2)
   const [tournamentStage, setTournamentStage] = useState<DemoTournamentStage>("PARTIAL")
 
+  const [debug, setDebug] = useState<{ title: string; data: DemoDebug } | null>(null)
+
   const [rosterCount, setRosterCount] = useState(4)
   const [rosterSize, setRosterSize] = useState(5)
   const [draftStage, setDraftStage] = useState<DemoDraftStage>("ACTIVE")
+  const [draftResultMode, setDraftResultMode] = useState<DraftResultMode>("SIMULATED")
+  const [startingBudget, setStartingBudget] = useState(1000)
+  const [paySalaries, setPaySalaries] = useState(true)
 
   const groupOptions = groupCountOptions(teamCount)
   const activeGroupCount = pickOption(groupOptions, groupCount, 2)
@@ -151,12 +170,14 @@ export default function DemoLabPage() {
   if (loading) return <PageLoading />
   if (error && !inventory) return <ErrorState message={error} retry={() => void load()} />
 
-  const run = async (key: string, action: () => Promise<{ message: string }>) => {
+  const run = async (key: string, title: string, action: () => Promise<{ message: string; debug?: DemoDebug }>) => {
     setBusy(key)
     setError("")
+    setDebug(null)
     try {
       const result = await action()
       setNotice(result.message)
+      if (result.debug) setDebug({ title, data: result.debug })
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível gerar a demonstração.")
@@ -182,7 +203,7 @@ export default function DemoLabPage() {
               variant="outline"
               disabled={busy !== ""}
               onClick={() =>
-                void run("clear", async () => {
+                void run("clear", "Limpeza", async () => {
                   const result = await clearDemoData()
                   return {
                     message: `Removidos ${result.tournaments} campeonatos, ${result.leagues} ligas e ${result.users} usuários de teste.`,
@@ -289,7 +310,7 @@ export default function DemoLabPage() {
             <Button
               disabled={busy !== "" || (format === "GROUPS_KNOCKOUT" && groupOptions.length === 0)}
               onClick={() =>
-                void run("tournament", () =>
+                void run("tournament", "Campeonato gerado", () =>
                   buildDemoTournament({
                     format,
                     teamCount,
@@ -330,13 +351,58 @@ export default function DemoLabPage() {
             </div>
 
             <div className="space-y-1.5">
+              <Label>Como sai o resultado</Label>
+              <div className="grid gap-1.5">
+                {(["REPORTED", "SIMULATED"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setDraftResultMode(mode)}
+                    className={`cursor-pointer rounded-lg border px-3 py-2 text-left text-xs font-bold transition ${
+                      draftResultMode === mode
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                        : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
+                    }`}
+                  >
+                    {RESULT_MODE_LABELS[mode]}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-600">
+                {draftResultMode === "SIMULATED"
+                  ? "O motor joga a partida com atributos e tática, e cada jogador sai com nota."
+                  : "Modo manager: o placar entra como se alguém tivesse jogado no EA FC e reportado."}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Caixa inicial de cada elenco</Label>
+              <Chips options={[300, 1000, 5000]} value={startingBudget} onChange={setStartingBudget} />
+            </div>
+
+            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2">
+              <span className="text-[12px] text-gray-300">Cobrar salário por rodada</span>
+              <Switch checked={paySalaries} onCheckedChange={setPaySalaries} />
+            </label>
+
+            <div className="space-y-1.5">
               <Label>Até onde simular</Label>
               <StagePicker stages={DRAFT_STAGES} value={draftStage} onChange={setDraftStage} accent="emerald" />
             </div>
 
             <Button
               disabled={busy !== ""}
-              onClick={() => void run("draft", () => buildDemoDraft({ rosterCount, rosterSize, stage: draftStage }))}
+              onClick={() =>
+                void run("draft", "Liga gerada", () =>
+                  buildDemoDraft({
+                    rosterCount,
+                    rosterSize,
+                    resultMode: draftResultMode,
+                    startingBudget,
+                    paySalaries,
+                    stage: draftStage,
+                  }),
+                )
+              }
               className="w-full bg-emerald-500 text-black hover:bg-emerald-400"
             >
               {busy === "draft" ? (
@@ -349,6 +415,28 @@ export default function DemoLabPage() {
           </div>
         </Card>
       </div>
+
+      {debug && (
+        <Card className="border-orange-500/25 bg-orange-500/[0.04] p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Bug className="h-4 w-4 text-orange-400" />
+            <h3 className="text-sm font-black text-white">{debug.title}: o que saiu de verdade</h3>
+          </div>
+
+          <div className="space-y-1">
+            {Object.entries(debug.data).map(([key, value]) => (
+              <div key={key} className="flex flex-col gap-0.5 border-b border-white/[0.04] py-1.5 last:border-0 sm:flex-row sm:gap-3">
+                <span className="w-52 flex-shrink-0 text-[11px] font-bold uppercase tracking-wide text-gray-600">
+                  {key.replace(/([A-Z])/g, " $1").toLowerCase()}
+                </span>
+                <span className="min-w-0 flex-1 font-mono text-[11px] leading-relaxed text-gray-300">
+                  {formatDebugValue(value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {total > 0 && (
         <Card className="border-white/[0.07] bg-white/[0.025] p-4">
