@@ -45,7 +45,7 @@ export function MatchesView({
 
   const byRound = new Map<string, TournamentMatch[]>()
   for (const match of tournament.matches) {
-    const key = `${match.phase}|${match.round}`
+    const key = `${match.phase}|${match.round}|${match.groupId ?? ""}`
     byRound.set(key, [...(byRound.get(key) ?? []), match])
   }
 

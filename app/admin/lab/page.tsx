@@ -27,6 +27,8 @@ import { FORMAT_LABELS, type TournamentFormat } from "@/lib/services/tournaments
 
 const FORMATS = Object.keys(FORMAT_LABELS) as TournamentFormat[]
 const TEAM_COUNTS = [4, 5, 8, 12, 16]
+const GROUP_COUNTS = [2, 3, 4, 6, 8]
+const ADVANCE_COUNTS = [1, 2, 3, 4]
 
 const TOURNAMENT_STAGES: Array<{ id: DemoTournamentStage; label: string; hint: string }> = [
   { id: "REGISTRATION", label: "Só inscrito", hint: "Times cadastrados, chave ainda não gerada" },
@@ -119,6 +121,8 @@ export default function DemoLabPage() {
   const [format, setFormat] = useState<TournamentFormat>("SINGLE_ELIMINATION")
   const [teamCount, setTeamCount] = useState(8)
   const [thirdPlace, setThirdPlace] = useState(true)
+  const [groupCount, setGroupCount] = useState(2)
+  const [advancePerGroup, setAdvancePerGroup] = useState(2)
   const [tournamentStage, setTournamentStage] = useState<DemoTournamentStage>("PARTIAL")
 
   const [rosterCount, setRosterCount] = useState(4)
@@ -238,7 +242,24 @@ export default function DemoLabPage() {
               </p>
             </div>
 
-            {format === "SINGLE_ELIMINATION" && (
+            {format === "GROUPS_KNOCKOUT" && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Grupos</Label>
+                  <Chips options={GROUP_COUNTS} value={groupCount} onChange={setGroupCount} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Classificados por grupo</Label>
+                  <Chips options={ADVANCE_COUNTS} value={advancePerGroup} onChange={setAdvancePerGroup} />
+                  <p className="text-[11px] text-gray-600">
+                    Cada grupo joga entre si e os melhores se cruzam no mata-mata, líder de um grupo contra
+                    classificado de outro.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {(format === "SINGLE_ELIMINATION" || format === "GROUPS_KNOCKOUT") && (
               <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2">
                 <span className="text-[12px] text-gray-300">Incluir disputa de 3º lugar</span>
                 <Switch checked={thirdPlace} onCheckedChange={setThirdPlace} />
@@ -254,7 +275,14 @@ export default function DemoLabPage() {
               disabled={busy !== ""}
               onClick={() =>
                 void run("tournament", () =>
-                  buildDemoTournament({ format, teamCount, thirdPlace, stage: tournamentStage }),
+                  buildDemoTournament({
+                    format,
+                    teamCount,
+                    thirdPlace,
+                    groupCount,
+                    advancePerGroup,
+                    stage: tournamentStage,
+                  }),
                 )
               }
               className="w-full bg-amber-500 text-black hover:bg-amber-400"

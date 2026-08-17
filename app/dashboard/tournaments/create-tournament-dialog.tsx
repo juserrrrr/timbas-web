@@ -98,7 +98,7 @@ export function CreateTournamentDialog({
 
   const isGroups = format === "GROUPS_KNOCKOUT"
   const isLeague = format === "ROUND_ROBIN" || isGroups
-  const isKnockout = format === "SINGLE_ELIMINATION"
+  const isKnockout = format === "SINGLE_ELIMINATION" || isGroups
   const canAdvance = step > 0 || name.trim().length >= 3
 
   const reset = () => {
