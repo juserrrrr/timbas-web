@@ -1,129 +1,136 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Trophy, History, Users, BarChart3, Swords, Settings, X, MoreHorizontal, Radio, ShieldAlert, ShieldCheck, UserSearch, Gamepad2 } from "lucide-react"
+import { Home, MoreHorizontal, Radio, Trophy, Users, X } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge } from "@/components/ui/beta-badge"
+import { decodeToken, getToken } from "@/lib/auth"
+import { ACCENTS, FOOTER_ITEMS, NAV_GROUPS, isNavItemActive, type NavItem } from "@/lib/navigation"
 
-const LEFT_NAV = [
-  { icon: Home,    label: "Início",    href: "/dashboard",        color: "text-blue-400",    active: "text-blue-400" },
-  { icon: Radio,   label: "Ao Vivo",  href: "/dashboard/active", color: "text-emerald-400", active: "text-emerald-400" },
-]
+const QUICK_HREFS = ["/dashboard", "/dashboard/active", "/dashboard/tournaments", "/dashboard/draft"]
 
-const RIGHT_NAV = [
-  { icon: History, label: "Histórico", href: "/dashboard/history", color: "text-purple-400", active: "text-purple-400" },
-]
+const QUICK_ICONS: Record<string, typeof Home> = {
+  "/dashboard": Home,
+  "/dashboard/active": Radio,
+  "/dashboard/tournaments": Trophy,
+  "/dashboard/draft": Users,
+}
 
-const RANKING = { icon: Trophy, label: "Ranking", href: "/dashboard/ranking" }
-
-const MORE_NAV: { icon: React.ElementType; label: string; href: string; color: string; glow: string; active: string; beta?: boolean }[] = [
-  { icon: Users,    label: "Duplas",       href: "/dashboard/teams",    color: "text-green-400",   glow: "bg-green-500/10",   active: "border-green-500/20" },
-  { icon: BarChart3,label: "Estatísticas", href: "/dashboard/stats",    color: "text-red-400",     glow: "bg-red-500/10",     active: "border-red-500/20" },
-  { icon: UserSearch,label: "Perfil LoL",   href: "/dashboard/lol-profile", color: "text-sky-400", glow: "bg-sky-500/10",     active: "border-sky-500/20", beta: true },
-  { icon: Swords,      label: "Comparação",  href: "/dashboard/versus",   color: "text-orange-400",  glow: "bg-orange-500/10",  active: "border-orange-500/20" },
-  { icon: ShieldAlert, label: "Clash Scout",  href: "/dashboard/clash",    color: "text-amber-400",   glow: "bg-amber-500/10",   active: "border-amber-500/20", beta: true },
-  { icon: ShieldCheck, label: "Verificar LoL", href: "/dashboard/verify", color: "text-emerald-400", glow: "bg-emerald-500/10", active: "border-emerald-500/20", beta: true },
-  { icon: Gamepad2, label: "EA FC Clubs", href: "/dashboard/ea-clubs", color: "text-blue-400", glow: "bg-blue-500/10", active: "border-blue-500/20" },
-  { icon: Settings,    label: "Config",       href: "/dashboard/settings", color: "text-gray-400",    glow: "bg-white/5",        active: "border-white/10" },
-]
-
-function NavItem({ icon: Icon, label, href, color, active }: { icon: React.ElementType; label: string; href: string; color: string; active: string }) {
-  const pathname = usePathname()
-  const isActive = pathname === href
+function BarItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
   const { navigate } = useNavigation()
+  const Icon = QUICK_ICONS[item.href] ?? item.icon
+  const accent = ACCENTS[item.accent]
+
   return (
     <Link
-      href={href}
+      href={item.href}
       prefetch={false}
-      onClick={(e) => { e.preventDefault(); if (!isActive) navigate(href) }}
+      onClick={(event) => {
+        event.preventDefault()
+        if (!isActive) navigate(item.href)
+      }}
       className="flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 py-1"
     >
-      <Icon className={`h-5 w-5 transition-colors ${isActive ? active : "text-gray-500"}`} />
-      <span className={`text-[10px] font-medium transition-colors ${isActive ? "text-white" : "text-gray-600"}`}>{label}</span>
+      <Icon className={`h-5 w-5 transition-colors ${isActive ? accent.text : "text-gray-500"}`} />
+      <span className={`text-[10px] font-medium transition-colors ${isActive ? "text-white" : "text-gray-600"}`}>
+        {item.label}
+      </span>
     </Link>
   )
 }
 
 export function MobileBottomNav() {
   const [open, setOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const pathname = usePathname()
-  const isRankingActive = pathname === RANKING.href
   const { navigate } = useNavigation()
+
+  useEffect(() => {
+    const token = getToken()
+    setIsAdmin(token ? decodeToken(token)?.role === "ADMIN" : false)
+  }, [])
+
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
+  const allItems = [...NAV_GROUPS.flatMap((group) => group.items), ...FOOTER_ITEMS]
+  const quickItems = QUICK_HREFS.map((href) => allItems.find((item) => item.href === href)).filter(
+    (item): item is NavItem => Boolean(item),
+  )
+
+  const drawerGroups = [
+    ...NAV_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !QUICK_HREFS.includes(item.href)),
+    })).filter((group) => group.items.length > 0),
+    { id: "conta", title: "Conta", items: FOOTER_ITEMS.filter((item) => !item.adminOnly || isAdmin) },
+  ]
 
   return (
     <>
-      {/* Drawer overlay */}
-      {open && (
-        <div
-          className="fixed inset-0 z-40 cursor-pointer bg-black/60 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
-        />
-      )}
+      {open && <div className="fixed inset-0 z-40 cursor-pointer bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />}
 
-      {/* More drawer */}
-      <div className={`fixed bottom-[56px] left-0 right-0 z-50 transition-all duration-300 ease-out ${open ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"}`}>
-        <div className="mx-4 mb-2 rounded-2xl border border-white/[0.08] bg-[#0d0d14]/95 p-3 backdrop-blur-xl shadow-2xl">
+      <div
+        className={`fixed bottom-[56px] left-0 right-0 z-50 transition-all duration-300 ease-out ${
+          open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
+        }`}
+      >
+        <div className="mx-3 mb-2 max-h-[65vh] overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#0d0d14]/95 p-3 shadow-2xl backdrop-blur-xl">
           <div className="mb-2 flex items-center justify-between px-1">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mais páginas</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Todas as seções</span>
             <button onClick={() => setOpen(false)} className="cursor-pointer rounded-lg p-1 text-gray-500 hover:text-white">
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="flex flex-col gap-1">
-            {MORE_NAV.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch={false}
-                  onClick={(e) => { e.preventDefault(); if (!isActive) navigate(item.href); setOpen(false) }}
-                  className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition-colors ${
-                    isActive ? `${item.glow} border ${item.active} ${item.color}` : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
-                  }`}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  <span className="text-sm font-medium">{item.label}</span>
-                  {item.beta && <BetaBadge />}
-                </Link>
-              )
-            })}
-          </div>
+
+          {drawerGroups.map((group) => (
+            <div key={group.id} className="mb-2 last:mb-0">
+              <span className="block px-2 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-600">
+                {group.title}
+              </span>
+              <div className="flex flex-col gap-1">
+                {group.items.map((item) => {
+                  const isActive = isNavItemActive(pathname, item.href)
+                  const accent = ACCENTS[item.accent]
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      prefetch={false}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        if (!isActive) navigate(item.href)
+                        setOpen(false)
+                      }}
+                      className={`flex cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+                        isActive ? `${accent.bg} ${accent.text}` : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
+                      }`}
+                    >
+                      <item.icon className="mt-0.5 h-[18px] w-[18px] flex-shrink-0" />
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-1.5 text-sm font-semibold leading-tight">
+                          {item.label}
+                          {item.beta && <BetaBadge />}
+                        </span>
+                        <span className="block truncate text-[11px] leading-tight text-gray-600">{item.description}</span>
+                      </span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Bottom bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-14 items-stretch border-t border-white/[0.06] bg-[#07070c]/95 backdrop-blur-xl">
-        {LEFT_NAV.map((item) => (
-          <NavItem key={item.href} {...item} />
+        {quickItems.map((item) => (
+          <BarItem key={item.href} item={item} isActive={isNavItemActive(pathname, item.href)} />
         ))}
 
-        {/* Ranking — center highlight */}
-        <Link
-          href={RANKING.href}
-          prefetch={false}
-          onClick={(e) => { e.preventDefault(); if (!isRankingActive) navigate(RANKING.href) }}
-          className="relative flex flex-1 cursor-pointer flex-col items-center justify-center"
-        >
-          <div className={`flex h-11 w-11 -translate-y-3 flex-col items-center justify-center rounded-full border transition-all duration-200 ${
-            isRankingActive
-              ? "border-yellow-500/50 bg-yellow-500/20 shadow-[0_0_20px_rgba(234,179,8,0.3)]"
-              : "border-white/[0.1] bg-[#111118] shadow-[0_0_12px_rgba(0,0,0,0.5)]"
-          }`}>
-            <Trophy className={`h-5 w-5 transition-colors ${isRankingActive ? "text-yellow-400" : "text-gray-400"}`} />
-          </div>
-          <span className={`-mt-2.5 text-[10px] font-medium transition-colors ${isRankingActive ? "text-yellow-400" : "text-gray-600"}`}>
-            Ranking
-          </span>
-        </Link>
-
-        {RIGHT_NAV.map((item) => (
-          <NavItem key={item.href} {...item} />
-        ))}
-
-        {/* Mais button */}
         <button
           onClick={() => setOpen(!open)}
           className="flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 py-1"
