@@ -192,11 +192,11 @@ export function syncAiSquads(
 }
 
 /// A IA diz quais clubes disputam a competição e cria a pasta com todos eles.
+/// Os elencos não vêm aqui: são chamadas curtas, uma por lote de clubes.
 export function createAiCompetition(input: {
   name: string
   code?: string
   referenceDate?: string
-  withSquads?: boolean
 }): Promise<{
   competition: CatalogCompetition
   teams: Array<{ name: string; shortName: string | null; country: string | null }>
@@ -205,10 +205,28 @@ export function createAiCompetition(input: {
   beyondKnowledge: boolean
   notes: string
   model: string
-  players: number
-  pending: number
 }> {
   return post("/admin/catalog/ai/competition", input)
+}
+
+/// Preenche os próximos times vazios da competição. Repita enquanto sobrar
+/// gente em `remaining`.
+export function fillCompetitionWithAi(
+  competitionId: string,
+  input: { referenceDate?: string; limit?: number } = {},
+): Promise<{ players: number; failures: string[]; filled: string[]; remaining: number; squads: AiSquadResult[] }> {
+  return post(`/admin/catalog/competitions/${competitionId}/ai-fill`, input)
+}
+
+export function fillTeamWithAi(
+  teamId: string,
+  input: { referenceDate?: string } = {},
+): Promise<{ players: number; failures: string[]; team: string; squads: AiSquadResult[] }> {
+  return post(`/admin/catalog/teams/${teamId}/ai-squad`, input)
+}
+
+export function updateCatalogTeam(teamId: string, input: { name?: string; shortName?: string | null }) {
+  return patch<CatalogTeam>(`/admin/catalog/teams/${teamId}`, input)
 }
 
 export function listCatalogTeams(competitionId: string): Promise<CatalogTeam[]> {

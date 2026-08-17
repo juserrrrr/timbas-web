@@ -236,7 +236,6 @@ export function CatalogPanel() {
   const [aiDate, setAiDate] = useState(new Date().toISOString().slice(0, 10))
   const [aiMode, setAiMode] = useState<"TEAMS" | "COMPETITION">("TEAMS")
   const [aiCompetition, setAiCompetition] = useState("")
-  const [aiWithSquads, setAiWithSquads] = useState(true)
   const [footballDataReady, setFootballDataReady] = useState(false)
   const [importLeagueId, setImportLeagueId] = useState("")
   const [importReplace, setImportReplace] = useState(true)
@@ -423,8 +422,8 @@ export function CatalogPanel() {
         <Card className="border-sky-500/20 bg-sky-500/[0.04] p-4">
           <h4 className="mb-1 text-sm font-bold text-white">Trazer elencos de uma API</h4>
           <p className="mb-3 text-[11px] leading-snug text-gray-500">
-            Os jogadores chegam com nome, posição, nacionalidade e nascimento. Atributo não vem de fora, ele é estimado
-            aqui depois, e só a liga simulada precisa dele.
+            Os jogadores chegam com nome, posição, nacionalidade e nascimento. Só a IA traz atributo e valor junto; nas
+            outras origens eles são estimados aqui depois, e só a liga simulada precisa deles.
           </p>
 
           <div className="grid gap-2 sm:grid-cols-2">
@@ -515,10 +514,10 @@ export function CatalogPanel() {
                         placeholder="Brasileirão Série A"
                         className="border-white/10 bg-white/[0.03]"
                       />
-                      <label className="flex cursor-pointer items-center gap-2 pt-1">
-                        <Switch checked={aiWithSquads} onCheckedChange={setAiWithSquads} />
-                        <span className="text-[11px] text-gray-400">Já trazer os elencos dos primeiros clubes</span>
-                      </label>
+                      <p className="pt-1 text-[11px] leading-snug text-gray-500">
+                        Isso cria a liga com todos os clubes. Os elencos vêm depois, no botão de preencher da
+                        competição, em lotes curtos.
+                      </p>
                     </>
                   ) : (
                     <>
@@ -605,14 +604,11 @@ export function CatalogPanel() {
                     const result = await createAiCompetition({
                       name: aiCompetition.trim(),
                       referenceDate: aiDate,
-                      withSquads: aiWithSquads,
                     })
                     setNotice(
                       `${result.competition.name}: ${result.teams.length} clubes` +
                         (result.season ? ` da temporada ${result.season}` : "") +
-                        (result.players ? `, ${result.players} jogadores já importados` : "") +
-                        (result.pending ? `, ${result.pending} clube(s) esperando elenco` : "") +
-                        "." +
+                        `. Use "Preencher elencos" ali embaixo para trazer os jogadores.` +
                         (result.beyondKnowledge ? ` A IA avisou: ${result.notes || "temporada anterior à data pedida"}.` : ""),
                     )
                     return
