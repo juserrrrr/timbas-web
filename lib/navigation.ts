@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  Coins,
   Gamepad2,
   History,
   Home,
@@ -49,9 +48,18 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "Geral",
     items: [
       { icon: Home, label: "Início", description: "Resumo do servidor e atalhos rápidos", href: "/dashboard", accent: "blue" },
+    ],
+  },
+  {
+    id: "partida-customizada",
+    title: "Partida Customizada",
+    items: [
       { icon: Radio, label: "Ao Vivo", description: "Partidas acontecendo agora", href: "/dashboard/active", accent: "emerald" },
       { icon: Trophy, label: "Ranking", description: "Classificação geral de vitórias", href: "/dashboard/ranking", accent: "amber" },
       { icon: History, label: "Histórico", description: "Todas as partidas já disputadas", href: "/dashboard/history", accent: "violet" },
+      { icon: Users, label: "Duplas", description: "Quem joga melhor junto", href: "/dashboard/teams", accent: "emerald" },
+      { icon: BarChart3, label: "Estatísticas", description: "Números detalhados das partidas", href: "/dashboard/stats", accent: "rose" },
+      { icon: Swords, label: "Comparação", description: "Confronto direto entre jogadores", href: "/dashboard/versus", accent: "orange" },
     ],
   },
   {
@@ -64,6 +72,7 @@ export const NAV_GROUPS: NavGroup[] = [
         description: "Chaves, grupos e mata-mata de qualquer jogo",
         href: "/dashboard/tournaments",
         accent: "amber",
+        beta: true,
       },
       {
         icon: Users,
@@ -71,19 +80,7 @@ export const NAV_GROUPS: NavGroup[] = [
         description: "Monte seu elenco no draft e dispute as rodadas",
         href: "/dashboard/draft",
         accent: "emerald",
-      },
-    ],
-  },
-  {
-    id: "economia",
-    title: "Economia",
-    items: [
-      {
-        icon: Coins,
-        label: "Carteira",
-        description: "Suas moedas, extrato e ranking de saldo",
-        href: "/dashboard/wallet",
-        accent: "amber",
+        beta: true,
       },
     ],
   },
@@ -104,12 +101,9 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "lol",
     title: "League of Legends",
     items: [
-      { icon: Users, label: "Duplas", description: "Quem joga melhor junto", href: "/dashboard/teams", accent: "emerald" },
-      { icon: BarChart3, label: "Estatísticas", description: "Números detalhados das partidas", href: "/dashboard/stats", accent: "rose" },
-      { icon: UserSearch, label: "Perfil LoL", description: "Leitura do seu estilo de jogo", href: "/dashboard/lol-profile", accent: "sky", beta: true },
-      { icon: Swords, label: "Comparação", description: "Confronto direto entre jogadores", href: "/dashboard/versus", accent: "orange" },
       { icon: ShieldAlert, label: "Clash Scout", description: "Análise do time adversário no Clash", href: "/dashboard/clash", accent: "amber", beta: true },
       { icon: ShieldCheck, label: "Verificar LoL", description: "Vincule sua conta da Riot", href: "/dashboard/verify", accent: "emerald", beta: true },
+      { icon: UserSearch, label: "Perfil LoL", description: "Leitura do seu estilo de jogo", href: "/dashboard/lol-profile", accent: "sky", beta: true },
     ],
   },
 ]
