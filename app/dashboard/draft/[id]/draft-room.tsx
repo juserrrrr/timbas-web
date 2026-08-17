@@ -121,7 +121,7 @@ export function DraftRoom({ league, onChanged }: { league: DraftLeagueDetail; on
               Rodada {league.board.currentRound} · escolha {pickedSoFar + 1} de {league.board.totalPicks}
             </p>
             <p className="truncate text-xl font-black text-white">
-              {myTurn ? "É a sua vez de escolher" : `Na vez: ${league.board.onTheClock?.name ?? "—"}`}
+              {myTurn ? "É a sua vez de escolher" : `Na vez: ${league.board.onTheClock?.name ?? "-"}`}
             </p>
           </div>
 
@@ -158,7 +158,7 @@ export function DraftRoom({ league, onChanged }: { league: DraftLeagueDetail; on
 
         {remaining === 0 && (
           <p className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] text-amber-300">
-            O tempo acabou — o sistema escolhe o melhor jogador disponível em instantes.
+            O tempo acabou. O sistema escolhe o melhor jogador disponível em instantes.
           </p>
         )}
       </Card>

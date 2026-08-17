@@ -182,7 +182,7 @@
 
 
 
-/* Prevent content jump — pure opacity fade, no translateY */
+/* Prevent content jump, pure opacity fade, no translateY */
 @keyframes content-enter {
   from { opacity: 0; }
   to   { opacity: 1; }

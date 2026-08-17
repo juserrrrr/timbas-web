@@ -53,7 +53,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                   <h3 className="font-bold text-blue-400">Time Azul</h3>
                 </div>
                 <p className="text-2xl font-bold text-white">
-                  {detail.blueSide.total > 0 ? `${Math.round(detail.blueSide.winRate * 100)}%` : "—"}
+                  {detail.blueSide.total > 0 ? `${Math.round(detail.blueSide.winRate * 100)}%` : "-"}
                 </p>
                 <p className="text-sm text-gray-400">{detail.blueSide.wins}V / {detail.blueSide.losses}D em {detail.blueSide.total} partidas</p>
               </Card>
@@ -63,7 +63,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                   <h3 className="font-bold text-red-400">Time Vermelho</h3>
                 </div>
                 <p className="text-2xl font-bold text-white">
-                  {detail.redSide.total > 0 ? `${Math.round(detail.redSide.winRate * 100)}%` : "—"}
+                  {detail.redSide.total > 0 ? `${Math.round(detail.redSide.winRate * 100)}%` : "-"}
                 </p>
                 <p className="text-sm text-gray-400">{detail.redSide.wins}V / {detail.redSide.losses}D em {detail.redSide.total} partidas</p>
               </Card>

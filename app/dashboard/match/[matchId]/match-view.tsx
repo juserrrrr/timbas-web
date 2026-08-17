@@ -360,7 +360,7 @@ export function MatchView({
     <div className="dashboard-view -mx-4 -my-5 min-h-[calc(100vh-3.5rem)] text-white sm:-mx-5 sm:-my-6 md:-mx-7 md:-my-8 xl:-mx-10">
       <div className="relative px-4 py-6 sm:px-8 lg:py-8">
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
+        {/* Header ─────────────────────────────────────────────────────── */}
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -394,7 +394,7 @@ export function MatchView({
           </div>
         </div>
 
-        {/* ── Winner Banner ───────────────────────────────────────────────── */}
+        {/* Winner Banner ───────────────────────────────────────────────── */}
         {winnerSide && (
           <div className={`mb-6 flex items-center justify-center gap-3 rounded-2xl border p-5 animate-in slide-in-from-top-4 duration-500 ${
             winnerSide === "BLUE"
@@ -412,7 +412,7 @@ export function MatchView({
           </div>
         )}
 
-        {/* ── Teams Grid ──────────────────────────────────────────────────── */}
+        {/* Teams Grid ──────────────────────────────────────────────────── */}
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr] animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Blue Team */}
           <div className={`rounded-2xl border p-4 transition-all duration-500 ${
@@ -473,7 +473,7 @@ export function MatchView({
           </div>
         </div>
 
-        {/* ── Waiting Players (queue) ─────────────────────────────────────── */}
+        {/* Waiting Players (queue) ─────────────────────────────────────── */}
         {match.status === "WAITING" && !match.teamBlueId && (
           <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 animate-in fade-in duration-500">
             <div className="mb-3 flex items-center justify-between">
@@ -492,14 +492,14 @@ export function MatchView({
               {Array.from({ length: Math.max(0, maxPlayers - qPlayers.length) }, (_, i) => (
                 <div key={`slot-${i}`} className="flex w-14 flex-col items-center gap-1 opacity-20">
                   <div className="h-9 w-9 rounded-full border border-dashed border-white/10" />
-                  <span className="text-[10px] text-gray-700">—</span>
+                  <span className="text-[10px] text-gray-700">-</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── Action Error ────────────────────────────────────────────────── */}
+        {/* Action Error ────────────────────────────────────────────────── */}
         {(actionError || voiceMoveError) && (
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 animate-in slide-in-from-top-2 duration-300">
             <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
@@ -507,7 +507,7 @@ export function MatchView({
           </div>
         )}
 
-        {/* ── Actions Bar ─────────────────────────────────────────────────── */}
+        {/* Actions Bar ─────────────────────────────────────────────────── */}
         {match.status !== "EXPIRED" && (
           <div className="flex flex-wrap items-center gap-3 animate-in fade-in duration-500">
             {token && canJoin && (
@@ -560,7 +560,7 @@ export function MatchView({
         )}
       </div>
 
-      {/* ── Cancel Modal ─────────────────────────────────────────────────── */}
+      {/* Cancel Modal ─────────────────────────────────────────────────── */}
       {showCancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="mx-4 w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0d0d14] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
@@ -579,7 +579,7 @@ export function MatchView({
         </div>
       )}
 
-      {/* ── Kick Modal ───────────────────────────────────────────────────── */}
+      {/* Kick Modal ───────────────────────────────────────────────────── */}
       {kickTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="mx-4 w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0d0d14] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
@@ -608,7 +608,7 @@ export function MatchView({
         </div>
       )}
 
-      {/* ── Finish Modal ─────────────────────────────────────────────────── */}
+      {/* Finish Modal ─────────────────────────────────────────────────── */}
       {showFinishModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="mx-4 w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0d0d14] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">

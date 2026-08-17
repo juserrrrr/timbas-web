@@ -290,7 +290,7 @@ export default function PlayersPage() {
                         <span className="font-mono text-xs text-gray-500">{user.discordId}</span>
                       </td>
                       <td className="px-5 py-3.5 text-gray-400">
-                        {user.email ?? <span className="text-gray-700">—</span>}
+                        {user.email ?? <span className="text-gray-700">-</span>}
                       </td>
                       <td className="px-5 py-3.5">
                         {formatLastAccess(user.lastLoginAt) ? (
@@ -299,7 +299,7 @@ export default function PlayersPage() {
                             {formatLastAccess(user.lastLoginAt)}
                           </span>
                         ) : (
-                          <span className="text-gray-700">—</span>
+                          <span className="text-gray-700">-</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5">
@@ -309,7 +309,7 @@ export default function PlayersPage() {
                             {user.lastLoginIp}
                           </span>
                         ) : (
-                          <span className="text-gray-700">—</span>
+                          <span className="text-gray-700">-</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5">

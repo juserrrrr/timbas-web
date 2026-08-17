@@ -551,7 +551,7 @@ export default function ClashResultsView({ data }: { data: ScoutResult }) {
           </div>
         </div>
 
-        {/* Resumo tático — as decisões de draft num relance */}
+        {/* Resumo tático, as decisões de draft num relance */}
         {aiGenerated && (focusPlayer || weakPlayer || junglerMap) && (
           <div className="relative mt-4 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4">
             <span className="mr-1 text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">Resumo tático</span>

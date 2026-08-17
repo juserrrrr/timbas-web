@@ -239,7 +239,7 @@ export default function VerifyClient({ token }: { token: string }) {
         </div>
       )}
 
-      {/* NOT VERIFIED — form */}
+      {/* NOT VERIFIED, form */}
       {step === "status" && !loading && !verified && (
         <div className="space-y-4">
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 space-y-4">

@@ -34,15 +34,15 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ navigate, setRouteLoading }), [navigate])
 
-  // pending: client transition via navigate() — routeLoading: route segment suspended (loading.tsx)
+  // pending: client transition via navigate(), routeLoading: route segment suspended (loading.tsx)
   const visible = pending || routeLoading
 
   return (
     <NavigationContext.Provider value={value}>
       {children}
-      {/* Background mounts/unmounts with visible — backdrop-blur only when visible */}
+      {/* Background mounts/unmounts with visible, backdrop-blur only when visible */}
       {visible && <div className="fixed bottom-0 left-0 right-0 top-14 z-30 bg-[#050508]/80 backdrop-blur-sm md:left-[65px]" />}
-      {/* LoadingState always in DOM — animate-ping never restarts */}
+      {/* LoadingState always in DOM, animate-ping never restarts */}
       <div
         style={{ pointerEvents: visible ? undefined : "none" }}
         className={`fixed bottom-0 left-0 right-0 top-14 z-30 flex items-center justify-center md:left-[65px] transition-opacity duration-150 ${visible ? "opacity-100" : "opacity-0"}`}
@@ -56,7 +56,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 /**
  * Rendered by app/dashboard/loading.tsx while a route segment suspends.
  * Instead of mounting a second LoadingState (which restarts the animation),
- * it flips the shared overlay on — the same loader instance covers both
+ * it flips the shared overlay on, the same loader instance covers both
  * the navigation transition and the route suspense, with no visual reset.
  */
 export function RouteLoadingSignal() {

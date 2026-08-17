@@ -93,7 +93,7 @@ export function FeaturesSection() {
 
         {/* Bento grid */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* Hero card — spans 1 col full height */}
+          {/* Hero card, spans 1 col full height */}
           <div className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border ${hero.border} bg-gradient-to-b ${hero.from} to-transparent p-7 lg:row-span-2`}>
             <div>
               <div className={`mb-5 inline-flex items-center justify-center rounded-xl ${hero.iconBg} p-3.5`}>

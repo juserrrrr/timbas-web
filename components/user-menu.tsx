@@ -38,7 +38,7 @@ export function UserMenu() {
         <button className="group flex cursor-pointer items-center gap-2 rounded-lg p-1 transition-all hover:bg-white/[0.05] focus:outline-none">
           <div className="hidden flex-col items-end sm:flex">
             <span className="max-w-[15ch] truncate text-sm font-semibold leading-tight text-white">
-              {user?.name ?? "—"}
+              {user?.name ?? "-"}
             </span>
             <span className="text-[11px] leading-tight text-gray-500">User</span>
           </div>
@@ -65,7 +65,7 @@ export function UserMenu() {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-white">{user?.name ?? "—"}</p>
+            <p className="truncate text-sm font-semibold text-white">{user?.name ?? "-"}</p>
             <p className="truncate text-xs text-gray-600">{user?.role ?? ""}</p>
           </div>
         </div>

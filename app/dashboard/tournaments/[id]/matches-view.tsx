@@ -54,7 +54,7 @@ export function MatchesView({
       {[...byRound.entries()].map(([key, matches]) => {
         const [phase, round] = key.split("|")
         const heading =
-          matches[0].label ?? `${PHASE_LABELS[phase as keyof typeof PHASE_LABELS]} — Rodada ${round}`
+          matches[0].label ?? `${PHASE_LABELS[phase as keyof typeof PHASE_LABELS]}, rodada ${round}`
 
         return (
           <div key={key}>
@@ -90,9 +90,9 @@ export function MatchesView({
                     </div>
 
                     <div className="flex flex-shrink-0 items-center gap-2 rounded-lg bg-black/40 px-2.5 py-1">
-                      <span className="text-base font-black tabular-nums text-white">{match.homeScore ?? "–"}</span>
+                      <span className="text-base font-black tabular-nums text-white">{match.homeScore ?? "-"}</span>
                       <span className="text-[11px] text-gray-600">×</span>
-                      <span className="text-base font-black tabular-nums text-white">{match.awayScore ?? "–"}</span>
+                      <span className="text-base font-black tabular-nums text-white">{match.awayScore ?? "-"}</span>
                     </div>
 
                     <div className="flex min-w-0 flex-1 items-center justify-end gap-2">

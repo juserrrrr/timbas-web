@@ -6,7 +6,7 @@ import { Trophy, BarChart3, Swords, ArrowLeft } from "lucide-react"
 export default function LoginPage() {
   return (
     <div className="relative min-h-screen bg-[#050508] text-white overflow-hidden">
-      {/* Background — igual à landing */}
+      {/* Background, igual à landing */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle,_#ffffff07_1px,_transparent_1px)] bg-[size:28px_28px]" />
         <div className="absolute -top-64 left-1/4 h-[700px] w-[700px] rounded-full bg-blue-700 opacity-[0.12] blur-[120px]" />
@@ -25,7 +25,7 @@ export default function LoginPage() {
       <div className="flex min-h-screen items-center justify-center px-4 py-20">
         <div className="w-full max-w-5xl grid lg:grid-cols-[1fr_420px] gap-8 items-center">
 
-          {/* ── Left — brand panel ── */}
+          {/* Left, brand panel */}
           <div className="hidden lg:flex flex-col h-full justify-between py-4">
             {/* Logo */}
             <div className="flex items-center gap-3 mb-12">
@@ -113,7 +113,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* ── Right — login card ── */}
+          {/* Right, login card */}
           <LoginForm />
         </div>
       </div>

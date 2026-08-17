@@ -214,7 +214,7 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-white">{player.name}</p>
                 <p className="truncate text-[11px] text-gray-600">
-                  {player.position} · {player.roster?.name ?? "—"}
+                  {player.position} · {player.roster?.name ?? "-"}
                 </p>
               </div>
               <Button

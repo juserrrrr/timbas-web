@@ -16,10 +16,10 @@ export default async function DashboardPage() {
   const recentMatches = history.data
 
   const statCards = [
-    { label: "Partidas",  value: stats?.totalGames ?? "—", icon: Swords,     color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
-    { label: "Vitórias",  value: stats?.wins ?? "—",       icon: Trophy,     color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/15"  },
-    { label: "Derrotas",  value: stats?.losses ?? "—",     icon: TrendingUp, color: "text-red-400",    bg: "bg-red-500/10",    border: "border-red-500/15"    },
-    { label: "Win Rate",  value: stats ? `${Math.round(stats.winRate * 100)}%` : "—", icon: Star, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/15" },
+    { label: "Partidas",  value: stats?.totalGames ?? "-", icon: Swords,     color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
+    { label: "Vitórias",  value: stats?.wins ?? "-",       icon: Trophy,     color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/15"  },
+    { label: "Derrotas",  value: stats?.losses ?? "-",     icon: TrendingUp, color: "text-red-400",    bg: "bg-red-500/10",    border: "border-red-500/15"    },
+    { label: "Win Rate",  value: stats ? `${Math.round(stats.winRate * 100)}%` : "-", icon: Star, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/15" },
   ]
 
   return (

@@ -7,7 +7,6 @@ import {
   ArrowLeftRight,
   CalendarDays,
   Coins,
-  Settings2,
   Shirt,
   Sparkles,
   Table2,
@@ -25,7 +24,6 @@ import { DRAFT_STATUS_LABELS, WEEKDAY_SHORT, type DraftLeagueDetail, type DraftL
 import { DraftRoom } from "./draft-room"
 import { DraftStandings } from "./draft-standings"
 import { FixturesPanel } from "./fixtures-panel"
-import { LeagueAdminPanel } from "./league-admin-panel"
 import { MarketPanel } from "./market-panel"
 import { SquadPanel } from "./squad-panel"
 
@@ -36,7 +34,7 @@ const STATUS_TONES: Record<DraftLeagueStatus, "neutral" | "live" | "warn" | "don
   FINISHED: "done",
 }
 
-type TabId = "room" | "squad" | "fixtures" | "market" | "standings" | "admin"
+type TabId = "room" | "squad" | "fixtures" | "market" | "standings"
 
 export function DraftClient({ leagueId }: { leagueId: string }) {
   const router = useRouter()
@@ -72,8 +70,7 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
       { id: "squad" as const, label: "Meu elenco", icon: Shirt },
       { id: "fixtures" as const, label: "Rodadas", icon: CalendarDays },
       { id: "market" as const, label: "Mercado", icon: ArrowLeftRight },
-      league.access.canModerate && { id: "admin" as const, label: "Organização", icon: Settings2 },
-    ].filter(Boolean) as Array<{ id: TabId; label: string; icon: typeof Table2 }>
+    ]
   }, [league])
 
   if (loading) return <PageLoading />
@@ -106,7 +103,7 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
         <StatTile label="Pool de jogadores" value={poolSize} icon={Shirt} accent="text-blue-400" />
         <StatTile
           label="Rodadas"
-          value={league.totalRounds ? `${league.currentRound}/${league.totalRounds}` : "—"}
+          value={league.totalRounds ? `${league.currentRound}/${league.totalRounds}` : "-"}
           hint={league.matchDays.map((day) => WEEKDAY_SHORT[day]).join(" e ")}
           icon={CalendarDays}
           accent="text-violet-400"
@@ -141,7 +138,6 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
       {tab === "squad" && <SquadPanel league={league} onChanged={() => void load()} />}
       {tab === "fixtures" && <FixturesPanel league={league} onChanged={() => void load()} />}
       {tab === "market" && <MarketPanel league={league} onChanged={() => void load()} />}
-      {tab === "admin" && <LeagueAdminPanel league={league} onChanged={() => void load()} />}
     </div>
   )
 }

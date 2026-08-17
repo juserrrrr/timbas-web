@@ -46,7 +46,7 @@ const READ_MODES: Array<{ id: ScoreReadMode; title: string; hint: string; icon: 
   {
     id: "OCR_TEXT",
     title: "OCR + modelo de texto",
-    hint: "Um serviço de OCR extrai o texto e o modelo interpreta. Use com modelos que só leem texto.",
+    hint: "A própria API extrai o texto da imagem e o modelo interpreta. Use com modelos que só leem texto.",
     icon: FileScan,
   },
 ]
@@ -125,8 +125,7 @@ export default function AiAdminPage() {
         scoreReaderProvider: data.scoreReader.provider,
         scoreReaderModel: data.scoreReader.model ?? "",
         scoreReadMode: data.scoreReader.mode,
-        ocrBaseUrl: data.scoreReader.ocrBaseUrl ?? "",
-        ocrEngine: data.scoreReader.ocrEngine ?? "generic",
+        ocrLanguage: data.scoreReader.ocrLanguage,
       })
       setError("")
     } catch (err) {
@@ -381,43 +380,31 @@ export default function AiAdminPage() {
           </div>
 
           {needsOcr && (
-            <div className="mt-3 grid gap-3 border-t border-white/[0.06] pt-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="ocr-url">Endpoint do OCR</Label>
-                <Input
-                  id="ocr-url"
-                  value={draft.ocrBaseUrl ?? ""}
-                  onChange={(event) => setDraft({ ...draft, ocrBaseUrl: event.target.value })}
-                  placeholder="https://api.ocr.space/parse/image"
-                  className="border-white/10 bg-white/[0.03] font-mono text-[12px]"
-                />
+            <div className="mt-3 space-y-2 border-t border-white/[0.06] pt-3">
+              <Label htmlFor="ocr-language">Idioma do OCR</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { code: "por", label: "Português" },
+                  { code: "eng", label: "Inglês" },
+                  { code: "spa", label: "Espanhol" },
+                  { code: "por+eng", label: "Português e inglês" },
+                ].map((option) => (
+                  <button
+                    key={option.code}
+                    onClick={() => setDraft({ ...draft, ocrLanguage: option.code })}
+                    className={`cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+                      (draft.ocrLanguage ?? "por") === option.code
+                        ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                        : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </div>
-              <div className="space-y-1.5">
-                <Label>Formato do OCR</Label>
-                <div className="flex gap-2">
-                  {["generic", "ocr.space"].map((engine) => (
-                    <button
-                      key={engine}
-                      onClick={() => setDraft({ ...draft, ocrEngine: engine })}
-                      className={`h-9 flex-1 cursor-pointer rounded-lg border text-xs font-bold transition ${
-                        (draft.ocrEngine ?? "generic") === engine
-                          ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
-                          : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
-                      }`}
-                    >
-                      {engine}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <p className="sm:col-span-2 text-[11px] text-gray-600">
-                A chave do OCR vem de <span className="font-mono text-gray-500">OCR_API_KEY</span> —{" "}
-                {settings.ocrKeyConfigured ? (
-                  <span className="text-emerald-400">está definida</span>
-                ) : (
-                  <span className="text-amber-400">não está definida</span>
-                )}
-                .
+              <p className="text-[11px] text-gray-600">
+                O OCR roda dentro da própria API, sem serviço externo nem chave. Na primeira leitura o modelo de idioma
+                é baixado uma vez e fica em cache.
               </p>
             </div>
           )}
@@ -430,8 +417,7 @@ export default function AiAdminPage() {
                     scoreReaderProvider: draft.scoreReaderProvider,
                     scoreReaderModel: draft.scoreReaderModel || null,
                     scoreReadMode: draft.scoreReadMode,
-                    ocrBaseUrl: draft.ocrBaseUrl || null,
-                    ocrEngine: draft.ocrEngine || null,
+                    ocrLanguage: draft.ocrLanguage,
                   },
                   "Leitura de placar salva.",
                 )
@@ -460,7 +446,7 @@ export default function AiAdminPage() {
           ) : (
             <XCircle className="h-3.5 w-3.5 text-red-400" />
           )}
-          Último teste em {formatDateTime(settings.lastCheckedAt)} — {settings.lastCheckMessage}
+          Último teste em {formatDateTime(settings.lastCheckedAt)}. {settings.lastCheckMessage}
         </p>
       )}
     </div>

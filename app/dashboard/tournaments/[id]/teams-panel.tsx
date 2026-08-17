@@ -87,7 +87,7 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
 
       {!registrationOpen && (
         <p className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-[11px] text-gray-500">
-          As inscrições estão encerradas — o campeonato já foi iniciado.
+          As inscrições estão encerradas porque o campeonato já começou.
         </p>
       )}
       {registrationOpen && isFull && (
@@ -118,7 +118,7 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
                   }`}
                 >
                   <span className="w-6 flex-shrink-0 text-center text-xs font-black text-gray-600">
-                    {team.seed ?? "–"}
+                    {team.seed ?? "-"}
                   </span>
                   <TeamCrest name={team.name} logoUrl={team.logoUrl} size={34} />
                   <div className="min-w-0 flex-1">

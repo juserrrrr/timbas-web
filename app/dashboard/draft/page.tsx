@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { CalendarDays, Plus, Users } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { CalendarDays, Users } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import {
   CompetitionHeader,
@@ -12,10 +11,8 @@ import {
   PageLoading,
   StatusPill,
 } from "@/components/competitions/shared"
-import { decodeToken, getToken } from "@/lib/auth"
 import { listDraftLeagues } from "@/lib/services/draft"
 import { DRAFT_STATUS_LABELS, WEEKDAY_SHORT, type DraftLeagueStatus, type DraftLeagueSummary } from "@/lib/services/draft.types"
-import { CreateDraftLeagueDialog } from "./create-draft-league-dialog"
 
 const STATUS_TONES: Record<DraftLeagueStatus, "neutral" | "live" | "warn" | "done"> = {
   SETUP: "warn",
@@ -29,13 +26,6 @@ export default function DraftLeaguesPage() {
   const [leagues, setLeagues] = useState<DraftLeagueSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [creating, setCreating] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    const token = getToken()
-    setIsAdmin(token ? decodeToken(token)?.role === "ADMIN" : false)
-  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -65,33 +55,13 @@ export default function DraftLeaguesPage() {
         icon={Users}
         accent="text-emerald-400"
         accentBg="bg-emerald-500/10 border-emerald-500/20"
-        actions={
-          isAdmin && (
-            <Button onClick={() => setCreating(true)} className="bg-emerald-500 text-black hover:bg-emerald-400">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Criar liga
-            </Button>
-          )
-        }
       />
 
       {leagues.length === 0 ? (
         <EmptyState
           icon={Users}
           title="Nenhuma liga de draft ainda"
-          description={
-            isAdmin
-              ? "Crie uma liga, monte o pool de jogadores e chame a galera. Cada participante escolhe seu elenco na sala do draft."
-              : "As ligas são abertas pela administração. Assim que uma existir, ela aparece aqui para você entrar."
-          }
-          action={
-            isAdmin && (
-              <Button onClick={() => setCreating(true)} className="bg-emerald-500 text-black hover:bg-emerald-400">
-                <Plus className="mr-1.5 h-4 w-4" />
-                Criar liga
-              </Button>
-            )
-          }
+          description="As ligas são abertas pela administração. Assim que uma existir, ela aparece aqui para você entrar, montar seu elenco e jogar as rodadas."
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -129,11 +99,6 @@ export default function DraftLeaguesPage() {
         </div>
       )}
 
-      <CreateDraftLeagueDialog
-        open={creating}
-        onOpenChange={setCreating}
-        onCreated={(id) => router.push(`/dashboard/draft/${id}`)}
-      />
     </div>
   )
 }

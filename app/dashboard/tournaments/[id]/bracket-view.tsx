@@ -38,7 +38,7 @@ function MatchCard({
           finished && isWinner ? "text-emerald-300" : "text-gray-400"
         }`}
       >
-        {score ?? "–"}
+        {score ?? "-"}
       </span>
     </div>
   )
@@ -87,7 +87,7 @@ function BracketColumns({
         return (
           <div key={round} className="flex min-w-[200px] flex-col">
             <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-gray-600">
-              {roundMatches[0]?.label?.split("—").pop()?.trim() ?? `Rodada ${round}`}
+              {roundMatches[0]?.label?.split("·").pop()?.trim() ?? `Rodada ${round}`}
             </p>
             <div className="flex flex-1 flex-col justify-around gap-3">
               {roundMatches.map((match) => (

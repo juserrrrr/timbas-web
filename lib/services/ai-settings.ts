@@ -25,12 +25,10 @@ export interface AiFeatureView {
 
 export interface AiSettings {
   providers: AiProviderInfo[]
-  ocrKeyConfigured: boolean
   analysis: AiFeatureView & { fallbackModel: string | null }
   scoreReader: AiFeatureView & {
     mode: ScoreReadMode
-    ocrBaseUrl: string | null
-    ocrEngine: string | null
+    ocrLanguage: string
   }
   timeoutMs: number
   maxImageBytes: number
@@ -49,8 +47,7 @@ export interface AiSettingsPatch {
   scoreReaderProvider?: AiProvider
   scoreReaderModel?: string | null
   scoreReadMode?: ScoreReadMode
-  ocrBaseUrl?: string | null
-  ocrEngine?: string | null
+  ocrLanguage?: string
   timeoutMs?: number
   maxImageBytes?: number
 }

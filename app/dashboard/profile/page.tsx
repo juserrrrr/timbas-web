@@ -40,7 +40,7 @@ export default async function ProfilePage() {
             </Avatar>
           </div>
 
-          <h2 className="text-xl font-black text-white mb-1">{payload.name ?? "—"}</h2>
+          <h2 className="text-xl font-black text-white mb-1">{payload.name ?? "-"}</h2>
 
           {stats && (
             <span className="mb-5 flex items-center gap-1.5 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-1 text-sm font-bold text-yellow-400">
@@ -62,11 +62,11 @@ export default async function ProfilePage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {[
-              { label: "Partidas",  value: stats?.totalGames ?? "—", icon: Swords,      color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
-              { label: "Vitórias",  value: stats?.wins ?? "—",       icon: Trophy,      color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/15"  },
-              { label: "MVPs",      value: stats?.mvpCount ?? "—",   icon: Award,       color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/15" },
-              { label: "Win Rate",  value: stats ? `${winRatePct}%` : "—", icon: Star,  color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/15" },
-              { label: "Pontos",    value: stats?.score ?? "—",      icon: TrendingUp,  color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
+              { label: "Partidas",  value: stats?.totalGames ?? "-", icon: Swords,      color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
+              { label: "Vitórias",  value: stats?.wins ?? "-",       icon: Trophy,      color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/15"  },
+              { label: "MVPs",      value: stats?.mvpCount ?? "-",   icon: Award,       color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/15" },
+              { label: "Win Rate",  value: stats ? `${winRatePct}%` : "-", icon: Star,  color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/15" },
+              { label: "Pontos",    value: stats?.score ?? "-",      icon: TrendingUp,  color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/15"   },
             ].map(({ label, value, icon: Icon, color, bg, border }) => (
               <div key={label} className={`rounded-2xl border ${border} bg-white/[0.02] p-4`}>
                 <div className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg ${bg}`}>
@@ -90,7 +90,7 @@ export default async function ProfilePage() {
                     {detail.currentStreakCount}
                   </span>
                   <span className={`mb-1 text-sm font-bold ${detail.currentStreakType === "W" ? "text-green-500" : detail.currentStreakType === "L" ? "text-red-500" : "text-gray-600"}`}>
-                    {detail.currentStreakType === "W" ? "vitórias" : detail.currentStreakType === "L" ? "derrotas" : "—"}
+                    {detail.currentStreakType === "W" ? "vitórias" : detail.currentStreakType === "L" ? "derrotas" : "-"}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-gray-600">Melhor sequência: <span className="text-white font-semibold">{detail.longestWinStreak}V</span></p>

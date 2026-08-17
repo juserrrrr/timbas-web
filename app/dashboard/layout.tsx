@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="absolute left-[65px] top-14 h-[calc(100%-3.5rem)] w-px bg-gradient-to-b from-blue-500/15 via-transparent to-red-500/10" />
         </div>
 
-        {/* Sidebar — desktop only */}
+        {/* Sidebar, desktop only */}
         <div className="hidden md:block">
           <DashboardSidebar />
         </div>
@@ -32,7 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-5 sm:py-6 md:px-7 md:py-8 xl:px-10">{children}</div>
         </main>
 
-        {/* Bottom nav — mobile only */}
+        {/* Bottom nav, mobile only */}
         <div className="md:hidden">
           <MobileBottomNav />
         </div>

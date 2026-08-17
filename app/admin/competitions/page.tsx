@@ -40,7 +40,7 @@ import {
 } from "@/lib/services/tournaments.types"
 import { deleteDraftLeague, listDraftLeagues, startDraft, updateDraftLeague } from "@/lib/services/draft"
 import { DRAFT_STATUS_LABELS, type DraftLeagueStatus, type DraftLeagueSummary } from "@/lib/services/draft.types"
-import { CreateDraftLeagueDialog } from "@/app/dashboard/draft/create-draft-league-dialog"
+import { CreateDraftLeagueDialog } from "@/components/competitions/create-draft-league-dialog"
 
 const TOURNAMENT_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done" | "danger"> = {
   DRAFT: "neutral",
@@ -280,7 +280,7 @@ export default function AdminCompetitionsPage() {
           <EmptyState
             icon={Users}
             title="Nenhuma liga de draft"
-            description="Crie a liga por aqui — só administradores podem abrir uma. Depois importe o pool de jogadores dentro dela."
+            description="Só administradores abrem uma liga. Crie por aqui e depois monte o pool de jogadores dentro dela."
             action={
               <Button onClick={() => setCreating(true)} className="bg-emerald-500 text-black hover:bg-emerald-400">
                 <Plus className="mr-1.5 h-4 w-4" />
@@ -343,10 +343,10 @@ export default function AdminCompetitionsPage() {
                     )}
 
                     <Link
-                      href={`/dashboard/draft/${league.id}`}
+                      href={`/admin/competitions/draft/${league.id}`}
                       className="flex h-7 items-center gap-1 rounded-md border border-white/[0.07] px-2 text-[11px] font-bold text-gray-400 transition hover:text-white"
                     >
-                      Abrir
+                      Gerenciar
                       <ArrowUpRight className="h-3 w-3" />
                     </Link>
 

@@ -37,7 +37,7 @@ export function LoginForm() {
     <div className="w-full rounded-2xl p-[1px] bg-gradient-to-br from-blue-500/30 via-white/[0.06] to-red-500/20 shadow-2xl shadow-black/50">
       <div className="rounded-[15px] bg-[#0a0a0f] px-8 py-10">
 
-        {/* Logo — mobile */}
+        {/* Logo, mobile */}
         <div className="mb-8 flex flex-col items-center text-center lg:hidden">
           <div className="mb-4 h-14 w-14 rounded-xl overflow-hidden ring-1 ring-white/10">
             <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="TimbasBot" width={56} height={56} className="object-cover" />
@@ -83,7 +83,7 @@ export function LoginForm() {
           </span>
         </button>
 
-        {/* Dev login — only in development */}
+        {/* Dev login, only in development */}
         {process.env.NODE_ENV === 'development' && (
           <button
             type="button"

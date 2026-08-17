@@ -21,7 +21,7 @@ import {
 import ClashResultsView from "./clash-results-view"
 
 // Guarda o job em andamento para retomar o acompanhamento se o usuário
-// sair da tela e voltar — a análise continua rodando no servidor.
+// sair da tela e voltar, a análise continua rodando no servidor.
 const SCOUT_JOB_STORAGE_KEY = "timbas-clash-scout-job"
 const POLL_INTERVAL_MS = 3500
 
@@ -96,7 +96,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
   const activeJobId = job && (job.status === "queued" || job.status === "running") ? job.id : null
   const loading = starting || activeJobId !== null
 
-  // Parse ao vivo do Riot ID digitado — feedback antes de enviar
+  // Parse ao vivo do Riot ID digitado, feedback antes de enviar
   const trimmedInput = input.trim()
   const sepIndex = trimmedInput.lastIndexOf("#")
   const parsedName = sepIndex > 0 ? trimmedInput.slice(0, sepIndex) : null
@@ -108,7 +108,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
     try {
       setHistory(await getScoutHistory(token))
     } catch {
-      // histórico é secundário — falha silenciosa
+      // histórico é secundário, falha silenciosa
     }
   }
   useEffect(() => {
@@ -138,7 +138,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
     }
   }, [])
 
-  // Polling do job ativo — a fila roda no servidor, aqui só acompanhamos
+  // Polling do job ativo, a fila roda no servidor, aqui só acompanhamos
   useEffect(() => {
     if (!activeJobId) return
     let cancelled = false
@@ -169,7 +169,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
           setJob(null)
         }
       } catch {
-        // erro de rede transitório — o próximo tick tenta de novo
+        // erro de rede transitório, o próximo tick tenta de novo
       }
     }
 
@@ -208,7 +208,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
         throw new Error(`O servidor respondeu com ${j.riotId}, mas a busca atual é ${gameName}#${tagLine}. Tente novamente.`)
       }
       if (j.status === "done" && j.result) {
-        // resultado recente reaproveitado pelo servidor — mostra na hora
+        // resultado recente reaproveitado pelo servidor, mostra na hora
         setData(j.result)
         setAnalysisId(j.analysisId ?? null)
       } else if (j.status === "error") {
@@ -238,7 +238,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     } catch {
-      // silently ignore clipboard errors — link still shows
+      // silently ignore clipboard errors, link still shows
     } finally {
       setSharing(false)
     }
@@ -282,7 +282,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
 
   return (
     <div className="dashboard-view relative space-y-8">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
         <div>
           <div className="flex items-center gap-3 mb-1.5">
@@ -341,10 +341,10 @@ export default function ClashScoutClient({ token }: { token: string }) {
         </div>
       </div>
 
-      {/* ── Busca (aquisição de alvo) ── */}
+      {/* Busca (aquisição de alvo) */}
       {!data && !loading && (
         <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#07070c]/60 backdrop-blur-sm">
-          {/* Radar de fundo — assinatura visual da tela */}
+          {/* Radar de fundo, assinatura visual da tela */}
           <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="relative aspect-square w-[560px] flex-shrink-0 opacity-70">
               <div className="absolute inset-0 rounded-full border border-amber-500/[0.08]" />
@@ -431,7 +431,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
                     <Zap className={`h-4 w-4 ${!deep ? "text-amber-400" : "text-gray-600"}`} />
                     <span className={`text-sm font-black ${!deep ? "text-amber-300" : "text-gray-400"}`}>Scout Rápido</span>
                   </div>
-                  <span className={`text-[10px] font-bold tabular-nums ${!deep ? "text-amber-500" : "text-gray-600"}`}>~4–6 min</span>
+                  <span className={`text-[10px] font-bold tabular-nums ${!deep ? "text-amber-500" : "text-gray-600"}`}>4 a 6 min</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-gray-500">
                   Ranks, campeões, picks prováveis, bans e plano de jogo da IA.
@@ -456,7 +456,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
                     <Radar className={`h-4 w-4 ${deep ? "text-sky-400" : "text-gray-600"}`} />
                     <span className={`text-sm font-black ${deep ? "text-sky-300" : "text-gray-400"}`}>Deep Scout</span>
                   </div>
-                  <span className={`text-[10px] font-bold tabular-nums ${deep ? "text-sky-500" : "text-gray-600"}`}>~6–10 min</span>
+                  <span className={`text-[10px] font-bold tabular-nums ${deep ? "text-sky-500" : "text-gray-600"}`}>6 a 10 min</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-gray-500">
                   Tudo do rápido + leitura de mapa: rota do jungler, ganks por jogo, zonas de morte e invades.
@@ -467,7 +467,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
         </div>
       )}
 
-      {/* ── Histórico de relatórios ── */}
+      {/* Histórico de relatórios */}
       {!data && !loading && history.length > 0 && (
         <div className="rounded-2xl border border-white/[0.08] bg-[#07070c]/60 p-5 backdrop-blur-sm">
           <div className="mb-3 flex items-center gap-2">
@@ -509,7 +509,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
         </div>
       )}
 
-      {/* ── Loading / progresso do job ── */}
+      {/* Loading / progresso do job */}
       {loading && (() => {
         const stepIdx = scoutStepIndex(job?.progress?.stage)
         const percent = Math.max(0, Math.min(100, job?.progress?.percent ?? 0))
@@ -580,7 +580,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
         )
       })()}
 
-      {/* ── Share link banner ── */}
+      {/* Share link banner */}
       {shareId && (
         <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
           <Check className="h-4 w-4 flex-shrink-0 text-emerald-400" />
@@ -601,7 +601,7 @@ export default function ClashScoutClient({ token }: { token: string }) {
         </div>
       )}
 
-      {/* ── Results ── */}
+      {/* Results */}
       {!loading && data && <ClashResultsView data={data} />}
     </div>
   )

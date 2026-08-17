@@ -223,7 +223,7 @@ export type ScoutAiResult = Pick<
 //
 // O scout roda numa fila no servidor que respeita o rate limit da Riot.
 // startScout() retorna na hora com um job; o progresso/resultado vem por
-// polling em getScoutJob() — a tela não precisa ficar presa esperando.
+// polling em getScoutJob(), a tela não precisa ficar presa esperando.
 
 export interface ScoutProgress {
   stage: string
@@ -313,7 +313,7 @@ export async function getRiotPlayerStats(
   return body
 }
 
-// Relatórios recentes gerados por qualquer membro — cada scout concluído é
+// Relatórios recentes gerados por qualquer membro, cada scout concluído é
 // salvo automaticamente no servidor.
 export async function getScoutHistory(token: string, limit = 8): Promise<ScoutHistoryEntry[]> {
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')

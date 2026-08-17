@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 export function formatDate(value?: string | null, withTime = false) {
   if (!value) return "Nunca"
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "—"
+  if (Number.isNaN(date.getTime())) return "-"
   return date.toLocaleString("pt-BR", withTime
     ? { dateStyle: "short", timeStyle: "short" }
     : { dateStyle: "short" })

@@ -49,8 +49,8 @@ export function StatsClient({ players, serverId, currentUserId }: Props) {
   const streakLabel = detail
     ? detail.currentStreakType
       ? `${detail.currentStreakCount}${detail.currentStreakType === "W" ? "V" : "D"}`
-      : "—"
-    : "—"
+      : "-"
+    : "-"
   const streakColor =
     detail?.currentStreakType === "W" ? "text-green-400" : detail?.currentStreakType === "L" ? "text-red-400" : "text-gray-400"
 

@@ -36,7 +36,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
   useEffect(() => {
     const token = getToken()
     if (!selectedServer || !token) return
-    // dados iniciais já vieram renderizados do servidor — evita o refetch redundante no mount
+    // dados iniciais já vieram renderizados do servidor, evita o refetch redundante no mount
     if (skipNextFetch.current) {
       skipNextFetch.current = false
       return
@@ -320,7 +320,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
                         <td className="p-4 font-medium text-white">{Math.round(player.winRate * 100)}%</td>
                         <td className="p-4">
                           {/* Trend data is not available in the new API, so this is removed */}
-                          <span className="text-gray-500">—</span>
+                          <span className="text-gray-500">-</span>
                         </td>
                       </tr>
                     )

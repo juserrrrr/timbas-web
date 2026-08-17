@@ -32,7 +32,7 @@ export function HeroSection() {
       <div className="container mx-auto px-4 py-20">
         <div className="grid items-center gap-16 lg:grid-cols-2 xl:gap-24">
 
-          {/* ── Left ── */}
+          {/* Left */}
           <div className="flex flex-col">
             {/* Badge */}
             <div className="mb-8 inline-flex w-fit items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/[0.08] px-4 py-2 text-sm text-blue-300">
@@ -76,8 +76,8 @@ export function HeroSection() {
             {/* Stats */}
             <div className="flex flex-wrap gap-8 border-t border-white/[0.07] pt-8">
               {[
-                { value: totalMatches > 0 ? `${totalMatches}+` : "—", label: "Partidas jogadas", icon: Swords, color: "text-blue-400" },
-                { value: totalPlayers > 0 ? `${totalPlayers}+` : "—", label: "Jogadores ativos", icon: Users, color: "text-red-400" },
+                { value: totalMatches > 0 ? `${totalMatches}+` : "-", label: "Partidas jogadas", icon: Swords, color: "text-blue-400" },
+                { value: totalPlayers > 0 ? `${totalPlayers}+` : "-", label: "Jogadores ativos", icon: Users, color: "text-red-400" },
                 { value: "4", label: "Servidores", icon: Server, color: "text-purple-400" },
               ].map(({ value, label, icon: Icon, color }) => (
                 <div key={label}>
@@ -90,7 +90,7 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* ── Right — Discord mockup ── */}
+          {/* Right, Discord mockup */}
           <div className="relative flex items-center justify-center lg:justify-end">
             {/* Glow behind card */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -149,7 +149,7 @@ export function HeroSection() {
               </div>
             </div>
 
-            {/* Floating badge — online */}
+            {/* Floating badge, online */}
             <div className="absolute right-2 top-6 z-20 flex items-center gap-2 rounded-xl border border-green-500/20 bg-[#050508]/80 px-3 py-2 backdrop-blur-md shadow-xl">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
@@ -158,7 +158,7 @@ export function HeroSection() {
               <span className="text-xs font-semibold text-green-400">Online agora</span>
             </div>
 
-            {/* Floating badge — partida */}
+            {/* Floating badge, partida */}
             <div className="absolute -left-4 bottom-12 z-20 rounded-xl border border-white/[0.08] bg-[#050508]/80 px-4 py-3 backdrop-blur-md shadow-xl">
               <div className="flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600/20 text-sm">⚔️</div>
