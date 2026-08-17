@@ -7,6 +7,7 @@ import { Toaster, toast } from "sonner"
 import { AdminSidebar } from "@/components/admin-sidebar"
 import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
 import { getMyPermissions } from "@/lib/services/access"
+import { NavigationProvider } from "@/lib/navigation-context"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -71,6 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
+    <NavigationProvider>
     <div className="relative min-h-[100dvh] bg-[#050508] text-white">
       <Toaster
         position="top-right"
@@ -105,5 +107,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
       </main>
     </div>
+    </NavigationProvider>
   )
 }
