@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react"
 import { Coins, Gavel, Loader2, Save, Shirt, Star, Swords, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { CoinAmount, EmptyState, StatusPill } from "@/components/competitions/shared"
+import { EmptyState, StatusPill } from "@/components/competitions/shared"
+import { formatMoney } from "@/lib/money"
 import { BUDGET_TX_LABELS, FORMATIONS, INTENSITY_LABELS, MENTALITY_LABELS } from "@/lib/services/draft.types"
 import {
   createAuction,
@@ -176,7 +177,8 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
           <div>
             <h3 className="text-lg font-black text-white">{roster.name}</h3>
             <p className="text-[11px] text-gray-500">
-              {roster.players.length} de {league.rosterSize} jogadores · {roster.points} pontos na temporada
+              {roster.players.length} de {league.rosterSize} jogadores, {selected.length} escalados e{" "}
+              {Math.max(0, roster.players.length - selected.length)} no banco · {roster.points} pontos na temporada
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -231,20 +233,20 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
           <div>
             <p className="text-[10px] uppercase tracking-wide text-gray-600">Disponível</p>
             <p className={`text-lg font-black ${roster.budget < 0 ? "text-red-400" : "text-amber-300"}`}>
-              {roster.budget.toLocaleString("pt-BR")}
+              {formatMoney(roster.budget)}
             </p>
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-wide text-gray-600">Folha por rodada</p>
-            <p className="text-lg font-black text-white">{wageBill.toLocaleString("pt-BR")}</p>
+            <p className="text-lg font-black text-white">{formatMoney(wageBill)}</p>
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-wide text-gray-600">Entrou</p>
-            <p className="text-sm font-bold text-emerald-400">{roster.earned.toLocaleString("pt-BR")}</p>
+            <p className="text-sm font-bold text-emerald-400">{formatMoney(roster.earned)}</p>
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-wide text-gray-600">Saiu</p>
-            <p className="text-sm font-bold text-gray-400">{roster.spent.toLocaleString("pt-BR")}</p>
+            <p className="text-sm font-bold text-gray-400">{formatMoney(roster.spent)}</p>
           </div>
         </div>
 
@@ -259,12 +261,12 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
             {statement.entries.map((entry) => (
               <div key={entry.id} className="flex items-center gap-2 text-[11px]">
                 <span
-                  className={`w-16 flex-shrink-0 text-right font-black tabular-nums ${
+                  className={`w-24 flex-shrink-0 text-right font-black tabular-nums ${
                     entry.amount >= 0 ? "text-emerald-400" : "text-red-400"
                   }`}
                 >
                   {entry.amount >= 0 ? "+" : ""}
-                  {entry.amount.toLocaleString("pt-BR")}
+                  {formatMoney(entry.amount)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-gray-400">{entry.description}</span>
                 <span className="flex-shrink-0 text-[10px] text-gray-600">{BUDGET_TX_LABELS[entry.type]}</span>
@@ -366,8 +368,8 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
                 </div>
 
                 <div className="flex flex-shrink-0 flex-col items-end gap-1">
-                  <CoinAmount value={player.price} className="text-[11px]" />
-                  <span className="text-[10px] text-gray-600">{player.salary}/rodada</span>
+                  <span className="text-[11px] font-bold text-amber-400">{formatMoney(player.price)}</span>
+                  <span className="text-[10px] text-gray-600">{formatMoney(player.salary)} por rodada</span>
                   {league.status === "ACTIVE" && league.transferWindowOpen && league.auctionsEnabled && (
                     <button
                       onClick={() => void auction(player)}

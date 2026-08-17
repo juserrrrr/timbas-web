@@ -15,6 +15,7 @@ import {
   formatDateTime,
 } from "@/components/competitions/shared"
 import { advancePerGroupOptions, groupCountOptions, pickOption } from "@/lib/group-plan"
+import { formatMoney } from "@/lib/money"
 import {
   buildDemoDraft,
   buildDemoTournament,
@@ -141,10 +142,10 @@ export default function DemoLabPage() {
   const [debug, setDebug] = useState<{ title: string; data: DemoDebug } | null>(null)
 
   const [rosterCount, setRosterCount] = useState(4)
-  const [rosterSize, setRosterSize] = useState(5)
+  const [rosterSize, setRosterSize] = useState(11)
   const [draftStage, setDraftStage] = useState<DemoDraftStage>("ACTIVE")
   const [draftResultMode, setDraftResultMode] = useState<DraftResultMode>("SIMULATED")
-  const [startingBudget, setStartingBudget] = useState(1000)
+  const [startingBudget, setStartingBudget] = useState(200_000_000)
   const [paySalaries, setPaySalaries] = useState(true)
   const [auctionsEnabled, setAuctionsEnabled] = useState(true)
   const [auctionHours, setAuctionHours] = useState(24)
@@ -349,7 +350,7 @@ export default function DemoLabPage() {
 
             <div className="space-y-1.5">
               <Label>Jogadores por elenco</Label>
-              <Chips options={[3, 5, 8, 11]} value={rosterSize} onChange={setRosterSize} />
+              <Chips options={[5, 11, 18, 25]} value={rosterSize} onChange={setRosterSize} />
             </div>
 
             <div className="space-y-1.5">
@@ -374,7 +375,12 @@ export default function DemoLabPage() {
 
             <div className="space-y-1.5">
               <Label>Caixa inicial de cada elenco</Label>
-              <Chips options={[300, 1000, 5000]} value={startingBudget} onChange={setStartingBudget} />
+              <Chips
+                    options={[50_000_000, 200_000_000, 800_000_000]}
+                    value={startingBudget}
+                    onChange={setStartingBudget}
+                    render={(value) => formatMoney(value)}
+                  />
             </div>
 
             <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2">

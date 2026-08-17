@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { EmptyState, ErrorState, PageLoading, StatusPill } from "@/components/competitions/shared"
+import { formatMoney } from "@/lib/money"
 import { CatalogImportDialog } from "@/components/competitions/catalog-import-dialog"
 import {
   ATTRIBUTE_KEYS,
@@ -76,6 +77,9 @@ function PlayerRow({
       <div className="flex items-center gap-2 text-[11px]">
         <span className="w-7 flex-shrink-0 text-center font-black text-gray-300">{player.overall}</span>
         <span className="w-9 flex-shrink-0 text-gray-600">{player.position}</span>
+        <span className="hidden w-24 flex-shrink-0 text-right text-[10px] text-amber-400/80 sm:block">
+          {formatMoney(player.price)}
+        </span>
         <button
           onClick={() => (open ? setOpen(false) : startEditing())}
           className="min-w-0 flex-1 cursor-pointer truncate text-left text-white hover:text-sky-300"

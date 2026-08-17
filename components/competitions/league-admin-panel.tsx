@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { StatusPill } from "@/components/competitions/shared"
+import { formatMoney } from "@/lib/money"
 import { listCompetitions } from "@/lib/services/catalog"
 import {
   importDraftPlayers,
@@ -246,7 +247,8 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
                   className="border-white/10 bg-white/[0.03]"
                 />
                 <p className="text-[11px] text-gray-600">
-                  Vale a partir do próximo draft: começar o draft reparte esse caixa de novo para todos.
+                  {formatMoney(league.startingBudget)} por elenco. Vale a partir do próximo draft: começar o draft
+                  reparte esse caixa de novo para todos.
                 </p>
               </div>
 

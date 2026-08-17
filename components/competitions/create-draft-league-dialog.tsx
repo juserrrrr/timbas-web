@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { formatMoney } from "@/lib/money"
 import { listCompetitions } from "@/lib/services/catalog"
 import { createDraftLeague } from "@/lib/services/draft"
 import {
@@ -23,12 +24,12 @@ import {
 const DEFAULTS = {
   orderType: "SNAKE" as const,
   resultMode: "REPORTED" as DraftResultMode,
-  rosterSize: 11,
+  rosterSize: 25,
   formation: "4-3-3",
   pickSeconds: 120,
   matchDays: [0, 3],
   matchHour: 21,
-  startingBudget: 1000,
+  startingBudget: 200_000_000,
   paySalaries: true,
   marketAutoManaged: true,
   marketClosesMinutesBefore: 180,
@@ -38,9 +39,9 @@ const DEFAULTS = {
   auctionAntiSnipeMinutes: 5,
   pointsWin: 3,
   pointsDraw: 1,
-  coinsWin: 60,
-  coinsDraw: 25,
-  coinsLoss: 10,
+  coinsWin: 3_000_000,
+  coinsDraw: 1_000_000,
+  coinsLoss: 400_000,
 }
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -321,6 +322,7 @@ export function CreateDraftLeagueDialog({
                 onChange={setRosterSize}
                 min={1}
                 max={26}
+                hint="25 é o tamanho de elenco do EA FC: 11 em campo, 7 no banco e o resto de reserva."
               />
               <NumberField
                 id="pick-seconds"
@@ -347,7 +349,7 @@ export function CreateDraftLeagueDialog({
 
           <Section
             title="Dinheiro da liga"
-            hint="O caixa é só desta liga e recomeça a cada draft. Ele paga salário, contratação e transferência."
+            hint="O caixa é só desta liga e recomeça a cada draft, em reais e na escala do futebol. Ele paga salário, contratação e transferência."
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <NumberField
@@ -370,9 +372,30 @@ export function CreateDraftLeagueDialog({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <NumberField id="coins-win" label="Prêmio por vitória" value={coinsWin} onChange={setCoinsWin} />
-              <NumberField id="coins-draw" label="Por empate" value={coinsDraw} onChange={setCoinsDraw} />
-              <NumberField id="coins-loss" label="Por derrota" value={coinsLoss} onChange={setCoinsLoss} />
+              <NumberField
+                id="coins-win"
+                label="Prêmio por vitória"
+                value={coinsWin}
+                onChange={setCoinsWin}
+                step={100_000}
+                hint={formatMoney(coinsWin)}
+              />
+              <NumberField
+                id="coins-draw"
+                label="Por empate"
+                value={coinsDraw}
+                onChange={setCoinsDraw}
+                step={100_000}
+                hint={formatMoney(coinsDraw)}
+              />
+              <NumberField
+                id="coins-loss"
+                label="Por derrota"
+                value={coinsLoss}
+                onChange={setCoinsLoss}
+                step={100_000}
+                hint={formatMoney(coinsLoss)}
+              />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

@@ -5,7 +5,8 @@ import { ArrowLeftRight, Check, Coins, Gavel, Loader2, Search, ShoppingCart, X }
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { CoinAmount, EmptyState, StatusPill, formatDateTime } from "@/components/competitions/shared"
+import { EmptyState, StatusPill, formatDateTime } from "@/components/competitions/shared"
+import { formatMoney } from "@/lib/money"
 import {
   cancelAuction,
   cancelOffer,
@@ -123,7 +124,7 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
             Caixa do {myRoster.name} nesta liga
           </span>
           <span className={`text-sm font-black ${myRoster.budget < 0 ? "text-red-400" : "text-amber-300"}`}>
-            {myRoster.budget.toLocaleString("pt-BR")}
+            {formatMoney(myRoster.budget)}
           </span>
         </div>
       )}
@@ -147,7 +148,7 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
                     {offer.message ? ` · "${offer.message}"` : ""}
                   </p>
                 </div>
-                <CoinAmount value={offer.price} />
+                <span className="font-bold text-amber-400">{formatMoney(offer.price)}</span>
                 {offer.canRespond && (
                   <div className="flex gap-1.5">
                     <Button
@@ -233,7 +234,7 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
                       {auction.bidCount === 0 ? "inicial" : `${auction.bidCount} lance(s)`}
                     </p>
                     <p className="text-sm font-black text-amber-300">
-                      {(auction.bidCount === 0 ? auction.startingBid : auction.currentBid).toLocaleString("pt-BR")}
+                      {formatMoney(auction.bidCount === 0 ? auction.startingBid : auction.currentBid)}
                     </p>
                   </div>
                 </div>
@@ -316,7 +317,7 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
                     </p>
                   </div>
                   <div className="flex flex-shrink-0 flex-col items-end gap-1">
-                    <CoinAmount value={player.price} className="text-[11px]" />
+                    <span className="text-[11px] font-bold text-amber-400">{formatMoney(player.price)}</span>
                     <Button
                       size="sm"
                       disabled={!marketOpen || busyId === player.id}
@@ -360,7 +361,7 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
                   </p>
                 </div>
                 <div className="flex flex-shrink-0 flex-col items-end gap-1">
-                  <CoinAmount value={player.price} className="text-[11px]" />
+                  <span className="text-[11px] font-bold text-amber-400">{formatMoney(player.price)}</span>
                   <Button
                     size="sm"
                     disabled={!marketOpen || busyId === player.id}
