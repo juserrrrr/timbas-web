@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CalendarClock, Crown, Globe2, Loader2, Play, ShieldCheck, Trash2, Upload, UserCog } from "lucide-react"
+import { CalendarClock, Crown, Globe2, Loader2, Play, Plus, ShieldCheck, Trash2, Upload, UserCog } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,7 @@ import { StatusPill } from "@/components/competitions/shared"
 import { formatMoney } from "@/lib/money"
 import { listCompetitions } from "@/lib/services/catalog"
 import {
+  addVacantRosters,
   importDraftPlayers,
   removeDraftStaff,
   setDraftStaff,
@@ -94,9 +95,27 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
         <Card className="border-emerald-500/25 bg-emerald-500/[0.05] p-4">
           <h3 className="text-sm font-black text-white">Iniciar o draft</h3>
           <p className="mt-1 text-[11px] text-gray-400">
-            A ordem das escolhas é sorteada e o cronômetro começa. São necessários ao menos 2 elencos e{" "}
-            {league.rosters.length * league.rosterSize || league.rosterSize} jogadores no pool.
+            A ordem das escolhas é sorteada e o cronômetro começa. São necessários ao menos 2 times e{" "}
+            {league.rosters.length * league.rosterSize || league.rosterSize} jogadores no pool. Não precisa esperar
+            todo mundo: abra vagas e a liga começa, com a vaga escolhendo sozinha e perdendo por W.O. até alguém
+            assumir.
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() =>
+                void run(() => addVacantRosters(league.id, 1), "Vaga aberta. Alguém pode assumir a qualquer momento.")
+              }
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              Abrir vaga
+            </Button>
+            <span className="text-[11px] text-gray-500">
+              {league.rosters.filter((roster) => !roster.userId).length} vaga(s) esperando dono
+            </span>
+          </div>
+
           <Button
             onClick={() => void run(() => startDraft(league.id), "Draft iniciado. Boa escolha!")}
             disabled={busy || league.rosters.length < 2}

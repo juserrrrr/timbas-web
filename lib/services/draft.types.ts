@@ -64,7 +64,7 @@ export interface DraftRoster {
   earned: number
   spent: number
   draftOrder: number
-  userId: number
+  userId: number | null
   played: number
   wins: number
   draws: number
@@ -72,7 +72,7 @@ export interface DraftRoster {
   goalsFor: number
   goalsAgainst: number
   points: number
-  user: UserRef
+  user: UserRef | null
   players: DraftPlayer[]
 }
 
@@ -101,7 +101,7 @@ export interface DraftStandingRow {
   name: string
   tag: string | null
   logoUrl: string | null
-  manager: UserRef
+  manager: UserRef | null
   played: number
   wins: number
   draws: number

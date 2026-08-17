@@ -147,6 +147,7 @@ export default function DemoLabPage() {
   const [draftResultMode, setDraftResultMode] = useState<DraftResultMode>("SIMULATED")
   const [startingBudget, setStartingBudget] = useState(200_000_000)
   const [paySalaries, setPaySalaries] = useState(true)
+  const [vacantRosters, setVacantRosters] = useState(0)
   const [auctionsEnabled, setAuctionsEnabled] = useState(true)
   const [auctionHours, setAuctionHours] = useState(24)
 
@@ -345,9 +346,22 @@ export default function DemoLabPage() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Times na liga</Label>
-              <Chips options={[2, 4, 6, 8]} value={rosterCount} onChange={setRosterCount} />
+              <Chips options={[2, 4, 6, 8, 10, 12, 16, 20]} value={rosterCount} onChange={setRosterCount} />
               <p className="text-[11px] text-gray-600">
                 Cada time é um participante com o elenco dele. O primeiro é o seu.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Times sem dono</Label>
+              <Chips
+                options={[0, 1, 2, 4]}
+                value={vacantRosters}
+                onChange={setVacantRosters}
+                render={(value) => (value === 0 ? "nenhum" : `${value} vagos`)}
+              />
+              <p className="text-[11px] text-gray-600">
+                Vaga aberta escolhe sozinha no draft e perde por W.O. na rodada, até alguém assumir.
               </p>
             </div>
 
@@ -426,6 +440,7 @@ export default function DemoLabPage() {
                     resultMode: draftResultMode,
                     startingBudget,
                     paySalaries,
+                    vacantRosters,
                     auctionsEnabled,
                     auctionHours,
                     stage: draftStage,

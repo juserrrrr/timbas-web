@@ -60,6 +60,7 @@ export function buildDemoDraft(input: {
   resultMode?: DraftResultMode
   startingBudget?: number
   paySalaries?: boolean
+  vacantRosters?: number
   auctionsEnabled?: boolean
   auctionHours?: number
   stage: DemoDraftStage

@@ -95,7 +95,9 @@ export function DraftStandings({ league, onChanged }: { league: DraftLeagueDetai
                           <TeamCrest name={row.name} logoUrl={row.logoUrl} size={24} />
                           <div className="min-w-0">
                             <p className="truncate font-semibold text-white">{row.name}</p>
-                            <p className="truncate text-[10px] text-gray-600">{row.manager.name}</p>
+                            <p className="truncate text-[10px] text-gray-600">
+                              {row.manager?.name ?? "vaga aberta"}
+                            </p>
                           </div>
                         </div>
                       </td>

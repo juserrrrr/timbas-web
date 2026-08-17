@@ -74,6 +74,10 @@ export function deleteDraftLeague(id: string) {
   return remove<{ deleted: boolean }>(`/draft/${id}`)
 }
 
+export function addVacantRosters(id: string, count: number) {
+  return post<{ created: number; total: number }>(`/draft/${id}/rosters/vacant`, { count })
+}
+
 export function joinDraftLeague(id: string, input: { name: string; tag?: string; logoUrl?: string }) {
   return post<DraftRoster>(`/draft/${id}/join`, input)
 }
