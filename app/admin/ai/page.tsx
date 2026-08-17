@@ -234,9 +234,10 @@ export default function AiAdminPage() {
       <Card className="border-white/[0.07] bg-white/[0.025] p-4">
         <label className="flex cursor-pointer items-center justify-between gap-4 border-b border-white/[0.06] pb-3">
           <span>
-            <span className="block text-sm font-black text-white">Análises do LoL</span>
+            <span className="block text-sm font-black text-white">Análises e catálogo</span>
             <span className="block text-[11px] text-gray-500">
-              Clash Scout, leitura de perfil e resumo das partidas. Desligado, tudo cai para o cálculo por estatística.
+              Clash Scout, leitura de perfil e resumo das partidas, mais os elencos e os atributos do catálogo de
+              jogadores. Desligado, a análise cai para o cálculo por estatística e o catálogo perde a busca por IA.
             </span>
           </span>
           <Switch
