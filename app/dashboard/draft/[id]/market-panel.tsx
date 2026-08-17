@@ -6,11 +6,21 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { CoinAmount, EmptyState, StatusPill } from "@/components/competitions/shared"
-import { cancelOffer, createOffer, listDraftPlayers, listOffers, respondOffer } from "@/lib/services/draft"
+import {
+  cancelOffer,
+  createOffer,
+  listBaseMarket,
+  listDraftPlayers,
+  listOffers,
+  respondOffer,
+  signFromBase,
+  type BaseMarketPlayer,
+} from "@/lib/services/draft"
 import { OFFER_KIND_LABELS, type DraftLeagueDetail, type DraftPlayer, type TransferOffer } from "@/lib/services/draft.types"
 
 export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; onChanged: () => void }) {
   const [players, setPlayers] = useState<DraftPlayer[]>([])
+  const [basePlayers, setBasePlayers] = useState<BaseMarketPlayer[]>([])
   const [offers, setOffers] = useState<TransferOffer[]>([])
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
@@ -20,22 +30,27 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
 
   const load = useCallback(async () => {
     try {
-      const [playersData, offersData] = await Promise.all([
+      const [playersData, offersData, baseData] = await Promise.all([
         listDraftPlayers(league.id),
         listOffers(league.id),
+        league.sources.length > 0
+          ? listBaseMarket(league.id, { search: search.trim() || undefined })
+          : Promise.resolve({ competitions: [], players: [] }),
       ])
       setPlayers(playersData)
       setOffers(offersData)
+      setBasePlayers(baseData.players)
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar o mercado")
     } finally {
       setLoading(false)
     }
-  }, [league.id])
+  }, [league.id, league.sources.length, search])
 
   useEffect(() => {
-    void load()
+    const timer = setTimeout(() => void load(), 300)
+    return () => clearTimeout(timer)
   }, [load])
 
   const term = search.trim().toLowerCase()
@@ -157,6 +172,56 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
           className="border-white/10 bg-white/[0.03] pl-9"
         />
       </div>
+
+      {league.sources.length > 0 && (
+        <div>
+          <h3 className="mb-1 text-xs font-black uppercase tracking-wider text-gray-500">
+            Fora da liga ({league.sources.map((source) => source.competition.name).join(", ")})
+          </h3>
+          <p className="mb-2 text-[11px] text-gray-600">
+            Jogadores da base que ainda não estão nesta liga. Contratar traz o cara para o seu elenco na hora.
+          </p>
+
+          {basePlayers.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-white/10 px-3 py-4 text-center text-[11px] text-gray-600">
+              {term ? "Ninguém com esse nome fora da liga." : "Toda a base liberada já está nesta liga."}
+            </p>
+          ) : (
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {basePlayers.slice(0, 30).map((player) => (
+                <Card key={player.id} className="flex items-center gap-3 border-sky-500/20 bg-sky-500/[0.04] p-3">
+                  <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-sm font-black text-white">
+                    {player.overall}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-white">{player.name}</p>
+                    <p className="truncate text-[11px] text-gray-600">
+                      {player.position} · {player.team.name} · {player.team.competition.name}
+                    </p>
+                  </div>
+                  <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                    <CoinAmount value={player.price} className="text-[11px]" />
+                    <Button
+                      size="sm"
+                      disabled={!marketOpen || busyId === player.id}
+                      onClick={() =>
+                        void run(
+                          player.id,
+                          () => signFromBase(league.id, player.id),
+                          `${player.name} contratado de ${player.team.name}.`,
+                        )
+                      }
+                      className="h-7 bg-sky-500 px-2 text-[11px] text-black hover:bg-sky-400"
+                    >
+                      {busyId === player.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Contratar"}
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <h3 className="mb-2 text-xs font-black uppercase tracking-wider text-gray-500">

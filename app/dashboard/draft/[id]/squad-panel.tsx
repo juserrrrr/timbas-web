@@ -1,17 +1,55 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Loader2, Save, Shirt, Star, Undo2 } from "lucide-react"
+import { Loader2, Save, Shirt, Star, Swords, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { CoinAmount, EmptyState, StatusPill } from "@/components/competitions/shared"
-import { FORMATIONS } from "@/lib/services/draft.types"
-import { releasePlayer, setLineup } from "@/lib/services/draft"
+import { FORMATIONS, INTENSITY_LABELS, MENTALITY_LABELS } from "@/lib/services/draft.types"
+import { releasePlayer, setLineup, setTactics } from "@/lib/services/draft"
 import type { DraftLeagueDetail, DraftPlayer } from "@/lib/services/draft.types"
 
 function startersFor(formation: string): number {
   const lines = formation.split("-").map(Number).filter((value) => Number.isFinite(value))
   return lines.reduce((total, value) => total + value, 1)
+}
+
+function TacticRow<T extends string>({
+  label,
+  options,
+  labels,
+  value,
+  disabled,
+  onPick,
+}: {
+  label: string
+  options: readonly T[]
+  labels: Record<T, string>
+  value: T
+  disabled: boolean
+  onPick: (option: T) => void
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-20 flex-shrink-0 text-[11px] font-bold uppercase tracking-wide text-gray-600">{label}</span>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((option) => (
+          <button
+            key={option}
+            disabled={disabled}
+            onClick={() => onPick(option)}
+            className={`cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+              value === option
+                ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
+            }`}
+          >
+            {labels[option]}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; onChanged: () => void }) {
@@ -60,6 +98,20 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar a escalação.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveTactics = async (input: Parameters<typeof setTactics>[1]) => {
+    setBusy(true)
+    setError("")
+    try {
+      await setTactics(league.id, input)
+      setNotice("Tática atualizada.")
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível salvar a tática.")
     } finally {
       setBusy(false)
     }
@@ -128,6 +180,45 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
         {error && <p className="mt-3 text-[11px] text-red-400">{error}</p>}
       </Card>
 
+      <Card className="border-white/[0.07] bg-white/[0.025] p-4">
+        <div className="mb-1 flex items-center gap-2">
+          <Swords className="h-4 w-4 text-violet-400" />
+          <h3 className="text-sm font-black text-white">Tática</h3>
+        </div>
+        <p className="mb-3 text-[11px] text-gray-500">
+          {league.resultMode === "SIMULATED"
+            ? "Vale para a próxima rodada simulada. Postura ofensiva cria mais chance e entrega mais também."
+            : "Fica guardada para quando a liga usar rodada simulada."}
+        </p>
+
+        <div className="space-y-3">
+          <TacticRow
+            label="Postura"
+            options={["DEFENSIVE", "BALANCED", "ATTACKING"] as const}
+            labels={MENTALITY_LABELS}
+            value={roster.mentality}
+            disabled={busy}
+            onPick={(mentality) => void saveTactics({ mentality })}
+          />
+          <TacticRow
+            label="Marcação"
+            options={["LOW", "MEDIUM", "HIGH"] as const}
+            labels={INTENSITY_LABELS}
+            value={roster.pressing}
+            disabled={busy}
+            onPick={(pressing) => void saveTactics({ pressing })}
+          />
+          <TacticRow
+            label="Ritmo"
+            options={["LOW", "MEDIUM", "HIGH"] as const}
+            labels={INTENSITY_LABELS}
+            value={roster.tempo}
+            disabled={busy}
+            onPick={(tempo) => void saveTactics({ tempo })}
+          />
+        </div>
+      </Card>
+
       {roster.players.length === 0 ? (
         <EmptyState
           icon={Shirt}
@@ -164,6 +255,20 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
                     {player.position}
                     {player.realTeam ? ` · ${player.realTeam}` : ""} · {player.appearances} jogos
                   </p>
+                  {player.appearances > 0 && (
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[10px] text-gray-500">
+                      <span className="font-bold text-gray-300">
+                        {player.rating?.toFixed(1) ?? "-"} de média
+                      </span>
+                      {player.goals > 0 && <span>{player.goals} gol(s)</span>}
+                      {player.assists > 0 && <span>{player.assists} assist.</span>}
+                      {player.form !== 0 && (
+                        <span className={player.form > 0 ? "text-emerald-400" : "text-red-400"}>
+                          forma {player.form > 0 ? `+${player.form}` : player.form}
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-shrink-0 flex-col items-end gap-1">

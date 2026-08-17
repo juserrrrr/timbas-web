@@ -95,9 +95,9 @@ export default function AdminDraftPage() {
       <div className="flex gap-1.5 border-b border-white/[0.06] pb-px">
         {(
           [
-            { id: "leagues" as const, label: "Ligas", icon: Trophy, count: leagues.length },
-            { id: "catalog" as const, label: "Base de jogadores", icon: Database },
-          ] as const
+            { id: "leagues", label: "Ligas", icon: Trophy, count: leagues.length },
+            { id: "catalog", label: "Base de jogadores", icon: Database },
+          ] as Array<{ id: "leagues" | "catalog"; label: string; icon: typeof Trophy; count?: number }>
         ).map((item) => (
           <button
             key={item.id}

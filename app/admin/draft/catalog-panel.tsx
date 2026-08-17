@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCw,
   Shield,
+  Sparkles,
   Trash2,
   Users,
   XCircle,
@@ -27,8 +28,17 @@ import {
   formatDateTime,
 } from "@/components/competitions/shared"
 import {
+  ATTRIBUTE_KEYS,
+  attributeLongLabels,
+  attributeRow,
+  attributeTone,
+  hasAttributes,
+} from "@/lib/attributes"
+import {
   createCatalogTeam,
   createCompetition,
+  estimatePlayerAttributes,
+  estimateTeamAttributes,
   importCatalogToLeague,
   listCatalogPlayers,
   listCatalogTeams,
@@ -38,6 +48,8 @@ import {
   removeCompetition,
   SOURCE_LABELS,
   syncCompetition,
+  updateCatalogPlayer,
+  updateCompetition,
   type CatalogCompetition,
   type CatalogPlayer,
   type CatalogSource,
@@ -64,6 +76,145 @@ const SOURCES: Array<{ id: CatalogSource; title: string; hint: string }> = [
     hint: "Você cadastra os times e jogadores na mão ou por foto.",
   },
 ]
+
+/// Linha do jogador na base: nota, posição, os seis atributos do card e, ao
+/// abrir, os campos para ajustar o que a IA estimou.
+function PlayerRow({
+  player,
+  busy,
+  onEstimate,
+  onSave,
+  onRemove,
+}: {
+  player: CatalogPlayer
+  busy: string
+  onEstimate: () => void
+  onSave: (input: Record<string, number>) => void
+  onRemove: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<Record<string, string>>({})
+
+  const labels = attributeLongLabels(player.position)
+  const filled = hasAttributes(player)
+
+  const startEditing = () => {
+    setDraft(
+      Object.fromEntries([
+        ["overall", String(player.overall)],
+        ...ATTRIBUTE_KEYS.map((key) => [key, player[key] === null ? "" : String(player[key])]),
+      ]),
+    )
+    setOpen(true)
+  }
+
+  const save = () => {
+    const input: Record<string, number> = {}
+    for (const key of ["overall", ...ATTRIBUTE_KEYS]) {
+      const value = Number(draft[key])
+      if (Number.isFinite(value) && value >= 1 && value <= 99) input[key] = Math.round(value)
+    }
+    onSave(input)
+    setOpen(false)
+  }
+
+  return (
+    <div className="rounded-lg border border-white/[0.05] bg-white/[0.015] px-2 py-1.5">
+      <div className="flex items-center gap-2 text-[11px]">
+        <span className="w-7 flex-shrink-0 text-center font-black text-gray-300">{player.overall}</span>
+        <span className="w-9 flex-shrink-0 text-gray-600">{player.position}</span>
+        <button
+          onClick={() => (open ? setOpen(false) : startEditing())}
+          className={`min-w-0 flex-1 cursor-pointer truncate text-left ${
+            player.active ? "text-white hover:text-sky-300" : "text-gray-600 line-through"
+          }`}
+        >
+          {player.name}
+        </button>
+
+        {filled ? (
+          <span className="hidden flex-shrink-0 items-center gap-1.5 sm:flex">
+            {attributeRow(player).map((attribute) => (
+              <span key={attribute.label} className="flex w-8 flex-col items-center leading-none">
+                <span className={`text-[11px] font-black tabular-nums ${attributeTone(attribute.value)}`}>
+                  {attribute.value ?? "-"}
+                </span>
+                <span className="text-[8px] uppercase tracking-wide text-gray-700">{attribute.label}</span>
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span className="hidden flex-shrink-0 text-[10px] text-gray-700 sm:block">sem atributos</span>
+        )}
+
+        <button
+          onClick={onEstimate}
+          disabled={busy !== ""}
+          aria-label={`Estimar atributos de ${player.name}`}
+          className="flex-shrink-0 cursor-pointer rounded p-1 text-gray-700 hover:text-violet-400 disabled:cursor-default"
+        >
+          {busy === `attr-${player.id}` ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Sparkles className="h-3 w-3" />
+          )}
+        </button>
+        <button
+          onClick={onRemove}
+          aria-label={`Remover ${player.name}`}
+          className="flex-shrink-0 cursor-pointer rounded p-1 text-gray-700 hover:text-red-400"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
+
+      {open && (
+        <div className="mt-2 space-y-2 border-t border-white/[0.05] pt-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <label className="space-y-1">
+              <span className="block text-[10px] uppercase tracking-wide text-gray-600">Overall</span>
+              <input
+                inputMode="numeric"
+                value={draft.overall ?? ""}
+                onChange={(event) => setDraft({ ...draft, overall: event.target.value.replace(/\D/g, "").slice(0, 2) })}
+                className="h-8 w-full rounded border border-white/10 bg-black/40 px-2 text-center text-[12px] font-bold text-white outline-none focus:border-sky-500/50"
+              />
+            </label>
+            {ATTRIBUTE_KEYS.map((key, index) => (
+              <label key={key} className="space-y-1">
+                <span className="block truncate text-[10px] uppercase tracking-wide text-gray-600">
+                  {labels[index]}
+                </span>
+                <input
+                  inputMode="numeric"
+                  value={draft[key] ?? ""}
+                  onChange={(event) => setDraft({ ...draft, [key]: event.target.value.replace(/\D/g, "").slice(0, 2) })}
+                  className="h-8 w-full rounded border border-white/10 bg-black/40 px-2 text-center text-[12px] text-white outline-none focus:border-sky-500/50"
+                />
+              </label>
+            ))}
+          </div>
+
+          {player.attributesNote && (
+            <p className="text-[10px] leading-snug text-gray-500">
+              {player.attributesNote}
+              {player.attributesModel ? ` (${player.attributesModel})` : ""}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-1.5">
+            <Button size="sm" variant="ghost" onClick={() => setOpen(false)} className="text-[11px]">
+              Fechar
+            </Button>
+            <Button size="sm" onClick={save} disabled={busy !== ""} className="bg-sky-500 text-black hover:bg-sky-400">
+              Salvar
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function CatalogPanel() {
   const [competitions, setCompetitions] = useState<CatalogCompetition[]>([])
@@ -138,7 +289,8 @@ export function CatalogPanel() {
     setError("")
     try {
       await action()
-      setNotice(message)
+      // Ação que já escreveu o próprio aviso passa mensagem vazia.
+      if (message) setNotice(message)
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível concluir a ação.")
@@ -287,6 +439,25 @@ export function CatalogPanel() {
                     </StatusPill>
                   )}
 
+                  <label className="flex cursor-pointer items-center gap-1.5" title="Rodada diária que mantém a base viva">
+                    <Switch
+                      checked={competition.simulationEnabled}
+                      onCheckedChange={(checked) =>
+                        void run(
+                          `sim-${competition.id}`,
+                          () => updateCompetition(competition.id, { simulationEnabled: checked }),
+                          checked
+                            ? `${competition.name} volta a jogar rodadas na base.`
+                            : `${competition.name} congelada na base.`,
+                        )
+                      }
+                    />
+                    <span className="text-[10px] text-gray-500">
+                      Rodadas da base
+                      {competition.worldRound > 0 ? ` (${competition.worldRound})` : ""}
+                    </span>
+                  </label>
+
                   {competition.source !== "MANUAL" && (
                     <Button
                       size="sm"
@@ -397,25 +568,80 @@ export function CatalogPanel() {
                           </div>
 
                           {openTeam?.id === team.id && players.length > 0 && (
-                            <div className="mt-2 max-h-48 space-y-1 overflow-y-auto border-t border-white/[0.06] pt-2">
-                              {players.map((player) => (
-                                <div key={player.id} className="flex items-center gap-2 text-[11px]">
-                                  <span className="w-8 flex-shrink-0 font-black text-gray-400">{player.overall}</span>
-                                  <span className="w-10 flex-shrink-0 text-gray-600">{player.position}</span>
-                                  <span className={`min-w-0 flex-1 truncate ${player.active ? "text-white" : "text-gray-600 line-through"}`}>
-                                    {player.name}
-                                  </span>
-                                  <button
-                                    onClick={() =>
+                            <div className="mt-2 space-y-2 border-t border-white/[0.06] pt-2">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={busy !== ""}
+                                  onClick={() =>
+                                    void run(
+                                      `attrs-${team.id}`,
+                                      async () => {
+                                        const result = await estimateTeamAttributes(team.id, true)
+                                        setNotice(
+                                          `${result.updated} de ${result.requested} jogadores estimados por ${result.model}.`,
+                                        )
+                                      },
+                                      "",
+                                    )
+                                  }
+                                >
+                                  {busy === `attrs-${team.id}` ? (
+                                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                  )}
+                                  Estimar quem falta
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={busy !== ""}
+                                  onClick={() =>
+                                    void run(
+                                      `attrs-all-${team.id}`,
+                                      async () => {
+                                        const result = await estimateTeamAttributes(team.id, false)
+                                        setNotice(
+                                          `${result.updated} de ${result.requested} jogadores refeitos por ${result.model}.`,
+                                        )
+                                      },
+                                      "",
+                                    )
+                                  }
+                                  className="text-[11px] text-gray-500"
+                                >
+                                  Refazer o elenco todo
+                                </Button>
+                              </div>
+
+                              <div className="max-h-64 space-y-1 overflow-y-auto">
+                                {players.map((player) => (
+                                  <PlayerRow
+                                    key={player.id}
+                                    player={player}
+                                    busy={busy}
+                                    onEstimate={() =>
+                                      void run(
+                                        `attr-${player.id}`,
+                                        () => estimatePlayerAttributes(player.id),
+                                        `Atributos de ${player.name} estimados.`,
+                                      )
+                                    }
+                                    onSave={(input) =>
+                                      void run(
+                                        `save-${player.id}`,
+                                        () => updateCatalogPlayer(player.id, input),
+                                        `${player.name} atualizado.`,
+                                      )
+                                    }
+                                    onRemove={() =>
                                       void run(player.id, () => removeCatalogPlayer(player.id), "Jogador removido.")
                                     }
-                                    aria-label={`Remover ${player.name}`}
-                                    className="cursor-pointer text-gray-700 hover:text-red-400"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              ))}
+                                  />
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>

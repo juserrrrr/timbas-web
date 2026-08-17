@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Crown, Loader2, Play, ShieldCheck, Trash2, Upload, UserCog } from "lucide-react"
+import { useEffect, useState } from "react"
+import { CalendarClock, Crown, Globe2, Loader2, Play, ShieldCheck, Trash2, Upload, UserCog } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { StatusPill } from "@/components/competitions/shared"
+import { listCompetitions } from "@/lib/services/catalog"
 import {
   importDraftPlayers,
   removeDraftStaff,
@@ -18,7 +19,7 @@ import {
   updateDraftLeague,
   type PlayerImportInput,
 } from "@/lib/services/draft"
-import type { DraftLeagueDetail } from "@/lib/services/draft.types"
+import { RESULT_MODE_LABELS, WEEKDAY_SHORT, type DraftLeagueDetail } from "@/lib/services/draft.types"
 
 const IMPORT_EXAMPLE = `Neymar;ATA;89;Santos;500
 Alisson;GOL;88;Liverpool;400
@@ -49,8 +50,17 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
+  const [competitions, setCompetitions] = useState<Array<{ id: string; name: string }>>([])
+
+  useEffect(() => {
+    if (!league.access.canManage) return
+    listCompetitions()
+      .then((result) => setCompetitions(result.items))
+      .catch(() => setCompetitions([]))
+  }, [league.access.canManage])
 
   const parsed = parsePlayers(raw)
+  const sourceIds = league.sources.map((source) => source.competitionId)
 
   const run = async (action: () => Promise<unknown>, message: string) => {
     setBusy(true)
@@ -130,25 +140,210 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
         </Card>
       )}
 
-      {league.access.canManage && league.status === "ACTIVE" && (
+      {league.access.canManage && (
         <Card className="border-white/[0.07] bg-white/[0.025] p-4">
-          <label className="flex cursor-pointer items-center justify-between">
-            <span>
-              <span className="block text-sm font-bold text-white">Janela de transferências</span>
-              <span className="block text-[11px] text-gray-500">
-                Quando fechada, ninguém compra, vende ou troca jogadores
+          <div className="mb-3 flex items-center gap-2">
+            <CalendarClock className="h-4 w-4 text-violet-400" />
+            <h3 className="text-sm font-black text-white">Calendário, simulação e mercado</h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Dias de rodada</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {WEEKDAY_SHORT.map((label, day) => {
+                  const active = league.matchDays.includes(day)
+                  return (
+                    <button
+                      key={day}
+                      disabled={busy}
+                      onClick={() => {
+                        const next = active
+                          ? league.matchDays.filter((item) => item !== day)
+                          : [...league.matchDays, day].sort((first, second) => first - second)
+                        if (next.length === 0) return
+                        void run(
+                          () => updateDraftLeague(league.id, { matchDays: next }),
+                          `Rodadas em ${next.map((item) => WEEKDAY_SHORT[item]).join(", ")}.`,
+                        )
+                      }}
+                      className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs font-bold transition ${
+                        active
+                          ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                          : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[11px] text-gray-600">
+                A rodada é marcada nesses dias, às {String(league.matchHour).padStart(2, "0")}h.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="match-hour">Hora da rodada</Label>
+                <Input
+                  id="match-hour"
+                  type="number"
+                  min={0}
+                  max={23}
+                  defaultValue={league.matchHour}
+                  onBlur={(event) => {
+                    const hour = Number(event.target.value)
+                    if (hour === league.matchHour || hour < 0 || hour > 23) return
+                    void run(() => updateDraftLeague(league.id, { matchHour: hour }), `Rodadas às ${hour}h.`)
+                  }}
+                  className="border-white/10 bg-white/[0.03]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="market-close">Mercado fecha antes (minutos)</Label>
+                <Input
+                  id="market-close"
+                  type="number"
+                  min={0}
+                  max={10080}
+                  defaultValue={league.marketClosesMinutesBefore}
+                  onBlur={(event) => {
+                    const minutes = Number(event.target.value)
+                    if (minutes === league.marketClosesMinutesBefore || minutes < 0) return
+                    void run(
+                      () => updateDraftLeague(league.id, { marketClosesMinutesBefore: minutes }),
+                      `Mercado fecha ${minutes} minutos antes da rodada.`,
+                    )
+                  }}
+                  className="border-white/10 bg-white/[0.03]"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              {(["REPORTED", "SIMULATED"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  disabled={busy}
+                  onClick={() =>
+                    void run(
+                      () => updateDraftLeague(league.id, { resultMode: mode }),
+                      mode === "SIMULATED"
+                        ? "A rodada passa a ser jogada pelo servidor."
+                        : "O placar volta a ser lançado por quem joga.",
+                    )
+                  }
+                  className={`cursor-pointer rounded-xl border p-3 text-left transition ${
+                    league.resultMode === mode
+                      ? "border-violet-500/40 bg-violet-500/[0.08]"
+                      : "border-white/[0.07] bg-white/[0.02] hover:border-white/15"
+                  }`}
+                >
+                  <span
+                    className={`block text-sm font-bold ${
+                      league.resultMode === mode ? "text-violet-300" : "text-white"
+                    }`}
+                  >
+                    {RESULT_MODE_LABELS[mode]}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] leading-snug text-gray-500">
+                    {mode === "SIMULATED"
+                      ? "No dia e hora da rodada o servidor joga a partida com atributos, forma e tática, e dá nota para cada jogador."
+                      : "Quem jogou manda o placar com foto, e a IA confere antes de contabilizar."}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-white">Mercado automático</span>
+                <span className="block text-[11px] leading-snug text-gray-500">
+                  Fecha sozinho antes da rodada e reabre quando ela termina
+                </span>
               </span>
-            </span>
-            <Switch
-              checked={league.transferWindowOpen}
-              onCheckedChange={(checked) =>
-                void run(
-                  () => updateDraftLeague(league.id, { transferWindowOpen: checked }),
-                  checked ? "Mercado aberto." : "Mercado fechado.",
-                )
-              }
-            />
-          </label>
+              <Switch
+                checked={league.marketAutoManaged}
+                onCheckedChange={(checked) =>
+                  void run(
+                    () => updateDraftLeague(league.id, { marketAutoManaged: checked }),
+                    checked ? "Mercado no automático." : "Mercado no manual.",
+                  )
+                }
+              />
+            </label>
+
+            {league.status === "ACTIVE" && (
+              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-white">Janela de transferências</span>
+                  <span className="block text-[11px] leading-snug text-gray-500">
+                    {league.marketAutoManaged
+                      ? "No automático isso volta a mudar sozinho na próxima checagem"
+                      : "Quando fechada, ninguém compra, vende ou troca jogadores"}
+                  </span>
+                </span>
+                <Switch
+                  checked={league.transferWindowOpen}
+                  onCheckedChange={(checked) =>
+                    void run(
+                      () => updateDraftLeague(league.id, { transferWindowOpen: checked }),
+                      checked ? "Mercado aberto." : "Mercado fechado.",
+                    )
+                  }
+                />
+              </label>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {league.access.canManage && (
+        <Card className="border-white/[0.07] bg-white/[0.025] p-4">
+          <div className="mb-1 flex items-center gap-2">
+            <Globe2 className="h-4 w-4 text-sky-400" />
+            <h3 className="text-sm font-black text-white">De onde vêm os jogadores</h3>
+          </div>
+          <p className="mb-3 text-[11px] text-gray-500">
+            Marque as competições da base que esta liga aceita. Só o Brasileirão deixa a liga fechada nele; com mais de
+            uma, dá para contratar de fora durante a temporada.
+          </p>
+
+          <div className="flex flex-wrap gap-1.5">
+            {competitions.map((competition) => {
+              const active = sourceIds.includes(competition.id)
+              return (
+                <button
+                  key={competition.id}
+                  disabled={busy}
+                  onClick={() => {
+                    const next = active
+                      ? sourceIds.filter((item) => item !== competition.id)
+                      : [...sourceIds, competition.id]
+                    void run(
+                      () => updateDraftLeague(league.id, { sourceCompetitionIds: next }),
+                      next.length === 0
+                        ? "Liga fechada no pool atual."
+                        : `${next.length} competição(ões) liberada(s).`,
+                    )
+                  }}
+                  className={`cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+                    active
+                      ? "border-sky-500/40 bg-sky-500/10 text-sky-300"
+                      : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
+                  }`}
+                >
+                  {competition.name}
+                </button>
+              )
+            })}
+            {competitions.length === 0 && (
+              <p className="text-[11px] text-gray-600">
+                Nenhuma competição na base ainda. Monte a base de jogadores primeiro.
+              </p>
+            )}
+          </div>
         </Card>
       )}
 

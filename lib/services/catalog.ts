@@ -14,6 +14,9 @@ export interface CatalogCompetition {
   lastSyncMessage: string | null
   teamCount: number
   playerCount: number
+  simulationEnabled: boolean
+  worldRound: number
+  lastWorldTickAt: string | null
 }
 
 export interface CatalogTeam {
@@ -38,6 +41,15 @@ export interface CatalogPlayer {
   price: number
   active: boolean
   source: CatalogSource
+  pace: number | null
+  shooting: number | null
+  passing: number | null
+  dribbling: number | null
+  defending: number | null
+  physical: number | null
+  attributesModel: string | null
+  attributesNote: string | null
+  attributesAt: string | null
 }
 
 export interface ExtractedPlayer {
@@ -117,6 +129,17 @@ export function updateCatalogPlayer(playerId: string, input: Record<string, unkn
 
 export function removeCatalogPlayer(playerId: string) {
   return remove<{ deleted: boolean }>(`/admin/catalog/players/${playerId}`)
+}
+
+export function estimateTeamAttributes(
+  teamId: string,
+  onlyMissing: boolean,
+): Promise<{ updated: number; requested: number; model: string; missing: number }> {
+  return post(`/admin/catalog/teams/${teamId}/estimate-attributes`, { onlyMissing })
+}
+
+export function estimatePlayerAttributes(playerId: string): Promise<CatalogPlayer> {
+  return post(`/admin/catalog/players/${playerId}/estimate-attributes`)
 }
 
 export interface ExtractedTeam {

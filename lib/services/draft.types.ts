@@ -5,6 +5,9 @@ export type DraftOrderType = "SNAKE" | "LINEAR"
 export type DraftMatchStatus = "SCHEDULED" | "AWAITING_PROOF" | "FINISHED"
 export type TransferOfferKind = "BUY_FREE_AGENT" | "BUY_FROM_ROSTER" | "SWAP"
 export type TransferOfferStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELLED" | "EXPIRED"
+export type DraftResultMode = "REPORTED" | "SIMULATED"
+export type TacticMentality = "DEFENSIVE" | "BALANCED" | "ATTACKING"
+export type TacticIntensity = "LOW" | "MEDIUM" | "HIGH"
 
 export interface DraftPlayer {
   id: string
@@ -15,6 +18,12 @@ export interface DraftPlayer {
   nationality: string | null
   photoUrl: string | null
   price: number
+  pace: number | null
+  shooting: number | null
+  passing: number | null
+  dribbling: number | null
+  defending: number | null
+  physical: number | null
   rosterId: string | null
   starter: boolean
   slot: string | null
@@ -22,6 +31,8 @@ export interface DraftPlayer {
   goals: number
   assists: number
   rating: number | null
+  lastRating: number | null
+  form: number
   roster?: { id: string; name: string; tag: string | null } | null
 }
 
@@ -31,6 +42,10 @@ export interface DraftRoster {
   tag: string | null
   logoUrl: string | null
   formation: string
+  mentality: TacticMentality
+  pressing: TacticIntensity
+  tempo: TacticIntensity
+  tacticsAt: string | null
   draftOrder: number
   userId: number
   played: number
@@ -93,7 +108,10 @@ export interface DraftLeagueSummary {
   matchHour: number
   totalRounds: number
   currentRound: number
+  resultMode: DraftResultMode
   transferWindowOpen: boolean
+  marketAutoManaged: boolean
+  marketClosesMinutesBefore: number
   createdAt: string
   _count?: { rosters: number; players: number }
   staff?: Array<{ user: UserRef }>
@@ -110,6 +128,7 @@ export interface DraftLeagueDetail extends DraftLeagueSummary {
   startedAt: string | null
   finishedAt: string | null
   staff: Array<{ id: string; userId: number; role: CompetitionRole; user: UserRef }>
+  sources: Array<{ id: string; competitionId: string; competition: { id: string; name: string; country: string | null } }>
   rosters: DraftRoster[]
   access: DraftAccess
   standings: DraftStandingRow[]
@@ -179,6 +198,23 @@ export const OFFER_KIND_LABELS: Record<TransferOfferKind, string> = {
 }
 
 export const FORMATIONS = ["4-3-3", "4-4-2", "4-2-3-1", "3-5-2", "3-4-3", "5-3-2", "4-1-4-1"]
+
+export const RESULT_MODE_LABELS: Record<DraftResultMode, string> = {
+  REPORTED: "Placar lançado por quem joga",
+  SIMULATED: "Rodada simulada pelo servidor",
+}
+
+export const MENTALITY_LABELS: Record<TacticMentality, string> = {
+  DEFENSIVE: "Retranca",
+  BALANCED: "Equilibrado",
+  ATTACKING: "Ofensivo",
+}
+
+export const INTENSITY_LABELS: Record<TacticIntensity, string> = {
+  LOW: "Baixa",
+  MEDIUM: "Média",
+  HIGH: "Alta",
+}
 
 export const POSITION_GROUPS: Record<string, string[]> = {
   GOL: ["GOL", "GK"],

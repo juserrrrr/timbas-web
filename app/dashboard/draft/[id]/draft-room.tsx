@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { EmptyState, StatusPill } from "@/components/competitions/shared"
+import { attributeRow, attributeTone, hasAttributes } from "@/lib/attributes"
 import { listDraftPlayers, makePick } from "@/lib/services/draft"
 import type { DraftLeagueDetail, DraftPlayer } from "@/lib/services/draft.types"
 
@@ -209,25 +210,40 @@ export function DraftRoom({ league, onChanged }: { league: DraftLeagueDetail; on
       ) : (
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {visible.map((player) => (
-            <Card key={player.id} className="flex items-center gap-3 border-white/[0.07] bg-white/[0.025] p-3">
-              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-sm font-black text-white">
-                {player.overall}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-white">{player.name}</p>
-                <p className="truncate text-[11px] text-gray-600">
-                  {player.position}
-                  {player.realTeam ? ` · ${player.realTeam}` : ""}
-                </p>
+            <Card key={player.id} className="border-white/[0.07] bg-white/[0.025] p-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-sm font-black text-white">
+                  {player.overall}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-white">{player.name}</p>
+                  <p className="truncate text-[11px] text-gray-600">
+                    {player.position}
+                    {player.realTeam ? ` · ${player.realTeam}` : ""}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => void pick(player.id)}
+                  disabled={(!myTurn && !canPickForOthers) || pickingId !== ""}
+                  className="flex-shrink-0 bg-emerald-500 text-black hover:bg-emerald-400"
+                >
+                  {pickingId === player.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Escolher"}
+                </Button>
               </div>
-              <Button
-                size="sm"
-                onClick={() => void pick(player.id)}
-                disabled={(!myTurn && !canPickForOthers) || pickingId !== ""}
-                className="flex-shrink-0 bg-emerald-500 text-black hover:bg-emerald-400"
-              >
-                {pickingId === player.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Escolher"}
-              </Button>
+
+              {hasAttributes(player) && (
+                <div className="mt-2 flex items-center justify-between gap-1 border-t border-white/[0.05] pt-2">
+                  {attributeRow(player).map((attribute) => (
+                    <span key={attribute.label} className="flex flex-1 flex-col items-center leading-none">
+                      <span className={`text-[12px] font-black tabular-nums ${attributeTone(attribute.value)}`}>
+                        {attribute.value ?? "-"}
+                      </span>
+                      <span className="text-[8px] uppercase tracking-wide text-gray-700">{attribute.label}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
             </Card>
           ))}
 

@@ -4,7 +4,10 @@ import type {
   DraftLeagueSummary,
   DraftMatch,
   DraftPlayer,
+  DraftResultMode,
   DraftRoster,
+  TacticIntensity,
+  TacticMentality,
   TransferOffer,
   TransferOfferKind,
 } from "./draft.types"
@@ -24,6 +27,10 @@ export interface CreateDraftLeagueInput {
   coinsWin?: number
   coinsDraw?: number
   coinsLoss?: number
+  resultMode?: DraftResultMode
+  marketAutoManaged?: boolean
+  marketClosesMinutesBefore?: number
+  sourceCompetitionIds?: string[]
 }
 
 export interface PlayerImportInput {
@@ -104,6 +111,59 @@ export function startDraft(id: string, shuffle = true) {
 
 export function makePick(id: string, playerId: string, rosterId?: string) {
   return post(`/draft/${id}/pick`, { playerId, rosterId })
+}
+
+export function setTactics(
+  id: string,
+  input: {
+    rosterId?: string
+    formation?: string
+    mentality?: TacticMentality
+    pressing?: TacticIntensity
+    tempo?: TacticIntensity
+  },
+) {
+  return post<DraftRoster>(`/draft/${id}/tactics`, input)
+}
+
+export interface BaseMarketPlayer {
+  id: string
+  name: string
+  position: string
+  overall: number
+  price: number
+  photoUrl: string | null
+  nationality: string | null
+  pace: number | null
+  shooting: number | null
+  passing: number | null
+  dribbling: number | null
+  defending: number | null
+  physical: number | null
+  form: number
+  ratingAvg: number | null
+  team: { name: string; competition: { id: string; name: string } }
+}
+
+export function listBaseMarket(
+  id: string,
+  params: { search?: string; competitionId?: string } = {},
+): Promise<{
+  competitions: Array<{ id: string; name: string; country: string | null }>
+  players: BaseMarketPlayer[]
+}> {
+  const search = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => Boolean(value)) as [string, string][],
+  )
+  return request(`/draft/${id}/base-market${search.size ? `?${search}` : ""}`)
+}
+
+export function signFromBase(id: string, catalogPlayerId: string) {
+  return post<{ signed: boolean; price: number }>(`/draft/${id}/base-market/sign`, { catalogPlayerId })
+}
+
+export function simulateDraftMatch(id: string, matchId: string) {
+  return post<{ homeScore: number; awayScore: number; summary: string }>(`/draft/${id}/matches/${matchId}/simulate`)
 }
 
 export function setLineup(id: string, formation: string, starters: Array<{ playerId: string; slot: string }>) {
