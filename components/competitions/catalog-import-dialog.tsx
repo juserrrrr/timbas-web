@@ -14,6 +14,7 @@ import {
   parsePastedPlayers,
   parsePastedTeams,
   parseSquadWithAi,
+  saveBasePlayers,
   saveCatalogPlayers,
   type ExtractedPlayer,
   type ExtractedTeam,
@@ -168,13 +169,22 @@ export function CatalogImportDialog({
         )
         onOpenChange(false)
         onImported(`${result.created} times adicionados, ${result.total} no total.`)
-      } else {
+      } else if (teamId) {
         const result = await saveCatalogPlayers(
-          teamId!,
+          teamId,
           rows.map((row) => ({ name: row.name, position: row.position || "MEI", overall: row.overall ?? 70 })),
         )
         onOpenChange(false)
         onImported(`${result.created} jogadores criados e ${result.updated} atualizados em ${teamName}.`)
+      } else {
+        // Sem time escolhido, a lista cai direto na base: ela é uma só.
+        const result = await saveBasePlayers(
+          rows.map((row) => ({ name: row.name, position: row.position || "MEI", overall: row.overall ?? 70 })),
+        )
+        onOpenChange(false)
+        onImported(
+          `${result.created} jogadores entraram na base${result.skipped > 0 ? `, ${result.skipped} já estavam lá` : ""}.`,
+        )
       }
     })
 

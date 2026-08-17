@@ -186,7 +186,7 @@ export function AppSidebar({
 
       <aside
         style={{ width: expanded ? PANEL : RAIL }}
-        className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden border-r border-white/[0.06] bg-[#07070c] transition-[width] duration-300 ease-out ${
+        className={`fixed left-0 top-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-r border-white/[0.06] bg-[#07070c] transition-[width] duration-300 ease-out ${
           expanded ? "shadow-2xl shadow-black/60" : ""
         }`}
       >

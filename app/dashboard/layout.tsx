@@ -10,7 +10,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <ServerProvider>
       <NavigationProvider>
-      <div className="relative min-h-screen overflow-x-clip bg-[#050508] text-white">
+      <div className="relative min-h-[100dvh] overflow-x-clip bg-[#050508] text-white">
         <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle,_#ffffff06_1px,_transparent_1px)] bg-[size:28px_28px] [mask-image:linear-gradient(to_bottom,black,transparent_82%)]" />
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent" />
@@ -28,7 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <UserMenu />
         </header>
 
-        <main className="min-h-screen pb-20 pt-14 md:ml-[65px] md:pb-0">
+        <main className="min-h-[100dvh] pb-20 pt-14 md:ml-[65px] md:pb-0">
           <div className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-5 sm:py-6 md:px-7 md:py-8 xl:px-10">{children}</div>
         </main>
 

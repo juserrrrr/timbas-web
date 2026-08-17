@@ -24,7 +24,7 @@ export function BetaMark({ className }: { className?: string }) {
         className,
       )}
     >
-      b
+      B
     </span>
   )
 }

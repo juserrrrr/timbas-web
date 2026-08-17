@@ -74,6 +74,44 @@ export const SOURCE_LABELS: Record<CatalogSource, string> = {
   GENERIC: "URL própria",
 }
 
+export interface BasePlayer extends CatalogPlayer {
+  team: { id: string; name: string; competition: { id: string; name: string } }
+}
+
+/// A base é uma só: essa é a lista dela, sem passar por competição.
+export function listBasePlayers(params: { search?: string; missingAttributes?: boolean } = {}): Promise<{
+  players: BasePlayer[]
+  total: number
+  withAttributes: number
+}> {
+  const search = new URLSearchParams(
+    Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== "" && value !== false)
+      .map(([key, value]) => [key, String(value)]),
+  )
+  return request(`/admin/catalog/players${search.size ? `?${search}` : ""}`)
+}
+
+export function createBasePlayer(input: {
+  name: string
+  position: string
+  realTeam?: string
+  overall?: number
+  price?: number
+}): Promise<BasePlayer> {
+  return post("/admin/catalog/players", input)
+}
+
+export function saveBasePlayers(
+  players: Array<{ name: string; position: string; overall?: number }>,
+): Promise<{ created: number; skipped: number; total: number }> {
+  return post("/admin/catalog/players/bulk", { players })
+}
+
+export function estimateMissingAttributes(limit = 24): Promise<{ updated: number; requested: number; model: string }> {
+  return post("/admin/catalog/players/estimate-missing", { limit })
+}
+
 export function listCompetitions(): Promise<{ items: CatalogCompetition[]; footballDataReady: boolean }> {
   return request("/admin/catalog/competitions")
 }
@@ -184,7 +222,7 @@ export function extractSquadFromImage(input: {
 
 export function importCatalogToLeague(input: {
   leagueId: string
-  competitionId: string
+  competitionId?: string
   teamIds?: string[]
   minOverall?: number
   replace?: boolean

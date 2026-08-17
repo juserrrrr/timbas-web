@@ -62,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!checked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050508]">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[#050508]">
         <div className="flex h-12 w-12 animate-pulse items-center justify-center rounded-xl bg-orange-500/20">
           <ShieldAlert className="h-6 w-6 text-orange-400" />
         </div>
@@ -71,7 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="relative min-h-screen bg-[#050508] text-white">
+    <div className="relative min-h-[100dvh] bg-[#050508] text-white">
       <Toaster
         position="top-right"
         expand
@@ -101,8 +101,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <AdminSidebar permissions={permissions} userName={user?.name ?? ""} onLogout={handleLogout} />
 
-      <main className="ml-[65px] min-h-screen">
-        <div className="mx-auto max-w-7xl px-6 py-8">{children}</div>
+      <main className="ml-[65px] min-h-[100dvh]">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
       </main>
     </div>
   )
