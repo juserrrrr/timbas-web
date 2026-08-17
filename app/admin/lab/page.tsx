@@ -1,0 +1,345 @@
+"use client"
+
+import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
+import { ArrowUpRight, FlaskConical, Loader2, Play, Trash2, Trophy, Users } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import {
+  CompetitionHeader,
+  ErrorState,
+  PageLoading,
+  StatusPill,
+  formatDateTime,
+} from "@/components/competitions/shared"
+import {
+  buildDemoDraft,
+  buildDemoTournament,
+  clearDemoData,
+  listDemoData,
+  type DemoDraftStage,
+  type DemoInventory,
+  type DemoTournamentStage,
+} from "@/lib/services/demo"
+import { FORMAT_LABELS, type TournamentFormat } from "@/lib/services/tournaments.types"
+
+const FORMATS = Object.keys(FORMAT_LABELS) as TournamentFormat[]
+const TEAM_COUNTS = [4, 5, 8, 12, 16]
+
+const TOURNAMENT_STAGES: Array<{ id: DemoTournamentStage; label: string; hint: string }> = [
+  { id: "REGISTRATION", label: "Só inscrito", hint: "Times cadastrados, chave ainda não gerada" },
+  { id: "STARTED", label: "Chave gerada", hint: "Confrontos sorteados, nada jogado" },
+  { id: "PARTIAL", label: "Meio andamento", hint: "Primeira rodada resolvida" },
+  { id: "FINISHED", label: "Até o campeão", hint: "Simula tudo e fecha o campeonato" },
+]
+
+const DRAFT_STAGES: Array<{ id: DemoDraftStage; label: string; hint: string }> = [
+  { id: "SETUP", label: "Montada", hint: "Elencos e pool prontos, draft fechado" },
+  { id: "DRAFTING", label: "Draft rolando", hint: "Sala aberta com cronômetro" },
+  { id: "ACTIVE", label: "Temporada", hint: "Elencos completos e rodadas agendadas" },
+  { id: "PLAYED", label: "Encerrada", hint: "Todas as rodadas simuladas" },
+]
+
+const STAGE_ACCENTS = {
+  amber: { border: "border-amber-500/40 bg-amber-500/[0.08]", text: "text-amber-300" },
+  emerald: { border: "border-emerald-500/40 bg-emerald-500/[0.08]", text: "text-emerald-300" },
+} as const
+
+function StagePicker<T extends string>({
+  stages,
+  value,
+  onChange,
+  accent,
+}: {
+  stages: Array<{ id: T; label: string; hint: string }>
+  value: T
+  onChange: (stage: T) => void
+  accent: keyof typeof STAGE_ACCENTS
+}) {
+  const tone = STAGE_ACCENTS[accent]
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {stages.map((stage) => (
+        <button
+          key={stage.id}
+          onClick={() => onChange(stage.id)}
+          className={`cursor-pointer rounded-xl border p-3 text-left transition ${
+            value === stage.id ? tone.border : "border-white/[0.07] bg-white/[0.02] hover:border-white/15"
+          }`}
+        >
+          <span className={`block text-sm font-bold ${value === stage.id ? tone.text : "text-white"}`}>
+            {stage.label}
+          </span>
+          <span className="mt-0.5 block text-[11px] leading-snug text-gray-500">{stage.hint}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function Chips<T extends string | number>({
+  options,
+  value,
+  onChange,
+  render,
+}: {
+  options: T[]
+  value: T
+  onChange: (option: T) => void
+  render?: (option: T) => string
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((option) => (
+        <button
+          key={String(option)}
+          onClick={() => onChange(option)}
+          className={`cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+            value === option
+              ? "border-orange-500/40 bg-orange-500/10 text-orange-300"
+              : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
+          }`}
+        >
+          {render ? render(option) : String(option)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export default function DemoLabPage() {
+  const [inventory, setInventory] = useState<DemoInventory | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState("")
+  const [error, setError] = useState("")
+  const [notice, setNotice] = useState("")
+
+  const [format, setFormat] = useState<TournamentFormat>("SINGLE_ELIMINATION")
+  const [teamCount, setTeamCount] = useState(8)
+  const [thirdPlace, setThirdPlace] = useState(true)
+  const [tournamentStage, setTournamentStage] = useState<DemoTournamentStage>("PARTIAL")
+
+  const [rosterCount, setRosterCount] = useState(4)
+  const [rosterSize, setRosterSize] = useState(5)
+  const [draftStage, setDraftStage] = useState<DemoDraftStage>("ACTIVE")
+
+  const load = useCallback(async () => {
+    try {
+      setInventory(await listDemoData())
+      setError("")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível carregar os dados de demonstração")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  if (loading) return <PageLoading />
+  if (error && !inventory) return <ErrorState message={error} retry={() => void load()} />
+
+  const run = async (key: string, action: () => Promise<{ message: string }>) => {
+    setBusy(key)
+    setError("")
+    try {
+      const result = await action()
+      setNotice(result.message)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível gerar a demonstração.")
+    } finally {
+      setBusy("")
+    }
+  }
+
+  const total = (inventory?.tournaments.length ?? 0) + (inventory?.leagues.length ?? 0)
+
+  return (
+    <div className="space-y-6">
+      <CompetitionHeader
+        eyebrow="Administração"
+        title="Laboratório"
+        subtitle="Gere campeonatos e ligas de mentira para conferir chave, tabela e telas antes de valer."
+        icon={FlaskConical}
+        accent="text-orange-400"
+        accentBg="bg-orange-500/10 border-orange-500/20"
+        actions={
+          total > 0 && (
+            <Button
+              variant="outline"
+              disabled={busy !== ""}
+              onClick={() =>
+                void run("clear", async () => {
+                  const result = await clearDemoData()
+                  return {
+                    message: `Removidos ${result.tournaments} campeonatos, ${result.leagues} ligas e ${result.users} usuários de teste.`,
+                  }
+                })
+              }
+              className="border-red-500/25 text-red-400 hover:bg-red-500/10"
+            >
+              {busy === "clear" ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-1.5 h-4 w-4" />
+              )}
+              Apagar tudo de teste
+            </Button>
+          )
+        }
+      />
+
+      <p className="rounded-lg border border-orange-500/20 bg-orange-500/[0.06] px-3 py-2 text-[11px] text-orange-200">
+        Tudo criado aqui nasce com o nome começando em <span className="font-mono">[DEMO]</span>, não paga moedas e pode
+        ser apagado de uma vez pelo botão acima. Os elencos de draft usam usuários de teste próprios, sem tocar em
+        ninguém real.
+      </p>
+
+      {notice && <p className="rounded-lg bg-white/[0.03] px-3 py-2 text-[12px] text-gray-300">{notice}</p>}
+      {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[12px] text-red-300">{error}</p>}
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card className="border-white/[0.07] bg-white/[0.025] p-4">
+          <div className="mb-4 flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-amber-400" />
+            <h3 className="text-sm font-black text-white">Campeonato de teste</h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Formato</Label>
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {FORMATS.map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => setFormat(option)}
+                    className={`cursor-pointer rounded-lg border px-3 py-2 text-left text-xs font-bold transition ${
+                      format === option
+                        ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                        : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
+                    }`}
+                  >
+                    {FORMAT_LABELS[option]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Times</Label>
+              <Chips options={TEAM_COUNTS} value={teamCount} onChange={setTeamCount} />
+              <p className="text-[11px] text-gray-600">
+                Use 5 ou 12 para conferir como a chave lida com byes.
+              </p>
+            </div>
+
+            {format === "SINGLE_ELIMINATION" && (
+              <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2">
+                <span className="text-[12px] text-gray-300">Incluir disputa de 3º lugar</span>
+                <Switch checked={thirdPlace} onCheckedChange={setThirdPlace} />
+              </label>
+            )}
+
+            <div className="space-y-1.5">
+              <Label>Até onde simular</Label>
+              <StagePicker stages={TOURNAMENT_STAGES} value={tournamentStage} onChange={setTournamentStage} accent="amber" />
+            </div>
+
+            <Button
+              disabled={busy !== ""}
+              onClick={() =>
+                void run("tournament", () =>
+                  buildDemoTournament({ format, teamCount, thirdPlace, stage: tournamentStage }),
+                )
+              }
+              className="w-full bg-amber-500 text-black hover:bg-amber-400"
+            >
+              {busy === "tournament" ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="mr-1.5 h-4 w-4" />
+              )}
+              Gerar campeonato
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="border-white/[0.07] bg-white/[0.025] p-4">
+          <div className="mb-4 flex items-center gap-2">
+            <Users className="h-4 w-4 text-emerald-400" />
+            <h3 className="text-sm font-black text-white">Liga draft de teste</h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Elencos</Label>
+              <Chips options={[2, 4, 6, 8]} value={rosterCount} onChange={setRosterCount} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Jogadores por elenco</Label>
+              <Chips options={[3, 5, 8, 11]} value={rosterSize} onChange={setRosterSize} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Até onde simular</Label>
+              <StagePicker stages={DRAFT_STAGES} value={draftStage} onChange={setDraftStage} accent="emerald" />
+            </div>
+
+            <Button
+              disabled={busy !== ""}
+              onClick={() => void run("draft", () => buildDemoDraft({ rosterCount, rosterSize, stage: draftStage }))}
+              className="w-full bg-emerald-500 text-black hover:bg-emerald-400"
+            >
+              {busy === "draft" ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="mr-1.5 h-4 w-4" />
+              )}
+              Gerar liga draft
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      {total > 0 && (
+        <Card className="border-white/[0.07] bg-white/[0.025] p-4">
+          <h3 className="mb-3 text-sm font-black text-white">Criados até agora ({total})</h3>
+          <div className="space-y-1.5">
+            {inventory?.tournaments.map((item) => (
+              <Link
+                key={item.id}
+                href={`/dashboard/tournaments/${item.id}`}
+                className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 transition hover:border-amber-500/30"
+              >
+                <Trophy className="h-4 w-4 flex-shrink-0 text-amber-400" />
+                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-white">{item.name}</span>
+                <StatusPill tone="neutral">{FORMAT_LABELS[item.format]}</StatusPill>
+                <span className="hidden text-[11px] text-gray-600 sm:block">{formatDateTime(item.createdAt)}</span>
+                <ArrowUpRight className="h-3.5 w-3.5 flex-shrink-0 text-gray-600" />
+              </Link>
+            ))}
+            {inventory?.leagues.map((item) => (
+              <Link
+                key={item.id}
+                href={`/dashboard/draft/${item.id}`}
+                className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 transition hover:border-emerald-500/30"
+              >
+                <Users className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-white">{item.name}</span>
+                <StatusPill tone="neutral">{item.status}</StatusPill>
+                <span className="hidden text-[11px] text-gray-600 sm:block">{formatDateTime(item.createdAt)}</span>
+                <ArrowUpRight className="h-3.5 w-3.5 flex-shrink-0 text-gray-600" />
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  )
+}

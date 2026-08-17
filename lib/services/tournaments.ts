@@ -31,6 +31,8 @@ export interface CreateTournamentInput {
   requireProof?: boolean
   autoApproveProof?: boolean
   autoApproveMinConfidence?: number
+  registrationEndsAt?: string
+  autoStartOnClose?: boolean
 }
 
 export function listTournaments(params: {

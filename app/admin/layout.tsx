@@ -14,6 +14,7 @@ import {
   LogOut,
   Gamepad2,
   Brain,
+  FlaskConical,
 } from "lucide-react"
 import { Toaster, toast } from "sonner"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -26,6 +27,7 @@ const NAV = [
   { icon: Server,          label: "Servidores",   href: "/admin/servers",  color: "text-green-400",  glow: "bg-green-500/10",  active: "border-green-500/20" },
   { icon: Gamepad2,        label: "EA FC Clubs",  href: "/admin/ea-clubs", color: "text-blue-400",   glow: "bg-blue-500/10",   active: "border-blue-500/20" },
   { icon: Brain,           label: "IA",           href: "/admin/ai",       color: "text-violet-400", glow: "bg-violet-500/10", active: "border-violet-500/20" },
+  { icon: FlaskConical,    label: "Laboratório",  href: "/admin/lab",      color: "text-orange-400", glow: "bg-orange-500/10", active: "border-orange-500/20" },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
