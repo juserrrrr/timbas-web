@@ -142,7 +142,7 @@ export default function DemoLabPage() {
   const [debug, setDebug] = useState<{ title: string; data: DemoDebug } | null>(null)
 
   const [rosterCount, setRosterCount] = useState(4)
-  const [rosterSize, setRosterSize] = useState(11)
+  const [rosterSize, setRosterSize] = useState(25)
   const [draftStage, setDraftStage] = useState<DemoDraftStage>("ACTIVE")
   const [draftResultMode, setDraftResultMode] = useState<DraftResultMode>("SIMULATED")
   const [startingBudget, setStartingBudget] = useState(200_000_000)
@@ -344,13 +344,19 @@ export default function DemoLabPage() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Elencos</Label>
+              <Label>Times na liga</Label>
               <Chips options={[2, 4, 6, 8]} value={rosterCount} onChange={setRosterCount} />
+              <p className="text-[11px] text-gray-600">
+                Cada time é um participante com o elenco dele. O primeiro é o seu.
+              </p>
             </div>
 
             <div className="space-y-1.5">
               <Label>Jogadores por elenco</Label>
-              <Chips options={[5, 11, 18, 25]} value={rosterSize} onChange={setRosterSize} />
+              <Chips options={[18, 25]} value={rosterSize} onChange={setRosterSize} />
+              <p className="text-[11px] text-gray-600">
+                18 é o time do jogo, 11 em campo e 7 no banco. 25 é o elenco cheio do EA FC, com as reservas.
+              </p>
             </div>
 
             <div className="space-y-1.5">

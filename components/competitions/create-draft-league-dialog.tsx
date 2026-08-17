@@ -320,9 +320,9 @@ export function CreateDraftLeagueDialog({
                 label="Jogadores por elenco"
                 value={rosterSize}
                 onChange={setRosterSize}
-                min={1}
+                min={11}
                 max={26}
-                hint="25 é o tamanho de elenco do EA FC: 11 em campo, 7 no banco e o resto de reserva."
+                hint="25 é o elenco do EA FC: 11 em campo, 7 no banco e o resto de reserva. Mínimo de 11, que é o time."
               />
               <NumberField
                 id="pick-seconds"
