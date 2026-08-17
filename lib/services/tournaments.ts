@@ -6,6 +6,7 @@ import type {
   ReportResultResponse,
   TournamentDetail,
   TournamentFormat,
+  TournamentMatch,
   TournamentSummary,
   TournamentTeam,
 } from "./tournaments.types"
@@ -110,6 +111,55 @@ export function scheduleMatch(id: string, matchId: string, scheduledAt: string) 
 
 export function declareWalkover(id: string, matchId: string, winnerTeamId: string, reason?: string) {
   return post(`/tournaments/${id}/matches/${matchId}/walkover`, { winnerTeamId, reason })
+}
+
+export interface MatchMessage {
+  id: string
+  body: string
+  system: boolean
+  teamId: string | null
+  createdAt: string
+  user: { id: number; name: string; avatar: string | null } | null
+}
+
+export interface MatchRoom {
+  match: TournamentMatch & {
+    readyAt: string | null
+    scheduleProposedAt: string | null
+    scheduleProposedByTeamId: string | null
+    claimedHomeScore: number | null
+    claimedAwayScore: number | null
+    claimedByTeamId: string | null
+  }
+  messages: MatchMessage[]
+  mySide: "HOME" | "AWAY" | null
+  canModerate: boolean
+  deadlineAt: string | null
+  requireOpponentConfirm: boolean
+}
+
+export function getMatchRoom(id: string, matchId: string): Promise<MatchRoom> {
+  return request(`/tournaments/${id}/matches/${matchId}/chat`)
+}
+
+export function postMatchMessage(id: string, matchId: string, body: string): Promise<MatchMessage> {
+  return post(`/tournaments/${id}/matches/${matchId}/chat`, { body })
+}
+
+export function proposeMatchSchedule(id: string, matchId: string, scheduledAt: string) {
+  return post(`/tournaments/${id}/matches/${matchId}/propose`, { scheduledAt })
+}
+
+export function respondMatchSchedule(id: string, matchId: string, accept: boolean) {
+  return post(`/tournaments/${id}/matches/${matchId}/propose/respond`, { accept })
+}
+
+export function claimMatchResult(id: string, matchId: string, homeScore: number, awayScore: number) {
+  return post(`/tournaments/${id}/matches/${matchId}/claim`, { homeScore, awayScore })
+}
+
+export function respondMatchClaim(id: string, matchId: string, agree: boolean) {
+  return post(`/tournaments/${id}/matches/${matchId}/claim/respond`, { agree })
 }
 
 export function listPendingProofs(id: string): Promise<PendingProof[]> {

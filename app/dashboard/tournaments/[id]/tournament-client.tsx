@@ -35,6 +35,7 @@ import {
   type TournamentStatus,
 } from "@/lib/services/tournaments.types"
 import { BracketView } from "./bracket-view"
+import { MatchRoomDialog } from "./match-room"
 import { MatchesView } from "./matches-view"
 import { ProofReviewPanel } from "./proof-review-panel"
 import { StaffPanel } from "./staff-panel"
@@ -58,6 +59,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const [error, setError] = useState("")
   const [tab, setTab] = useState<TabId>("bracket")
   const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(null)
+  const [photoMatch, setPhotoMatch] = useState<TournamentMatch | null>(null)
   const [starting, setStarting] = useState(false)
   const [notice, setNotice] = useState("")
 
@@ -120,15 +122,19 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     }
   }
 
-  const canReport =
-    selectedMatch !== null &&
-    Boolean(selectedMatch.homeTeamId && selectedMatch.awayTeamId) &&
-    selectedMatch.status !== "FINISHED" &&
-    selectedMatch.status !== "WALKOVER" &&
+  const canOpenRoom = (match: TournamentMatch | null) =>
+    match !== null &&
+    Boolean(match.homeTeamId && match.awayTeamId) &&
     (tournament.access.canModerate ||
-      tournament.access.teamIds.some(
-        (id) => id === selectedMatch.homeTeamId || id === selectedMatch.awayTeamId,
-      ))
+      tournament.access.teamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId))
+
+  const canReport =
+    photoMatch !== null &&
+    Boolean(photoMatch.homeTeamId && photoMatch.awayTeamId) &&
+    photoMatch.status !== "FINISHED" &&
+    photoMatch.status !== "WALKOVER" &&
+    (tournament.access.canModerate ||
+      tournament.access.teamIds.some((id) => id === photoMatch.homeTeamId || id === photoMatch.awayTeamId))
 
   const finishedMatches = tournament.matches.filter(
     (match) => match.status === "FINISHED" || match.status === "WALKOVER",
@@ -224,18 +230,31 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
       {tab === "proofs" && <ProofReviewPanel tournamentId={tournament.id} onReviewed={() => void load()} />}
       {tab === "staff" && <StaffPanel tournament={tournament} onChanged={() => void load()} />}
 
-      {selectedMatch && (
+      {selectedMatch && canOpenRoom(selectedMatch) && (
+        <MatchRoomDialog
+          tournament={tournament}
+          match={selectedMatch}
+          onOpenChange={(open) => !open && setSelectedMatch(null)}
+          onChanged={() => void load()}
+          onOpenPhoto={() => {
+            setPhotoMatch(selectedMatch)
+            setSelectedMatch(null)
+          }}
+        />
+      )}
+
+      {photoMatch && (
         <ReportResultDialog
           open={canReport}
-          onOpenChange={(open) => !open && setSelectedMatch(null)}
-          homeName={selectedMatch.homeTeam?.name ?? "Mandante"}
-          awayName={selectedMatch.awayTeam?.name ?? "Visitante"}
-          homeLogo={selectedMatch.homeTeam?.logoUrl}
-          awayLogo={selectedMatch.awayTeam?.logoUrl}
+          onOpenChange={(open) => !open && setPhotoMatch(null)}
+          homeName={photoMatch.homeTeam?.name ?? "Mandante"}
+          awayName={photoMatch.awayTeam?.name ?? "Visitante"}
+          homeLogo={photoMatch.homeTeam?.logoUrl}
+          awayLogo={photoMatch.awayTeam?.logoUrl}
           requireProof={tournament.requireProof}
           canModerate={tournament.access.canModerate}
           onSubmit={async (input) => {
-            const result = await reportResult(tournament.id, selectedMatch.id, input)
+            const result = await reportResult(tournament.id, photoMatch.id, input)
             await load()
             setNotice(
               result.autoApproved
@@ -247,10 +266,9 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
           onWalkover={
             tournament.access.canModerate
               ? async ({ winner, reason }) => {
-                  const winnerTeamId =
-                    winner === "HOME" ? selectedMatch.homeTeamId : selectedMatch.awayTeamId
+                  const winnerTeamId = winner === "HOME" ? photoMatch.homeTeamId : photoMatch.awayTeamId
                   if (!winnerTeamId) return
-                  await declareWalkover(tournament.id, selectedMatch.id, winnerTeamId, reason)
+                  await declareWalkover(tournament.id, photoMatch.id, winnerTeamId, reason)
                   await load()
                   setNotice("W.O. registrado. A vaga seguiu para a fase seguinte.")
                 }
@@ -258,6 +276,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
           }
         />
       )}
+
     </div>
   )
 }

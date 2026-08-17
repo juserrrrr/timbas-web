@@ -139,6 +139,8 @@ export interface TournamentDetail extends Omit<TournamentSummary, "owner" | "tea
   coinsChampion: number
   coinsRunnerUp: number
   requireProof: boolean
+  requireOpponentConfirm: boolean
+  woAfterHours: number
   autoApproveProof: boolean
   autoApproveMinConfidence: number
   runnerUpTeamId: string | null
