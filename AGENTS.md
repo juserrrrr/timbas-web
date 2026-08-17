@@ -26,20 +26,47 @@ app/
 │   ├── versus/
 │   ├── teams/
 │   ├── profile/
-│   └── settings/
+│   ├── settings/
+│   ├── tournaments/        # Brackets for any game (list, [id] with tabs)
+│   ├── draft/              # Draft leagues (list, [id] with tabs)
+│   └── wallet/             # Coin balance, statement, ranking
 └── admin/                  # Admin-only area (role: ADMIN)
+    └── score-reader/       # Configure or disable the AI that reads scoreboards
 
 components/
 ├── ui/                     # shadcn/ui primitives (do not edit unless upgrading)
+├── competitions/           # Shared building blocks for tournaments + draft
 └── *.tsx                   # Feature components
 
 lib/
 ├── api.ts                  # apiFetch wrapper (auto token refresh)
 ├── auth.ts                 # Token get/set/clear (cookie-based)
-└── services/               # API calls per domain (admin, match, ranking, etc.)
+├── navigation.ts           # Sidebar groups — single source for desktop + mobile nav
+└── services/               # API calls per domain (http.ts holds the shared request helper)
 
 middleware.ts               # Route protection: dashboard → needs token, admin → needs ADMIN role
 ```
+
+## Navigation
+`lib/navigation.ts` is the only place nav items live. `dashboard-sidebar.tsx` and
+`mobile-bottom-nav.tsx` both read from it — add a page there, not in the components.
+Every item carries a `description`; it is shown in the expanded sidebar and in the
+collapsed-state tooltip, so write it as "what this page does", not a restated label.
+
+## Server scope
+The server selector applies only to match/ranking features. `ServerSelectorSlot`
+renders it just for the routes in `SERVER_SCOPED_ROUTES`. Tournaments, draft
+leagues, the wallet, profile and settings are platform-wide — never pass a
+`serverId` to them.
+
+## Competitions
+Tournaments and draft leagues are separate products with separate services and
+pages. They share `components/competitions/` (presentational only) and the coin
+wallet. Do not make one import from the other's folder.
+
+Screenshots are compressed in the browser by `lib/image-upload.ts` before upload —
+never post a raw `File` to the API. Proof images need an auth header, so they are
+loaded with `fetchImageObjectUrl` and revoked on unmount, not set as a plain `src`.
 
 ## Code Standards
 
