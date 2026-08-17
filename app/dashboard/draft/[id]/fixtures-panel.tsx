@@ -163,7 +163,7 @@ export function FixturesPanel({ league, onChanged }: { league: DraftLeagueDetail
             onChanged()
             setNotice(
               result.autoApproved
-                ? "Resultado confirmado e moedas creditadas."
+                ? "Resultado confirmado e premiação creditada no caixa."
                 : "Prova enviada. A organização vai revisar o placar.",
             )
             return { autoApproved: result.autoApproved }

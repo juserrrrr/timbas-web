@@ -25,6 +25,7 @@ import { DRAFT_STATUS_LABELS, WEEKDAY_SHORT, type DraftLeagueDetail, type DraftL
 import { DraftRoom } from "./draft-room"
 import { DraftStandings } from "./draft-standings"
 import { FixturesPanel } from "./fixtures-panel"
+import { formatMoney } from "@/lib/money"
 import { ScorersPanel } from "./scorers-panel"
 import { MarketPanel } from "./market-panel"
 import { SquadPanel } from "./squad-panel"
@@ -112,8 +113,8 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
           accent="text-violet-400"
         />
         <StatTile
-          label="Moedas por vitória"
-          value={league.coinsWin}
+          label="Prêmio por vitória"
+          value={formatMoney(league.coinsWin)}
           icon={Coins}
           accent="text-amber-400"
         />

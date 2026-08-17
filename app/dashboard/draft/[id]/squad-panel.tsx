@@ -160,7 +160,7 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
     setError("")
     try {
       const result = await releasePlayer(league.id, player.id)
-      setNotice(`${player.name} liberado para o mercado. Você recebeu ${result.refund} moedas.`)
+      setNotice(`${player.name} liberado para o mercado. Entrou ${formatMoney(result.refund)} no caixa.`)
       setSelected((current) => current.filter((id) => id !== player.id))
       onChanged()
     } catch (err) {

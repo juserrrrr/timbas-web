@@ -227,7 +227,7 @@ export default function DemoLabPage() {
       />
 
       <p className="rounded-lg border border-orange-500/20 bg-orange-500/[0.06] px-3 py-2 text-[11px] text-orange-200">
-        Tudo criado aqui nasce com o nome começando em <span className="font-mono">[DEMO]</span>, não paga moedas e pode
+        Tudo criado aqui nasce com o nome começando em <span className="font-mono">[DEMO]</span>, não mexe em carteira de ninguém e pode
         ser apagado de uma vez pelo botão acima. Os elencos de draft usam usuários de teste próprios, sem tocar em
         ninguém real.
       </p>

@@ -11,6 +11,7 @@ import {
   StatusPill,
 } from "@/components/competitions/shared"
 import { LeagueAdminPanel } from "@/components/competitions/league-admin-panel"
+import { formatMoney } from "@/lib/money"
 import { getDraftLeague } from "@/lib/services/draft"
 import {
   DRAFT_STATUS_LABELS,
@@ -89,7 +90,7 @@ export default function AdminDraftLeaguePage({ params }: { params: Promise<{ id:
           icon={CalendarDays}
           accent="text-violet-400"
         />
-        <StatTile label="Moedas por vitória" value={league.coinsWin} icon={Coins} accent="text-amber-400" />
+        <StatTile label="Prêmio por vitória" value={formatMoney(league.coinsWin)} icon={Coins} accent="text-amber-400" />
       </div>
 
       <LeagueAdminPanel league={league} onChanged={() => void load()} />
