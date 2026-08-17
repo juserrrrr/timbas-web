@@ -144,17 +144,11 @@ export function FixturesPanel({ league, onChanged }: { league: DraftLeagueDetail
           squads={{
             home: {
               name: selected.homeRoster.name,
-              players:
-                league.rosters
-                  .find((roster) => roster.id === selected.homeRosterId)
-                  ?.players.filter((player) => player.starter) ?? [],
+              players: league.rosters.find((roster) => roster.id === selected.homeRosterId)?.players ?? [],
             },
             away: {
               name: selected.awayRoster.name,
-              players:
-                league.rosters
-                  .find((roster) => roster.id === selected.awayRosterId)
-                  ?.players.filter((player) => player.starter) ?? [],
+              players: league.rosters.find((roster) => roster.id === selected.awayRosterId)?.players ?? [],
             },
           }}
           onSubmit={async (input) => {

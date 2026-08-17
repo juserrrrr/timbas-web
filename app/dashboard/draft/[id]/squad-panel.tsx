@@ -196,6 +196,12 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
           </div>
         </div>
 
+        <p className="mt-3 text-[11px] leading-snug text-gray-600">
+          {league.resultMode === "SIMULATED"
+            ? "Quem você escalar entra em campo na rodada simulada."
+            : "Vocês jogam no EA FC 26, então a escalação de verdade é lá. Aqui ela serve para contar presença e para saber quem estava em campo."}
+        </p>
+
         <div className="mt-4 flex flex-wrap gap-1.5">
           {FORMATIONS.map((option) => (
             <button
@@ -276,15 +282,14 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
         )}
       </Card>
 
+      {league.resultMode === "SIMULATED" && (
       <Card className="border-white/[0.07] bg-white/[0.025] p-4">
         <div className="mb-1 flex items-center gap-2">
           <Swords className="h-4 w-4 text-violet-400" />
           <h3 className="text-sm font-black text-white">Tática</h3>
         </div>
         <p className="mb-3 text-[11px] text-gray-500">
-          {league.resultMode === "SIMULATED"
-            ? "Vale para a próxima rodada simulada. Postura ofensiva cria mais chance e entrega mais também."
-            : "Fica guardada para quando a liga usar rodada simulada."}
+          Vale para a próxima rodada simulada. Postura ofensiva cria mais chance e entrega mais também.
         </p>
 
         <div className="space-y-3">
@@ -314,6 +319,7 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
           />
         </div>
       </Card>
+      )}
 
       {roster.players.length === 0 ? (
         <EmptyState
