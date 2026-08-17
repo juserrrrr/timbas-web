@@ -2,6 +2,7 @@ import type { CompetitionRole, UserRef } from "./tournaments.types"
 
 export type DraftLeagueStatus = "SETUP" | "DRAFTING" | "ACTIVE" | "FINISHED"
 export type DraftOrderType = "SNAKE" | "LINEAR"
+export type DraftStartMode = "LIVE" | "ASYNC"
 export type DraftMatchStatus = "SCHEDULED" | "AWAITING_PROOF" | "FINISHED"
 export type TransferOfferKind = "BUY_FREE_AGENT" | "BUY_FROM_ROSTER" | "SWAP"
 export type TransferOfferStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELLED" | "EXPIRED"
@@ -60,6 +61,7 @@ export interface DraftRoster {
   pressing: TacticIntensity
   tempo: TacticIntensity
   tacticsAt: string | null
+  readyAt: string | null
   budget: number
   earned: number
   spent: number
@@ -118,6 +120,8 @@ export interface DraftLeagueSummary {
   description: string | null
   status: DraftLeagueStatus
   orderType: DraftOrderType
+  startMode: DraftStartMode
+  draftStartsAt: string | null
   rosterSize: number
   formation: string
   pickSeconds: number
@@ -221,6 +225,16 @@ export const OFFER_KIND_LABELS: Record<TransferOfferKind, string> = {
 }
 
 export const FORMATIONS = ["4-3-3", "4-4-2", "4-2-3-1", "3-5-2", "3-4-3", "5-3-2", "4-1-4-1"]
+
+export const START_MODE_LABELS: Record<DraftStartMode, string> = {
+  LIVE: "Ao vivo, todo mundo junto",
+  ASYNC: "Assíncrono, cada um no seu tempo",
+}
+
+export const START_MODE_HINTS: Record<DraftStartMode, string> = {
+  LIVE: "Marca a hora, cada dono dá pronto e o draft abre no instante em que o último marca. É a escolha em grupo, com todo mundo vendo.",
+  ASYNC: "O dono abre o draft quando quiser e o cronômetro corre. Quem não estiver na hora tem a escolha feita pelo relógio.",
+}
 
 export const RESULT_MODE_LABELS: Record<DraftResultMode, string> = {
   REPORTED: "Real, jogado no EA FC 26",

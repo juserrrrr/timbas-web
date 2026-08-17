@@ -15,8 +15,11 @@ import {
   FORMATIONS,
   RESULT_MODE_HINTS,
   RESULT_MODE_LABELS,
+  START_MODE_HINTS,
+  START_MODE_LABELS,
   WEEKDAY_LABELS,
   type DraftResultMode,
+  type DraftStartMode,
 } from "@/lib/services/draft.types"
 
 // Padrões de uma liga de manager: rodada duas vezes por semana à noite, caixa que
@@ -121,6 +124,8 @@ export function CreateDraftLeagueDialog({
   const [description, setDescription] = useState("")
   const [resultMode, setResultMode] = useState<DraftResultMode>(DEFAULTS.resultMode)
   const [orderType, setOrderType] = useState<"SNAKE" | "LINEAR">(DEFAULTS.orderType)
+  const [startMode, setStartMode] = useState<DraftStartMode>("LIVE")
+  const [draftStartsAt, setDraftStartsAt] = useState("")
   const [rosterSize, setRosterSize] = useState(DEFAULTS.rosterSize)
   const [formation, setFormation] = useState(DEFAULTS.formation)
   const [pickSeconds, setPickSeconds] = useState(DEFAULTS.pickSeconds)
@@ -167,6 +172,8 @@ export function CreateDraftLeagueDialog({
         description: description.trim() || undefined,
         resultMode,
         orderType,
+        startMode,
+        draftStartsAt: draftStartsAt ? new Date(draftStartsAt).toISOString() : undefined,
         rosterSize,
         formation,
         pickSeconds,
@@ -280,6 +287,45 @@ export function CreateDraftLeagueDialog({
           </Section>
 
           <Section title="Draft">
+            <div className="grid gap-2">
+              {(["LIVE", "ASYNC"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setStartMode(mode)}
+                  className={`cursor-pointer rounded-xl border p-3 text-left transition ${
+                    startMode === mode
+                      ? "border-emerald-500/30 bg-emerald-500/[0.07]"
+                      : "border-white/[0.07] bg-white/[0.02] hover:border-white/15"
+                  }`}
+                >
+                  <span
+                    className={`block text-sm font-bold ${startMode === mode ? "text-emerald-400" : "text-white"}`}
+                  >
+                    {START_MODE_LABELS[mode]}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] leading-snug text-gray-500">
+                    {START_MODE_HINTS[mode]}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {startMode === "LIVE" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="draft-starts">Hora marcada do draft</Label>
+                <Input
+                  id="draft-starts"
+                  type="datetime-local"
+                  value={draftStartsAt}
+                  onChange={(event) => setDraftStartsAt(event.target.value)}
+                  className="border-white/10 bg-white/[0.03]"
+                />
+                <p className="text-[11px] leading-snug text-gray-600">
+                  Opcional. Com hora marcada, o draft não abre antes dela mesmo com todos prontos.
+                </p>
+              </div>
+            )}
+
             <div className="grid gap-2 sm:grid-cols-2">
               {(
                 [

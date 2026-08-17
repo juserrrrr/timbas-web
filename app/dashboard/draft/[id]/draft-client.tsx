@@ -27,6 +27,7 @@ import { DraftStandings } from "./draft-standings"
 import { FixturesPanel } from "./fixtures-panel"
 import { formatMoney } from "@/lib/money"
 import { ScorersPanel } from "./scorers-panel"
+import { WaitingRoomPanel } from "./waiting-room"
 import { MarketPanel } from "./market-panel"
 import { SquadPanel } from "./squad-panel"
 
@@ -138,7 +139,12 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
       </div>
 
       {tab === "standings" && <DraftStandings league={league} onChanged={() => void load()} />}
-      {tab === "room" && <DraftRoom league={league} onChanged={() => void load()} />}
+      {tab === "room" &&
+        (league.status === "SETUP" ? (
+          <WaitingRoomPanel league={league} onChanged={() => void load()} />
+        ) : (
+          <DraftRoom league={league} onChanged={() => void load()} />
+        ))}
       {tab === "squad" && <SquadPanel league={league} onChanged={() => void load()} />}
       {tab === "fixtures" && <FixturesPanel league={league} onChanged={() => void load()} />}
       {tab === "market" && <MarketPanel league={league} onChanged={() => void load()} />}

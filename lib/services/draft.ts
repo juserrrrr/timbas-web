@@ -8,6 +8,7 @@ import type {
   DraftPlayer,
   DraftResultMode,
   DraftRoster,
+  DraftStartMode,
   TacticIntensity,
   TacticMentality,
   TransferOffer,
@@ -30,6 +31,8 @@ export interface CreateDraftLeagueInput {
   coinsDraw?: number
   coinsLoss?: number
   resultMode?: DraftResultMode
+  startMode?: DraftStartMode
+  draftStartsAt?: string
   startingBudget?: number
   paySalaries?: boolean
   auctionsEnabled?: boolean
@@ -117,8 +120,36 @@ export function transferDraftOwnership(id: string, userId: number) {
   return post(`/draft/${id}/staff/${userId}/transfer-ownership`)
 }
 
-export function startDraft(id: string, shuffle = true) {
-  return post<DraftLeagueSummary>(`/draft/${id}/start?shuffle=${shuffle}`)
+export function startDraft(id: string, shuffle = true, force = false) {
+  return post<DraftLeagueSummary>(`/draft/${id}/start?shuffle=${shuffle}&force=${force}`)
+}
+
+export interface WaitingRoom {
+  startMode: DraftStartMode
+  draftStartsAt: string | null
+  rosters: Array<{
+    id: string
+    name: string
+    userId: number | null
+    readyAt: string | null
+    user: { id: number; name: string; avatar: string | null } | null
+  }>
+  readyCount: number
+  ownedCount: number
+  vacantCount: number
+  everyoneReady: boolean
+  poolNeeded: number
+  poolAvailable: number
+  canOpen: boolean
+  waitingForTime: boolean
+}
+
+export function getWaitingRoom(id: string): Promise<WaitingRoom> {
+  return request(`/draft/${id}/waiting-room`)
+}
+
+export function setDraftReady(id: string, ready: boolean) {
+  return post<WaitingRoom & { started: boolean }>(`/draft/${id}/ready`, { ready })
 }
 
 export function makePick(id: string, playerId: string, rosterId?: string) {
