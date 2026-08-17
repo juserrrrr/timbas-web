@@ -51,6 +51,58 @@ const READ_MODES: Array<{ id: ScoreReadMode; title: string; hint: string; icon: 
   },
 ]
 
+/// Select com os modelos que sabemos que funcionam, sem travar: dá para digitar
+/// outro, porque provedor lança modelo novo toda semana.
+function ModelField({
+  id,
+  label,
+  models,
+  placeholder,
+  value,
+  onChange,
+}: {
+  id: string
+  label: string
+  models: string[]
+  placeholder?: string
+  value: string
+  onChange: (model: string) => void
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        list={`${id}-options`}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="border-white/10 bg-white/[0.03] font-mono text-[12px]"
+      />
+      <datalist id={`${id}-options`}>
+        {models.map((model) => (
+          <option key={model} value={model} />
+        ))}
+      </datalist>
+      <div className="flex flex-wrap gap-1">
+        {models.map((model) => (
+          <button
+            key={model}
+            onClick={() => onChange(model)}
+            className={`cursor-pointer rounded-full border px-2 py-0.5 font-mono text-[10px] transition ${
+              value === model
+                ? "border-violet-500/40 bg-violet-500/15 text-violet-300"
+                : "border-white/10 text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            {model}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ProviderPicker({
   providers,
   value,
@@ -121,6 +173,7 @@ export default function AiAdminPage() {
       setDraft({
         analysisProvider: data.analysis.provider,
         analysisModel: data.analysis.model ?? "",
+        analysisFallbackProvider: data.analysis.fallbackProvider,
         analysisFallbackModel: data.analysis.fallbackModel ?? "",
         scoreReaderProvider: data.scoreReader.provider,
         scoreReaderModel: data.scoreReader.model ?? "",
@@ -170,6 +223,14 @@ export default function AiAdminPage() {
   }
 
   const needsOcr = draft.scoreReadMode === "OCR_TEXT"
+  const analysisProvider = settings.providers.find(
+    (provider) => provider.id === (draft.analysisProvider ?? settings.analysis.provider),
+  )
+  const fallbackId = draft.analysisFallbackProvider ?? null
+  const fallbackProvider = settings.providers.find((provider) => provider.id === fallbackId)
+  const readerProvider = settings.providers.find(
+    (provider) => provider.id === (draft.scoreReaderProvider ?? settings.scoreReader.provider),
+  )
 
   return (
     <div className="space-y-6">
@@ -256,30 +317,66 @@ export default function AiAdminPage() {
             onChange={(provider) => setDraft({ ...draft, analysisProvider: provider })}
           />
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="analysis-model">Modelo</Label>
-              <Input
-                id="analysis-model"
-                value={draft.analysisModel ?? ""}
-                onChange={(event) => setDraft({ ...draft, analysisModel: event.target.value })}
-                placeholder={
-                  settings.providers.find((item) => item.id === (draft.analysisProvider ?? settings.analysis.provider))
-                    ?.defaultModel
-                }
-                className="border-white/10 bg-white/[0.03] font-mono text-[12px]"
-              />
+          <div className="mt-3">
+            <ModelField
+              id="analysis-model"
+              label="Modelo"
+              models={analysisProvider?.models ?? []}
+              placeholder={analysisProvider?.defaultModel}
+              value={draft.analysisModel ?? ""}
+              onChange={(model) => setDraft({ ...draft, analysisModel: model })}
+            />
+          </div>
+
+          <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.015] p-3">
+            <p className="text-[12px] font-bold text-white">Provedor reserva</p>
+            <p className="mb-2 text-[11px] leading-snug text-gray-500">
+              Quando o principal falha, a chamada vai para outra empresa. Cair para outro modelo da mesma casa não
+              adianta: chave recusada, cota estourada e provedor fora do ar derrubam todos os modelos dela junto.
+            </p>
+
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setDraft({ ...draft, analysisFallbackProvider: null })}
+                className={`cursor-pointer rounded-full border px-2.5 py-0.5 text-[11px] font-bold transition ${
+                  !fallbackId
+                    ? "border-white/20 bg-white/10 text-white"
+                    : "border-white/10 text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                Sem reserva
+              </button>
+              {settings.providers
+                .filter((provider) => provider.id !== (draft.analysisProvider ?? settings.analysis.provider))
+                .map((provider) => (
+                  <button
+                    key={provider.id}
+                    onClick={() => setDraft({ ...draft, analysisFallbackProvider: provider.id })}
+                    disabled={!provider.configured}
+                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold transition ${
+                      !provider.configured
+                        ? "cursor-not-allowed border-white/[0.05] text-gray-700"
+                        : fallbackId === provider.id
+                          ? "cursor-pointer border-violet-500/40 bg-violet-500/15 text-violet-300"
+                          : "cursor-pointer border-white/10 text-gray-500 hover:text-gray-300"
+                    }`}
+                  >
+                    {provider.label}
+                    {!provider.configured && " (sem chave)"}
+                  </button>
+                ))}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="analysis-fallback">Modelo reserva</Label>
-              <Input
+
+            {fallbackProvider && (
+              <ModelField
                 id="analysis-fallback"
+                label={`Modelo no ${fallbackProvider.label}`}
+                models={fallbackProvider.models}
+                placeholder={fallbackProvider.defaultModel}
                 value={draft.analysisFallbackModel ?? ""}
-                onChange={(event) => setDraft({ ...draft, analysisFallbackModel: event.target.value })}
-                placeholder="usado quando o principal falha"
-                className="border-white/10 bg-white/[0.03] font-mono text-[12px]"
+                onChange={(model) => setDraft({ ...draft, analysisFallbackModel: model })}
               />
-            </div>
+            )}
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -289,6 +386,7 @@ export default function AiAdminPage() {
                   {
                     analysisProvider: draft.analysisProvider,
                     analysisModel: draft.analysisModel || null,
+                    analysisFallbackProvider: draft.analysisFallbackProvider ?? null,
                     analysisFallbackModel: draft.analysisFallbackModel || null,
                   },
                   "Provedor das análises salvo.",
@@ -303,6 +401,9 @@ export default function AiAdminPage() {
             <StatusPill tone={settings.analysis.ready ? "live" : "warn"}>
               {settings.analysis.ready ? `Ativo em ${settings.analysis.effectiveModel}` : "Indisponível"}
             </StatusPill>
+            {settings.analysis.effectiveFallback && (
+              <StatusPill tone="neutral">Reserva: {settings.analysis.effectiveFallback}</StatusPill>
+            )}
           </div>
 
           {settings.analysis.unavailableReason && (
@@ -365,18 +466,14 @@ export default function AiAdminPage() {
             requireVision={(draft.scoreReadMode ?? settings.scoreReader.mode) === "VISION"}
           />
 
-          <div className="mt-3 space-y-1.5">
-            <Label htmlFor="reader-model">Modelo</Label>
-            <Input
+          <div className="mt-3">
+            <ModelField
               id="reader-model"
+              label="Modelo"
+              models={readerProvider?.models ?? []}
+              placeholder={readerProvider?.defaultModel}
               value={draft.scoreReaderModel ?? ""}
-              onChange={(event) => setDraft({ ...draft, scoreReaderModel: event.target.value })}
-              placeholder={
-                settings.providers.find(
-                  (item) => item.id === (draft.scoreReaderProvider ?? settings.scoreReader.provider),
-                )?.defaultModel
-              }
-              className="border-white/10 bg-white/[0.03] font-mono text-[12px]"
+              onChange={(model) => setDraft({ ...draft, scoreReaderModel: model })}
             />
           </div>
 

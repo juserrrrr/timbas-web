@@ -8,7 +8,8 @@ export interface AiProviderInfo {
   label: string
   envKey: string
   defaultModel: string
-  defaultFallbackModel: string
+  /// Modelos prontos que o select oferece. O campo continua aceitando outro.
+  models: string[]
   supportsVision: boolean
   docsUrl: string
   configured: boolean
@@ -25,7 +26,11 @@ export interface AiFeatureView {
 
 export interface AiSettings {
   providers: AiProviderInfo[]
-  analysis: AiFeatureView & { fallbackModel: string | null }
+  analysis: AiFeatureView & {
+    fallbackProvider: AiProvider | null
+    fallbackModel: string | null
+    effectiveFallback: string | null
+  }
   scoreReader: AiFeatureView & {
     mode: ScoreReadMode
     ocrLanguage: string
@@ -42,6 +47,7 @@ export interface AiSettingsPatch {
   analysisEnabled?: boolean
   analysisProvider?: AiProvider
   analysisModel?: string | null
+  analysisFallbackProvider?: AiProvider | null
   analysisFallbackModel?: string | null
   scoreReaderEnabled?: boolean
   scoreReaderProvider?: AiProvider
