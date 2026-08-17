@@ -269,6 +269,22 @@ export function releasePlayer(id: string, playerId: string) {
   return post<{ released: boolean; refund: number }>(`/draft/${id}/players/${playerId}/release`)
 }
 
+export interface Scorer {
+  id: string
+  name: string
+  position: string
+  goals: number
+  assists: number
+  appearances: number
+  rating: number | null
+  photoUrl: string | null
+  roster: { id: string; name: string; tag: string | null; logoUrl: string | null } | null
+}
+
+export function listScorers(id: string): Promise<Scorer[]> {
+  return request(`/draft/${id}/scorers`)
+}
+
 export function listDraftMatches(id: string, round?: number): Promise<DraftMatch[]> {
   return request(`/draft/${id}/matches${round ? `?round=${round}` : ""}`)
 }

@@ -7,6 +7,7 @@ import {
   ArrowLeftRight,
   CalendarDays,
   Coins,
+  Goal,
   Shirt,
   Sparkles,
   Table2,
@@ -24,6 +25,7 @@ import { DRAFT_STATUS_LABELS, WEEKDAY_SHORT, type DraftLeagueDetail, type DraftL
 import { DraftRoom } from "./draft-room"
 import { DraftStandings } from "./draft-standings"
 import { FixturesPanel } from "./fixtures-panel"
+import { ScorersPanel } from "./scorers-panel"
 import { MarketPanel } from "./market-panel"
 import { SquadPanel } from "./squad-panel"
 
@@ -34,7 +36,7 @@ const STATUS_TONES: Record<DraftLeagueStatus, "neutral" | "live" | "warn" | "don
   FINISHED: "done",
 }
 
-type TabId = "room" | "squad" | "fixtures" | "market" | "standings"
+type TabId = "room" | "squad" | "fixtures" | "market" | "standings" | "scorers"
 
 export function DraftClient({ leagueId }: { leagueId: string }) {
   const router = useRouter()
@@ -70,6 +72,7 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
       { id: "squad" as const, label: "Meu elenco", icon: Shirt },
       { id: "fixtures" as const, label: "Rodadas", icon: CalendarDays },
       { id: "market" as const, label: "Mercado", icon: ArrowLeftRight },
+      { id: "scorers" as const, label: "Artilharia", icon: Goal },
     ]
   }, [league])
 
@@ -138,6 +141,7 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
       {tab === "squad" && <SquadPanel league={league} onChanged={() => void load()} />}
       {tab === "fixtures" && <FixturesPanel league={league} onChanged={() => void load()} />}
       {tab === "market" && <MarketPanel league={league} onChanged={() => void load()} />}
+      {tab === "scorers" && <ScorersPanel league={league} />}
     </div>
   )
 }

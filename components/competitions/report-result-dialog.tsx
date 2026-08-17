@@ -21,6 +21,7 @@ export function ReportResultDialog({
   requireProof,
   canModerate,
   onSubmit,
+  squads,
   onWalkover,
 }: {
   open: boolean
@@ -31,7 +32,19 @@ export function ReportResultDialog({
   awayLogo?: string | null
   requireProof: boolean
   canModerate: boolean
-  onSubmit: (input: { homeScore: number; awayScore: number; imageBase64?: string; mimeType?: string }) => Promise<ReportOutcome>
+  onSubmit: (input: {
+    homeScore: number
+    awayScore: number
+    imageBase64?: string
+    mimeType?: string
+    scorers?: Array<{ playerId: string; goals: number; assists: number }>
+  }) => Promise<ReportOutcome>
+  /// Quando a partida tem elenco, dá para dizer quem marcou. É o que alimenta a
+  /// artilharia no modo real, onde ninguém simula a partida.
+  squads?: {
+    home: { name: string; players: Array<{ id: string; name: string; position: string }> }
+    away: { name: string; players: Array<{ id: string; name: string; position: string }> }
+  }
   onWalkover?: (input: { winner: "HOME" | "AWAY"; reason?: string }) => Promise<void>
 }) {
   const [homeScore, setHomeScore] = useState("")
@@ -42,6 +55,7 @@ export function ReportResultDialog({
   const [walkoverOpen, setWalkoverOpen] = useState(false)
   const [walkoverWinner, setWalkoverWinner] = useState<"HOME" | "AWAY">("HOME")
   const [walkoverReason, setWalkoverReason] = useState("")
+  const [scorers, setScorers] = useState<Record<string, { goals: number; assists: number }>>({})
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -52,6 +66,7 @@ export function ReportResultDialog({
     setWalkoverOpen(false)
     setWalkoverWinner("HOME")
     setWalkoverReason("")
+    setScorers({})
     setImage((current) => {
       if (current) URL.revokeObjectURL(current.previewUrl)
       return null
@@ -85,6 +100,9 @@ export function ReportResultDialog({
         awayScore: Number(awayScore),
         imageBase64: image?.base64,
         mimeType: image?.mimeType,
+        scorers: Object.entries(scorers)
+          .filter(([, tally]) => tally.goals > 0 || tally.assists > 0)
+          .map(([playerId, tally]) => ({ playerId, ...tally })),
       })
       onOpenChange(false)
     } catch (err) {
@@ -195,6 +213,65 @@ export function ReportResultDialog({
               </button>
             )}
           </div>
+
+          {squads && (
+            <div className="space-y-2 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                Quem marcou (opcional)
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {([squads.home, squads.away] as const).map((squad) => (
+                  <div key={squad.name} className="space-y-1">
+                    <p className="truncate text-[11px] font-bold text-gray-400">{squad.name}</p>
+                    {squad.players.length === 0 && (
+                      <p className="text-[10px] text-gray-600">Elenco vazio.</p>
+                    )}
+                    {squad.players.map((player) => {
+                      const tally = scorers[player.id] ?? { goals: 0, assists: 0 }
+                      return (
+                        <div key={player.id} className="flex items-center gap-1.5 text-[11px]">
+                          <span className="w-8 flex-shrink-0 text-gray-600">{player.position}</span>
+                          <span className="min-w-0 flex-1 truncate text-gray-300">{player.name}</span>
+                          <button
+                            onClick={() =>
+                              setScorers({ ...scorers, [player.id]: { ...tally, goals: tally.goals + 1 } })
+                            }
+                            className="cursor-pointer rounded border border-white/[0.08] px-1.5 py-0.5 text-[10px] font-bold text-gray-400 hover:text-emerald-300"
+                          >
+                            gol {tally.goals > 0 ? tally.goals : ""}
+                          </button>
+                          <button
+                            onClick={() =>
+                              setScorers({ ...scorers, [player.id]: { ...tally, assists: tally.assists + 1 } })
+                            }
+                            className="cursor-pointer rounded border border-white/[0.08] px-1.5 py-0.5 text-[10px] font-bold text-gray-400 hover:text-blue-300"
+                          >
+                            ass {tally.assists > 0 ? tally.assists : ""}
+                          </button>
+                          {(tally.goals > 0 || tally.assists > 0) && (
+                            <button
+                              onClick={() => {
+                                const next = { ...scorers }
+                                delete next[player.id]
+                                setScorers(next)
+                              }}
+                              aria-label={`Limpar ${player.name}`}
+                              className="cursor-pointer text-gray-700 hover:text-red-400"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] leading-snug text-gray-600">
+                Clique para somar. Isso monta a artilharia da liga, então vale a pena preencher.
+              </p>
+            </div>
+          )}
 
           {canModerate && (
             <p className="flex items-start gap-2 rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-2 text-[11px] text-blue-300">

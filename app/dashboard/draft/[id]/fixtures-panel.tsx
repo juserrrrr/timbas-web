@@ -141,6 +141,22 @@ export function FixturesPanel({ league, onChanged }: { league: DraftLeagueDetail
           awayLogo={selected.awayRoster.logoUrl}
           requireProof
           canModerate={league.access.canModerate}
+          squads={{
+            home: {
+              name: selected.homeRoster.name,
+              players:
+                league.rosters
+                  .find((roster) => roster.id === selected.homeRosterId)
+                  ?.players.filter((player) => player.starter) ?? [],
+            },
+            away: {
+              name: selected.awayRoster.name,
+              players:
+                league.rosters
+                  .find((roster) => roster.id === selected.awayRosterId)
+                  ?.players.filter((player) => player.starter) ?? [],
+            },
+          }}
           onSubmit={async (input) => {
             const result = await reportDraftResult(league.id, selected.id, input)
             await load()
