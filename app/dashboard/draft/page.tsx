@@ -1,9 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CalendarDays, Coins, Users } from "lucide-react"
+import { CalendarDays, Users } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import {
   CompetitionHeader,
@@ -56,15 +55,6 @@ export default function DraftLeaguesPage() {
         icon={Users}
         accent="text-emerald-400"
         accentBg="bg-emerald-500/10 border-emerald-500/20"
-        actions={
-          <Link
-            href="/dashboard/wallet"
-            className="flex items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/[0.07] px-3 py-2 text-xs font-bold text-amber-300 transition hover:bg-amber-500/[0.12]"
-          >
-            <Coins className="h-4 w-4" />
-            Minhas moedas
-          </Link>
-        }
       />
 
       {leagues.length === 0 ? (

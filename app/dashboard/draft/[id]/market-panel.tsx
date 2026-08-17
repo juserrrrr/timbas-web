@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ArrowLeftRight, Check, Loader2, Search, ShoppingCart, X } from "lucide-react"
+import { ArrowLeftRight, Check, Coins, Loader2, Search, ShoppingCart, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -67,6 +67,7 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
     [players, term, league.access.rosterId],
   )
 
+  const myRoster = league.rosters.find((entry) => entry.id === league.access.rosterId)
   const marketOpen = league.status === "ACTIVE" && league.transferWindowOpen && Boolean(league.access.rosterId)
 
   const run = async (id: string, action: () => Promise<unknown>, message: string) => {
@@ -105,6 +106,18 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
               : "Entre na liga com um elenco para negociar."}
         </p>
       )}
+      {myRoster && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-3 py-2">
+          <span className="flex items-center gap-1.5 text-[12px] text-amber-200">
+            <Coins className="h-4 w-4" />
+            Caixa do {myRoster.name} nesta liga
+          </span>
+          <span className={`text-sm font-black ${myRoster.budget < 0 ? "text-red-400" : "text-amber-300"}`}>
+            {myRoster.budget.toLocaleString("pt-BR")}
+          </span>
+        </div>
+      )}
+
       {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-300">{error}</p>}
       {notice && <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-300">{notice}</p>}
 

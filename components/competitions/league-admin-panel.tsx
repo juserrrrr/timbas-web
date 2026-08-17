@@ -221,6 +221,49 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
               </div>
             </div>
 
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="starting-budget">Caixa inicial de cada elenco</Label>
+                <Input
+                  id="starting-budget"
+                  type="number"
+                  min={0}
+                  step={100}
+                  defaultValue={league.startingBudget}
+                  onBlur={(event) => {
+                    const budget = Number(event.target.value)
+                    if (budget === league.startingBudget || budget < 0) return
+                    void run(
+                      () => updateDraftLeague(league.id, { startingBudget: budget }),
+                      `Cada elenco começa com ${budget}.`,
+                    )
+                  }}
+                  className="border-white/10 bg-white/[0.03]"
+                />
+                <p className="text-[11px] text-gray-600">
+                  Vale a partir do próximo draft: começar o draft reparte esse caixa de novo para todos.
+                </p>
+              </div>
+
+              <label className="flex h-fit cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-white">Cobrar salário</span>
+                  <span className="block text-[11px] leading-snug text-gray-500">
+                    A cada rodada, a folha do elenco sai do caixa
+                  </span>
+                </span>
+                <Switch
+                  checked={league.paySalaries}
+                  onCheckedChange={(checked) =>
+                    void run(
+                      () => updateDraftLeague(league.id, { paySalaries: checked }),
+                      checked ? "Salário passa a ser cobrado." : "Salário desligado.",
+                    )
+                  }
+                />
+              </label>
+            </div>
+
             <div className="grid gap-2">
               {(["REPORTED", "SIMULATED"] as const).map((mode) => (
                 <button

@@ -1,12 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { Loader2, Save, Shirt, Star, Swords, Undo2 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Coins, Loader2, Save, Shirt, Star, Swords, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { CoinAmount, EmptyState, StatusPill } from "@/components/competitions/shared"
-import { FORMATIONS, INTENSITY_LABELS, MENTALITY_LABELS } from "@/lib/services/draft.types"
-import { releasePlayer, setLineup, setTactics } from "@/lib/services/draft"
+import { BUDGET_TX_LABELS, FORMATIONS, INTENSITY_LABELS, MENTALITY_LABELS } from "@/lib/services/draft.types"
+import { getBudget, releasePlayer, setLineup, setTactics, type BudgetStatement } from "@/lib/services/draft"
 import type { DraftLeagueDetail, DraftPlayer } from "@/lib/services/draft.types"
 
 function startersFor(formation: string): number {
@@ -61,6 +61,20 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
+  const [statement, setStatement] = useState<BudgetStatement | null>(null)
+
+  const rosterId = roster?.id
+  useEffect(() => {
+    if (!rosterId) return
+    getBudget(league.id, rosterId)
+      .then(setStatement)
+      .catch(() => setStatement(null))
+  }, [league.id, rosterId, league.currentRound])
+
+  const wageBill = useMemo(
+    () => roster?.players.reduce((total, player) => total + player.salary, 0) ?? 0,
+    [roster],
+  )
 
   const limit = useMemo(() => Math.min(startersFor(formation), roster?.players.length ?? 0), [formation, roster])
 
@@ -180,6 +194,63 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
         {error && <p className="mt-3 text-[11px] text-red-400">{error}</p>}
       </Card>
 
+      <Card
+        className={`p-4 ${
+          roster.budget < 0 ? "border-red-500/30 bg-red-500/[0.05]" : "border-white/[0.07] bg-white/[0.025]"
+        }`}
+      >
+        <div className="mb-3 flex items-center gap-2">
+          <Coins className="h-4 w-4 text-amber-400" />
+          <h3 className="text-sm font-black text-white">Caixa da liga</h3>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-600">Disponível</p>
+            <p className={`text-lg font-black ${roster.budget < 0 ? "text-red-400" : "text-amber-300"}`}>
+              {roster.budget.toLocaleString("pt-BR")}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-600">Folha por rodada</p>
+            <p className="text-lg font-black text-white">{wageBill.toLocaleString("pt-BR")}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-600">Entrou</p>
+            <p className="text-sm font-bold text-emerald-400">{roster.earned.toLocaleString("pt-BR")}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-600">Saiu</p>
+            <p className="text-sm font-bold text-gray-400">{roster.spent.toLocaleString("pt-BR")}</p>
+          </div>
+        </div>
+
+        <p className="mt-3 text-[11px] leading-snug text-gray-500">
+          Esse dinheiro é só desta liga e volta ao valor inicial quando um novo draft começa. Ele paga salário,
+          contratação e transferência.
+          {roster.budget < 0 && " Você está no vermelho, então não dá para contratar até o caixa virar."}
+        </p>
+
+        {statement && statement.entries.length > 0 && (
+          <div className="mt-3 max-h-44 space-y-1 overflow-y-auto border-t border-white/[0.06] pt-2">
+            {statement.entries.map((entry) => (
+              <div key={entry.id} className="flex items-center gap-2 text-[11px]">
+                <span
+                  className={`w-16 flex-shrink-0 text-right font-black tabular-nums ${
+                    entry.amount >= 0 ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
+                  {entry.amount >= 0 ? "+" : ""}
+                  {entry.amount.toLocaleString("pt-BR")}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-gray-400">{entry.description}</span>
+                <span className="flex-shrink-0 text-[10px] text-gray-600">{BUDGET_TX_LABELS[entry.type]}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       <Card className="border-white/[0.07] bg-white/[0.025] p-4">
         <div className="mb-1 flex items-center gap-2">
           <Swords className="h-4 w-4 text-violet-400" />
@@ -273,6 +344,7 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
 
                 <div className="flex flex-shrink-0 flex-col items-end gap-1">
                   <CoinAmount value={player.price} className="text-[11px]" />
+                  <span className="text-[10px] text-gray-600">{player.salary}/rodada</span>
                   {league.status === "ACTIVE" && league.transferWindowOpen && (
                     <button
                       onClick={() => void release(player)}

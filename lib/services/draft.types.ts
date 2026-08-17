@@ -6,6 +6,15 @@ export type DraftMatchStatus = "SCHEDULED" | "AWAITING_PROOF" | "FINISHED"
 export type TransferOfferKind = "BUY_FREE_AGENT" | "BUY_FROM_ROSTER" | "SWAP"
 export type TransferOfferStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELLED" | "EXPIRED"
 export type DraftResultMode = "REPORTED" | "SIMULATED"
+export type DraftBudgetTxType =
+  | "SEED"
+  | "MATCH_REWARD"
+  | "SALARY"
+  | "SIGNING"
+  | "SALE"
+  | "TRANSFER_IN"
+  | "TRANSFER_OUT"
+  | "ADJUST"
 export type TacticMentality = "DEFENSIVE" | "BALANCED" | "ATTACKING"
 export type TacticIntensity = "LOW" | "MEDIUM" | "HIGH"
 
@@ -18,6 +27,7 @@ export interface DraftPlayer {
   nationality: string | null
   photoUrl: string | null
   price: number
+  salary: number
   pace: number | null
   shooting: number | null
   passing: number | null
@@ -46,6 +56,9 @@ export interface DraftRoster {
   pressing: TacticIntensity
   tempo: TacticIntensity
   tacticsAt: string | null
+  budget: number
+  earned: number
+  spent: number
   draftOrder: number
   userId: number
   played: number
@@ -109,6 +122,8 @@ export interface DraftLeagueSummary {
   totalRounds: number
   currentRound: number
   resultMode: DraftResultMode
+  startingBudget: number
+  paySalaries: boolean
   transferWindowOpen: boolean
   marketAutoManaged: boolean
   marketClosesMinutesBefore: number
@@ -208,6 +223,17 @@ export const MENTALITY_LABELS: Record<TacticMentality, string> = {
   DEFENSIVE: "Retranca",
   BALANCED: "Equilibrado",
   ATTACKING: "Ofensivo",
+}
+
+export const BUDGET_TX_LABELS: Record<DraftBudgetTxType, string> = {
+  SEED: "Caixa inicial",
+  MATCH_REWARD: "Premiação de rodada",
+  SALARY: "Folha salarial",
+  SIGNING: "Contratação",
+  SALE: "Venda",
+  TRANSFER_IN: "Transferência recebida",
+  TRANSFER_OUT: "Transferência paga",
+  ADJUST: "Ajuste da organização",
 }
 
 export const INTENSITY_LABELS: Record<TacticIntensity, string> = {

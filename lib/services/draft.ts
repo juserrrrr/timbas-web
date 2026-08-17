@@ -3,6 +3,7 @@ import type {
   DraftLeagueDetail,
   DraftLeagueSummary,
   DraftMatch,
+  DraftBudgetTxType,
   DraftPlayer,
   DraftResultMode,
   DraftRoster,
@@ -28,6 +29,8 @@ export interface CreateDraftLeagueInput {
   coinsDraw?: number
   coinsLoss?: number
   resultMode?: DraftResultMode
+  startingBudget?: number
+  paySalaries?: boolean
   marketAutoManaged?: boolean
   marketClosesMinutesBefore?: number
   sourceCompetitionIds?: string[]
@@ -124,6 +127,30 @@ export function setTactics(
   },
 ) {
   return post<DraftRoster>(`/draft/${id}/tactics`, input)
+}
+
+export interface BudgetEntry {
+  id: string
+  amount: number
+  balanceAfter: number
+  type: DraftBudgetTxType
+  description: string
+  round: number | null
+  createdAt: string
+}
+
+export interface BudgetStatement {
+  id: string
+  name: string
+  budget: number
+  earned: number
+  spent: number
+  wageBill: number
+  entries: BudgetEntry[]
+}
+
+export function getBudget(id: string, rosterId?: string): Promise<BudgetStatement> {
+  return request(`/draft/${id}/budget${rosterId ? `?rosterId=${rosterId}` : ""}`)
 }
 
 export interface BaseMarketPlayer {

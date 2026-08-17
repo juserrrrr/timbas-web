@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LogOut, Server, Info, Code2, MessageSquare, Zap, Shield, Clock, ExternalLink } from "lucide-react"
+import { LogOut, Server, Info, Code2, Coins, MessageSquare, Zap, Shield, Clock, ExternalLink } from "lucide-react"
 
 import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
 import { useServer, SERVERS } from "@/lib/server-context"
@@ -86,6 +87,29 @@ export default function SettingsPage() {
               </span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Carteira da conta */}
+      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+        <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-5 py-4">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10">
+            <Coins className="h-3.5 w-3.5 text-amber-400" />
+          </div>
+          <h2 className="text-sm font-semibold text-white">Carteira da conta</h2>
+        </div>
+        <div className="space-y-3 px-5 py-4">
+          <p className="text-sm leading-relaxed text-gray-500">
+            Aqui ficam as moedas da sua conta, ganhas em campeonatos. O dinheiro da liga de draft é outro: ele
+            pertence à liga, paga salário e contratação lá dentro, e recomeça a cada draft.
+          </p>
+          <Link
+            href="/dashboard/wallet"
+            className="inline-flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-3 py-2 text-xs font-bold text-amber-300 transition-colors hover:bg-amber-500/[0.12]"
+          >
+            <Coins className="h-3.5 w-3.5" />
+            Abrir extrato da conta
+          </Link>
         </div>
       </div>
 
