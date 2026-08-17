@@ -4,7 +4,6 @@ import {
   FlaskConical,
   Gamepad2,
   LayoutDashboard,
-  Server,
   ShieldCheck,
   Trophy,
   Users,
@@ -35,7 +34,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     title: "Partida Customizada",
     items: [
       { icon: Users, label: "Jogadores", description: "Contas, cargos e histórico", href: "/admin/players", accent: "blue" },
-      { icon: Server, label: "Servidores", description: "Servidores do Discord registrados", href: "/admin/servers", accent: "emerald" },
     ],
   },
   {

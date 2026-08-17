@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { ArrowUpRight, CalendarDays, Database, Loader2, Play, Plus, Trash2, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -30,7 +31,10 @@ const STATUS_TONES: Record<DraftLeagueStatus, "neutral" | "live" | "warn" | "don
 }
 
 export default function AdminDraftPage() {
-  const [tab, setTab] = useState<"leagues" | "catalog">("leagues")
+  const params = useSearchParams()
+  const [tab, setTab] = useState<"leagues" | "catalog">(
+    params.get("tab") === "catalog" ? "catalog" : "leagues",
+  )
   const [leagues, setLeagues] = useState<DraftLeagueSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState("")
