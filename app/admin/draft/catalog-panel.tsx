@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import {
-  Camera,
+  ClipboardPaste,
   CheckCircle2,
   Database,
   Download,
@@ -20,7 +20,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import {
-  CompetitionHeader,
   EmptyState,
   ErrorState,
   PageLoading,
@@ -46,7 +45,7 @@ import {
 } from "@/lib/services/catalog"
 import { listDraftLeagues } from "@/lib/services/draft"
 import type { DraftLeagueSummary } from "@/lib/services/draft.types"
-import { SquadImageImport } from "./squad-image-import"
+import { CatalogImportDialog } from "@/components/competitions/catalog-import-dialog"
 
 const SOURCES: Array<{ id: CatalogSource; title: string; hint: string }> = [
   {
@@ -66,13 +65,14 @@ const SOURCES: Array<{ id: CatalogSource; title: string; hint: string }> = [
   },
 ]
 
-export default function SquadsCatalogPage() {
+export function CatalogPanel() {
   const [competitions, setCompetitions] = useState<CatalogCompetition[]>([])
   const [footballDataReady, setFootballDataReady] = useState(false)
   const [selected, setSelected] = useState<CatalogCompetition | null>(null)
   const [teams, setTeams] = useState<CatalogTeam[]>([])
   const [openTeam, setOpenTeam] = useState<CatalogTeam | null>(null)
-  const [imageTeam, setImageTeam] = useState<CatalogTeam | null>(null)
+  const [importTeam, setImportTeam] = useState<CatalogTeam | null>(null)
+  const [importingTeams, setImportingTeams] = useState<CatalogCompetition | null>(null)
   const [players, setPlayers] = useState<CatalogPlayer[]>([])
   const [leagues, setLeagues] = useState<DraftLeagueSummary[]>([])
 
@@ -127,15 +127,19 @@ export default function SquadsCatalogPage() {
   if (loading) return <PageLoading />
   if (error && competitions.length === 0) return <ErrorState message={error} retry={() => void load()} />
 
+  const refresh = async () => {
+    await load()
+    if (selected) setTeams(await listCatalogTeams(selected.id))
+    if (openTeam) setPlayers(await listCatalogPlayers(openTeam.id))
+  }
+
   const run = async (key: string, action: () => Promise<unknown>, message: string) => {
     setBusy(key)
     setError("")
     try {
       await action()
       setNotice(message)
-      await load()
-      if (selected) setTeams(await listCatalogTeams(selected.id))
-      if (openTeam) setPlayers(await listCatalogPlayers(openTeam.id))
+      await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível concluir a ação.")
     } finally {
@@ -145,15 +149,6 @@ export default function SquadsCatalogPage() {
 
   return (
     <div className="space-y-6">
-      <CompetitionHeader
-        eyebrow="Administração"
-        title="Base de jogadores"
-        subtitle="Sincronize elencos de uma API pública, complete na mão ou por foto, e mande tudo para uma liga de draft."
-        icon={Database}
-        accent="text-sky-400"
-        accentBg="bg-sky-500/10 border-sky-500/20"
-      />
-
       {notice && <p className="rounded-lg bg-white/[0.03] px-3 py-2 text-[12px] text-gray-300">{notice}</p>}
       {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[12px] text-red-300">{error}</p>}
 
@@ -359,6 +354,10 @@ export default function SquadsCatalogPage() {
                         <Plus className="mr-1.5 h-4 w-4" />
                         Adicionar
                       </Button>
+                      <Button variant="outline" onClick={() => setImportingTeams(competition)}>
+                        <ClipboardPaste className="mr-1.5 h-4 w-4" />
+                        Colar ou foto
+                      </Button>
                     </div>
 
                     <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -380,11 +379,11 @@ export default function SquadsCatalogPage() {
                               <p className="text-[10px] text-gray-600">{team._count.players} jogadores</p>
                             </button>
                             <button
-                              onClick={() => setImageTeam(team)}
-                              aria-label={`Importar elenco de ${team.name} por foto`}
+                              onClick={() => setImportTeam(team)}
+                              aria-label={`Importar elenco de ${team.name}`}
                               className="cursor-pointer rounded p-1.5 text-gray-600 hover:text-violet-400"
                             >
-                              <Camera className="h-3.5 w-3.5" />
+                              <ClipboardPaste className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() =>
@@ -487,18 +486,31 @@ export default function SquadsCatalogPage() {
         </div>
       )}
 
-      {imageTeam && (
-        <SquadImageImport
+      {importTeam && (
+        <CatalogImportDialog
           open
-          onOpenChange={(next) => !next && setImageTeam(null)}
-          teamId={imageTeam.id}
-          teamName={imageTeam.name}
+          onOpenChange={(next) => !next && setImportTeam(null)}
+          target="players"
+          teamId={importTeam.id}
+          teamName={importTeam.name}
           onImported={async (message) => {
             setNotice(message)
-            setImageTeam(null)
-            await load()
-            if (selected) setTeams(await listCatalogTeams(selected.id))
-            if (openTeam) setPlayers(await listCatalogPlayers(openTeam.id))
+            setImportTeam(null)
+            await refresh()
+          }}
+        />
+      )}
+
+      {importingTeams && (
+        <CatalogImportDialog
+          open
+          onOpenChange={(next) => !next && setImportingTeams(null)}
+          target="teams"
+          competitionId={importingTeams.id}
+          onImported={async (message) => {
+            setNotice(message)
+            setImportingTeams(null)
+            await refresh()
           }}
         />
       )}

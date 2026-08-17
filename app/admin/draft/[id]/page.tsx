@@ -54,11 +54,11 @@ export default function AdminDraftLeaguePage({ params }: { params: Promise<{ id:
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          href="/admin/competitions"
+          href="/admin/draft"
           className="flex items-center gap-1.5 text-xs font-bold text-gray-500 transition hover:text-white"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Competições
+          Liga Draft
         </Link>
         <Link
           href={`/dashboard/draft/${league.id}`}

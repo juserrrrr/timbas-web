@@ -45,6 +45,7 @@ export interface ExtractedPlayer {
   position: string
   overall: number | null
   nationality: string | null
+  realTeam?: string | null
 }
 
 export interface SquadExtraction {
@@ -116,6 +117,38 @@ export function updateCatalogPlayer(playerId: string, input: Record<string, unkn
 
 export function removeCatalogPlayer(playerId: string) {
   return remove<{ deleted: boolean }>(`/admin/catalog/players/${playerId}`)
+}
+
+export interface ExtractedTeam {
+  name: string
+  shortName: string | null
+}
+
+export function parsePastedPlayers(text: string): Promise<{ players: ExtractedPlayer[] }> {
+  return post("/admin/catalog/parse-pasted-players", { text })
+}
+
+export function parsePastedTeams(text: string): Promise<{ teams: ExtractedTeam[] }> {
+  return post("/admin/catalog/parse-pasted-teams", { text })
+}
+
+export function parseSquadWithAi(text: string, teamName?: string): Promise<SquadExtraction> {
+  return post("/admin/catalog/parse-squad-text", { text, teamName })
+}
+
+export function extractTeamsWithAi(input: {
+  imageBase64?: string
+  mimeType?: string
+  text?: string
+}): Promise<{ teams: ExtractedTeam[]; notes: string }> {
+  return post("/admin/catalog/extract-teams", input)
+}
+
+export function createCatalogTeams(
+  competitionId: string,
+  teams: Array<{ name: string; shortName?: string | null }>,
+): Promise<{ created: number; total: number }> {
+  return post(`/admin/catalog/competitions/${competitionId}/teams/bulk`, { teams })
 }
 
 export function extractSquadFromImage(input: {
