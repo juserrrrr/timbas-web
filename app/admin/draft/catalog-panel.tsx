@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Database, Download, Loader2, Plus, Search, Sparkles, Trash2, Users } from "lucide-react"
+import { Database, Download, Loader2, Plus, RefreshCw, Search, Sparkles, Trash2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,11 +19,14 @@ import {
 } from "@/lib/attributes"
 import {
   createBasePlayer,
+  createCompetition,
   estimateMissingAttributes,
   estimatePlayerAttributes,
   importCatalogToLeague,
   listBasePlayers,
+  listCompetitions,
   removeCatalogPlayer,
+  syncCompetition,
   updateCatalogPlayer,
   type BasePlayer,
 } from "@/lib/services/catalog"
@@ -187,6 +190,12 @@ export function CatalogPanel() {
   const [realTeam, setRealTeam] = useState("")
 
   const [importOpen, setImportOpen] = useState(false)
+  const [apiOpen, setApiOpen] = useState(false)
+  const [apiSource, setApiSource] = useState<"FOOTBALL_DATA" | "GENERIC">("FOOTBALL_DATA")
+  const [apiCode, setApiCode] = useState("BSA")
+  const [apiName, setApiName] = useState("Brasileirão Série A")
+  const [apiUrl, setApiUrl] = useState("")
+  const [footballDataReady, setFootballDataReady] = useState(false)
   const [importLeagueId, setImportLeagueId] = useState("")
   const [importReplace, setImportReplace] = useState(true)
 
@@ -197,13 +206,15 @@ export function CatalogPanel() {
 
   const load = useCallback(async () => {
     try {
-      const [base, leagueList] = await Promise.all([
+      const [base, leagueList, catalog] = await Promise.all([
         listBasePlayers({ search: search.trim() || undefined, missingAttributes: onlyMissing }),
         listDraftLeagues().catch(() => []),
+        listCompetitions().catch(() => ({ items: [], footballDataReady: false })),
       ])
       setPlayers(base.players)
       setTotal(base.total)
       setWithAttributes(base.withAttributes)
+      setFootballDataReady(catalog.footballDataReady)
       setLeagues(leagueList.filter((league) => league.status === "SETUP"))
       setError("")
     } catch (err) {
@@ -310,6 +321,9 @@ export function CatalogPanel() {
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="h-7 text-[11px]">
             Colar lista ou foto
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setApiOpen(!apiOpen)} className="h-7 text-[11px]">
+            Trazer de uma API
+          </Button>
           {missing > 0 && (
             <Button
               size="sm"
@@ -336,6 +350,113 @@ export function CatalogPanel() {
           )}
         </div>
       </Card>
+
+      {apiOpen && (
+        <Card className="border-sky-500/20 bg-sky-500/[0.04] p-4">
+          <h4 className="mb-1 text-sm font-bold text-white">Trazer elencos de uma API</h4>
+          <p className="mb-3 text-[11px] leading-snug text-gray-500">
+            Os jogadores chegam com nome, posição, nacionalidade e nascimento. Atributo não vem de fora, ele é
+            estimado aqui depois, e só a liga simulada precisa dele.
+          </p>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(
+              [
+                {
+                  id: "FOOTBALL_DATA" as const,
+                  title: "football-data.org",
+                  hint: footballDataReady
+                    ? "Elencos oficiais por competição. Informe o código, por exemplo BSA."
+                    : "Falta a variável FOOTBALL_DATA_TOKEN no servidor.",
+                },
+                {
+                  id: "GENERIC" as const,
+                  title: "URL própria",
+                  hint: 'Qualquer endereço que devolva JSON com times e seus jogadores.',
+                },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setApiSource(option.id)}
+                className={`cursor-pointer rounded-xl border p-3 text-left transition ${
+                  apiSource === option.id
+                    ? "border-sky-500/40 bg-sky-500/[0.08]"
+                    : "border-white/[0.07] bg-white/[0.02] hover:border-white/15"
+                }`}
+              >
+                <span className={`block text-sm font-bold ${apiSource === option.id ? "text-sky-300" : "text-white"}`}>
+                  {option.title}
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-gray-500">{option.hint}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="api-name">Nome da origem</Label>
+              <Input
+                id="api-name"
+                value={apiName}
+                onChange={(event) => setApiName(event.target.value)}
+                className="border-white/10 bg-white/[0.03]"
+              />
+            </div>
+            {apiSource === "FOOTBALL_DATA" ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="api-code">Código da competição</Label>
+                <Input
+                  id="api-code"
+                  value={apiCode}
+                  onChange={(event) => setApiCode(event.target.value.toUpperCase())}
+                  placeholder="BSA"
+                  className="border-white/10 bg-white/[0.03] font-mono text-[12px]"
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="api-url">URL do JSON</Label>
+                <Input
+                  id="api-url"
+                  value={apiUrl}
+                  onChange={(event) => setApiUrl(event.target.value)}
+                  placeholder="https://exemplo.com/elencos.json"
+                  className="border-white/10 bg-white/[0.03] text-[12px]"
+                />
+              </div>
+            )}
+          </div>
+
+          <Button
+            disabled={busy !== "" || apiName.trim().length < 3 || (apiSource === "GENERIC" && !apiUrl.trim())}
+            onClick={() =>
+              void run(
+                "api",
+                async () => {
+                  const competition = await createCompetition({
+                    code: apiSource === "FOOTBALL_DATA" ? apiCode.trim() : `URL${Date.now().toString().slice(-6)}`,
+                    name: apiName.trim(),
+                    source: apiSource,
+                    sourcePath: apiSource === "GENERIC" ? apiUrl.trim() : null,
+                  })
+                  const result = await syncCompetition(competition.id)
+                  setNotice(`${result.players} jogadores vieram de ${apiName.trim()}.`)
+                },
+                "",
+              ).then(() => setApiOpen(false))
+            }
+            className="mt-3 w-full bg-sky-500 text-black hover:bg-sky-400"
+          >
+            {busy === "api" ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+            )}
+            Buscar e trazer para a base
+          </Button>
+        </Card>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[220px] flex-1">

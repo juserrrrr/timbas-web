@@ -1,6 +1,5 @@
 import {
   Brain,
-  Database,
   FlaskConical,
   Gamepad2,
   LayoutDashboard,
@@ -55,14 +54,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: "/admin/draft",
         accent: "emerald",
         permission: "draft.create",
-      },
-      {
-        icon: Database,
-        label: "Base de jogadores",
-        description: "Competições, elencos e atributos",
-        href: "/admin/draft?tab=catalog",
-        accent: "sky",
-        permission: "catalog.manage",
       },
     ],
   },
