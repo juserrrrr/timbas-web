@@ -84,6 +84,11 @@ function ModelField({
           <option key={model} value={model} />
         ))}
       </datalist>
+      {value.trim() !== "" && !models.includes(value.trim()) && (
+        <p className="text-[11px] text-amber-400">
+          Esse modelo não está na lista deste provedor. Se o nome estiver errado, a chamada volta com erro.
+        </p>
+      )}
       <div className="flex flex-wrap gap-1">
         {models.map((model) => (
           <button
@@ -314,7 +319,18 @@ export default function AiAdminPage() {
           <ProviderPicker
             providers={settings.providers}
             value={draft.analysisProvider ?? settings.analysis.provider}
-            onChange={(provider) => setDraft({ ...draft, analysisProvider: provider })}
+            /// Nome de modelo não atravessa provedor: trocar de casa zera o
+            /// campo, e vazio quer dizer "o padrão de quem foi escolhido".
+            onChange={(provider) =>
+              setDraft({
+                ...draft,
+                analysisProvider: provider,
+                analysisModel: "",
+                ...(draft.analysisFallbackProvider === provider
+                  ? { analysisFallbackProvider: null, analysisFallbackModel: "" }
+                  : {}),
+              })
+            }
           />
 
           <div className="mt-3">
@@ -462,7 +478,7 @@ export default function AiAdminPage() {
           <ProviderPicker
             providers={settings.providers}
             value={draft.scoreReaderProvider ?? settings.scoreReader.provider}
-            onChange={(provider) => setDraft({ ...draft, scoreReaderProvider: provider })}
+            onChange={(provider) => setDraft({ ...draft, scoreReaderProvider: provider, scoreReaderModel: "" })}
             requireVision={(draft.scoreReadMode ?? settings.scoreReader.mode) === "VISION"}
           />
 
