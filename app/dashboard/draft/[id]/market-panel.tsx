@@ -1,14 +1,19 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ArrowLeftRight, Check, Coins, Loader2, Search, ShoppingCart, X } from "lucide-react"
+import { ArrowLeftRight, Check, Coins, Gavel, Loader2, Search, ShoppingCart, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { CoinAmount, EmptyState, StatusPill } from "@/components/competitions/shared"
+import { CoinAmount, EmptyState, StatusPill, formatDateTime } from "@/components/competitions/shared"
 import {
+  cancelAuction,
   cancelOffer,
+  createAuction,
   createOffer,
+  listAuctions,
+  placeBid,
+  type Auction,
   listBaseMarket,
   listDraftPlayers,
   listOffers,
@@ -21,6 +26,8 @@ import { OFFER_KIND_LABELS, type DraftLeagueDetail, type DraftPlayer, type Trans
 export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; onChanged: () => void }) {
   const [players, setPlayers] = useState<DraftPlayer[]>([])
   const [basePlayers, setBasePlayers] = useState<BaseMarketPlayer[]>([])
+  const [auctions, setAuctions] = useState<Auction[]>([])
+  const [bids, setBids] = useState<Record<string, string>>({})
   const [offers, setOffers] = useState<TransferOffer[]>([])
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
@@ -30,23 +37,25 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
 
   const load = useCallback(async () => {
     try {
-      const [playersData, offersData, baseData] = await Promise.all([
+      const [playersData, offersData, baseData, auctionData] = await Promise.all([
         listDraftPlayers(league.id),
         listOffers(league.id),
         league.sources.length > 0
           ? listBaseMarket(league.id, { search: search.trim() || undefined })
           : Promise.resolve({ competitions: [], players: [] }),
+        league.auctionsEnabled ? listAuctions(league.id) : Promise.resolve([] as Auction[]),
       ])
       setPlayers(playersData)
       setOffers(offersData)
       setBasePlayers(baseData.players)
+      setAuctions(auctionData)
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar o mercado")
     } finally {
       setLoading(false)
     }
-  }, [league.id, league.sources.length, search])
+  }, [league.id, league.sources.length, league.auctionsEnabled, search])
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 300)
@@ -94,6 +103,7 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
   }
 
   const pendingOffers = offers.filter((offer) => offer.status === "PENDING")
+  const openAuctions = auctions.filter((auction) => auction.status === "OPEN")
 
   return (
     <div className="space-y-5">
@@ -186,6 +196,99 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
         />
       </div>
 
+      {league.auctionsEnabled && openAuctions.length > 0 && (
+        <div>
+          <h3 className="mb-1 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-gray-500">
+            <Gavel className="h-3.5 w-3.5" />
+            Leilões abertos ({openAuctions.length})
+          </h3>
+          <p className="mb-2 text-[11px] leading-snug text-gray-600">
+            Lance aberto: o dinheiro sai do caixa na hora e volta se alguém cobrir. Lance nos últimos{" "}
+            {league.auctionAntiSnipeMinutes} minutos empurra o prazo.
+          </p>
+
+          <div className="grid gap-2 lg:grid-cols-2">
+            {openAuctions.map((auction) => (
+              <Card
+                key={auction.id}
+                className={`p-3 ${
+                  auction.isLeading
+                    ? "border-emerald-500/30 bg-emerald-500/[0.05]"
+                    : "border-white/[0.07] bg-white/[0.025]"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-sm font-black text-white">
+                    {auction.player.overall}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-white">{auction.player.name}</p>
+                    <p className="truncate text-[11px] text-gray-600">
+                      {auction.player.position}
+                      {auction.sellerRoster ? ` · vendido por ${auction.sellerRoster.name}` : " · jogador livre"}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-600">
+                      {auction.bidCount === 0 ? "inicial" : `${auction.bidCount} lance(s)`}
+                    </p>
+                    <p className="text-sm font-black text-amber-300">
+                      {(auction.bidCount === 0 ? auction.startingBid : auction.currentBid).toLocaleString("pt-BR")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.05] pt-2">
+                  <span className="text-[11px] text-gray-500">
+                    {auction.leaderRoster ? `${auction.leaderRoster.name} na frente` : "sem lance ainda"}
+                    {" · fecha "}
+                    {formatDateTime(auction.endsAt)}
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      value={bids[auction.id] ?? String(auction.minimumBid)}
+                      onChange={(event) =>
+                        setBids({ ...bids, [auction.id]: event.target.value.replace(/[^0-9]/g, "").slice(0, 8) })
+                      }
+                      className="h-8 w-24 border-white/10 bg-black/40 text-center text-[12px]"
+                      aria-label={`Lance em ${auction.player.name}`}
+                    />
+                    <Button
+                      size="sm"
+                      disabled={!marketOpen || auction.isMine || auction.isLeading || busyId === auction.id}
+                      onClick={() =>
+                        void run(
+                          auction.id,
+                          () => placeBid(league.id, auction.id, Number(bids[auction.id] ?? auction.minimumBid)),
+                          `Lance dado em ${auction.player.name}.`,
+                        )
+                      }
+                      className="h-8 bg-amber-500 px-2 text-[11px] text-black hover:bg-amber-400"
+                    >
+                      {busyId === auction.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Dar lance"}
+                    </Button>
+                    {auction.canManage && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === auction.id}
+                        onClick={() =>
+                          void run(auction.id, () => cancelAuction(league.id, auction.id), "Leilão cancelado.")
+                        }
+                        className="h-8 border-red-500/25 px-2 text-[11px] text-red-400 hover:bg-red-500/10"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {league.sources.length > 0 && (
         <div>
           <h3 className="mb-1 text-xs font-black uppercase tracking-wider text-gray-500">
@@ -272,6 +375,22 @@ export function MarketPanel({ league, onChanged }: { league: DraftLeagueDetail; 
                   >
                     {busyId === player.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Contratar"}
                   </Button>
+                  {league.auctionsEnabled && league.access.canModerate && (
+                    <button
+                      disabled={!marketOpen || busyId === player.id}
+                      onClick={() =>
+                        void run(
+                          player.id,
+                          () => createAuction(league.id, { playerId: player.id }),
+                          `${player.name} foi para leilão.`,
+                        )
+                      }
+                      className="flex cursor-pointer items-center gap-1 text-[10px] font-bold text-gray-600 transition hover:text-amber-400"
+                    >
+                      <Gavel className="h-3 w-3" />
+                      Leiloar
+                    </button>
+                  )}
                 </div>
               </Card>
             ))}

@@ -146,6 +146,8 @@ export default function DemoLabPage() {
   const [draftResultMode, setDraftResultMode] = useState<DraftResultMode>("SIMULATED")
   const [startingBudget, setStartingBudget] = useState(1000)
   const [paySalaries, setPaySalaries] = useState(true)
+  const [auctionsEnabled, setAuctionsEnabled] = useState(true)
+  const [auctionHours, setAuctionHours] = useState(24)
 
   const groupOptions = groupCountOptions(teamCount)
   const activeGroupCount = pickOption(groupOptions, groupCount, 2)
@@ -380,6 +382,23 @@ export default function DemoLabPage() {
               <Switch checked={paySalaries} onCheckedChange={setPaySalaries} />
             </label>
 
+            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2">
+              <span className="text-[12px] text-gray-300">Leilão liberado</span>
+              <Switch checked={auctionsEnabled} onCheckedChange={setAuctionsEnabled} />
+            </label>
+
+            {auctionsEnabled && (
+              <div className="space-y-1.5">
+                <Label>Duração do leilão</Label>
+                <Chips
+                  options={[1, 6, 24, 48]}
+                  value={auctionHours}
+                  onChange={setAuctionHours}
+                  render={(hours) => `${hours}h`}
+                />
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label>Até onde simular</Label>
               <StagePicker stages={DRAFT_STAGES} value={draftStage} onChange={setDraftStage} accent="emerald" />
@@ -395,6 +414,8 @@ export default function DemoLabPage() {
                     resultMode: draftResultMode,
                     startingBudget,
                     paySalaries,
+                    auctionsEnabled,
+                    auctionHours,
                     stage: draftStage,
                   }),
                 )

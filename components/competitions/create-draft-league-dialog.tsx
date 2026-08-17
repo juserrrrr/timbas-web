@@ -32,6 +32,10 @@ const DEFAULTS = {
   paySalaries: true,
   marketAutoManaged: true,
   marketClosesMinutesBefore: 180,
+  auctionsEnabled: true,
+  auctionHours: 24,
+  auctionMinIncrementPercent: 5,
+  auctionAntiSnipeMinutes: 5,
   pointsWin: 3,
   pointsDraw: 1,
   coinsWin: 60,
@@ -130,6 +134,10 @@ export function CreateDraftLeagueDialog({
   const [coinsWin, setCoinsWin] = useState(DEFAULTS.coinsWin)
   const [coinsDraw, setCoinsDraw] = useState(DEFAULTS.coinsDraw)
   const [coinsLoss, setCoinsLoss] = useState(DEFAULTS.coinsLoss)
+  const [auctionsEnabled, setAuctionsEnabled] = useState(DEFAULTS.auctionsEnabled)
+  const [auctionHours, setAuctionHours] = useState(DEFAULTS.auctionHours)
+  const [auctionMinIncrementPercent, setAuctionMinIncrementPercent] = useState(DEFAULTS.auctionMinIncrementPercent)
+  const [auctionAntiSnipeMinutes, setAuctionAntiSnipeMinutes] = useState(DEFAULTS.auctionAntiSnipeMinutes)
   const [sources, setSources] = useState<string[]>([])
   const [competitions, setCompetitions] = useState<Array<{ id: string; name: string }>>([])
   const [busy, setBusy] = useState(false)
@@ -172,6 +180,10 @@ export function CreateDraftLeagueDialog({
         coinsWin,
         coinsDraw,
         coinsLoss,
+        auctionsEnabled,
+        auctionHours,
+        auctionMinIncrementPercent,
+        auctionAntiSnipeMinutes,
         sourceCompetitionIds: sources,
       })
       onOpenChange(false)
@@ -428,6 +440,51 @@ export function CreateDraftLeagueDialog({
                 durante a temporada.
               </p>
             </div>
+          </Section>
+
+          <Section
+            title="Leilão"
+            hint="Lance aberto: todo mundo vê o maior lance e quem deu. O dinheiro do líder fica preso até alguém cobrir, então ninguém arremata sem caixa."
+          >
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-white">Usar leilão nesta liga</span>
+                <span className="block text-[11px] leading-snug text-gray-500">
+                  Elenco leiloa quem é dele, e a organização leiloa quem está livre
+                </span>
+              </span>
+              <Switch checked={auctionsEnabled} onCheckedChange={setAuctionsEnabled} />
+            </label>
+
+            {auctionsEnabled && (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <NumberField
+                  id="auction-hours"
+                  label="Duração (h)"
+                  value={auctionHours}
+                  onChange={setAuctionHours}
+                  min={1}
+                  max={336}
+                  hint="24h dá um dia inteiro para todos verem."
+                />
+                <NumberField
+                  id="auction-increment"
+                  label="Incremento (%)"
+                  value={auctionMinIncrementPercent}
+                  onChange={setAuctionMinIncrementPercent}
+                  max={100}
+                  hint="Cada lance sobe ao menos isso."
+                />
+                <NumberField
+                  id="auction-antisnipe"
+                  label="Prorrogação (min)"
+                  value={auctionAntiSnipeMinutes}
+                  onChange={setAuctionAntiSnipeMinutes}
+                  max={120}
+                  hint="Lance no fim empurra o prazo. Zero desliga."
+                />
+              </div>
+            )}
           </Section>
 
           {error && (

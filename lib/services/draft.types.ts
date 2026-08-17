@@ -6,6 +6,7 @@ export type DraftMatchStatus = "SCHEDULED" | "AWAITING_PROOF" | "FINISHED"
 export type TransferOfferKind = "BUY_FREE_AGENT" | "BUY_FROM_ROSTER" | "SWAP"
 export type TransferOfferStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELLED" | "EXPIRED"
 export type DraftResultMode = "REPORTED" | "SIMULATED"
+export type AuctionStatus = "OPEN" | "SOLD" | "EXPIRED" | "CANCELLED"
 export type DraftBudgetTxType =
   | "SEED"
   | "MATCH_REWARD"
@@ -14,6 +15,9 @@ export type DraftBudgetTxType =
   | "SALE"
   | "TRANSFER_IN"
   | "TRANSFER_OUT"
+  | "AUCTION_BID"
+  | "AUCTION_REFUND"
+  | "AUCTION_SALE"
   | "ADJUST"
 export type TacticMentality = "DEFENSIVE" | "BALANCED" | "ATTACKING"
 export type TacticIntensity = "LOW" | "MEDIUM" | "HIGH"
@@ -124,6 +128,10 @@ export interface DraftLeagueSummary {
   resultMode: DraftResultMode
   startingBudget: number
   paySalaries: boolean
+  auctionsEnabled: boolean
+  auctionHours: number
+  auctionMinIncrementPercent: number
+  auctionAntiSnipeMinutes: number
   transferWindowOpen: boolean
   marketAutoManaged: boolean
   marketClosesMinutesBefore: number
@@ -240,6 +248,9 @@ export const BUDGET_TX_LABELS: Record<DraftBudgetTxType, string> = {
   SALE: "Venda",
   TRANSFER_IN: "Transferência recebida",
   TRANSFER_OUT: "Transferência paga",
+  AUCTION_BID: "Lance em leilão",
+  AUCTION_REFUND: "Lance devolvido",
+  AUCTION_SALE: "Venda em leilão",
   ADJUST: "Ajuste da organização",
 }
 

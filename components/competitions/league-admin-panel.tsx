@@ -269,6 +269,88 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
               </label>
             </div>
 
+            <div className="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3">
+              <label className="flex cursor-pointer items-center justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-white">Leilão</span>
+                  <span className="block text-[11px] leading-snug text-gray-500">
+                    Lance aberto, dinheiro preso no lance e prorrogação no fim
+                  </span>
+                </span>
+                <Switch
+                  checked={league.auctionsEnabled}
+                  onCheckedChange={(checked) =>
+                    void run(
+                      () => updateDraftLeague(league.id, { auctionsEnabled: checked }),
+                      checked ? "Leilão liberado." : "Leilão desligado.",
+                    )
+                  }
+                />
+              </label>
+
+              {league.auctionsEnabled && (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="auction-hours">Duração (h)</Label>
+                    <Input
+                      id="auction-hours"
+                      type="number"
+                      min={1}
+                      max={336}
+                      defaultValue={league.auctionHours}
+                      onBlur={(event) => {
+                        const hours = Number(event.target.value)
+                        if (hours === league.auctionHours || hours < 1) return
+                        void run(
+                          () => updateDraftLeague(league.id, { auctionHours: hours }),
+                          `Leilão passa a durar ${hours}h.`,
+                        )
+                      }}
+                      className="border-white/10 bg-white/[0.03]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="auction-increment">Incremento (%)</Label>
+                    <Input
+                      id="auction-increment"
+                      type="number"
+                      min={0}
+                      max={100}
+                      defaultValue={league.auctionMinIncrementPercent}
+                      onBlur={(event) => {
+                        const percent = Number(event.target.value)
+                        if (percent === league.auctionMinIncrementPercent || percent < 0) return
+                        void run(
+                          () => updateDraftLeague(league.id, { auctionMinIncrementPercent: percent }),
+                          `Cada lance sobe ao menos ${percent}%.`,
+                        )
+                      }}
+                      className="border-white/10 bg-white/[0.03]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="auction-antisnipe">Prorrogação (min)</Label>
+                    <Input
+                      id="auction-antisnipe"
+                      type="number"
+                      min={0}
+                      max={120}
+                      defaultValue={league.auctionAntiSnipeMinutes}
+                      onBlur={(event) => {
+                        const minutes = Number(event.target.value)
+                        if (minutes === league.auctionAntiSnipeMinutes || minutes < 0) return
+                        void run(
+                          () => updateDraftLeague(league.id, { auctionAntiSnipeMinutes: minutes }),
+                          minutes === 0 ? "Prorrogação desligada." : `Lance no fim empurra ${minutes} min.`,
+                        )
+                      }}
+                      className="border-white/10 bg-white/[0.03]"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid gap-2">
               {(["REPORTED", "SIMULATED"] as const).map((mode) => (
                 <button

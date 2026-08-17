@@ -60,6 +60,8 @@ export function buildDemoDraft(input: {
   resultMode?: DraftResultMode
   startingBudget?: number
   paySalaries?: boolean
+  auctionsEnabled?: boolean
+  auctionHours?: number
   stage: DemoDraftStage
 }): Promise<DemoDraftResult> {
   return post("/admin/demo/draft", input)

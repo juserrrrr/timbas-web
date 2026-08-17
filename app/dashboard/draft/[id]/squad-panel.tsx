@@ -1,12 +1,19 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Coins, Loader2, Save, Shirt, Star, Swords, Undo2 } from "lucide-react"
+import { Coins, Gavel, Loader2, Save, Shirt, Star, Swords, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { CoinAmount, EmptyState, StatusPill } from "@/components/competitions/shared"
 import { BUDGET_TX_LABELS, FORMATIONS, INTENSITY_LABELS, MENTALITY_LABELS } from "@/lib/services/draft.types"
-import { getBudget, releasePlayer, setLineup, setTactics, type BudgetStatement } from "@/lib/services/draft"
+import {
+  createAuction,
+  getBudget,
+  releasePlayer,
+  setLineup,
+  setTactics,
+  type BudgetStatement,
+} from "@/lib/services/draft"
 import type { DraftLeagueDetail, DraftPlayer } from "@/lib/services/draft.types"
 
 function startersFor(formation: string): number {
@@ -126,6 +133,22 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar a tática.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const auction = async (player: DraftPlayer) => {
+    setBusy(true)
+    setError("")
+    try {
+      await createAuction(league.id, { playerId: player.id })
+      setNotice(
+        `${player.name} foi para leilão por ${league.auctionHours}h, começando em ${player.price}. Quem der o maior lance leva.`,
+      )
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível abrir o leilão.")
     } finally {
       setBusy(false)
     }
@@ -345,6 +368,16 @@ export function SquadPanel({ league, onChanged }: { league: DraftLeagueDetail; o
                 <div className="flex flex-shrink-0 flex-col items-end gap-1">
                   <CoinAmount value={player.price} className="text-[11px]" />
                   <span className="text-[10px] text-gray-600">{player.salary}/rodada</span>
+                  {league.status === "ACTIVE" && league.transferWindowOpen && league.auctionsEnabled && (
+                    <button
+                      onClick={() => void auction(player)}
+                      disabled={busy}
+                      className="flex cursor-pointer items-center gap-1 text-[10px] font-bold text-gray-600 transition hover:text-amber-400"
+                    >
+                      <Gavel className="h-3 w-3" />
+                      Leiloar
+                    </button>
+                  )}
                   {league.status === "ACTIVE" && league.transferWindowOpen && (
                     <button
                       onClick={() => void release(player)}

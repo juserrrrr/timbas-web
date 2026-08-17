@@ -1,5 +1,6 @@
 import { apiUrl, fetchImageObjectUrl, patch, post, remove, request } from "./http"
 import type {
+  AuctionStatus,
   DraftLeagueDetail,
   DraftLeagueSummary,
   DraftMatch,
@@ -31,6 +32,10 @@ export interface CreateDraftLeagueInput {
   resultMode?: DraftResultMode
   startingBudget?: number
   paySalaries?: boolean
+  auctionsEnabled?: boolean
+  auctionHours?: number
+  auctionMinIncrementPercent?: number
+  auctionAntiSnipeMinutes?: number
   marketAutoManaged?: boolean
   marketClosesMinutesBefore?: number
   sourceCompetitionIds?: string[]
@@ -127,6 +132,50 @@ export function setTactics(
   },
 ) {
   return post<DraftRoster>(`/draft/${id}/tactics`, input)
+}
+
+export interface Auction {
+  id: string
+  playerId: string
+  startingBid: number
+  currentBid: number
+  bidCount: number
+  minimumBid: number
+  status: AuctionStatus
+  endsAt: string
+  closedAt: string | null
+  isMine: boolean
+  isLeading: boolean
+  canManage: boolean
+  player: {
+    id: string
+    name: string
+    position: string
+    overall: number
+    price: number
+    salary: number
+    photoUrl: string | null
+    realTeam: string | null
+  }
+  sellerRoster: { id: string; name: string; tag: string | null } | null
+  leaderRoster: { id: string; name: string; tag: string | null } | null
+  bids: Array<{ id: string; amount: number; createdAt: string; roster: { id: string; name: string } }>
+}
+
+export function listAuctions(id: string): Promise<Auction[]> {
+  return request(`/draft/${id}/auctions`)
+}
+
+export function createAuction(id: string, input: { playerId: string; startingBid?: number; hours?: number }) {
+  return post<Auction>(`/draft/${id}/auctions`, input)
+}
+
+export function placeBid(id: string, auctionId: string, amount: number) {
+  return post<Auction>(`/draft/${id}/auctions/${auctionId}/bid`, { amount })
+}
+
+export function cancelAuction(id: string, auctionId: string) {
+  return remove<Auction>(`/draft/${id}/auctions/${auctionId}`)
 }
 
 export interface BudgetEntry {
