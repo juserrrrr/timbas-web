@@ -1,6 +1,6 @@
 import { patch, post, remove, request } from "./http"
 
-export type CatalogSource = "MANUAL" | "FOOTBALL_DATA" | "GENERIC" | "WIKIPEDIA"
+export type CatalogSource = "MANUAL" | "FOOTBALL_DATA" | "GENERIC" | "WIKIPEDIA" | "AI"
 
 export interface CatalogCompetition {
   id: string
@@ -35,6 +35,7 @@ export interface CatalogPlayer {
   teamId: string
   name: string
   position: string
+  shirtNumber: number | null
   overall: number
   nationality: string | null
   photoUrl: string | null
@@ -73,6 +74,7 @@ export const SOURCE_LABELS: Record<CatalogSource, string> = {
   FOOTBALL_DATA: "football-data.org",
   GENERIC: "URL própria",
   WIKIPEDIA: "Wikipedia",
+  AI: "IA",
 }
 
 export interface BasePlayer extends CatalogPlayer {
@@ -141,6 +143,72 @@ export function syncCompetition(id: string): Promise<{ teams: number; players: n
 
 export function syncWikipediaSquads(teams: string[]): Promise<{ teams: number; players: number; failures: string[] }> {
   return post("/admin/catalog/wikipedia/sync", { teams })
+}
+
+export interface AiSquadPlayer {
+  shirtNumber: number | null
+  name: string
+  position: string
+  rawPosition: string | null
+  nationality: string | null
+  birthDate: string | null
+  onLoan: boolean
+  fromYouth: boolean
+  confidence: number
+  attributes: Record<"pace" | "shooting" | "passing" | "dribbling" | "defending" | "physical", number> | null
+  overall: number | null
+  price: number | null
+  note: string
+}
+
+export interface AiSquadResult {
+  team: string
+  teamName: string | null
+  competition: string | null
+  coach: string | null
+  referenceDate: string
+  players: AiSquadPlayer[]
+  beyondKnowledge: boolean
+  notes: string
+  provider: string
+  model: string
+}
+
+export interface AiSquadInput {
+  teams: string[]
+  referenceDate?: string
+  competition?: string | null
+}
+
+/// Só pergunta e devolve o JSON, sem gravar. Serve para conferir antes de trazer.
+export function fetchAiSquads(input: AiSquadInput): Promise<{ squads: AiSquadResult[]; failures: string[] }> {
+  return post("/admin/catalog/ai/squad", input)
+}
+
+export function syncAiSquads(
+  input: AiSquadInput,
+): Promise<{ teams: number; players: number; failures: string[]; squads: AiSquadResult[] }> {
+  return post("/admin/catalog/ai/sync", input)
+}
+
+/// A IA diz quais clubes disputam a competição e cria a pasta com todos eles.
+export function createAiCompetition(input: {
+  name: string
+  code?: string
+  referenceDate?: string
+  withSquads?: boolean
+}): Promise<{
+  competition: CatalogCompetition
+  teams: Array<{ name: string; shortName: string | null; country: string | null }>
+  created: number
+  season: string | null
+  beyondKnowledge: boolean
+  notes: string
+  model: string
+  players: number
+  pending: number
+}> {
+  return post("/admin/catalog/ai/competition", input)
 }
 
 export function listCatalogTeams(competitionId: string): Promise<CatalogTeam[]> {

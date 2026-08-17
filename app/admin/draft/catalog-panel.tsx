@@ -11,20 +11,26 @@ import { EmptyState, ErrorState, PageLoading, StatusPill } from "@/components/co
 import { formatMoney } from "@/lib/money"
 import { OVERALL_TIERS, groupByTier, tierOf, type OverallTierId } from "@/lib/tiers"
 import { CatalogImportDialog } from "@/components/competitions/catalog-import-dialog"
+import { CatalogTeamsCard } from "./catalog-teams-card"
 import { ATTRIBUTE_KEYS, attributeLongLabels, attributeRow, attributeTone, hasAttributes } from "@/lib/attributes"
 import {
+  createAiCompetition,
   createBasePlayer,
   createCompetition,
   estimateMissingAttributes,
   estimatePlayerAttributes,
   importCatalogToLeague,
   listBasePlayers,
+  listCatalogTeams,
   listCompetitions,
   removeCatalogPlayer,
+  syncAiSquads,
   syncCompetition,
   syncWikipediaSquads,
   updateCatalogPlayer,
   type BasePlayer,
+  type CatalogCompetition,
+  type CatalogTeam,
 } from "@/lib/services/catalog"
 import { listDraftLeagues } from "@/lib/services/draft"
 import type { DraftLeagueSummary } from "@/lib/services/draft.types"
@@ -42,11 +48,13 @@ function PlayerRow({
   player: BasePlayer
   busy: string
   onEstimate: () => void
-  onSave: (input: Record<string, number>) => void
+  onSave: (input: Record<string, number | string>) => void
   onRemove: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<Record<string, string>>({})
+  const [club, setClub] = useState(player.team.name)
+  const [position, setPosition] = useState(player.position)
 
   const labels = attributeLongLabels(player.position)
   const filled = hasAttributes(player)
@@ -58,15 +66,19 @@ function PlayerRow({
         ...ATTRIBUTE_KEYS.map((key) => [key, player[key] === null ? "" : String(player[key])]),
       ]),
     )
+    setClub(player.team.name)
+    setPosition(player.position)
     setOpen(true)
   }
 
   const save = () => {
-    const input: Record<string, number> = {}
+    const input: Record<string, number | string> = {}
     for (const key of ["overall", ...ATTRIBUTE_KEYS]) {
       const value = Number(draft[key])
       if (Number.isFinite(value) && value >= 1 && value <= 99) input[key] = Math.round(value)
     }
+    if (position !== player.position) input.position = position
+    if (club.trim() !== player.team.name) input.realTeam = club.trim()
     onSave(input)
     setOpen(false)
   }
@@ -84,9 +96,9 @@ function PlayerRow({
           className="min-w-0 flex-1 cursor-pointer truncate text-left text-white hover:text-sky-300"
         >
           {player.name}
-          {player.team.name !== "Sem clube" && (
-            <span className="ml-1.5 text-[10px] text-gray-600">{player.team.name}</span>
-          )}
+          <span className={`ml-1.5 text-[10px] ${player.team.name === "Sem clube" ? "text-gray-700" : "text-sky-400/70"}`}>
+            {player.team.name}
+          </span>
         </button>
 
         {filled ? (
@@ -127,6 +139,33 @@ function PlayerRow({
 
       {open && (
         <div className="mt-2 space-y-2 border-t border-white/[0.05] pt-2">
+          <div className="grid gap-2 sm:grid-cols-[1fr_110px_auto]">
+            <label className="space-y-1">
+              <span className="block text-[10px] uppercase tracking-wide text-gray-600">Clube</span>
+              <input
+                value={club}
+                onChange={(event) => setClub(event.target.value)}
+                placeholder="Sem clube"
+                className="h-8 w-full rounded border border-white/10 bg-black/40 px-2 text-[12px] text-white outline-none focus:border-sky-500/50"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="block text-[10px] uppercase tracking-wide text-gray-600">Posição</span>
+              <select
+                value={position}
+                onChange={(event) => setPosition(event.target.value)}
+                className="h-8 w-full rounded border border-white/10 bg-[#0b0b12] px-2 text-[12px] text-white outline-none focus:border-sky-500/50"
+              >
+                {POSITIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="self-end pb-1.5 text-[10px] text-gray-600">{player.team.competition.name}</span>
+          </div>
+
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label className="space-y-1">
               <span className="block text-[10px] uppercase tracking-wide text-gray-600">Overall</span>
@@ -188,14 +227,24 @@ export function CatalogPanel() {
 
   const [importOpen, setImportOpen] = useState(false)
   const [apiOpen, setApiOpen] = useState(false)
-  const [apiSource, setApiSource] = useState<"FOOTBALL_DATA" | "GENERIC" | "WIKIPEDIA">("FOOTBALL_DATA")
+  const [apiSource, setApiSource] = useState<"FOOTBALL_DATA" | "GENERIC" | "WIKIPEDIA" | "AI">("FOOTBALL_DATA")
   const [apiCode, setApiCode] = useState("BSA")
   const [apiName, setApiName] = useState("Brasileirão Série A")
   const [apiUrl, setApiUrl] = useState("")
   const [wikipediaTeams, setWikipediaTeams] = useState("")
+  const [aiTeams, setAiTeams] = useState("")
+  const [aiDate, setAiDate] = useState(new Date().toISOString().slice(0, 10))
+  const [aiMode, setAiMode] = useState<"TEAMS" | "COMPETITION">("TEAMS")
+  const [aiCompetition, setAiCompetition] = useState("")
+  const [aiWithSquads, setAiWithSquads] = useState(true)
   const [footballDataReady, setFootballDataReady] = useState(false)
   const [importLeagueId, setImportLeagueId] = useState("")
   const [importReplace, setImportReplace] = useState(true)
+  const [competitions, setCompetitions] = useState<CatalogCompetition[]>([])
+  const [poolCompetitionId, setPoolCompetitionId] = useState("")
+  const [poolTeams, setPoolTeams] = useState<CatalogTeam[]>([])
+  const [poolTeamIds, setPoolTeamIds] = useState<string[]>([])
+  const [poolMinOverall, setPoolMinOverall] = useState("")
 
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState("")
@@ -213,6 +262,7 @@ export function CatalogPanel() {
       setTotal(base.total)
       setWithAttributes(base.withAttributes)
       setFootballDataReady(catalog.footballDataReady)
+      setCompetitions(catalog.items)
       setLeagues(leagueList.filter((league) => league.status === "SETUP"))
       setError("")
     } catch (err) {
@@ -226,6 +276,18 @@ export function CatalogPanel() {
     const timer = setTimeout(() => void load(), 300)
     return () => clearTimeout(timer)
   }, [load])
+
+  // Escolher a competição do pool troca a lista de times que dá para marcar.
+  useEffect(() => {
+    setPoolTeamIds([])
+    if (!poolCompetitionId) {
+      setPoolTeams([])
+      return
+    }
+    void listCatalogTeams(poolCompetitionId)
+      .then(setPoolTeams)
+      .catch(() => setPoolTeams([]))
+  }, [poolCompetitionId])
 
   if (loading) return <PageLoading />
   if (error && players.length === 0 && total === 0) return <ErrorState message={error} retry={() => void load()} />
@@ -385,6 +447,11 @@ export function CatalogPanel() {
                   title: "Wikipedia",
                   hint: "Cole uma lista de clubes e buscamos o elenco principal atual de cada um.",
                 },
+                {
+                  id: "AI" as const,
+                  title: "Perguntar para a IA",
+                  hint: "A IA lista o elenco de memória, numa data que você escolhe. Confira antes de usar.",
+                },
               ] as const
             ).map((option) => (
               <button
@@ -414,7 +481,75 @@ export function CatalogPanel() {
                 className="border-white/10 bg-white/[0.03]"
               />
             </div>
-            {apiSource === "WIKIPEDIA" ? (
+            {apiSource === "AI" ? (
+              <div className="grid gap-2 sm:col-span-2 sm:grid-cols-[1fr_170px]">
+                <div className="space-y-1.5">
+                  <div className="flex gap-1.5">
+                    {(
+                      [
+                        { id: "TEAMS" as const, label: "Clubes que eu listar" },
+                        { id: "COMPETITION" as const, label: "Uma liga inteira" },
+                      ] as const
+                    ).map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => setAiMode(option.id)}
+                        className={`cursor-pointer rounded-full border px-2.5 py-0.5 text-[11px] font-bold transition ${
+                          aiMode === option.id
+                            ? "border-sky-500/40 bg-sky-500/10 text-sky-300"
+                            : "border-white/10 text-gray-500 hover:text-gray-300"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {aiMode === "COMPETITION" ? (
+                    <>
+                      <Label htmlFor="ai-competition">Nome da liga</Label>
+                      <Input
+                        id="ai-competition"
+                        value={aiCompetition}
+                        onChange={(event) => setAiCompetition(event.target.value)}
+                        placeholder="Brasileirão Série A"
+                        className="border-white/10 bg-white/[0.03]"
+                      />
+                      <label className="flex cursor-pointer items-center gap-2 pt-1">
+                        <Switch checked={aiWithSquads} onCheckedChange={setAiWithSquads} />
+                        <span className="text-[11px] text-gray-400">Já trazer os elencos dos primeiros clubes</span>
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <Label htmlFor="ai-teams">Times, um por linha</Label>
+                      <textarea
+                        id="ai-teams"
+                        value={aiTeams}
+                        onChange={(event) => setAiTeams(event.target.value)}
+                        placeholder={"Flamengo\nPalmeiras\nReal Madrid"}
+                        className="min-h-24 w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-white outline-none focus:border-sky-500/50"
+                      />
+                    </>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ai-date">Elenco na data</Label>
+                  <Input
+                    id="ai-date"
+                    type="date"
+                    value={aiDate}
+                    onChange={(event) => setAiDate(event.target.value)}
+                    className="border-white/10 bg-white/[0.03] text-[12px]"
+                  />
+                  <p className="text-[11px] leading-snug text-gray-500">
+                    Os elencos vêm de 12 em 12 clubes, com camisa, ficha, os seis atributos e o valor de mercado. Quem
+                    está emprestado ou ainda é da base fica de fora, e o modelo avisa se a data passa do que ele
+                    conhece.
+                  </p>
+                </div>
+              </div>
+            ) : apiSource === "WIKIPEDIA" ? (
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="wikipedia-teams">Times, um por linha</Label>
                 <textarea
@@ -454,14 +589,50 @@ export function CatalogPanel() {
           <Button
             disabled={
               busy !== "" ||
-              (apiSource === "WIKIPEDIA"
-                ? !wikipediaTeams.split("\n").some((team) => team.trim().length >= 2)
-                : apiName.trim().length < 3 || (apiSource === "GENERIC" && !apiUrl.trim()))
+              (apiSource === "AI"
+                ? aiMode === "COMPETITION"
+                  ? aiCompetition.trim().length < 3
+                  : !aiTeams.split("\n").some((team) => team.trim().length >= 2)
+                : apiSource === "WIKIPEDIA"
+                  ? !wikipediaTeams.split("\n").some((team) => team.trim().length >= 2)
+                  : apiName.trim().length < 3 || (apiSource === "GENERIC" && !apiUrl.trim()))
             }
             onClick={() =>
               void run(
                 "api",
                 async () => {
+                  if (apiSource === "AI" && aiMode === "COMPETITION") {
+                    const result = await createAiCompetition({
+                      name: aiCompetition.trim(),
+                      referenceDate: aiDate,
+                      withSquads: aiWithSquads,
+                    })
+                    setNotice(
+                      `${result.competition.name}: ${result.teams.length} clubes` +
+                        (result.season ? ` da temporada ${result.season}` : "") +
+                        (result.players ? `, ${result.players} jogadores já importados` : "") +
+                        (result.pending ? `, ${result.pending} clube(s) esperando elenco` : "") +
+                        "." +
+                        (result.beyondKnowledge ? ` A IA avisou: ${result.notes || "temporada anterior à data pedida"}.` : ""),
+                    )
+                    return
+                  }
+                  if (apiSource === "AI") {
+                    const result = await syncAiSquads({
+                      teams: aiTeams
+                        .split("\n")
+                        .map((team) => team.trim())
+                        .filter(Boolean),
+                      referenceDate: aiDate,
+                    })
+                    const outdated = result.squads.filter((squad) => squad.beyondKnowledge).map((squad) => squad.team)
+                    setNotice(
+                      `${result.players} jogadores vieram da IA (${result.squads[0]?.model ?? "modelo"}).` +
+                        (outdated.length ? ` Elenco possivelmente defasado: ${outdated.join(", ")}.` : "") +
+                        (result.failures.length ? ` ${result.failures.length} time(s) não vieram.` : ""),
+                    )
+                    return
+                  }
                   if (apiSource === "WIKIPEDIA") {
                     const result = await syncWikipediaSquads(
                       wikipediaTeams
@@ -497,6 +668,8 @@ export function CatalogPanel() {
           </Button>
         </Card>
       )}
+
+      <CatalogTeamsCard onChanged={() => void load()} />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[220px] flex-1">
@@ -595,11 +768,11 @@ export function CatalogPanel() {
             <Download className="h-4 w-4 text-emerald-400" />
             <h4 className="text-sm font-bold text-white">Mandar a base para uma liga</h4>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="mb-2 grid gap-2 sm:grid-cols-[1fr_1fr_120px]">
             <select
               value={importLeagueId}
               onChange={(event) => setImportLeagueId(event.target.value)}
-              className="h-9 flex-1 rounded-lg border border-white/10 bg-[#0b0b12] px-3 text-[13px] text-white outline-none"
+              className="h-9 rounded-lg border border-white/10 bg-[#0b0b12] px-3 text-[13px] text-white outline-none"
             >
               <option value="">Escolha a liga</option>
               {leagues.map((league) => (
@@ -608,6 +781,56 @@ export function CatalogPanel() {
                 </option>
               ))}
             </select>
+            <select
+              value={poolCompetitionId}
+              onChange={(event) => setPoolCompetitionId(event.target.value)}
+              className="h-9 rounded-lg border border-white/10 bg-[#0b0b12] px-3 text-[13px] text-white outline-none"
+            >
+              <option value="">De onde: a base inteira</option>
+              {competitions.map((competition) => (
+                <option key={competition.id} value={competition.id}>
+                  {competition.name} ({competition.playerCount})
+                </option>
+              ))}
+            </select>
+            <Input
+              value={poolMinOverall}
+              onChange={(event) => setPoolMinOverall(event.target.value.replace(/\D/g, "").slice(0, 2))}
+              placeholder="Overall min"
+              className="border-white/10 bg-white/[0.03] text-[12px]"
+            />
+          </div>
+
+          {poolTeams.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {poolTeams.map((team) => {
+                const picked = poolTeamIds.includes(team.id)
+                return (
+                  <button
+                    key={team.id}
+                    onClick={() =>
+                      setPoolTeamIds(
+                        picked ? poolTeamIds.filter((id) => id !== team.id) : [...poolTeamIds, team.id],
+                      )
+                    }
+                    className={`cursor-pointer rounded-full border px-2.5 py-0.5 text-[11px] transition ${
+                      picked
+                        ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                        : "border-white/10 text-gray-500 hover:text-gray-300"
+                    }`}
+                  >
+                    {team.name}
+                    <span className="ml-1 text-[10px] text-gray-600">{team._count.players}</span>
+                  </button>
+                )
+              })}
+              <span className="self-center text-[11px] text-gray-600">
+                {poolTeamIds.length === 0 ? "nenhum time marcado, vai a competição toda" : `${poolTeamIds.length} marcados`}
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <label className="flex cursor-pointer items-center gap-2">
               <Switch checked={importReplace} onCheckedChange={setImportReplace} />
               <span className="text-[11px] text-gray-400">Substituir o pool atual</span>
@@ -621,6 +844,9 @@ export function CatalogPanel() {
                     const result = await importCatalogToLeague({
                       leagueId: importLeagueId,
                       replace: importReplace,
+                      competitionId: poolCompetitionId || undefined,
+                      teamIds: poolTeamIds.length > 0 ? poolTeamIds : undefined,
+                      minOverall: Number(poolMinOverall) >= 1 ? Number(poolMinOverall) : undefined,
                     })
                     setNotice(`${result.imported} jogadores enviados, pool agora tem ${result.total}.`)
                   },
@@ -637,9 +863,10 @@ export function CatalogPanel() {
               Enviar pool
             </Button>
           </div>
-          <p className="mt-2 text-[11px] text-gray-500">
-            Só aparecem ligas que ainda não começaram o draft, porque depois disso o pool fica travado. Depois do draft,
-            cada jogador fica no elenco de quem o escolheu.
+          <p className="mt-2 text-[11px] leading-snug text-gray-500">
+            Sem escolher competição vai a base inteira. Escolhendo uma, dá para marcar só os clubes que você quer no
+            pool, e o overall mínimo corta a reserva. Só aparecem ligas que ainda não começaram o draft, porque depois
+            disso o pool fica travado e cada jogador fica no elenco de quem o escolheu.
           </p>
         </Card>
       )}
