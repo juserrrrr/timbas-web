@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation"
 import { Home, MoreHorizontal, Radio, Trophy, Users, X } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge } from "@/components/ui/beta-badge"
-import { decodeToken, getToken } from "@/lib/auth"
 import { ACCENTS, FOOTER_ITEMS, NAV_GROUPS, isNavItemActive, type NavItem } from "@/lib/navigation"
 
 const QUICK_HREFS = ["/dashboard", "/dashboard/active", "/dashboard/tournaments", "/dashboard/draft"]
@@ -43,14 +42,8 @@ function BarItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
 
 export function MobileBottomNav() {
   const [open, setOpen] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
   const pathname = usePathname()
   const { navigate } = useNavigation()
-
-  useEffect(() => {
-    const token = getToken()
-    setIsAdmin(token ? decodeToken(token)?.role === "ADMIN" : false)
-  }, [])
 
   useEffect(() => {
     setOpen(false)
@@ -66,7 +59,7 @@ export function MobileBottomNav() {
       ...group,
       items: group.items.filter((item) => !QUICK_HREFS.includes(item.href)),
     })).filter((group) => group.items.length > 0),
-    { id: "conta", title: "Conta", items: FOOTER_ITEMS.filter((item) => !item.adminOnly || isAdmin) },
+    { id: "conta", title: "Conta", items: FOOTER_ITEMS },
   ]
 
   return (

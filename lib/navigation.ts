@@ -6,7 +6,6 @@ import {
   Home,
   Radio,
   Settings,
-  Shield,
   ShieldAlert,
   ShieldCheck,
   Swords,
@@ -23,7 +22,6 @@ export type NavItem = {
   href: string
   accent: NavAccent
   beta?: boolean
-  adminOnly?: boolean
 }
 
 export type NavGroup = {
@@ -117,7 +115,6 @@ export const NAV_GROUPS: NavGroup[] = [
 ]
 
 export const FOOTER_ITEMS: NavItem[] = [
-  { icon: Shield, label: "Administração", description: "Painel do servidor e da IA", href: "/admin", accent: "rose", adminOnly: true },
   { icon: Settings, label: "Configurações", description: "Preferências da sua conta", href: "/dashboard/settings", accent: "slate" },
 ]
 
