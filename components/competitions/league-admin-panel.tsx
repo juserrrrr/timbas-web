@@ -19,7 +19,12 @@ import {
   updateDraftLeague,
   type PlayerImportInput,
 } from "@/lib/services/draft"
-import { RESULT_MODE_LABELS, WEEKDAY_SHORT, type DraftLeagueDetail } from "@/lib/services/draft.types"
+import {
+  RESULT_MODE_HINTS,
+  RESULT_MODE_LABELS,
+  WEEKDAY_SHORT,
+  type DraftLeagueDetail,
+} from "@/lib/services/draft.types"
 
 const IMPORT_EXAMPLE = `Neymar;ATA;89;Santos;500
 Alisson;GOL;88;Liverpool;400
@@ -291,9 +296,7 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
                     {RESULT_MODE_LABELS[mode]}
                   </span>
                   <span className="mt-0.5 block text-[11px] leading-snug text-gray-500">
-                    {mode === "SIMULATED"
-                      ? "No dia e hora da rodada o servidor joga a partida com atributos, forma e tática, e dá nota para cada jogador."
-                      : "Quem jogou manda o placar com foto, e a IA confere antes de contabilizar."}
+                    {RESULT_MODE_HINTS[mode]}
                   </span>
                 </button>
               ))}

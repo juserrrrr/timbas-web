@@ -25,7 +25,7 @@ import {
   type DemoInventory,
   type DemoTournamentStage,
 } from "@/lib/services/demo"
-import { RESULT_MODE_LABELS, type DraftResultMode } from "@/lib/services/draft.types"
+import { RESULT_MODE_HINTS, RESULT_MODE_LABELS, type DraftResultMode } from "@/lib/services/draft.types"
 import { FORMAT_LABELS, type TournamentFormat } from "@/lib/services/tournaments.types"
 
 const FORMATS = Object.keys(FORMAT_LABELS) as TournamentFormat[]
@@ -367,11 +367,7 @@ export default function DemoLabPage() {
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-gray-600">
-                {draftResultMode === "SIMULATED"
-                  ? "O motor joga a partida com atributos e tática, e cada jogador sai com nota."
-                  : "Modo manager: o placar entra como se alguém tivesse jogado no EA FC e reportado."}
-              </p>
+              <p className="text-[11px] leading-snug text-gray-600">{RESULT_MODE_HINTS[draftResultMode]}</p>
             </div>
 
             <div className="space-y-1.5">

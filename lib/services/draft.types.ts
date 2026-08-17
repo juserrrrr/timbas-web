@@ -215,8 +215,15 @@ export const OFFER_KIND_LABELS: Record<TransferOfferKind, string> = {
 export const FORMATIONS = ["4-3-3", "4-4-2", "4-2-3-1", "3-5-2", "3-4-3", "5-3-2", "4-1-4-1"]
 
 export const RESULT_MODE_LABELS: Record<DraftResultMode, string> = {
-  REPORTED: "Placar lançado por quem joga",
-  SIMULATED: "Rodada simulada pelo servidor",
+  REPORTED: "Real, jogado no EA FC 26",
+  SIMULATED: "Simulado pelo servidor",
+}
+
+export const RESULT_MODE_HINTS: Record<DraftResultMode, string> = {
+  REPORTED:
+    "Vocês marcam e jogam a partida no EA FC 26. Depois quem jogou manda o placar com a foto da tela final, e a IA confere antes de contabilizar. A plataforma cuida de tabela, dinheiro, elenco e transferências.",
+  SIMULATED:
+    "No dia e hora da rodada o servidor joga a partida sozinho, usando atributos, forma e a tática de cada elenco, e dá nota para cada jogador. Ninguém precisa entrar no jogo.",
 }
 
 export const MENTALITY_LABELS: Record<TacticMentality, string> = {
