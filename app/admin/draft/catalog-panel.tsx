@@ -16,6 +16,7 @@ import { ATTRIBUTE_KEYS, attributeLongLabels, attributeRow, attributeTone, hasAt
 import {
   createAiCompetition,
   createBasePlayer,
+  createSofifaCompetition,
   createCompetition,
   estimateMissingAttributes,
   estimatePlayerAttributes,
@@ -23,6 +24,7 @@ import {
   listBasePlayers,
   listCatalogTeams,
   listCompetitions,
+  listSofifaLeagues,
   removeCatalogPlayer,
   syncAiSquads,
   syncCompetition,
@@ -31,6 +33,7 @@ import {
   type BasePlayer,
   type CatalogCompetition,
   type CatalogTeam,
+  type SofifaLeague,
 } from "@/lib/services/catalog"
 import { listDraftLeagues } from "@/lib/services/draft"
 import type { DraftLeagueSummary } from "@/lib/services/draft.types"
@@ -227,7 +230,9 @@ export function CatalogPanel() {
 
   const [importOpen, setImportOpen] = useState(false)
   const [apiOpen, setApiOpen] = useState(false)
-  const [apiSource, setApiSource] = useState<"FOOTBALL_DATA" | "GENERIC" | "WIKIPEDIA" | "AI">("FOOTBALL_DATA")
+  const [apiSource, setApiSource] = useState<"FOOTBALL_DATA" | "GENERIC" | "WIKIPEDIA" | "AI" | "SOFIFA">("SOFIFA")
+  const [sofifaLeagues, setSofifaLeagues] = useState<SofifaLeague[]>([])
+  const [sofifaLeague, setSofifaLeague] = useState("")
   const [apiCode, setApiCode] = useState("BSA")
   const [apiName, setApiName] = useState("Brasileirão Série A")
   const [apiUrl, setApiUrl] = useState("")
@@ -246,6 +251,9 @@ export function CatalogPanel() {
   const [poolMinOverall, setPoolMinOverall] = useState("")
 
   const [loading, setLoading] = useState(true)
+  /// Sobe quando algo de fora entra na base, para o card de competições
+  /// recarregar sozinho em vez de esperar um F5.
+  const [catalogVersion, setCatalogVersion] = useState(0)
   const [busy, setBusy] = useState("")
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
@@ -276,6 +284,15 @@ export function CatalogPanel() {
     return () => clearTimeout(timer)
   }, [load])
 
+  // O índice de ligas do FC 26 é a lista da qual se escolhe, em vez de digitar
+  // um nome e torcer para bater.
+  useEffect(() => {
+    if (!apiOpen || apiSource !== "SOFIFA" || sofifaLeagues.length > 0) return
+    void listSofifaLeagues()
+      .then(setSofifaLeagues)
+      .catch(() => setSofifaLeagues([]))
+  }, [apiOpen, apiSource, sofifaLeagues.length])
+
   // Escolher a competição do pool troca a lista de times que dá para marcar.
   useEffect(() => {
     setPoolTeamIds([])
@@ -297,6 +314,7 @@ export function CatalogPanel() {
     try {
       await action()
       if (message) setNotice(message)
+      setCatalogVersion((version) => version + 1)
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível concluir a ação.")
@@ -447,6 +465,11 @@ export function CatalogPanel() {
                   hint: "Cole uma lista de clubes e buscamos o elenco principal atual de cada um.",
                 },
                 {
+                  id: "SOFIFA" as const,
+                  title: "FC 26 (SoFIFA)",
+                  hint: "A liga inteira do jogo, com os atributos medidos de cada jogador. É a fonte mais confiável.",
+                },
+                {
                   id: "AI" as const,
                   title: "Perguntar para a IA",
                   hint: "A IA lista o elenco de memória, numa data que você escolhe. Confira antes de usar.",
@@ -480,7 +503,30 @@ export function CatalogPanel() {
                 className="border-white/10 bg-white/[0.03]"
               />
             </div>
-            {apiSource === "AI" ? (
+            {apiSource === "SOFIFA" ? (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="sofifa-league">Liga do FC 26</Label>
+                <select
+                  id="sofifa-league"
+                  value={sofifaLeague}
+                  onChange={(event) => setSofifaLeague(event.target.value)}
+                  className="h-9 w-full rounded-lg border border-white/10 bg-[#0b0b12] px-3 text-[13px] text-white outline-none"
+                >
+                  <option value="">
+                    {sofifaLeagues.length === 0 ? "Carregando as ligas do jogo..." : "Escolha a liga"}
+                  </option>
+                  {sofifaLeagues.map((league) => (
+                    <option key={league.id} value={`${league.name} (${league.country ?? ""})`}>
+                      {league.name} {league.country ? `- ${league.country}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] leading-snug text-gray-500">
+                  Cria a competição com todos os clubes dela. Os elencos vêm depois, no botão verde da competição, com
+                  nota, posição e os seis atributos como estão no jogo.
+                </p>
+              </div>
+            ) : apiSource === "AI" ? (
               <div className="grid gap-2 sm:col-span-2 sm:grid-cols-[1fr_170px]">
                 <div className="space-y-1.5">
                   <div className="flex gap-1.5">
@@ -588,7 +634,9 @@ export function CatalogPanel() {
           <Button
             disabled={
               busy !== "" ||
-              (apiSource === "AI"
+              (apiSource === "SOFIFA"
+                ? sofifaLeague.trim() === ""
+                : apiSource === "AI"
                 ? aiMode === "COMPETITION"
                   ? aiCompetition.trim().length < 3
                   : !aiTeams.split("\n").some((team) => team.trim().length >= 2)
@@ -600,6 +648,14 @@ export function CatalogPanel() {
               void run(
                 "api",
                 async () => {
+                  if (apiSource === "SOFIFA") {
+                    const result = await createSofifaCompetition({ name: sofifaLeague })
+                    setNotice(
+                      `${result.league.name} (${result.league.country}): ${result.teams.length} clubes, ${result.created} novos.` +
+                        ` Use "Elencos do FC 26" na competição para trazer os jogadores.`,
+                    )
+                    return
+                  }
                   if (apiSource === "AI" && aiMode === "COMPETITION") {
                     const result = await createAiCompetition({
                       name: aiCompetition.trim(),
@@ -665,7 +721,7 @@ export function CatalogPanel() {
         </Card>
       )}
 
-      <CatalogTeamsCard onChanged={() => void load()} />
+      <CatalogTeamsCard onChanged={() => void load()} refreshKey={catalogVersion} />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[220px] flex-1">

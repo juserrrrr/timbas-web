@@ -1,6 +1,6 @@
 import { patch, post, remove, request } from "./http"
 
-export type CatalogSource = "MANUAL" | "FOOTBALL_DATA" | "GENERIC" | "WIKIPEDIA" | "AI"
+export type CatalogSource = "MANUAL" | "FOOTBALL_DATA" | "GENERIC" | "WIKIPEDIA" | "AI" | "SOFIFA"
 
 export interface CatalogCompetition {
   id: string
@@ -75,6 +75,7 @@ export const SOURCE_LABELS: Record<CatalogSource, string> = {
   GENERIC: "URL própria",
   WIKIPEDIA: "Wikipedia",
   AI: "IA",
+  SOFIFA: "SoFIFA",
 }
 
 export interface BasePlayer extends CatalogPlayer {
@@ -223,6 +224,43 @@ export function fillTeamWithAi(
   input: { referenceDate?: string } = {},
 ): Promise<{ players: number; failures: string[]; team: string; squads: AiSquadResult[] }> {
   return post(`/admin/catalog/teams/${teamId}/ai-squad`, input)
+}
+
+export interface SofifaLeague {
+  id: number
+  name: string
+  country: string | null
+}
+
+/// As ligas que existem no FC 26, para o painel oferecer numa lista.
+export function listSofifaLeagues(): Promise<SofifaLeague[]> {
+  return request("/admin/catalog/sofifa/leagues")
+}
+
+/// Cria a competição com todos os clubes da liga. Os elencos vêm depois.
+export function createSofifaCompetition(input: {
+  name: string
+  code?: string
+}): Promise<{
+  competition: CatalogCompetition
+  league: SofifaLeague
+  teams: Array<{ id: number; name: string }>
+  created: number
+}> {
+  return post("/admin/catalog/sofifa/competition", input)
+}
+
+/// Elenco medido do FC 26. Preferível à IA quando o clube existe no jogo.
+export function fillTeamFromSofifa(
+  teamId: string,
+): Promise<{ players: number; team: string; matched: string }> {
+  return post(`/admin/catalog/teams/${teamId}/sofifa`)
+}
+
+export function fillCompetitionFromSofifa(
+  competitionId: string,
+): Promise<{ players: number; failures: string[]; filled: string[]; remaining: number }> {
+  return post(`/admin/catalog/competitions/${competitionId}/sofifa-fill`)
 }
 
 export function updateCatalogTeam(teamId: string, input: { name?: string; shortName?: string | null }) {
