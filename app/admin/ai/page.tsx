@@ -33,8 +33,17 @@ import {
   type AiProvider,
   type AiSettings,
   type AiSettingsPatch,
+  type EffortLevel,
   type ScoreReadMode,
+  EFFORT_LEVELS,
 } from "@/lib/services/ai-settings"
+
+const EFFORT_LABELS: Record<EffortLevel, string> = {
+  minimal: "Mínimo",
+  low: "Baixo",
+  medium: "Médio",
+  high: "Alto",
+}
 
 const READ_MODES: Array<{ id: ScoreReadMode; title: string; hint: string; icon: typeof Eye }> = [
   {
@@ -178,6 +187,7 @@ export default function AiAdminPage() {
       setDraft({
         analysisProvider: data.analysis.provider,
         analysisModel: data.analysis.model ?? "",
+        analysisEffort: data.analysis.effort,
         analysisFallbackProvider: data.analysis.fallbackProvider,
         analysisFallbackModel: data.analysis.fallbackModel ?? "",
         scoreReaderProvider: data.scoreReader.provider,
@@ -344,6 +354,31 @@ export default function AiAdminPage() {
             />
           </div>
 
+          {analysisProvider?.supportsEffort && (
+            <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.015] p-3">
+              <p className="text-[12px] font-bold text-white">Esforço de raciocínio</p>
+              <p className="mb-2 text-[11px] leading-snug text-gray-500">
+                Quanto o modelo pensa antes de responder, na API Responses. Mais esforço custa mais tokens e demora
+                mais. Para listar elenco e estimar atributo, o baixo costuma bastar.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {([null, ...EFFORT_LEVELS] as Array<EffortLevel | null>).map((level) => (
+                  <button
+                    key={level ?? "padrao"}
+                    onClick={() => setDraft({ ...draft, analysisEffort: level })}
+                    className={`cursor-pointer rounded-full border px-2.5 py-0.5 text-[11px] font-bold transition ${
+                      (draft.analysisEffort ?? null) === level
+                        ? "border-violet-500/40 bg-violet-500/15 text-violet-300"
+                        : "border-white/10 text-gray-500 hover:text-gray-300"
+                    }`}
+                  >
+                    {level ? EFFORT_LABELS[level] : "Padrão do provedor"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.015] p-3">
             <p className="text-[12px] font-bold text-white">Provedor reserva</p>
             <p className="mb-2 text-[11px] leading-snug text-gray-500">
@@ -402,6 +437,7 @@ export default function AiAdminPage() {
                   {
                     analysisProvider: draft.analysisProvider,
                     analysisModel: draft.analysisModel || null,
+                    analysisEffort: draft.analysisEffort ?? null,
                     analysisFallbackProvider: draft.analysisFallbackProvider ?? null,
                     analysisFallbackModel: draft.analysisFallbackModel || null,
                   },
@@ -417,6 +453,9 @@ export default function AiAdminPage() {
             <StatusPill tone={settings.analysis.ready ? "live" : "warn"}>
               {settings.analysis.ready ? `Ativo em ${settings.analysis.effectiveModel}` : "Indisponível"}
             </StatusPill>
+            {settings.analysis.effectiveEffort && (
+              <StatusPill tone="neutral">Esforço: {EFFORT_LABELS[settings.analysis.effectiveEffort]}</StatusPill>
+            )}
             {settings.analysis.effectiveFallback && (
               <StatusPill tone="neutral">Reserva: {settings.analysis.effectiveFallback}</StatusPill>
             )}

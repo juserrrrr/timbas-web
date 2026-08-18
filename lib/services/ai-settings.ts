@@ -2,6 +2,8 @@ import { patch, post, request } from "./http"
 
 export type AiProvider = "GEMINI" | "DEEPSEEK" | "OPENAI"
 export type ScoreReadMode = "VISION" | "OCR_TEXT"
+export const EFFORT_LEVELS = ["minimal", "low", "medium", "high"] as const
+export type EffortLevel = (typeof EFFORT_LEVELS)[number]
 
 export interface AiProviderInfo {
   id: AiProvider
@@ -11,6 +13,8 @@ export interface AiProviderInfo {
   /// Modelos prontos que o select oferece. O campo continua aceitando outro.
   models: string[]
   supportsVision: boolean
+  /// Só o wire Responses aceita esforço de raciocínio.
+  supportsEffort: boolean
   docsUrl: string
   configured: boolean
 }
@@ -27,6 +31,8 @@ export interface AiFeatureView {
 export interface AiSettings {
   providers: AiProviderInfo[]
   analysis: AiFeatureView & {
+    effort: EffortLevel | null
+    effectiveEffort: EffortLevel | null
     fallbackProvider: AiProvider | null
     fallbackModel: string | null
     effectiveFallback: string | null
@@ -47,6 +53,7 @@ export interface AiSettingsPatch {
   analysisEnabled?: boolean
   analysisProvider?: AiProvider
   analysisModel?: string | null
+  analysisEffort?: EffortLevel | null
   analysisFallbackProvider?: AiProvider | null
   analysisFallbackModel?: string | null
   scoreReaderEnabled?: boolean
