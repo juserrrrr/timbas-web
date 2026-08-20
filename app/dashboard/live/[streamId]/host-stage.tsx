@@ -29,6 +29,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
   const offeredAtRef = useRef(new Map<string, number>())
   const viewersRef = useRef(new Map(initialViewers.map((viewer) => [viewer.peerId, viewer])))
   const iceServersRef = useRef<RTCIceServer[]>([])
+  const iceServersPromiseRef = useRef<Promise<RTCIceServer[]> | null>(null)
 
   const [viewers, setViewers] = useState<StreamPeer[]>(initialViewers)
   const [sharing, setSharing] = useState(false)
@@ -42,14 +43,34 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
   const [savingPrivacy, setSavingPrivacy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const ensureIceServers = useCallback(() => {
+    if (iceServersRef.current.length) return Promise.resolve(iceServersRef.current)
+    if (iceServersPromiseRef.current) return iceServersPromiseRef.current
+
+    const token = getToken()
+    if (!token) return Promise.resolve([])
+    iceServersPromiseRef.current = getIceServers(token)
+      .then((servers) => {
+        iceServersRef.current = servers
+        return servers
+      })
+      .catch((caught) => {
+        iceServersPromiseRef.current = null
+        throw caught
+      })
+    return iceServersPromiseRef.current
+  }, [])
+
   const offerTo = useCallback(async (target: string) => {
     const media = localStreamRef.current
     const token = getToken()
     if (!media || !token) return
 
+    const iceServers = await ensureIceServers()
+
     pcsRef.current.get(target)?.close()
     offeredAtRef.current.set(target, Date.now())
-    const pc = new RTCPeerConnection({ iceServers: iceServersRef.current })
+    const pc = new RTCPeerConnection({ iceServers })
     pcsRef.current.set(target, pc)
 
     media.getTracks().forEach((track) => pc.addTrack(track, media))
@@ -66,7 +87,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
     await sendSignal(token, streamId, { from: peerId, to: target, type: "offer", data: offer })
-  }, [peerId, streamId])
+  }, [ensureIceServers, peerId, streamId])
 
   const closePeer = useCallback((target: string) => {
     pcsRef.current.get(target)?.close()
@@ -112,9 +133,10 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
   const connected = useSignalChannel(streamId, peerId, handleEvent)
 
   useEffect(() => {
-    const token = getToken()
-    if (token) void getIceServers(token).then((servers) => { iceServersRef.current = servers })
-  }, [])
+    void ensureIceServers().catch(() => {
+      setError("Não foi possível carregar a configuração de conexão da live.")
+    })
+  }, [ensureIceServers])
 
   const syncViewers = useCallback(async () => {
     const token = getToken()

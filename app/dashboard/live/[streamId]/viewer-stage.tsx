@@ -22,10 +22,29 @@ export function ViewerStage({ streamId, peerId, stream, guestToken }: Props) {
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([])
   const iceServersRef = useRef<RTCIceServer[]>([])
+  const iceServersPromiseRef = useRef<Promise<RTCIceServer[]> | null>(null)
 
   const [status, setStatus] = useState<Status>("connecting")
   const [muted, setMuted] = useState(true)
   const [viewerCount, setViewerCount] = useState(stream.viewers)
+
+  const ensureIceServers = useCallback(() => {
+    if (iceServersRef.current.length) return Promise.resolve(iceServersRef.current)
+    if (iceServersPromiseRef.current) return iceServersPromiseRef.current
+
+    const token = getToken()
+    const request = guestToken ? getPublicIceServers() : token ? getIceServers(token) : Promise.resolve([])
+    iceServersPromiseRef.current = request
+      .then((servers) => {
+        iceServersRef.current = servers
+        return servers
+      })
+      .catch((caught) => {
+        iceServersPromiseRef.current = null
+        throw caught
+      })
+    return iceServersPromiseRef.current
+  }, [guestToken])
 
   const closePeer = useCallback(() => {
     pcRef.current?.close()
@@ -39,8 +58,9 @@ export function ViewerStage({ streamId, peerId, stream, guestToken }: Props) {
     if (!guestToken && !token) return
 
     closePeer()
+    const iceServers = await ensureIceServers()
 
-    const pc = new RTCPeerConnection({ iceServers: iceServersRef.current })
+    const pc = new RTCPeerConnection({ iceServers })
     pcRef.current = pc
 
     const remote = new MediaStream()
@@ -74,7 +94,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken }: Props) {
     const signal = { from: peerId, to: from, type: "answer" as const, data: answer }
     if (guestToken) void sendPublicSignal(streamId, guestToken, signal)
     else if (token) void sendSignal(token, streamId, signal)
-  }, [closePeer, guestToken, peerId, streamId])
+  }, [closePeer, ensureIceServers, guestToken, peerId, streamId])
 
   const handleEvent = useCallback(async (event: SignalEvent) => {
     if (event.type === "offer" && event.from) {
@@ -109,10 +129,8 @@ export function ViewerStage({ streamId, peerId, stream, guestToken }: Props) {
   const connected = useSignalChannel(streamId, peerId, handleEvent, status !== "ended", guestToken)
 
   useEffect(() => {
-    const token = getToken()
-    const request = guestToken ? getPublicIceServers() : token ? getIceServers(token) : Promise.resolve([])
-    request.then((servers) => { iceServersRef.current = servers })
-  }, [guestToken])
+    void ensureIceServers().catch(() => {})
+  }, [ensureIceServers])
 
   useEffect(() => {
     return () => {
