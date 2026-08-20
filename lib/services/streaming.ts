@@ -4,6 +4,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 export interface StreamSummary {
   id: string
+  slug: string
   title: string
   hostName: string
   hostAvatar: string | null

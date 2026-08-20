@@ -132,7 +132,7 @@ export default function LivePage() {
           {streams.map((stream) => (
             <Link
               key={stream.id}
-              href={`/dashboard/live/${stream.id}/watch`}
+              href={`/live/${stream.slug}`}
               className="group rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 transition-colors hover:border-red-500/25 hover:bg-white/[0.04]"
             >
               <div className="flex items-start gap-3">

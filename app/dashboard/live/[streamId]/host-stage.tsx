@@ -55,7 +55,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [savingPrivacy, setSavingPrivacy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const livePath = setupVisibility === "PUBLIC" ? `/live/${streamId}` : `/dashboard/live/${streamId}/watch`
+  const livePath = `/live/${stream.slug}`
   const liveUrl = origin ? `${origin}${livePath}` : ""
   const avatarUrl = getDiscordAvatarUrl(stream.hostDiscordId ?? undefined, stream.hostAvatar ?? undefined, 96)
 
@@ -393,7 +393,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   }
 
   const copyLink = async () => {
-    const path = visibility === "PUBLIC" ? `/live/${streamId}` : `/dashboard/live/${streamId}/watch`
+    const path = `/live/${stream.slug}`
     await navigator.clipboard.writeText(`${window.location.origin}${path}`)
     setCopied(true)
     toast.success("Link copiado", { description: visibility === "PUBLIC" ? "Qualquer pessoa com o link pode assistir." : "Pessoas precisam entrar no Timbas para assistir." })
