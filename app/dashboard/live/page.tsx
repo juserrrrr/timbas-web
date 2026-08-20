@@ -7,6 +7,7 @@ import { Lock, MonitorPlay, MonitorUp, Radio, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
+import { PlayerAvatar } from "@/components/player-avatar"
 import { getToken } from "@/lib/auth"
 import { createStream, getStreamPermission, listStreams, type StreamSummary } from "@/lib/services/streaming"
 import { TIMBAS_SERVER_ID } from "@/lib/servers"
@@ -135,12 +136,10 @@ export default function LivePage() {
               className="group rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 transition-colors hover:border-red-500/25 hover:bg-white/[0.04]"
             >
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-xs font-bold text-blue-300 ring-1 ring-blue-500/20">
-                  {stream.hostName.slice(0, 2).toUpperCase()}
-                </div>
+                <PlayerAvatar name={stream.hostName} discordId={stream.hostDiscordId ?? undefined} avatar={stream.hostAvatar} className="h-10 w-10 ring-2 ring-blue-500/20" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-white">{stream.title}</p>
-                  <p className="truncate text-xs text-gray-500">{stream.hostName}</p>
+                  <p className="truncate text-xs text-gray-500">@{stream.hostName}</p>
                 </div>
                 {stream.live ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />Live</span>

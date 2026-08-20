@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Maximize, Radio, Users, Volume2, VolumeX } from "lucide-react"
 import { getToken } from "@/lib/auth"
+import { PlayerAvatar } from "@/components/player-avatar"
 import { getIceServers } from "@/lib/webrtc"
 import { getPublicIceServers, leavePublicStream, leaveStream, sendPublicSignal, sendSignal, type SignalEvent, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
@@ -165,13 +166,11 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/20">
-            <Radio className="h-5 w-5 text-red-400" />
-          </div>
+          <PlayerAvatar name={stream.hostName} discordId={stream.hostDiscordId ?? undefined} avatar={stream.hostAvatar} className="h-10 w-10 ring-2 ring-red-500/20" />
           <div>
             <h1 className="text-lg font-black tracking-tight text-white sm:text-xl">{stream.title}</h1>
             <p className="text-xs text-gray-500">
-              {stream.hostName}
+              @{stream.hostName}
               {connected ? "" : " • reconectando"}
             </p>
           </div>

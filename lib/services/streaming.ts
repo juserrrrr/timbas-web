@@ -6,6 +6,8 @@ export interface StreamSummary {
   id: string
   title: string
   hostName: string
+  hostAvatar: string | null
+  hostDiscordId: string | null
   visibility: 'MEMBERS' | 'PUBLIC'
   startedAt: string
   viewers: number

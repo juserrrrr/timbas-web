@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, Copy, Globe2, Link2, Lock, Mic, MicOff, MonitorUp, Radio, Square, Users } from "lucide-react"
+import { Check, Copy, Globe2, Link2, Lock, MonitorUp, Radio, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { getToken } from "@/lib/auth"
+import { getDiscordAvatarUrl, getToken } from "@/lib/auth"
 import { getIceServers } from "@/lib/webrtc"
 import { endStream, getStreamViewers, leaveStream, sendSignal, startStream, updateStreamVisibility, type SignalEvent, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
+import { HostLiveControls } from "./host-live-controls"
+import { LiveSetupDialog } from "./live-setup-dialog"
 
 interface Props {
   streamId: string
@@ -24,6 +26,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
+  const displayStreamRef = useRef<MediaStream | null>(null)
   const micStreamRef = useRef<MediaStream | null>(null)
   const pcsRef = useRef(new Map<string, RTCPeerConnection>())
   const pendingIceRef = useRef(new Map<string, RTCIceCandidateInit[]>())
@@ -37,6 +40,12 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [viewers, setViewers] = useState<StreamPeer[]>(initialViewers)
   const [sharing, setSharing] = useState(false)
   const [withMic, setWithMic] = useState(true)
+  const [setupOpen, setSetupOpen] = useState(true)
+  const [setupVisibility, setSetupVisibility] = useState<Visibility>(stream.visibility)
+  const [startingShare, setStartingShare] = useState(false)
+  const [switchingScreen, setSwitchingScreen] = useState(false)
+  const [screenLabel, setScreenLabel] = useState("")
+  const [origin, setOrigin] = useState("")
   const [micOn, setMicOn] = useState(false)
   const [hasMic, setHasMic] = useState(false)
   const [micBusy, setMicBusy] = useState(false)
@@ -45,6 +54,14 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [privacyOpen, setPrivacyOpen] = useState(false)
   const [savingPrivacy, setSavingPrivacy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const livePath = setupVisibility === "PUBLIC" ? `/live/${streamId}` : `/dashboard/live/${streamId}/watch`
+  const liveUrl = origin ? `${origin}${livePath}` : ""
+  const avatarUrl = getDiscordAvatarUrl(stream.hostDiscordId ?? undefined, stream.hostAvatar ?? undefined, 96)
+
+  useEffect(() => {
+    setOrigin(window.location.origin)
+  }, [])
 
   const ensureIceServers = useCallback(() => {
     if (iceServersRef.current.length) return Promise.resolve(iceServersRef.current)
@@ -187,6 +204,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     localStreamRef.current?.getTracks().forEach((track) => track.stop())
     micStreamRef.current?.getTracks().forEach((track) => track.stop())
     localStreamRef.current = null
+    displayStreamRef.current = null
     micStreamRef.current = null
     pcsRef.current.forEach((pc) => pc.close())
     pcsRef.current.clear()
@@ -196,6 +214,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     setSharing(false)
     setHasMic(false)
     setMicOn(false)
+    setScreenLabel("")
   }, [])
 
   const finish = useCallback(async () => {
@@ -204,6 +223,12 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     if (token) await endStream(token, streamId).catch(() => {})
     router.push("/dashboard/live")
   }, [router, stopEverything, streamId])
+
+  const watchDisplayEnd = useCallback((display: MediaStream) => {
+    display.getVideoTracks()[0]?.addEventListener("ended", () => {
+      if (displayStreamRef.current === display) void finish()
+    })
+  }, [finish])
 
   const enableMicrophone = useCallback(async () => {
     const media = localStreamRef.current
@@ -241,6 +266,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       return
     }
 
+    setStartingShare(true)
     let display: MediaStream | null = null
     let mic: MediaStream | null = null
     try {
@@ -266,27 +292,69 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       if (!display) throw new Error("No display stream")
 
       const media = new MediaStream([...display.getTracks(), ...micTracks])
+      displayStreamRef.current = display
       localStreamRef.current = media
       if (videoRef.current) videoRef.current.srcObject = media
+
+      if (setupVisibility !== visibility) {
+        const updated = await updateStreamVisibility(token, streamId, setupVisibility)
+        setVisibility(updated.visibility)
+      }
+      await startStream(token, streamId)
       setSharing(true)
       setMicOn(micTracks.some((track) => track.enabled))
-
-      // Start only after local media is ready. A viewer arriving right now can
-      // receive an offer immediately instead of waiting for another action.
-      await startStream(token, streamId)
-      display.getVideoTracks()[0]?.addEventListener("ended", () => { void finish() })
+      setScreenLabel(display.getVideoTracks()[0]?.label || "Tela compartilhada")
+      setSetupOpen(false)
+      watchDisplayEnd(display)
       await Promise.all([...viewersRef.current.values()].map((viewer) => offerTo(viewer.peerId)))
     } catch (caught: unknown) {
       display?.getTracks().forEach((track) => track.stop())
       mic?.getTracks().forEach((track) => track.stop())
       localStreamRef.current = null
+      displayStreamRef.current = null
       micStreamRef.current = null
       setHasMic(false)
       setMicOn(false)
       const message = caught instanceof Error && caught.name === "NotAllowedError"
         ? "Você cancelou a seleção de tela."
-        : "Não foi possível capturar a tela."
+        : caught instanceof Error ? caught.message : "Não foi possível iniciar a transmissão."
       setError(message)
+    } finally {
+      setStartingShare(false)
+    }
+  }
+
+  const switchScreen = async () => {
+    if (!sharing || switchingScreen) return
+    setSwitchingScreen(true)
+    setError(null)
+
+    let nextDisplay: MediaStream | null = null
+    try {
+      nextDisplay = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 30, max: 60 } },
+        audio: true,
+      })
+      const previousDisplay = displayStreamRef.current
+      const micTracks = micStreamRef.current?.getAudioTracks() ?? []
+      const media = new MediaStream([...nextDisplay.getTracks(), ...micTracks])
+
+      displayStreamRef.current = nextDisplay
+      localStreamRef.current = media
+      if (videoRef.current) videoRef.current.srcObject = media
+      setScreenLabel(nextDisplay.getVideoTracks()[0]?.label || "Tela compartilhada")
+      watchDisplayEnd(nextDisplay)
+
+      await Promise.all([...viewersRef.current.values()].map((viewer) => offerTo(viewer.peerId)))
+      previousDisplay?.getTracks().forEach((track) => track.stop())
+      toast.success("Tela trocada", { description: "A live continuou no mesmo link." })
+    } catch (caught: unknown) {
+      nextDisplay?.getTracks().forEach((track) => track.stop())
+      if (caught instanceof Error && caught.name !== "NotAllowedError") {
+        setError("Não foi possível trocar a tela. Tente novamente.")
+      }
+    } finally {
+      setSwitchingScreen(false)
     }
   }
 
@@ -312,6 +380,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     try {
       const updated = await updateStreamVisibility(token, streamId, next)
       setVisibility(updated.visibility)
+      setSetupVisibility(updated.visibility)
       setPrivacyOpen(false)
       toast.success(next === "PUBLIC" ? "Live pública" : "Live privada", {
         description: next === "PUBLIC" ? "Qualquer pessoa com o link pode assistir." : "Agora só pessoas logadas podem assistir.",
@@ -346,7 +415,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
           </div>
           <div>
             <h1 className="text-lg font-black tracking-tight text-white sm:text-xl">{stream.title}</h1>
-            <p className="text-xs text-gray-500">{sharing ? "Você está transmitindo" : "Escolha a tela para começar"}{connected ? "" : " • reconectando"}</p>
+            <p className="text-xs text-gray-500">@{stream.hostName} · {sharing ? "Você está transmitindo" : "Escolha a tela para começar"}{connected ? "" : " · reconectando"}</p>
           </div>
         </div>
 
@@ -369,34 +438,32 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
           {!sharing && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#07070c] px-6 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 ring-1 ring-blue-500/20"><MonitorUp className="h-7 w-7 text-blue-400" /></div>
-              <div><p className="text-sm font-bold text-white">Escolha o que compartilhar</p><p className="mt-1 text-xs text-gray-500">Uma aba, uma janela ou a tela inteira.</p></div>
-              <button
-                onClick={() => setWithMic((value) => !value)}
-                aria-pressed={withMic}
-                className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold ring-1 transition-colors ${withMic ? "bg-blue-500/10 text-blue-200 ring-blue-500/25 hover:bg-blue-500/15" : "bg-white/[0.03] text-gray-400 ring-white/[0.08] hover:bg-white/[0.06]"}`}
-              >
-                {withMic ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-                {withMic ? "Começar com microfone" : "Começar sem microfone"}
-              </button>
-              <p className="-mt-2 text-[11px] text-gray-600">Você pode ligar ou desligar o microfone a qualquer momento.</p>
-              <button onClick={startShare} className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-500"><MonitorUp className="h-4 w-4" />Compartilhar tela</button>
+              <div><p className="text-sm font-bold text-white">Sua live está pronta para configurar</p><p className="mt-1 text-xs text-gray-500">Escolha a privacidade, o microfone e depois selecione a tela.</p></div>
+              <button onClick={() => setSetupOpen(true)} className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-500"><MonitorUp className="h-4 w-4" />Configurar e iniciar</button>
               {error && <p className="text-xs text-red-400">{error}</p>}
+            </div>
+          )}
+          {sharing && (
+            <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-xl bg-black/70 px-3 py-2 text-xs font-bold text-white ring-1 ring-white/10 backdrop-blur">
+              <span className={`h-2 w-2 rounded-full ${micOn ? "bg-emerald-400" : "bg-red-400"}`} />
+              {micOn ? "Microfone ligado" : "Microfone desligado"}
             </div>
           )}
         </div>
       </div>
 
       {sharing && (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => { void toggleMicrophone() }}
-            disabled={micBusy}
-            className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold ring-1 transition-colors disabled:cursor-wait disabled:opacity-60 ${micOn ? "bg-white/[0.04] text-gray-200 ring-white/[0.08] hover:bg-white/[0.08]" : "bg-red-500/10 text-red-300 ring-red-500/20 hover:bg-red-500/15"}`}
-          >
-            {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-            {micBusy ? "Ativando microfone…" : micOn ? "Microfone ligado" : hasMic ? "Microfone mudo" : "Ativar microfone"}
-          </button>
-          <button onClick={() => { void finish() }} className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-500"><Square className="h-4 w-4" />Encerrar transmissão</button>
+        <div className="space-y-2">
+          <HostLiveControls
+            micOn={micOn}
+            hasMic={hasMic}
+            micBusy={micBusy}
+            switchingScreen={switchingScreen}
+            screenLabel={screenLabel}
+            onToggleMicrophone={toggleMicrophone}
+            onSwitchScreen={switchScreen}
+            onFinish={finish}
+          />
           {error && <p className="text-xs text-amber-300">{error}</p>}
         </div>
       )}
@@ -411,6 +478,20 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
           </div>
         )}
       </div>
+
+      <LiveSetupDialog
+        open={setupOpen}
+        onOpenChange={setSetupOpen}
+        hostName={stream.hostName}
+        avatarUrl={avatarUrl}
+        liveUrl={liveUrl}
+        visibility={setupVisibility}
+        onVisibilityChange={setSetupVisibility}
+        withMic={withMic}
+        onWithMicChange={setWithMic}
+        starting={startingShare}
+        onStart={startShare}
+      />
 
       <Dialog open={privacyOpen} onOpenChange={setPrivacyOpen}>
         <DialogContent className="border-white/[0.09] bg-[#101014] text-white sm:max-w-md">
