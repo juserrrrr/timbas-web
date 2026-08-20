@@ -93,7 +93,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: "Transmissões",
         description: "Canal usado para anunciar lives",
         href: "/admin/live",
-        accent: "red",
+        accent: "rose",
         permission: "stream.manage",
       },
       {

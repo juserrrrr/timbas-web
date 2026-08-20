@@ -79,6 +79,19 @@ export async function startStream(token: string, streamId: string): Promise<Stre
   return parse(res, 'Erro ao iniciar a transmissÃ£o')
 }
 
+export async function updateStreamVisibility(
+  token: string,
+  streamId: string,
+  visibility: 'MEMBERS' | 'PUBLIC',
+): Promise<StreamSummary> {
+  const res = await apiFetch(`${API_URL}/streaming/streams/${streamId}`, {
+    method: 'PATCH',
+    headers: h(token),
+    body: JSON.stringify({ visibility }),
+  })
+  return parse(res, 'Could not update stream privacy')
+}
+
 export interface PublicJoinStreamResult {
   peerId: string
   guestToken: string
