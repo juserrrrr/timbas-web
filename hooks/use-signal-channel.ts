@@ -17,12 +17,15 @@ export function useSignalChannel(
   onEvent: (event: SignalEvent) => void,
   enabled = true,
   guestToken?: string,
+  recoverSession?: () => Promise<void>,
 ) {
   const [connected, setConnected] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const failuresRef = useRef(0)
   const handlerRef = useRef(onEvent)
+  const recoverRef = useRef(recoverSession)
   handlerRef.current = onEvent
+  recoverRef.current = recoverSession
 
   useEffect(() => {
     if (!peerId || !enabled) return
@@ -64,8 +67,16 @@ export function useSignalChannel(
           scheduleRetry()
         }
       })
-      .catch(() => {
+      .catch(async () => {
+        if (cancelled) return
         setConnected(false)
+        if (recoverRef.current) {
+          try {
+            await recoverRef.current()
+            failuresRef.current = 0
+            return
+          } catch {}
+        }
         scheduleRetry()
       })
 

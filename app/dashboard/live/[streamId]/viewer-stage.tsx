@@ -13,11 +13,12 @@ interface Props {
   peerId: string
   stream: StreamSummary
   guestToken?: string
+  onReconnect: () => Promise<void>
 }
 
 type Status = "connecting" | "live" | "ended"
 
-export function ViewerStage({ streamId, peerId, stream, guestToken }: Props) {
+export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([])
@@ -126,7 +127,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken }: Props) {
     }
   }, [acceptOffer, closePeer])
 
-  const connected = useSignalChannel(streamId, peerId, handleEvent, status !== "ended", guestToken)
+  const connected = useSignalChannel(streamId, peerId, handleEvent, status !== "ended", guestToken, onReconnect)
 
   useEffect(() => {
     void ensureIceServers().catch(() => {})

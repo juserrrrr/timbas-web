@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getToken } from "@/lib/auth"
 import { getIceServers } from "@/lib/webrtc"
-import { endStream, getStreamViewers, sendSignal, startStream, updateStreamVisibility, type SignalEvent, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
+import { endStream, getStreamViewers, leaveStream, sendSignal, startStream, updateStreamVisibility, type SignalEvent, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
 
 interface Props {
@@ -15,11 +15,12 @@ interface Props {
   peerId: string
   stream: StreamSummary
   initialViewers: StreamPeer[]
+  onReconnect: () => Promise<void>
 }
 
 type Visibility = "MEMBERS" | "PUBLIC"
 
-export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
+export function HostStage({ streamId, peerId, stream, initialViewers, onReconnect }: Props) {
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
@@ -30,6 +31,8 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
   const viewersRef = useRef(new Map(initialViewers.map((viewer) => [viewer.peerId, viewer])))
   const iceServersRef = useRef<RTCIceServer[]>([])
   const iceServersPromiseRef = useRef<Promise<RTCIceServer[]> | null>(null)
+  const previousPeerIdRef = useRef(peerId)
+  const peerIdRef = useRef(peerId)
 
   const [viewers, setViewers] = useState<StreamPeer[]>(initialViewers)
   const [sharing, setSharing] = useState(false)
@@ -130,7 +133,19 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
     }
   }, [closePeer, offerTo])
 
-  const connected = useSignalChannel(streamId, peerId, handleEvent)
+  const connected = useSignalChannel(streamId, peerId, handleEvent, true, undefined, onReconnect)
+
+  useEffect(() => {
+    if (previousPeerIdRef.current === peerId) return
+    previousPeerIdRef.current = peerId
+    peerIdRef.current = peerId
+    pcsRef.current.forEach((pc) => pc.close())
+    pcsRef.current.clear()
+    pendingIceRef.current.clear()
+    offeredAtRef.current.clear()
+    viewersRef.current = new Map(initialViewers.map((viewer) => [viewer.peerId, viewer]))
+    setViewers(initialViewers)
+  }, [initialViewers, peerId])
 
   useEffect(() => {
     void ensureIceServers().catch(() => {
@@ -316,7 +331,11 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  useEffect(() => () => stopEverything(), [stopEverything])
+  useEffect(() => () => {
+    stopEverything()
+    const token = getToken()
+    if (token) void leaveStream(token, streamId, peerIdRef.current)
+  }, [stopEverything, streamId])
 
   return (
     <div className="space-y-5">

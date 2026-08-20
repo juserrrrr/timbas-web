@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Radio } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
@@ -14,20 +14,22 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
   const [error, setError] = useState<string | null>(null)
   const joinedRef = useRef(false)
 
+  const connect = useCallback(async () => {
+    const token = getToken()
+    if (!token) throw new Error("Faça login para assistir.")
+
+    const joined = await joinStream(token, streamId, getLiveClientId(), expectedRole === "viewer")
+    setSession(joined)
+    setError(null)
+  }, [expectedRole, streamId])
+
   useEffect(() => {
     if (joinedRef.current) return
     joinedRef.current = true
 
-    const token = getToken()
-    if (!token) {
-      setError("Faça login para assistir.")
-      return
-    }
-
-    joinStream(token, streamId, getLiveClientId(), expectedRole === "viewer")
-      .then(setSession)
+    void connect()
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao entrar na transmissão"))
-  }, [expectedRole, streamId])
+  }, [connect])
 
   if (error) {
     return (
@@ -78,11 +80,12 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
         peerId={session.peerId}
         stream={session.stream}
         initialViewers={session.viewers}
+        onReconnect={connect}
       />
     )
   }
 
   return (
-    <ViewerStage streamId={streamId} peerId={session.peerId} stream={session.stream} />
+    <ViewerStage streamId={streamId} peerId={session.peerId} stream={session.stream} onReconnect={connect} />
   )
 }

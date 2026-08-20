@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Radio } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
 import { getLiveClientId, joinPublicStream, type PublicJoinStreamResult } from "@/lib/services/streaming"
@@ -11,13 +11,18 @@ export function PublicStreamRoom({ streamId }: { streamId: string }) {
   const [error, setError] = useState<string | null>(null)
   const joinedRef = useRef(false)
 
+  const connect = useCallback(async () => {
+    const joined = await joinPublicStream(streamId, getLiveClientId())
+    setSession(joined)
+    setError(null)
+  }, [streamId])
+
   useEffect(() => {
     if (joinedRef.current) return
     joinedRef.current = true
-    joinPublicStream(streamId, getLiveClientId())
-      .then(setSession)
+    void connect()
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Não foi possível abrir a transmissão."))
-  }, [streamId])
+  }, [connect])
 
   if (error) {
     return (
@@ -37,7 +42,7 @@ export function PublicStreamRoom({ streamId }: { streamId: string }) {
   return (
     <main className="min-h-[100dvh] bg-[#050508] px-4 py-5 text-white sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-6xl">
-        <ViewerStage streamId={streamId} peerId={session.peerId} stream={session.stream} guestToken={session.guestToken} />
+        <ViewerStage streamId={streamId} peerId={session.peerId} stream={session.stream} guestToken={session.guestToken} onReconnect={connect} />
       </div>
     </main>
   )
