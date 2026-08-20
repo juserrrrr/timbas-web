@@ -31,7 +31,7 @@ export interface JoinStreamResult {
 export type SignalType = 'offer' | 'answer' | 'ice'
 
 export interface SignalEvent {
-  type: SignalType | 'ready' | 'viewer_joined' | 'viewer_left' | 'viewers' | 'host_ready' | 'stream_ended'
+  type: SignalType | 'ready' | 'viewer_joined' | 'viewer_left' | 'viewers' | 'host_ready' | 'host_unavailable' | 'stream_ended'
   from?: string
   payload?: any
 }

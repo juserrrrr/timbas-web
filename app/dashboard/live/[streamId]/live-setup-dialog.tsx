@@ -45,7 +45,7 @@ export function LiveSetupDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!starting) onOpenChange(next) }}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto border-white/[0.09] bg-[#101014] p-0 text-white sm:max-w-xl">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto border-white/[0.09] bg-[#101014] p-0 text-white sm:max-w-xl">
         <div className="border-b border-white/[0.07] bg-gradient-to-br from-blue-500/10 via-transparent to-red-500/10 px-6 py-5">
           <DialogHeader>
             <DialogTitle className="text-xl text-white">Preparar transmissão</DialogTitle>
@@ -67,13 +67,13 @@ export function LiveSetupDialog({
           </div>
         </div>
 
-        <div className="space-y-5 px-6 pb-2">
-          <section>
+        <div className="min-w-0 space-y-5 px-4 pb-2 sm:px-6">
+          <section className="min-w-0">
             <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-500">
               <Link2 className="h-3.5 w-3.5" /> Link da live
             </div>
             <div className="flex gap-2">
-              <div className="min-w-0 flex-1 truncate rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 font-mono text-xs text-gray-300">
+              <div className="block min-w-0 max-w-full flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 font-mono text-xs text-gray-300">
                 {liveUrl || "Preparando link..."}
               </div>
               <button
@@ -94,18 +94,18 @@ export function LiveSetupDialog({
               <button
                 type="button"
                 onClick={() => onVisibilityChange("MEMBERS")}
-                className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 text-left transition-colors ${visibility === "MEMBERS" ? "border-blue-500/60 bg-blue-500/10" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
+                className={`flex min-w-0 cursor-pointer items-start gap-3 rounded-2xl border p-3 text-left transition-colors ${visibility === "MEMBERS" ? "border-blue-500/60 bg-blue-500/10" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10"><Lock className="h-4 w-4 text-amber-300" /></span>
-                <span><span className="block text-sm font-bold text-white">Somente membros</span><span className="mt-0.5 block text-[11px] leading-relaxed text-gray-400">Precisa estar logado no Timbas.</span></span>
+                <span className="min-w-0"><span className="block text-sm font-bold text-white">Somente membros</span><span className="mt-0.5 block text-[11px] leading-relaxed text-gray-400">Precisa estar logado no Timbas.</span></span>
               </button>
               <button
                 type="button"
                 onClick={() => onVisibilityChange("PUBLIC")}
-                className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 text-left transition-colors ${visibility === "PUBLIC" ? "border-emerald-500/60 bg-emerald-500/10" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
+                className={`flex min-w-0 cursor-pointer items-start gap-3 rounded-2xl border p-3 text-left transition-colors ${visibility === "PUBLIC" ? "border-emerald-500/60 bg-emerald-500/10" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10"><Globe2 className="h-4 w-4 text-emerald-300" /></span>
-                <span><span className="block text-sm font-bold text-white">Link público</span><span className="mt-0.5 block text-[11px] leading-relaxed text-gray-400">Qualquer pessoa com o link pode assistir.</span></span>
+                <span className="min-w-0"><span className="block text-sm font-bold text-white">Link público</span><span className="mt-0.5 block text-[11px] leading-relaxed text-gray-400">Qualquer pessoa com o link pode assistir.</span></span>
               </button>
             </div>
           </section>

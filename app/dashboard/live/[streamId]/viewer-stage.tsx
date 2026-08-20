@@ -17,7 +17,7 @@ interface Props {
   onReconnect: () => Promise<void>
 }
 
-type Status = "connecting" | "live" | "ended"
+type Status = "connecting" | "live" | "waiting" | "ended"
 
 export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -68,6 +68,10 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
     const remote = new MediaStream()
     pc.ontrack = (event) => {
       remote.addTrack(event.track)
+      if (event.track.kind === "video") {
+        event.track.onended = () => setStatus("waiting")
+        event.track.onunmute = () => setStatus("live")
+      }
       if (videoRef.current && videoRef.current.srcObject !== remote) {
         videoRef.current.srcObject = remote
       }
@@ -84,7 +88,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
     // The host closing the tab shows up here long before the API times it out.
     pc.onconnectionstatechange = () => {
       if (pcRef.current !== pc) return
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") setStatus("connecting")
+      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") setStatus("waiting")
     }
 
     await pc.setRemoteDescription(new RTCSessionDescription(offer))
@@ -114,6 +118,12 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
     if (event.type === "host_ready") {
       closePeer()
       setStatus("connecting")
+      return
+    }
+
+    if (event.type === "host_unavailable") {
+      closePeer()
+      setStatus("waiting")
       return
     }
 
@@ -189,11 +199,11 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
 
           {status !== "live" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#07070c] px-6 text-center">
-              {status === "connecting" ? (
+              {status === "connecting" || status === "waiting" ? (
                 <>
-                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-blue-500" />
-                  <p className="text-sm font-bold text-white">Conectando na transmissão</p>
-                  <p className="text-xs text-gray-500">Esperando o host começar a compartilhar a tela.</p>
+                  {status === "connecting" && <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-blue-500" />}
+                  <p className="text-sm font-bold text-white">{status === "waiting" ? "A live continua aberta" : "Conectando na transmissão"}</p>
+                  <p className="text-xs text-gray-500">{status === "waiting" ? "O host pode voltar ou escolher outra tela em até 90 segundos." : "Esperando o host começar a compartilhar a tela."}</p>
                 </>
               ) : (
                 <>
