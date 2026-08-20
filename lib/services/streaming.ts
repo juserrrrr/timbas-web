@@ -99,8 +99,24 @@ export interface PublicJoinStreamResult {
   stream: StreamSummary
 }
 
-export async function joinPublicStream(streamId: string): Promise<PublicJoinStreamResult> {
-  const res = await fetch(`${API_URL}/streaming/public/streams/${streamId}/join`, { method: 'POST' })
+const LIVE_CLIENT_ID_KEY = 'timbas_live_client_id'
+
+export function getLiveClientId(): string {
+  if (typeof window === 'undefined') return ''
+  const current = window.sessionStorage.getItem(LIVE_CLIENT_ID_KEY)
+  if (current) return current
+
+  const clientId = crypto.randomUUID()
+  window.sessionStorage.setItem(LIVE_CLIENT_ID_KEY, clientId)
+  return clientId
+}
+
+export async function joinPublicStream(streamId: string, clientId: string): Promise<PublicJoinStreamResult> {
+  const res = await fetch(`${API_URL}/streaming/public/streams/${streamId}/join`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientId }),
+  })
   return parse(res, 'Transmissão não encontrada')
 }
 
@@ -177,10 +193,11 @@ export async function setAnnouncementChannel(token: string, guildId: string, cha
   await parse(res, 'Erro ao salvar o canal de anÃºncio')
 }
 
-export async function joinStream(token: string, streamId: string): Promise<JoinStreamResult> {
+export async function joinStream(token: string, streamId: string, clientId: string): Promise<JoinStreamResult> {
   const res = await apiFetch(`${API_URL}/streaming/streams/${streamId}/join`, {
     method: 'POST',
     headers: h(token),
+    body: JSON.stringify({ clientId }),
   })
   return parse(res, 'Transmissão não encontrada')
 }

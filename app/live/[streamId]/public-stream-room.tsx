@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Radio } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
-import { joinPublicStream, type PublicJoinStreamResult } from "@/lib/services/streaming"
+import { getLiveClientId, joinPublicStream, type PublicJoinStreamResult } from "@/lib/services/streaming"
 import { ViewerStage } from "@/app/dashboard/live/[streamId]/viewer-stage"
 
 export function PublicStreamRoom({ streamId }: { streamId: string }) {
@@ -14,7 +14,7 @@ export function PublicStreamRoom({ streamId }: { streamId: string }) {
   useEffect(() => {
     if (joinedRef.current) return
     joinedRef.current = true
-    joinPublicStream(streamId)
+    joinPublicStream(streamId, getLiveClientId())
       .then(setSession)
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Não foi possível abrir a transmissão."))
   }, [streamId])

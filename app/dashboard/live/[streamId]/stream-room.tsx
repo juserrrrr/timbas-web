@@ -5,7 +5,7 @@ import Link from "next/link"
 import { ArrowLeft, Radio } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"
-import { joinStream, type JoinStreamResult } from "@/lib/services/streaming"
+import { getLiveClientId, joinStream, type JoinStreamResult } from "@/lib/services/streaming"
 import { HostStage } from "./host-stage"
 import { ViewerStage } from "./viewer-stage"
 
@@ -24,7 +24,7 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
       return
     }
 
-    joinStream(token, streamId)
+    joinStream(token, streamId, getLiveClientId())
       .then(setSession)
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao entrar na transmissão"))
   }, [streamId])
