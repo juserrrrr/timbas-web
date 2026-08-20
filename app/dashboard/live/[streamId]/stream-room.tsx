@@ -1,0 +1,72 @@
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import Link from "next/link"
+import { ArrowLeft, Radio } from "lucide-react"
+import { Spinner } from "@/components/ui/spinner"
+import { getToken } from "@/lib/auth"
+import { joinStream, type JoinStreamResult } from "@/lib/services/streaming"
+import { HostStage } from "./host-stage"
+import { ViewerStage } from "./viewer-stage"
+
+export function StreamRoom({ streamId }: { streamId: string }) {
+  const [session, setSession] = useState<JoinStreamResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const joinedRef = useRef(false)
+
+  useEffect(() => {
+    if (joinedRef.current) return
+    joinedRef.current = true
+
+    const token = getToken()
+    if (!token) {
+      setError("Faça login para assistir.")
+      return
+    }
+
+    joinStream(token, streamId)
+      .then(setSession)
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao entrar na transmissão"))
+  }, [streamId])
+
+  if (error) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/[0.08]">
+          <Radio className="h-6 w-6 text-gray-500" />
+        </div>
+        <p className="text-sm font-bold text-white">{error}</p>
+        <Link
+          href="/dashboard/live"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-blue-400 hover:text-blue-300"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Voltar para as transmissões
+        </Link>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Spinner />
+      </div>
+    )
+  }
+
+  if (session.role === "host") {
+    return (
+      <HostStage
+        streamId={streamId}
+        peerId={session.peerId}
+        stream={session.stream}
+        initialViewers={session.viewers}
+      />
+    )
+  }
+
+  return (
+    <ViewerStage streamId={streamId} peerId={session.peerId} stream={session.stream} />
+  )
+}

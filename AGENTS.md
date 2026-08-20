@@ -29,7 +29,8 @@ app/
 │   ├── settings/
 │   ├── tournaments/        # Brackets for any game (list, [id] with tabs)
 │   ├── draft/              # Draft leagues (list, [id] with tabs)
-│   └── wallet/             # Coin balance, statement, ranking
+│   ├── wallet/             # Coin balance, statement, ranking
+│   └── live/               # Screen share: list + room (host/viewer WebRTC)
 └── admin/                  # Admin-only area (role: ADMIN)
     ├── competitions/       # Manage every tournament and draft league
     ├── squads/             # Player catalog: sync, manual entry, photo import

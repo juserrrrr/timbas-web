@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation"
 import { ClipboardList, Home, MoreHorizontal, Radio, Trophy, X } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge } from "@/components/ui/beta-badge"
-import { ACCENTS, FOOTER_ITEMS, NAV_GROUPS, isNavItemActive, type NavItem } from "@/lib/navigation"
+import { ACCENTS, FOOTER_ITEMS, isNavItemActive, visibleGroups, type NavItem } from "@/lib/navigation"
+import { useEnabledFeatures } from "@/hooks/use-enabled-features"
 
 const QUICK_HREFS = ["/dashboard", "/dashboard/active", "/dashboard/tournaments", "/dashboard/draft"]
 
@@ -44,18 +45,20 @@ export function MobileBottomNav() {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
   const { navigate } = useNavigation()
+  const flags = useEnabledFeatures()
 
   useEffect(() => {
     setOpen(false)
   }, [pathname])
 
-  const allItems = [...NAV_GROUPS.flatMap((group) => group.items), ...FOOTER_ITEMS]
+  const groups = visibleGroups(flags)
+  const allItems = [...groups.flatMap((group) => group.items), ...FOOTER_ITEMS]
   const quickItems = QUICK_HREFS.map((href) => allItems.find((item) => item.href === href)).filter(
     (item): item is NavItem => Boolean(item),
   )
 
   const drawerGroups = [
-    ...NAV_GROUPS.map((group) => ({
+    ...groups.map((group) => ({
       ...group,
       items: group.items.filter((item) => !QUICK_HREFS.includes(item.href)),
     })).filter((group) => group.items.length > 0),

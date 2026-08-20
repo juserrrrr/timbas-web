@@ -4,6 +4,7 @@ import {
   Gamepad2,
   History,
   Home,
+  MonitorPlay,
   Radio,
   Settings,
   ShieldAlert,
@@ -14,6 +15,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react"
+import { FEATURE_SCREEN_SHARE } from "@/lib/services/feature-flags"
 
 export type NavItem = {
   icon: LucideIcon
@@ -22,6 +24,8 @@ export type NavItem = {
   href: string
   accent: NavAccent
   beta?: boolean
+  /// Item só aparece quando o admin liga essa feature flag.
+  flag?: string
 }
 
 export type NavGroup = {
@@ -49,6 +53,15 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "Geral",
     items: [
       { icon: Home, label: "Início", description: "Resumo do servidor e atalhos rápidos", href: "/dashboard", accent: "blue" },
+      {
+        icon: MonitorPlay,
+        label: "Transmissões",
+        description: "Compartilhe sua tela ao vivo com a galera",
+        href: "/dashboard/live",
+        accent: "rose",
+        beta: true,
+        flag: FEATURE_SCREEN_SHARE,
+      },
     ],
   },
   {
@@ -114,6 +127,15 @@ export const FOOTER_ITEMS: NavItem[] = [
 ]
 
 export const ALL_NAV_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((group) => group.items), ...FOOTER_ITEMS]
+
+/// Esconde o que está atrás de feature flag desligada, do mesmo jeito que o
+/// painel esconde item sem permissão.
+export function visibleGroups(flags: string[]): NavGroup[] {
+  return NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.flag || flags.includes(item.flag)),
+  })).filter((group) => group.items.length > 0)
+}
 
 export function isNavItemActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") return pathname === href

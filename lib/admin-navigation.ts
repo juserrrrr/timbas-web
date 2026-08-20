@@ -5,6 +5,7 @@ import {
   Gamepad2,
   LayoutDashboard,
   ShieldCheck,
+  ToggleRight,
   Trophy,
   Users,
 } from "lucide-react"
@@ -78,6 +79,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         permission: "users.approve",
       },
       { icon: Brain, label: "IA", description: "Provedor, modelo e recursos", href: "/admin/ai", accent: "violet", permission: "ai.manage" },
+      {
+        icon: ToggleRight,
+        label: "Recursos",
+        description: "Liga e desliga funcionalidades",
+        href: "/admin/features",
+        accent: "orange",
+        permission: "features.manage",
+      },
       {
         icon: FlaskConical,
         label: "Laboratório",
