@@ -5,7 +5,7 @@ import { Swords, Shuffle, ChevronRight, Map } from "lucide-react"
 import { getToken } from "@/lib/auth"
 import { createOnlineMatch } from "@/lib/services/match"
 import { GAME_MODE_OPTIONS, gameModeLabel, supportsLanes, type GameModeEnum } from "@/lib/game-mode"
-import { useServer } from "@/lib/server-context"
+import { TIMBAS_SERVER_ID } from "@/lib/servers"
 import { useNavigation } from "@/lib/navigation-context"
 
 const SIZE_OPTIONS = [
@@ -24,7 +24,6 @@ const FORMAT_OPTIONS = [
 export default function CreateMatchPage() {
   const { navigate } = useNavigation()
   const token = getToken()
-  const { selectedServer } = useServer()
 
   const [size, setSize] = useState(5)
   const [format, setFormat] = useState("ALEATORIO")
@@ -33,7 +32,7 @@ export default function CreateMatchPage() {
   const [error, setError] = useState<string | null>(null)
 
   const handleCreate = async () => {
-    if (!token || !selectedServer) return
+    if (!token) return
     if (format === "ALEATORIO_COMPLETO" && size !== 5) {
       setError("Aleatório Completo só está disponível para 5v5.")
       return
@@ -46,7 +45,7 @@ export default function CreateMatchPage() {
     setError(null)
     try {
       const match = await createOnlineMatch(token, {
-        discordServerId: selectedServer,
+        discordServerId: TIMBAS_SERVER_ID,
         matchFormat: format,
         gameMode,
         playersPerTeam: size,
@@ -176,7 +175,7 @@ export default function CreateMatchPage() {
       </button>
 
       <p className="text-center text-xs text-gray-600">
-        O embed será enviado automaticamente para o canal <span className="text-gray-400">custom_game</span> no Discord selecionado.
+        O embed será enviado automaticamente para o canal <span className="text-gray-400">custom_game</span> do Discord Timbas.
       </p>
     </div>
   )

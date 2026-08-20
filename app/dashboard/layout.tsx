@@ -2,14 +2,11 @@ import type React from "react"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { UserMenu } from "@/components/user-menu"
-import { ServerSelectorSlot } from "@/components/server-selector-slot"
-import { ServerProvider } from "@/lib/server-context"
 import { NavigationProvider } from "@/lib/navigation-context"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ServerProvider>
-      <NavigationProvider>
+    <NavigationProvider>
       <div className="relative min-h-[100dvh] overflow-x-clip bg-[#050508] text-white">
         <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle,_#ffffff06_1px,_transparent_1px)] bg-[size:28px_28px] [mask-image:linear-gradient(to_bottom,black,transparent_82%)]" />
@@ -24,7 +21,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Top bar */}
         <header className="fixed left-0 right-0 top-0 z-40 flex h-14 items-center justify-end gap-2 border-b border-white/[0.07] bg-[#07070c]/85 px-3 shadow-[0_10px_40px_-30px_rgba(59,130,246,0.45)] backdrop-blur-xl sm:gap-3 sm:px-6 md:left-[65px]">
-          <ServerSelectorSlot />
           <UserMenu />
         </header>
 
@@ -37,7 +33,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <MobileBottomNav />
         </div>
       </div>
-      </NavigationProvider>
-    </ServerProvider>
+    </NavigationProvider>
   )
 }

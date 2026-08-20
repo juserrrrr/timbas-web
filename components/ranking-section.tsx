@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trophy, Medal, ChevronLeft, ChevronRight } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useServer, SERVERS } from "@/lib/server-context"
+import { TIMBAS_SERVER_ID, TIMBAS_SERVER_NAME } from "@/lib/servers"
 import { PlayerAvatar } from "@/components/player-avatar"
 import { apiFetch, authHeaders } from "@/lib/api"
 import { getToken } from "@/lib/auth"
@@ -17,14 +17,13 @@ import {
   RANKING_GAME_MODE_TABS,
   RANKING_SIZE_TABS,
 } from "@/lib/ranking-filters"
-import type { PlayerStats } from "@/lib/server-context"
+import type { PlayerStats } from "@/lib/services/ranking"
 
 interface Props {
   initialPlayers?: PlayerStats[]
 }
 
 export function RankingSection({ initialPlayers = [] }: Props) {
-  const { selectedServer } = useServer()
   const [mode, setMode] = useState<number | undefined>(DEFAULT_RANKING_PLAYERS_PER_TEAM)
   const [gameMode, setGameMode] = useState<GameModeEnum | undefined>(DEFAULT_RANKING_GAME_MODE)
   const [players, setPlayers] = useState<PlayerStats[]>(initialPlayers)
@@ -35,7 +34,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
 
   useEffect(() => {
     const token = getToken()
-    if (!selectedServer || !token) return
+    if (!token) return
     // dados iniciais já vieram renderizados do servidor, evita o refetch redundante no mount
     if (skipNextFetch.current) {
       skipNextFetch.current = false
@@ -43,12 +42,12 @@ export function RankingSection({ initialPlayers = [] }: Props) {
     }
     setCurrentPage(1)
     setIsLoading(true)
-    apiFetch(buildRankingUrl(selectedServer, mode, gameMode), { headers: authHeaders(token) })
+    apiFetch(buildRankingUrl(TIMBAS_SERVER_ID, mode, gameMode), { headers: authHeaders(token) })
       .then(res => res.json())
       .then(setPlayers)
       .catch(() => setPlayers([]))
       .finally(() => setIsLoading(false))
-  }, [selectedServer, mode, gameMode])
+  }, [mode, gameMode])
 
   const totalPages = Math.ceil(Math.max(0, players.length - 3) / playersPerPage)
   const topThree = players.slice(0, 3)
@@ -83,8 +82,6 @@ export function RankingSection({ initialPlayers = [] }: Props) {
     }
   }
 
-  const selectedServerName = SERVERS.find((s) => s.id === selectedServer)?.name || "Servidor"
-
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
       {/* Header */}
@@ -92,7 +89,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
         <h1 className="mb-2 text-4xl font-bold md:text-5xl">
           Ranking{" "}
           <span className="bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">
-            {selectedServerName}
+            {TIMBAS_SERVER_NAME}
           </span>
         </h1>
         <p className="text-gray-400">Os melhores jogadores da temporada</p>
@@ -156,7 +153,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
           <p className="mt-2 text-gray-400">
             {gameMode || mode
               ? "Nenhuma partida com esse recorte ainda. Tente o filtro Geral."
-              : "Ainda não há dados de ranking para este servidor."}
+              : "Ainda não há dados de ranking para o Timbas."}
           </p>
         </div>
       ) : players.length > 0 && (

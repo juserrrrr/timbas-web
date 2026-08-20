@@ -5,16 +5,10 @@ import Link from "next/link"
 import { Trophy, ArrowRight, Medal, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { getRanking, PlayerStats } from "@/lib/services/ranking"
 import { getToken } from "@/lib/auth"
-
-const SERVERS = [
-  { id: "779382528821166100", name: "Timbas" },
-  { id: "465211051865276426", name: "Entrosa Não" },
-  { id: "1187881256508211321", name: "Fusão" },
-]
+import { TIMBAS_SERVER_ID, TIMBAS_SERVER_NAME } from "@/lib/servers"
 
 const MEDAL_STYLE = [
   { label: "1º", color: "text-yellow-400", border: "border-yellow-500/40", bg: "bg-yellow-500/10" },
@@ -26,7 +20,6 @@ export function RankingLanding() {
   const [players, setPlayers] = useState<PlayerStats[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAuth, setIsAuth] = useState(false)
-  const [selectedServer, setSelectedServer] = useState(SERVERS[0].id)
 
   useEffect(() => {
     const token = getToken()
@@ -36,7 +29,7 @@ export function RankingLanding() {
     const load = async () => {
       setIsLoading(true)
       try {
-        const data = await getRanking(token, selectedServer)
+        const data = await getRanking(token, TIMBAS_SERVER_ID)
         setPlayers(data)
       } catch {
         setPlayers([])
@@ -45,7 +38,7 @@ export function RankingLanding() {
       }
     }
     load()
-  }, [selectedServer])
+  }, [])
 
   const top3 = players.slice(0, 3)
   const rest = players.slice(3, 8)
@@ -62,26 +55,12 @@ export function RankingLanding() {
             <h2 className="text-4xl font-bold text-white md:text-5xl">
               Ranking{" "}
               <span className="bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">
-                {SERVERS.find((s) => s.id === selectedServer)?.name}
+                {TIMBAS_SERVER_NAME}
               </span>
             </h2>
             <p className="mt-2 text-gray-400">Os melhores jogadores da temporada</p>
           </div>
 
-          {isAuth && (
-            <Select value={selectedServer} onValueChange={setSelectedServer}>
-              <SelectTrigger className="w-[200px] border-gray-700 bg-gray-800/50 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-gray-700 bg-gray-900 text-white">
-                {SERVERS.map((s) => (
-                  <SelectItem key={s.id} value={s.id} className="focus:bg-gray-800 focus:text-white">
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
 
         {/* Not logged in */}
@@ -231,7 +210,7 @@ export function RankingLanding() {
         {isAuth && !isLoading && players.length === 0 && (
           <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-900/30 p-16 text-center">
             <Trophy className="mx-auto mb-3 h-10 w-10 text-gray-600" />
-            <p className="text-gray-400">Nenhum dado disponível para este servidor.</p>
+            <p className="text-gray-400">Nenhum dado disponível para o Timbas.</p>
           </div>
         )}
       </div>

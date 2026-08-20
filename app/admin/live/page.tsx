@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"
+import { TIMBAS_SERVER_ID } from "@/lib/servers"
 import { getAnnouncementGuilds, setAnnouncementChannel, type AnnouncementGuild } from "@/lib/services/streaming"
 
 export default function LiveAdminPage() {
@@ -17,8 +18,8 @@ export default function LiveAdminPage() {
     const token = getToken()
     if (!token) return
     getAnnouncementGuilds(token)
-      .then(setGuilds)
-      .catch((error: unknown) => toast.error("Erro ao carregar os servidores", { description: error instanceof Error ? error.message : undefined }))
+      .then((items) => setGuilds(items.filter((guild) => guild.id === TIMBAS_SERVER_ID)))
+      .catch((error: unknown) => toast.error("Erro ao carregar o Timbas", { description: error instanceof Error ? error.message : undefined }))
       .finally(() => setLoading(false))
   }, [])
 
@@ -32,7 +33,7 @@ export default function LiveAdminPage() {
     setSaving(guild.id)
     try {
       await setAnnouncementChannel(token, guild.id, guild.channelId)
-      toast.success(guild.channelId ? "Canal de anúncio salvo" : "Anúncios desativados neste servidor")
+      toast.success(guild.channelId ? "Canal de anúncio salvo" : "Anúncios desativados no Timbas")
     } catch (error: unknown) {
       toast.error("Erro ao salvar", { description: error instanceof Error ? error.message : undefined })
     } finally {
@@ -56,7 +57,7 @@ export default function LiveAdminPage() {
         {loading ? (
           <div className="flex justify-center py-16"><Spinner className="size-5 text-red-400" /></div>
         ) : guilds.length === 0 ? (
-          <p className="px-5 py-12 text-center text-sm text-gray-500">O bot ainda não está conectado a nenhum servidor.</p>
+          <p className="px-5 py-12 text-center text-sm text-gray-500">O bot ainda não está conectado ao Timbas.</p>
         ) : (
           <div className="divide-y divide-white/[0.04]">
             {guilds.map((guild) => (

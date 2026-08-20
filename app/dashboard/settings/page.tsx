@@ -3,15 +3,12 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LogOut, Server, Info, Code2, Coins, MessageSquare, Zap, Shield, Clock, ExternalLink } from "lucide-react"
+import { LogOut, Info, Code2, Coins, MessageSquare, Zap, Shield, Clock, ExternalLink } from "lucide-react"
 
 import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
-import { useServer, SERVERS } from "@/lib/server-context"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function SettingsPage() {
   const router = useRouter()
-  const { selectedServer, setSelectedServer } = useServer()
   const [user, setUser] = useState<TokenPayload | null>(null)
 
   useEffect(() => {
@@ -33,34 +30,6 @@ export default function SettingsPage() {
         <p className="mt-1 text-sm text-gray-500">Preferências do dashboard</p>
       </div>
 
-      {/* Servidor padrão */}
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
-        <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-5 py-4">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10">
-            <Server className="h-3.5 w-3.5 text-blue-400" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-white">Servidor Padrão</h2>
-            <p className="text-xs text-gray-600">Usado em todas as telas do dashboard</p>
-          </div>
-        </div>
-        <div className="px-5 py-4">
-          <Select value={selectedServer} onValueChange={setSelectedServer}>
-            <SelectTrigger className="h-9 w-full gap-1.5 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm text-white focus:ring-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="border-white/[0.08] bg-[#0d0d12] text-white shadow-xl backdrop-blur-xl">
-              {SERVERS.map((s) => (
-                <SelectItem key={s.id} value={s.id} className="text-sm focus:bg-white/[0.06] focus:text-white">
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="mt-2 text-xs text-gray-700">Esta preferência é salva por sessão.</p>
-        </div>
-      </div>
-
       {/* Funcionalidades */}
       <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
         <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-5 py-4">
@@ -71,10 +40,9 @@ export default function SettingsPage() {
         </div>
         <div className="divide-y divide-white/[0.04]">
           {[
-            { icon: Shield,  label: "Ranking",         desc: "Classificação em tempo real por servidor",         status: "Ativo" },
+            { icon: Shield,  label: "Ranking",         desc: "Classificação em tempo real do Timbas",            status: "Ativo" },
             { icon: Clock,   label: "Histórico",        desc: "Registro completo de todas as partidas",           status: "Ativo" },
             { icon: Zap,     label: "Estatísticas",     desc: "Win rate, streaks, duplas e desempenho semanal",   status: "Ativo" },
-            { icon: Server,  label: "Multi-servidor",   desc: "Dados isolados por servidor Discord",              status: "Ativo" },
           ].map(({ icon: Icon, label, desc, status }) => (
             <div key={label} className="flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-5">
               <Icon className="h-4 w-4 flex-shrink-0 text-gray-600" />

@@ -22,7 +22,7 @@ export default async function TeamsPage() {
       {duoStats.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center sm:p-12">
           <Users className="mx-auto mb-3 h-10 w-10 text-gray-600" />
-          <p className="text-gray-400">Nenhuma partida encontrada para este servidor.</p>
+          <p className="text-gray-400">Nenhuma partida encontrada no Timbas.</p>
         </div>
       ) : (
         <>

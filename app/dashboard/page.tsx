@@ -31,7 +31,7 @@ export default async function DashboardPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-white">Dashboard</h1>
-            <p className="mt-0.5 text-sm text-gray-500">Seu desempenho no servidor</p>
+            <p className="mt-0.5 text-sm text-gray-500">Seu desempenho no Timbas</p>
           </div>
         </div>
         {stats && (

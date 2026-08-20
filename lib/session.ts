@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { SERVERS, SERVER_COOKIE } from "@/lib/servers"
+import { TIMBAS_SERVER_ID, TIMBAS_SERVER_NAME } from "@/lib/servers"
 import { decodeToken, type TokenPayload } from "@/lib/auth"
 
 export async function getSession(): Promise<{ token: string; serverId: string; serverName: string; userId: number; payload: TokenPayload }> {
@@ -11,9 +11,5 @@ export async function getSession(): Promise<{ token: string; serverId: string; s
   const payload = decodeToken(token)
   if (!payload) redirect("/login")
 
-  const rawServer = cookieStore.get(SERVER_COOKIE)?.value
-  const serverId = SERVERS.find((s) => s.id === rawServer)?.id ?? SERVERS[0].id
-  const serverName = SERVERS.find((s) => s.id === serverId)?.name ?? "Servidor"
-
-  return { token, serverId, serverName, userId: Number(payload.sub), payload }
+  return { token, serverId: TIMBAS_SERVER_ID, serverName: TIMBAS_SERVER_NAME, userId: Number(payload.sub), payload }
 }

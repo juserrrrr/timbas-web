@@ -52,7 +52,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "geral",
     title: "Geral",
     items: [
-      { icon: Home, label: "Início", description: "Resumo do servidor e atalhos rápidos", href: "/dashboard", accent: "blue" },
+      { icon: Home, label: "Início", description: "Resumo do Timbas e atalhos rápidos", href: "/dashboard", accent: "blue" },
       {
         icon: MonitorPlay,
         label: "Transmissões",

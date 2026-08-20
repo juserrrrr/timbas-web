@@ -8,7 +8,7 @@ import { getRanking } from "@/lib/services/ranking"
 import { getMatchHistory } from "@/lib/services/matches"
 import { adminGetUsers, AdminUser } from "@/lib/services/admin"
 import { getToken, decodeToken } from "@/lib/auth"
-import { SERVERS } from "@/lib/server-context"
+import { TIMBAS_SERVER_ID, TIMBAS_SERVER_NAME } from "@/lib/servers"
 import { toast } from "sonner"
 
 interface ServerSnapshot {
@@ -30,7 +30,7 @@ const ROLE_META = {
 
 export default function AdminPage() {
   const [snapshots, setSnapshots] = useState<ServerSnapshot[]>(
-    SERVERS.map((s) => ({ id: s.id, name: s.name, players: 0, totalGames: 0, topPlayer: null, loading: true, error: false }))
+    [{ id: TIMBAS_SERVER_ID, name: TIMBAS_SERVER_NAME, players: 0, totalGames: 0, topPlayer: null, loading: true, error: false }]
   )
   const [users, setUsers] = useState<AdminUser[]>([])
   const [usersLoading, setUsersLoading] = useState(true)
@@ -48,30 +48,15 @@ export default function AdminPage() {
   const fetchServers = async () => {
     const token = getToken()
     if (!token) return
-    const results = await Promise.allSettled(
-      SERVERS.map(async (server) => {
-        const [ranking, matches] = await Promise.all([
-          getRanking(token, server.id).catch(() => []),
-          getMatchHistory(token, server.id).catch(() => []),
-        ])
-        return {
-          id: server.id,
-          name: server.name,
-          players: ranking.length,
-          totalGames: matches.length,
-          topPlayer: ranking[0]?.name ?? null,
-          loading: false,
-          error: false,
-        }
-      })
-    )
-    setSnapshots(
-      results.map((r, i) =>
-        r.status === "fulfilled"
-          ? r.value
-          : { ...SERVERS[i], players: 0, totalGames: 0, topPlayer: null, loading: false, error: true }
-      )
-    )
+    try {
+      const [ranking, matches] = await Promise.all([
+        getRanking(token, TIMBAS_SERVER_ID),
+        getMatchHistory(token, TIMBAS_SERVER_ID),
+      ])
+      setSnapshots([{ id: TIMBAS_SERVER_ID, name: TIMBAS_SERVER_NAME, players: ranking.length, totalGames: matches.length, topPlayer: ranking[0]?.name ?? null, loading: false, error: false }])
+    } catch {
+      setSnapshots([{ id: TIMBAS_SERVER_ID, name: TIMBAS_SERVER_NAME, players: 0, totalGames: 0, topPlayer: null, loading: false, error: true }])
+    }
   }
 
   const fetchUsers = async () => {
@@ -134,8 +119,8 @@ export default function AdminPage() {
         <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Servidores</p>
-              <p className="text-3xl font-black text-white">{SERVERS.length}</p>
+              <p className="text-sm text-gray-500">Servidor</p>
+              <p className="text-3xl font-black text-white">Timbas</p>
             </div>
             <div className="rounded-xl bg-orange-500/10 p-3">
               <Server className="h-6 w-6 text-orange-400" />
@@ -228,7 +213,7 @@ export default function AdminPage() {
 
         {/* Per-server */}
         <Card className="border-gray-800/50 bg-gray-900/50 p-6 backdrop-blur-sm">
-          <h2 className="mb-5 text-base font-bold text-white">Por Servidor</h2>
+          <h2 className="mb-5 text-base font-bold text-white">Timbas</h2>
           <div className="space-y-3">
             {snapshots.map((s) => (
               <div

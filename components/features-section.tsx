@@ -4,7 +4,7 @@ const features = [
   {
     icon: Trophy,
     title: "Sistema de Ranking",
-    description: "Pontuação por vitória, sequências de wins, histórico completo e pódio por servidor.",
+    description: "Pontuação por vitória, sequências de wins, histórico completo e pódio do Timbas.",
     accent: "#eab308",
     from: "from-yellow-500/10",
     border: "border-yellow-500/15",
@@ -47,8 +47,8 @@ const features = [
   },
   {
     icon: Shield,
-    title: "Multi-Servidor",
-    description: "Cada servidor tem seu próprio ranking e histórico. Dados totalmente isolados.",
+    title: "Comunidade Timbas",
+    description: "Ranking e histórico feitos para a galera do Timbas.",
     accent: "#ef4444",
     from: "from-red-500/10",
     border: "border-red-500/15",

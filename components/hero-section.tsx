@@ -78,7 +78,7 @@ export function HeroSection() {
               {[
                 { value: totalMatches > 0 ? `${totalMatches}+` : "-", label: "Partidas jogadas", icon: Swords, color: "text-blue-400" },
                 { value: totalPlayers > 0 ? `${totalPlayers}+` : "-", label: "Jogadores ativos", icon: Users, color: "text-red-400" },
-                { value: "4", label: "Servidores", icon: Server, color: "text-purple-400" },
+                { value: "Timbas", label: "Comunidade", icon: Server, color: "text-purple-400" },
               ].map(({ value, label, icon: Icon, color }) => (
                 <div key={label}>
                   <div className={`text-2xl font-bold tabular-nums ${color}`}>{value}</div>
