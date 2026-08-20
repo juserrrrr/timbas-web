@@ -1,11 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Copy, Globe2, Link2, Lock, Mic, MicOff, MonitorUp } from "lucide-react"
+import { Check, Copy, Gauge, Globe2, Link2, Lock, Mic, MicOff, MonitorUp } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 type Visibility = "MEMBERS" | "PUBLIC"
+export type VideoQuality = "720p" | "1080p" | "source"
+export type VideoFrameRate = 30 | 60
 
 interface Props {
   open: boolean
@@ -15,6 +17,10 @@ interface Props {
   liveUrl: string
   visibility: Visibility
   onVisibilityChange: (visibility: Visibility) => void
+  quality: VideoQuality
+  onQualityChange: (quality: VideoQuality) => void
+  frameRate: VideoFrameRate
+  onFrameRateChange: (frameRate: VideoFrameRate) => void
   withMic: boolean
   onWithMicChange: (withMic: boolean) => void
   starting: boolean
@@ -29,6 +35,10 @@ export function LiveSetupDialog({
   liveUrl,
   visibility,
   onVisibilityChange,
+  quality,
+  onQualityChange,
+  frameRate,
+  onFrameRateChange,
   withMic,
   onWithMicChange,
   starting,
@@ -86,6 +96,42 @@ export function LiveSetupDialog({
                 {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
               </button>
             </div>
+          </section>
+
+          <section>
+            <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-500">
+              <Gauge className="h-3.5 w-3.5" /> Qualidade da transmissão
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { value: "720p", label: "HD", detail: "720p" },
+                { value: "1080p", label: "Full HD", detail: "1080p" },
+                { value: "source", label: "Original", detail: "Máxima" },
+              ] as const).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => onQualityChange(option.value)}
+                  className={`min-w-0 cursor-pointer rounded-xl border px-2 py-3 text-center transition-colors ${quality === option.value ? "border-blue-500/60 bg-blue-500/10" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
+                >
+                  <span className="block truncate text-xs font-black text-white">{option.label}</span>
+                  <span className="mt-0.5 block text-[10px] text-gray-500">{option.detail}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {([30, 60] as const).map((fps) => (
+                <button
+                  key={fps}
+                  type="button"
+                  onClick={() => onFrameRateChange(fps)}
+                  className={`cursor-pointer rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${frameRate === fps ? "border-emerald-500/60 bg-emerald-500/10 text-white" : "border-white/[0.08] bg-white/[0.02] text-gray-400 hover:bg-white/[0.05]"}`}
+                >
+                  {fps} FPS <span className="font-normal text-gray-500">{fps === 30 ? "mais estável" : "mais fluido"}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-gray-500">O navegador pode reduzir a qualidade automaticamente se a conexão não aguentar.</p>
           </section>
 
           <section>

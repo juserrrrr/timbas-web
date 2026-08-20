@@ -10,7 +10,7 @@ import { getIceServers } from "@/lib/webrtc"
 import { endStream, getStreamViewers, leaveStream, sendSignal, startStream, updateStreamVisibility, type SignalEvent, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
 import { HostLiveControls } from "./host-live-controls"
-import { LiveSetupDialog } from "./live-setup-dialog"
+import { LiveSetupDialog, type VideoFrameRate, type VideoQuality } from "./live-setup-dialog"
 
 interface Props {
   streamId: string
@@ -36,6 +36,19 @@ function createBlackVideoStream() {
   return canvas.captureStream(1)
 }
 
+function displayVideoConstraints(quality: VideoQuality, frameRate: VideoFrameRate): MediaTrackConstraints {
+  const frameRateConstraint = { ideal: frameRate, max: frameRate }
+  if (quality === "720p") return { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: frameRateConstraint }
+  if (quality === "1080p") return { width: { ideal: 1920, max: 1920 }, height: { ideal: 1080, max: 1080 }, frameRate: frameRateConstraint }
+  return { frameRate: frameRateConstraint }
+}
+
+function maxVideoBitrate(quality: VideoQuality, frameRate: VideoFrameRate) {
+  if (quality === "720p") return frameRate === 60 ? 8_000_000 : 5_000_000
+  if (quality === "1080p") return frameRate === 60 ? 14_000_000 : 9_000_000
+  return frameRate === 60 ? 25_000_000 : 16_000_000
+}
+
 export function HostStage({ streamId, peerId, stream, initialViewers, onReconnect }: Props) {
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -51,6 +64,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const iceServersPromiseRef = useRef<Promise<RTCIceServer[]> | null>(null)
   const previousPeerIdRef = useRef(peerId)
   const peerIdRef = useRef(peerId)
+  const videoProfileRef = useRef<{ quality: VideoQuality; frameRate: VideoFrameRate }>({ quality: "1080p", frameRate: 60 })
 
   const [viewers, setViewers] = useState<StreamPeer[]>(initialViewers)
   const [sharing, setSharing] = useState(false)
@@ -58,6 +72,8 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [withMic, setWithMic] = useState(true)
   const [setupOpen, setSetupOpen] = useState(true)
   const [setupVisibility, setSetupVisibility] = useState<Visibility>(stream.visibility)
+  const [quality, setQuality] = useState<VideoQuality>("1080p")
+  const [frameRate, setFrameRate] = useState<VideoFrameRate>(60)
   const [startingShare, setStartingShare] = useState(false)
   const [switchingScreen, setSwitchingScreen] = useState(false)
   const [screenLabel, setScreenLabel] = useState("")
@@ -78,6 +94,10 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   useEffect(() => {
     setOrigin(window.location.origin)
   }, [])
+
+  useEffect(() => {
+    videoProfileRef.current = { quality, frameRate }
+  }, [frameRate, quality])
 
   const ensureIceServers = useCallback(() => {
     if (iceServersRef.current.length) return Promise.resolve(iceServersRef.current)
@@ -109,7 +129,15 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     const pc = new RTCPeerConnection({ iceServers })
     pcsRef.current.set(target, pc)
 
-    media.getTracks().forEach((track) => pc.addTrack(track, media))
+    for (const track of media.getTracks()) {
+      const sender = pc.addTrack(track, media)
+      if (track.kind === "video") {
+        const parameters = sender.getParameters()
+        parameters.encodings = parameters.encodings?.length ? parameters.encodings : [{}]
+        parameters.encodings[0].maxBitrate = maxVideoBitrate(videoProfileRef.current.quality, videoProfileRef.current.frameRate)
+        await sender.setParameters(parameters).catch(() => {})
+      }
+    }
     pc.onicecandidate = (event) => {
       if (!event.candidate) return
       void sendSignal(token, streamId, { from: peerId, to: target, type: "ice", data: event.candidate.toJSON() })
@@ -320,9 +348,11 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     let mic: MediaStream | null = null
     try {
       display = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 30, max: 60 } },
+        video: displayVideoConstraints(quality, frameRate),
         audio: true,
       })
+      const displayTrack = display.getVideoTracks()[0]
+      if (displayTrack) displayTrack.contentHint = frameRate === 60 ? "motion" : "detail"
 
       let micTracks: MediaStreamTrack[] = []
       if (withMic) {
@@ -382,9 +412,11 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     let nextDisplay: MediaStream | null = null
     try {
       nextDisplay = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 30, max: 60 } },
+        video: displayVideoConstraints(quality, frameRate),
         audio: true,
       })
+      const nextDisplayTrack = nextDisplay.getVideoTracks()[0]
+      if (nextDisplayTrack) nextDisplayTrack.contentHint = frameRate === 60 ? "motion" : "detail"
       const previousDisplay = displayStreamRef.current
       const previousPlaceholder = placeholderStreamRef.current
       const micTracks = micStreamRef.current?.getAudioTracks() ?? []
@@ -541,6 +573,10 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
         liveUrl={liveUrl}
         visibility={setupVisibility}
         onVisibilityChange={setSetupVisibility}
+        quality={quality}
+        onQualityChange={setQuality}
+        frameRate={frameRate}
+        onFrameRateChange={setFrameRate}
         withMic={withMic}
         onWithMicChange={setWithMic}
         starting={startingShare}
