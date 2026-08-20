@@ -24,10 +24,10 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
       return
     }
 
-    joinStream(token, streamId, getLiveClientId())
+    joinStream(token, streamId, getLiveClientId(), expectedRole === "viewer")
       .then(setSession)
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao entrar na transmissão"))
-  }, [streamId])
+  }, [expectedRole, streamId])
 
   if (error) {
     return (

@@ -198,11 +198,16 @@ export async function setAnnouncementChannel(token: string, guildId: string, cha
   await parse(res, 'Erro ao salvar o canal de anÃºncio')
 }
 
-export async function joinStream(token: string, streamId: string, clientId: string): Promise<JoinStreamResult> {
+export async function joinStream(
+  token: string,
+  streamId: string,
+  clientId: string,
+  asViewer = false,
+): Promise<JoinStreamResult> {
   const res = await apiFetch(`${API_URL}/streaming/streams/${streamId}/join`, {
     method: 'POST',
     headers: h(token),
-    body: JSON.stringify({ clientId }),
+    body: JSON.stringify({ clientId, ...(asViewer ? { asViewer: true } : {}) }),
   })
   return parse(res, 'Transmissão não encontrada')
 }
