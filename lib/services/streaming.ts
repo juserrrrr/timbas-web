@@ -71,6 +71,11 @@ export async function createStream(
   return parse(res, 'Erro ao criar a transmissão')
 }
 
+export async function getStreamViewers(token: string, streamId: string): Promise<StreamPeer[]> {
+  const res = await apiFetch(`${API_URL}/streaming/streams/${streamId}/viewers`, { headers: h(token), cache: 'no-store' })
+  return parse(res, 'Could not load stream viewers')
+}
+
 export async function startStream(token: string, streamId: string): Promise<StreamSummary> {
   const res = await apiFetch(`${API_URL}/streaming/streams/${streamId}/start`, {
     method: 'POST',

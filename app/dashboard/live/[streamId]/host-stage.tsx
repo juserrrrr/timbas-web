@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getToken } from "@/lib/auth"
 import { getIceServers } from "@/lib/webrtc"
-import { endStream, sendSignal, startStream, updateStreamVisibility, type SignalEvent, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
+import { endStream, getStreamViewers, sendSignal, startStream, updateStreamVisibility, type SignalEvent, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
 
 interface Props {
@@ -26,6 +26,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
   const micStreamRef = useRef<MediaStream | null>(null)
   const pcsRef = useRef(new Map<string, RTCPeerConnection>())
   const pendingIceRef = useRef(new Map<string, RTCIceCandidateInit[]>())
+  const offeredAtRef = useRef(new Map<string, number>())
   const viewersRef = useRef(new Map(initialViewers.map((viewer) => [viewer.peerId, viewer])))
   const iceServersRef = useRef<RTCIceServer[]>([])
 
@@ -47,6 +48,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
     if (!media || !token) return
 
     pcsRef.current.get(target)?.close()
+    offeredAtRef.current.set(target, Date.now())
     const pc = new RTCPeerConnection({ iceServers: iceServersRef.current })
     pcsRef.current.set(target, pc)
 
@@ -70,6 +72,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
     pcsRef.current.get(target)?.close()
     pcsRef.current.delete(target)
     pendingIceRef.current.delete(target)
+    offeredAtRef.current.delete(target)
     viewersRef.current.delete(target)
     setViewers([...viewersRef.current.values()])
   }, [])
@@ -113,6 +116,36 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
     if (token) void getIceServers(token).then((servers) => { iceServersRef.current = servers })
   }, [])
 
+  const syncViewers = useCallback(async () => {
+    const token = getToken()
+    if (!token || !localStreamRef.current) return
+
+    const latest = await getStreamViewers(token, streamId).catch(() => null)
+    if (!latest) return
+
+    let changed = false
+    for (const viewer of latest) {
+      if (!viewersRef.current.has(viewer.peerId)) changed = true
+      viewersRef.current.set(viewer.peerId, viewer)
+    }
+    if (changed) setViewers([...viewersRef.current.values()])
+
+    const now = Date.now()
+    for (const viewer of latest) {
+      const pc = pcsRef.current.get(viewer.peerId)
+      const lastOffer = offeredAtRef.current.get(viewer.peerId) ?? 0
+      const needsOffer = !pc || pc.connectionState === "failed" || pc.connectionState === "closed" || (pc.connectionState !== "connected" && now - lastOffer > 8000)
+      if (needsOffer) await offerTo(viewer.peerId)
+    }
+  }, [offerTo, streamId])
+
+  useEffect(() => {
+    if (!sharing) return
+    void syncViewers()
+    const interval = window.setInterval(() => { void syncViewers() }, 2000)
+    return () => window.clearInterval(interval)
+  }, [sharing, syncViewers])
+
   const stopEverything = useCallback(() => {
     localStreamRef.current?.getTracks().forEach((track) => track.stop())
     micStreamRef.current?.getTracks().forEach((track) => track.stop())
@@ -121,6 +154,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
     pcsRef.current.forEach((pc) => pc.close())
     pcsRef.current.clear()
     pendingIceRef.current.clear()
+    offeredAtRef.current.clear()
     if (videoRef.current) videoRef.current.srcObject = null
     setSharing(false)
     setHasMic(false)
