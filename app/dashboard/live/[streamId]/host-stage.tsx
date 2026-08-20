@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Check, Copy, Link2, Mic, MicOff, MonitorUp, Radio, Square, Users } from "lucide-react"
 import { toast } from "sonner"
-import { getDiscordAvatarUrl, getToken } from "@/lib/auth"
+import { getToken } from "@/lib/auth"
 import { getIceServers } from "@/lib/webrtc"
-import { endStream, sendSignal, type SignalEvent, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
+import { endStream, sendSignal, startStream, type SignalEvent, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
 
 interface Props {
@@ -29,7 +29,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
   const [viewers, setViewers] = useState<StreamPeer[]>(initialViewers)
   const [sharing, setSharing] = useState(false)
   const [withMic, setWithMic] = useState(true)
-  const [micOn, setMicOn] = useState(true)
+  const [micOn, setMicOn] = useState(false)
   const [hasMic, setHasMic] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -133,15 +133,17 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
       return
     }
 
+    let display: MediaStream | null = null
+    let mic: MediaStream | null = null
     try {
-      const display = await navigator.mediaDevices.getDisplayMedia({
+      display = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: { ideal: 30, max: 60 } },
         audio: true,
       })
 
       let micTracks: MediaStreamTrack[] = []
       if (withMic) {
-        const mic = await navigator.mediaDevices
+        mic = await navigator.mediaDevices
           .getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
           .catch(() => null)
         if (mic) {
@@ -153,16 +155,23 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
         }
       }
 
+      const token = getToken()
+      if (!token) throw new Error("Faça login novamente para iniciar a transmissão.")
+      await startStream(token, streamId)
+      if (!display) throw new Error("Não foi possível capturar a tela.")
+
       const media = new MediaStream([...display.getTracks(), ...micTracks])
       localStreamRef.current = media
       if (videoRef.current) videoRef.current.srcObject = media
       setSharing(true)
-      setMicOn(true)
+      setMicOn(micTracks.some((track) => track.enabled))
 
       display.getVideoTracks()[0].addEventListener("ended", () => { void finish() })
 
       for (const viewer of viewersRef.current.values()) await offerTo(viewer.peerId)
     } catch (e: unknown) {
+      display?.getTracks().forEach((track) => track.stop())
+      mic?.getTracks().forEach((track) => track.stop())
       const message = e instanceof Error && e.name === "NotAllowedError"
         ? "Você cancelou a seleção de tela."
         : "Não foi possível capturar a tela."
@@ -179,7 +188,8 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
   }
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(`${window.location.origin}/dashboard/live/${streamId}`)
+    const path = stream.visibility === "PUBLIC" ? `/live/${streamId}` : `/dashboard/live/${streamId}/watch`
+    await navigator.clipboard.writeText(`${window.location.origin}${path}`)
     setCopied(true)
     toast.success("Link copiado", { description: "Qualquer pessoa logada consegue assistir." })
     setTimeout(() => setCopied(false), 2000)
@@ -269,7 +279,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
             }`}
           >
             {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-            {micOn ? "Microfone ligado" : "Microfone mudo"}
+            {hasMic ? (micOn ? "Microfone ligado" : "Microfone mudo") : "Microfone indisponível"}
           </button>
 
           <button
@@ -296,19 +306,14 @@ export function HostStage({ streamId, peerId, stream, initialViewers }: Props) {
         ) : (
           <div className="flex flex-wrap gap-2">
             {viewers.map((viewer) => {
-              const avatar = getDiscordAvatarUrl(viewer.discordId ?? undefined, viewer.avatar ?? undefined, 32)
               return (
                 <span
                   key={viewer.peerId}
                   className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] py-1 pl-1 pr-3 text-xs font-semibold text-gray-200 ring-1 ring-white/[0.08]"
                 >
-                  {avatar ? (
-                    <img src={avatar} alt="" className="h-5 w-5 rounded-full" />
-                  ) : (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-[9px] font-bold">
-                      {viewer.name.slice(0, 2).toUpperCase()}
-                    </span>
-                  )}
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-[9px] font-bold">
+                    {viewer.name.slice(0, 2).toUpperCase()}
+                  </span>
                   {viewer.name}
                 </span>
               )

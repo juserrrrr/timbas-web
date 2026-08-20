@@ -6,8 +6,8 @@ import Link from "next/link"
 import { Lock, MonitorPlay, MonitorUp, Radio, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Spinner } from "@/components/ui/spinner"
-import { getDiscordAvatarUrl, getToken } from "@/lib/auth"
-import { createStream, getStreamPermission, listStreams, type StreamSummary } from "@/lib/services/streaming"
+import { getToken } from "@/lib/auth"
+import { createStream, getAnnouncementTargets, getStreamPermission, listStreams, type AnnouncementTarget, type StreamSummary } from "@/lib/services/streaming"
 
 function elapsed(startedAt: string) {
   const seconds = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000))
@@ -25,6 +25,9 @@ export default function LivePage() {
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
   const [title, setTitle] = useState("")
+  const [guilds, setGuilds] = useState<AnnouncementTarget[]>([])
+  const [guildId, setGuildId] = useState("")
+  const [visibility, setVisibility] = useState<"MEMBERS" | "PUBLIC">("MEMBERS")
 
   useEffect(() => {
     const token = getToken()
@@ -39,8 +42,15 @@ export default function LivePage() {
       setFeatureEnabled(permission.featureEnabled)
 
       if (permission.featureEnabled) {
-        const list = await listStreams(token).catch(() => [])
-        if (active) setStreams(list)
+        const [list, targets] = await Promise.all([
+          listStreams(token).catch(() => []),
+          permission.canStream ? getAnnouncementTargets(token).catch(() => []) : Promise.resolve([]),
+        ])
+        if (active) {
+          setStreams(list)
+          setGuilds(targets)
+          setGuildId((current) => current || targets[0]?.id || "")
+        }
       }
       if (active) setLoading(false)
     }
@@ -56,10 +66,14 @@ export default function LivePage() {
   const start = async () => {
     const token = getToken()
     if (!token) return
+    if (!guildId) {
+      toast.error("Nenhum servidor do bot está disponível para esta transmissão.")
+      return
+    }
     setStarting(true)
     try {
-      const stream = await createStream(token, title.trim() || undefined)
-      router.push(`/dashboard/live/${stream.id}`)
+      const stream = await createStream(token, title.trim() || undefined, guildId, visibility)
+      router.push(`/dashboard/live/${stream.id}/studio`)
     } catch (e: unknown) {
       toast.error("Não foi possível iniciar", { description: e instanceof Error ? e.message : undefined })
       setStarting(false)
@@ -104,6 +118,23 @@ export default function LivePage() {
 
         {canStream && (
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <select
+              value={guildId}
+              onChange={(event) => setGuildId(event.target.value)}
+              className="h-10 max-w-40 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-white focus:border-blue-500/40 focus:outline-none"
+              aria-label="Servidor para anunciar a transmissÃ£o"
+            >
+              {guilds.map((guild) => <option key={guild.id} value={guild.id}>{guild.name}{guild.configured ? "" : " (sem anúncio)"}</option>)}
+            </select>
+            <select
+              value={visibility}
+              onChange={(event) => setVisibility(event.target.value as "MEMBERS" | "PUBLIC")}
+              className="h-10 max-w-48 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-white focus:border-blue-500/40 focus:outline-none"
+              aria-label="Quem pode assistir à transmissão"
+            >
+              <option value="MEMBERS">Pessoas logadas</option>
+              <option value="PUBLIC">Qualquer pessoa com link</option>
+            </select>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -145,21 +176,16 @@ export default function LivePage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {streams.map((stream) => {
-            const avatar = getDiscordAvatarUrl(stream.hostDiscordId ?? undefined, stream.hostAvatar ?? undefined, 64)
             return (
               <Link
                 key={stream.id}
-                href={`/dashboard/live/${stream.id}`}
+                href={`/dashboard/live/${stream.id}/watch`}
                 className="group rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 transition-colors hover:border-red-500/25 hover:bg-white/[0.04]"
               >
                 <div className="flex items-start gap-3">
-                  {avatar ? (
-                    <img src={avatar} alt="" className="h-10 w-10 rounded-xl ring-1 ring-white/10" />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-xs font-bold text-blue-300 ring-1 ring-blue-500/20">
-                      {stream.hostName.slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-xs font-bold text-blue-300 ring-1 ring-blue-500/20">
+                    {stream.hostName.slice(0, 2).toUpperCase()}
+                  </div>
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-white">{stream.title}</p>

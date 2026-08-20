@@ -4,6 +4,7 @@ import {
   FlaskConical,
   Gamepad2,
   LayoutDashboard,
+  Radio,
   ShieldCheck,
   ToggleRight,
   Trophy,
@@ -86,6 +87,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: "/admin/features",
         accent: "orange",
         permission: "features.manage",
+      },
+      {
+        icon: Radio,
+        label: "Transmissões",
+        description: "Canal usado para anunciar lives",
+        href: "/admin/live",
+        accent: "red",
+        permission: "stream.manage",
       },
       {
         icon: FlaskConical,

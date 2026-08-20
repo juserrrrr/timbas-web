@@ -5,10 +5,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 export interface StreamSummary {
   id: string
   title: string
-  hostUserId: number
   hostName: string
-  hostAvatar: string | null
-  hostDiscordId: string | null
+  visibility: 'MEMBERS' | 'PUBLIC'
   startedAt: string
   viewers: number
   live: boolean
@@ -17,8 +15,6 @@ export interface StreamSummary {
 export interface StreamPeer {
   peerId: string
   name: string
-  avatar: string | null
-  discordId: string | null
 }
 
 export interface JoinStreamResult {
@@ -61,13 +57,111 @@ export async function listStreams(token: string): Promise<StreamSummary[]> {
   return parse(res, 'Erro ao carregar as transmissões')
 }
 
-export async function createStream(token: string, title?: string): Promise<StreamSummary> {
+export async function createStream(
+  token: string,
+  title: string | undefined,
+  guildId: string,
+  visibility: 'MEMBERS' | 'PUBLIC',
+): Promise<StreamSummary> {
   const res = await apiFetch(`${API_URL}/streaming/streams`, {
     method: 'POST',
     headers: h(token),
-    body: JSON.stringify(title ? { title } : {}),
+    body: JSON.stringify({ ...(title ? { title } : {}), guildId, visibility }),
   })
   return parse(res, 'Erro ao criar a transmissão')
+}
+
+export async function startStream(token: string, streamId: string): Promise<StreamSummary> {
+  const res = await apiFetch(`${API_URL}/streaming/streams/${streamId}/start`, {
+    method: 'POST',
+    headers: h(token),
+  })
+  return parse(res, 'Erro ao iniciar a transmissÃ£o')
+}
+
+export interface PublicJoinStreamResult {
+  peerId: string
+  guestToken: string
+  hostPeerId: string | null
+  stream: StreamSummary
+}
+
+export async function joinPublicStream(streamId: string): Promise<PublicJoinStreamResult> {
+  const res = await fetch(`${API_URL}/streaming/public/streams/${streamId}/join`, { method: 'POST' })
+  return parse(res, 'Transmissão não encontrada')
+}
+
+export async function leavePublicStream(streamId: string, peerId: string, guestToken: string): Promise<void> {
+  await fetch(`${API_URL}/streaming/public/streams/${streamId}/leave`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ peerId, guestToken }),
+    keepalive: true,
+  }).catch(() => {})
+}
+
+export async function sendPublicSignal(
+  streamId: string,
+  guestToken: string,
+  body: { from: string; to: string; type: SignalType; data: unknown },
+): Promise<void> {
+  await fetch(`${API_URL}/streaming/public/streams/${streamId}/signal`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, guestToken }),
+  }).catch(() => {})
+}
+
+export async function createPublicSignalTicket(streamId: string, peerId: string, guestToken: string): Promise<string> {
+  const res = await fetch(`${API_URL}/streaming/public/streams/${streamId}/events/ticket`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ peerId, guestToken }),
+  })
+  const { ticket } = await parse<{ ticket: string }>(res, 'Erro ao abrir o canal de sinalização')
+  return ticket
+}
+
+export function publicStreamEventsUrl(streamId: string, ticket: string): string {
+  return `${API_URL}/streaming/public/streams/${streamId}/events?ticket=${encodeURIComponent(ticket)}`
+}
+
+export async function getPublicIceServers(): Promise<RTCIceServer[]> {
+  const res = await fetch(`${API_URL}/streaming/public/ice`)
+  const data = await parse<{ iceServers: RTCIceServer[] }>(res, 'Erro ao obter os servidores de conexão')
+  return data.iceServers
+}
+
+export interface AnnouncementGuild {
+  id: string
+  name: string
+  channelId: string | null
+  channels: { id: string; name: string }[]
+}
+
+export interface AnnouncementTarget {
+  id: string
+  name: string
+  configured: boolean
+}
+
+export async function getAnnouncementTargets(token: string): Promise<AnnouncementTarget[]> {
+  const res = await apiFetch(`${API_URL}/streaming/announcement-targets`, { headers: h(token), cache: 'no-store' })
+  return parse(res, 'Erro ao carregar os servidores para transmissão')
+}
+
+export async function getAnnouncementGuilds(token: string): Promise<AnnouncementGuild[]> {
+  const res = await apiFetch(`${API_URL}/streaming/admin/announcement-channels`, { headers: h(token), cache: 'no-store' })
+  return parse(res, 'Erro ao carregar os canais de anÃºncio')
+}
+
+export async function setAnnouncementChannel(token: string, guildId: string, channelId: string | null): Promise<void> {
+  const res = await apiFetch(`${API_URL}/streaming/admin/announcement-channels`, {
+    method: 'POST',
+    headers: h(token),
+    body: JSON.stringify({ guildId, ...(channelId ? { channelId } : {}) }),
+  })
+  await parse(res, 'Erro ao salvar o canal de anÃºncio')
 }
 
 export async function joinStream(token: string, streamId: string): Promise<JoinStreamResult> {

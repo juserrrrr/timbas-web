@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { getToken } from "@/lib/auth"
-import { createSignalTicket, streamEventsUrl, type SignalEvent } from "@/lib/services/streaming"
+import { createPublicSignalTicket, createSignalTicket, publicStreamEventsUrl, streamEventsUrl, type SignalEvent } from "@/lib/services/streaming"
 
 const RETRY_STEPS_MS = [3000, 6000, 12000, 30000]
 
@@ -16,6 +16,7 @@ export function useSignalChannel(
   peerId: string | null,
   onEvent: (event: SignalEvent) => void,
   enabled = true,
+  guestToken?: string,
 ) {
   const [connected, setConnected] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -26,7 +27,7 @@ export function useSignalChannel(
   useEffect(() => {
     if (!peerId || !enabled) return
     const token = getToken()
-    if (!token) return
+    if (!guestToken && !token) return
 
     let es: EventSource | null = null
     let cancelled = false
@@ -39,10 +40,14 @@ export function useSignalChannel(
       retry = setTimeout(() => setAttempt((n) => n + 1), delay)
     }
 
-    createSignalTicket(token, streamId, peerId)
+    const ticketRequest = guestToken
+      ? createPublicSignalTicket(streamId, peerId, guestToken)
+      : createSignalTicket(token!, streamId, peerId)
+
+    ticketRequest
       .then((ticket) => {
         if (cancelled) return
-        es = new EventSource(streamEventsUrl(streamId, ticket))
+        es = new EventSource(guestToken ? publicStreamEventsUrl(streamId, ticket) : streamEventsUrl(streamId, ticket))
 
         es.onopen = () => {
           failuresRef.current = 0
@@ -70,7 +75,7 @@ export function useSignalChannel(
       es?.close()
       setConnected(false)
     }
-  }, [streamId, peerId, attempt, enabled])
+  }, [streamId, peerId, attempt, enabled, guestToken])
 
   return connected
 }

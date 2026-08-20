@@ -9,7 +9,7 @@ import { joinStream, type JoinStreamResult } from "@/lib/services/streaming"
 import { HostStage } from "./host-stage"
 import { ViewerStage } from "./viewer-stage"
 
-export function StreamRoom({ streamId }: { streamId: string }) {
+export function StreamRoom({ streamId, expectedRole }: { streamId: string; expectedRole: "host" | "viewer" }) {
   const [session, setSession] = useState<JoinStreamResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const joinedRef = useRef(false)
@@ -55,7 +55,23 @@ export function StreamRoom({ streamId }: { streamId: string }) {
     )
   }
 
-  if (session.role === "host") {
+  if (session.role !== expectedRole) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/[0.08]">
+          <Radio className="h-6 w-6 text-gray-500" />
+        </div>
+        <p className="text-sm font-bold text-white">
+          {expectedRole === "host" ? "Este estúdio pertence a outra pessoa." : "Você é o criador desta transmissão."}
+        </p>
+        <Link href={expectedRole === "host" ? `/dashboard/live/${streamId}/watch` : `/dashboard/live/${streamId}/studio`} className="text-xs font-semibold text-blue-400 hover:text-blue-300">
+          Abrir a tela correta
+        </Link>
+      </div>
+    )
+  }
+
+  if (expectedRole === "host") {
     return (
       <HostStage
         streamId={streamId}

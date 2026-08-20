@@ -3,20 +3,21 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Maximize, Radio, Users, Volume2, VolumeX } from "lucide-react"
-import { getDiscordAvatarUrl, getToken } from "@/lib/auth"
+import { getToken } from "@/lib/auth"
 import { getIceServers } from "@/lib/webrtc"
-import { leaveStream, sendSignal, type SignalEvent, type StreamSummary } from "@/lib/services/streaming"
+import { getPublicIceServers, leavePublicStream, leaveStream, sendPublicSignal, sendSignal, type SignalEvent, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
 
 interface Props {
   streamId: string
   peerId: string
   stream: StreamSummary
+  guestToken?: string
 }
 
 type Status = "connecting" | "live" | "ended"
 
-export function ViewerStage({ streamId, peerId, stream }: Props) {
+export function ViewerStage({ streamId, peerId, stream, guestToken }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([])
@@ -35,7 +36,7 @@ export function ViewerStage({ streamId, peerId, stream }: Props) {
 
   const acceptOffer = useCallback(async (from: string, offer: RTCSessionDescriptionInit) => {
     const token = getToken()
-    if (!token) return
+    if (!guestToken && !token) return
 
     closePeer()
 
@@ -53,7 +54,9 @@ export function ViewerStage({ streamId, peerId, stream }: Props) {
 
     pc.onicecandidate = (event) => {
       if (!event.candidate) return
-      sendSignal(token, streamId, { from: peerId, to: from, type: "ice", data: event.candidate.toJSON() })
+      const signal = { from: peerId, to: from, type: "ice" as const, data: event.candidate.toJSON() }
+      if (guestToken) void sendPublicSignal(streamId, guestToken, signal)
+      else if (token) void sendSignal(token, streamId, signal)
     }
 
     // The host closing the tab shows up here long before the API times it out.
@@ -68,8 +71,10 @@ export function ViewerStage({ streamId, peerId, stream }: Props) {
 
     const answer = await pc.createAnswer()
     await pc.setLocalDescription(answer)
-    sendSignal(token, streamId, { from: peerId, to: from, type: "answer", data: answer })
-  }, [closePeer, peerId, streamId])
+    const signal = { from: peerId, to: from, type: "answer" as const, data: answer }
+    if (guestToken) void sendPublicSignal(streamId, guestToken, signal)
+    else if (token) void sendSignal(token, streamId, signal)
+  }, [closePeer, guestToken, peerId, streamId])
 
   const handleEvent = useCallback(async (event: SignalEvent) => {
     if (event.type === "offer" && event.from) {
@@ -101,20 +106,22 @@ export function ViewerStage({ streamId, peerId, stream }: Props) {
     }
   }, [acceptOffer, closePeer])
 
-  const connected = useSignalChannel(streamId, peerId, handleEvent, status !== "ended")
+  const connected = useSignalChannel(streamId, peerId, handleEvent, status !== "ended", guestToken)
 
   useEffect(() => {
     const token = getToken()
-    if (token) getIceServers(token).then((servers) => { iceServersRef.current = servers })
-  }, [])
+    const request = guestToken ? getPublicIceServers() : token ? getIceServers(token) : Promise.resolve([])
+    request.then((servers) => { iceServersRef.current = servers })
+  }, [guestToken])
 
   useEffect(() => {
     return () => {
       closePeer()
       const token = getToken()
-      if (token) void leaveStream(token, streamId, peerId)
+      if (guestToken) void leavePublicStream(streamId, peerId, guestToken)
+      else if (token) void leaveStream(token, streamId, peerId)
     }
-  }, [closePeer, peerId, streamId])
+  }, [closePeer, guestToken, peerId, streamId])
 
   const toggleSound = () => {
     const video = videoRef.current
@@ -128,8 +135,6 @@ export function ViewerStage({ streamId, peerId, stream }: Props) {
     void videoRef.current?.requestFullscreen?.().catch(() => {})
   }
 
-  const hostAvatar = getDiscordAvatarUrl(stream.hostDiscordId ?? undefined, stream.hostAvatar ?? undefined, 64)
-
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -141,13 +146,9 @@ export function ViewerStage({ streamId, peerId, stream }: Props) {
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          {hostAvatar ? (
-            <img src={hostAvatar} alt="" className="h-10 w-10 rounded-xl ring-1 ring-white/10" />
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/20">
-              <Radio className="h-5 w-5 text-red-400" />
-            </div>
-          )}
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/20">
+            <Radio className="h-5 w-5 text-red-400" />
+          </div>
           <div>
             <h1 className="text-lg font-black tracking-tight text-white sm:text-xl">{stream.title}</h1>
             <p className="text-xs text-gray-500">
