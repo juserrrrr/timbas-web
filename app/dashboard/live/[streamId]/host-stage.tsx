@@ -65,6 +65,17 @@ function displayMediaOptions(quality: VideoQuality, frameRate: VideoFrameRate, w
   }
 }
 
+function systemAudioMediaOptions(): ExtendedDisplayMediaOptions {
+  return {
+    video: { width: { ideal: 640, max: 640 }, height: { ideal: 360, max: 360 }, frameRate: { ideal: 1, max: 5 } },
+    audio: true,
+    audioSelection: "preferred",
+    selfBrowserSurface: "exclude",
+    systemAudio: "include",
+    windowAudio: "system",
+  }
+}
+
 function maxVideoBitrate(quality: VideoQuality, frameRate: VideoFrameRate) {
   if (quality === "720p") return frameRate === 60 ? 8_000_000 : 5_000_000
   if (quality === "1080p") return frameRate === 60 ? 18_000_000 : 12_000_000
@@ -85,6 +96,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const displayStreamRef = useRef<MediaStream | null>(null)
   const placeholderStreamRef = useRef<MediaStream | null>(null)
   const micStreamRef = useRef<MediaStream | null>(null)
+  const systemAudioStreamRef = useRef<MediaStream | null>(null)
   const pcsRef = useRef(new Map<string, RTCPeerConnection>())
   const pendingIceRef = useRef(new Map<string, RTCIceCandidateInit[]>())
   const offeredAtRef = useRef(new Map<string, number>())
@@ -111,6 +123,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [micOn, setMicOn] = useState(false)
   const [hasMic, setHasMic] = useState(false)
   const [hasSharedAudio, setHasSharedAudio] = useState(false)
+  const [addingSystemAudio, setAddingSystemAudio] = useState(false)
   const [micBusy, setMicBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const [visibility, setVisibility] = useState<Visibility>(stream.visibility)
@@ -292,6 +305,9 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     localStreamRef.current?.getTracks().forEach((track) => track.stop())
     micStreamRef.current?.getTracks().forEach((track) => track.stop())
     placeholderStreamRef.current?.getTracks().forEach((track) => track.stop())
+    const systemAudio = systemAudioStreamRef.current
+    systemAudioStreamRef.current = null
+    systemAudio?.getTracks().forEach((track) => track.stop())
     localStreamRef.current = null
     displayStreamRef.current = null
     placeholderStreamRef.current = null
@@ -323,7 +339,8 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     const placeholder = createBlackVideoStream()
     const blackTrack = placeholder.getVideoTracks()[0]
     const micTracks = micStreamRef.current?.getAudioTracks() ?? []
-    const media = new MediaStream([blackTrack, ...micTracks])
+    const systemAudioTracks = systemAudioStreamRef.current?.getAudioTracks().filter((track) => track.readyState === "live") ?? []
+    const media = new MediaStream([blackTrack, ...systemAudioTracks, ...micTracks])
 
     placeholderStreamRef.current?.getTracks().forEach((track) => track.stop())
     placeholderStreamRef.current = placeholder
@@ -331,7 +348,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     localStreamRef.current = media
     if (videoRef.current) videoRef.current.srcObject = media
     setSharing(false)
-    setHasSharedAudio(false)
+    setHasSharedAudio(systemAudioTracks.length > 0)
     setScreenLabel("Compartilhamento pausado")
 
     await Promise.all(
@@ -377,6 +394,62 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       setMicBusy(false)
     }
   }, [offerTo])
+
+  const addSystemAudio = useCallback(async () => {
+    const currentMedia = localStreamRef.current
+    if (!currentMedia || addingSystemAudio) return
+
+    setAddingSystemAudio(true)
+    let capture: MediaStream | null = null
+    try {
+      capture = await navigator.mediaDevices.getDisplayMedia(systemAudioMediaOptions())
+      const audioTrack = capture.getAudioTracks()[0]
+      if (!audioTrack) {
+        capture.getTracks().forEach((track) => track.stop())
+        toast.error("O navegador não liberou o áudio do PC", {
+          description: "Escolha Tela inteira e marque Compartilhar áudio. A janela do LoL sozinha normalmente não fornece o som do jogo.",
+        })
+        return
+      }
+
+      // This second capture exists only to obtain system audio. Its video is
+      // never added to the live, so the original LoL window stays on screen.
+      capture.getVideoTracks().forEach((track) => { track.enabled = false })
+
+      const micTrackIds = new Set(micStreamRef.current?.getAudioTracks().map((track) => track.id) ?? [])
+      const previousSharedAudio = currentMedia.getAudioTracks().filter((track) => !micTrackIds.has(track.id))
+      const retainedTracks = currentMedia.getTracks().filter((track) => track.kind !== "audio" || micTrackIds.has(track.id))
+      const nextMedia = new MediaStream([...retainedTracks, audioTrack])
+      const previousSystemAudio = systemAudioStreamRef.current
+
+      systemAudioStreamRef.current = capture
+      localStreamRef.current = nextMedia
+      if (videoRef.current) videoRef.current.srcObject = nextMedia
+      setHasSharedAudio(true)
+
+      previousSharedAudio.forEach((track) => track.stop())
+      previousSystemAudio?.getTracks().forEach((track) => track.stop())
+
+      audioTrack.addEventListener("ended", () => {
+        if (systemAudioStreamRef.current !== capture) return
+        systemAudioStreamRef.current = null
+        localStreamRef.current?.removeTrack(audioTrack)
+        setHasSharedAudio(false)
+        toast.warning("Áudio do PC desconectado", { description: "A live continua com a imagem. Você pode adicionar o áudio novamente." })
+        void Promise.all([...viewersRef.current.values()].map((viewer) => offerTo(viewer.peerId)))
+      })
+
+      await Promise.all([...viewersRef.current.values()].map((viewer) => offerTo(viewer.peerId)))
+      toast.success("Áudio do PC conectado", { description: "A janela do LoL continua sendo a imagem da live." })
+    } catch (caught: unknown) {
+      capture?.getTracks().forEach((track) => track.stop())
+      if (!(caught instanceof Error && caught.name === "NotAllowedError")) {
+        toast.error("Não foi possível adicionar o áudio do PC")
+      }
+    } finally {
+      setAddingSystemAudio(false)
+    }
+  }, [addingSystemAudio, offerTo])
 
   const startShare = async () => {
     setError(null)
@@ -462,8 +535,11 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       const nextDisplayTrack = nextDisplay.getVideoTracks()[0]
       if (nextDisplayTrack) await optimizeDisplayTrack(nextDisplayTrack, quality, frameRate)
       const nextSharedAudioTracks = nextDisplay.getAudioTracks()
-      setHasSharedAudio(nextSharedAudioTracks.length > 0)
-      if (withSharedAudio && !nextSharedAudioTracks.length) {
+      const separateSystemAudioTracks = systemAudioStreamRef.current?.getAudioTracks().filter((track) => track.readyState === "live") ?? []
+      if (separateSystemAudioTracks.length) nextSharedAudioTracks.forEach((track) => track.stop())
+      const activeSharedAudioTracks = separateSystemAudioTracks.length ? separateSystemAudioTracks : nextSharedAudioTracks
+      setHasSharedAudio(activeSharedAudioTracks.length > 0)
+      if (withSharedAudio && !activeSharedAudioTracks.length) {
         toast.warning("A nova tela está sem áudio", {
           description: "Ative Compartilhar áudio no seletor. Algumas janelas só permitem enviar o áudio ao compartilhar a tela inteira.",
         })
@@ -471,7 +547,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       const previousDisplay = displayStreamRef.current
       const previousPlaceholder = placeholderStreamRef.current
       const micTracks = micStreamRef.current?.getAudioTracks() ?? []
-      const media = new MediaStream([...nextDisplay.getTracks(), ...micTracks])
+      const media = new MediaStream([...nextDisplay.getVideoTracks(), ...activeSharedAudioTracks, ...micTracks])
 
       displayStreamRef.current = nextDisplay
       placeholderStreamRef.current = null
@@ -598,8 +674,10 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
             switchingScreen={switchingScreen}
             screenLabel={screenLabel}
             hasSharedAudio={hasSharedAudio}
+            addingSystemAudio={addingSystemAudio}
             onToggleMicrophone={toggleMicrophone}
             onSwitchScreen={switchScreen}
+            onAddSystemAudio={addSystemAudio}
             onFinish={finish}
           />
           {error && <p className="text-xs text-amber-300">{error}</p>}

@@ -1,6 +1,6 @@
 "use client"
 
-import { Mic, MicOff, RefreshCw, Square } from "lucide-react"
+import { Mic, MicOff, RefreshCw, Square, Volume2, VolumeX } from "lucide-react"
 
 interface Props {
   micOn: boolean
@@ -9,8 +9,10 @@ interface Props {
   switchingScreen: boolean
   screenLabel: string
   hasSharedAudio: boolean
+  addingSystemAudio: boolean
   onToggleMicrophone: () => Promise<void>
   onSwitchScreen: () => Promise<void>
+  onAddSystemAudio: () => Promise<void>
   onFinish: () => Promise<void>
 }
 
@@ -21,15 +23,17 @@ export function HostLiveControls({
   switchingScreen,
   screenLabel,
   hasSharedAudio,
+  addingSystemAudio,
   onToggleMicrophone,
   onSwitchScreen,
+  onAddSystemAudio,
   onFinish,
 }: Props) {
   const micTitle = micOn ? "Microfone ligado" : hasMic ? "Microfone desligado" : "Microfone não conectado"
   const micDescription = micOn ? "Sua voz está indo para a live." : hasMic ? "Sua voz não está sendo enviada." : "Clique para permitir e adicionar sua voz."
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+    <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
       <button
         type="button"
         onClick={() => { void onToggleMicrophone() }}
@@ -45,6 +49,21 @@ export function HostLiveControls({
             <span className={`h-2 w-2 rounded-full ${micOn ? "bg-emerald-400" : "bg-red-400"}`} />
           </span>
           <span className="mt-1 block text-xs text-gray-400">{micDescription}</span>
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => { void onAddSystemAudio() }}
+        disabled={addingSystemAudio}
+        className={`flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left transition-colors disabled:cursor-wait disabled:opacity-60 ${hasSharedAudio ? "border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15" : "border-amber-500/25 bg-amber-500/[0.07] hover:bg-amber-500/10"}`}
+      >
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${hasSharedAudio ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
+          {hasSharedAudio ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-black text-white">{addingSystemAudio ? "Conectando áudio..." : hasSharedAudio ? "Áudio do PC ligado" : "Adicionar áudio do PC"}</span>
+          <span className="mt-1 block text-xs text-gray-400">Para jogos, escolha Tela inteira e confirme o áudio.</span>
         </span>
       </button>
 
