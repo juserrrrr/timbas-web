@@ -8,6 +8,7 @@ interface Props {
   micBusy: boolean
   switchingScreen: boolean
   screenLabel: string
+  hasSharedAudio: boolean
   onToggleMicrophone: () => Promise<void>
   onSwitchScreen: () => Promise<void>
   onFinish: () => Promise<void>
@@ -19,6 +20,7 @@ export function HostLiveControls({
   micBusy,
   switchingScreen,
   screenLabel,
+  hasSharedAudio,
   onToggleMicrophone,
   onSwitchScreen,
   onFinish,
@@ -57,7 +59,9 @@ export function HostLiveControls({
         </span>
         <span className="min-w-0">
           <span className="block text-sm font-black text-white">{switchingScreen ? "Trocando tela..." : "Trocar tela"}</span>
-          <span className="mt-1 block truncate text-xs text-gray-400">{screenLabel || "Escolha outra aba, janela ou monitor."}</span>
+          <span className="mt-1 block truncate text-xs text-gray-400">
+            {screenLabel || "Escolha outra aba, janela ou monitor."} · {hasSharedAudio ? "áudio da tela ligado" : "sem áudio da tela"}
+          </span>
         </span>
       </button>
 

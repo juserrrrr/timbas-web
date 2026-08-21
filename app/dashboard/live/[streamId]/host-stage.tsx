@@ -22,6 +22,14 @@ interface Props {
 
 type Visibility = "MEMBERS" | "PUBLIC"
 
+type ExtendedDisplayMediaOptions = DisplayMediaStreamOptions & {
+  audioSelection?: "preferred"
+  selfBrowserSurface?: "include" | "exclude"
+  surfaceSwitching?: "include" | "exclude"
+  systemAudio?: "include" | "exclude"
+  windowAudio?: "exclude" | "system" | "window"
+}
+
 function readableScreenLabel(label?: string) {
   if (!label || label.includes("://")) return "Tela compartilhada"
   return label
@@ -41,6 +49,20 @@ function displayVideoConstraints(quality: VideoQuality, frameRate: VideoFrameRat
   if (quality === "720p") return { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: frameRateConstraint }
   if (quality === "1080p") return { width: { ideal: 1920, max: 1920 }, height: { ideal: 1080, max: 1080 }, frameRate: frameRateConstraint }
   return { frameRate: frameRateConstraint }
+}
+
+function displayMediaOptions(quality: VideoQuality, frameRate: VideoFrameRate, withSharedAudio: boolean): ExtendedDisplayMediaOptions {
+  return {
+    video: displayVideoConstraints(quality, frameRate),
+    audio: withSharedAudio
+      ? { autoGainControl: false, echoCancellation: false, noiseSuppression: false, sampleRate: 48_000 }
+      : false,
+    audioSelection: withSharedAudio ? "preferred" : undefined,
+    selfBrowserSurface: "exclude",
+    surfaceSwitching: "include",
+    systemAudio: withSharedAudio ? "include" : "exclude",
+    windowAudio: withSharedAudio ? "system" : "exclude",
+  }
 }
 
 function maxVideoBitrate(quality: VideoQuality, frameRate: VideoFrameRate) {
@@ -77,6 +99,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [sharing, setSharing] = useState(false)
   const [hasStarted, setHasStarted] = useState(stream.live)
   const [withMic, setWithMic] = useState(true)
+  const [withSharedAudio, setWithSharedAudio] = useState(true)
   const [setupOpen, setSetupOpen] = useState(true)
   const [setupVisibility, setSetupVisibility] = useState<Visibility>(stream.visibility)
   const [quality, setQuality] = useState<VideoQuality>("1080p")
@@ -87,6 +110,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [origin, setOrigin] = useState("")
   const [micOn, setMicOn] = useState(false)
   const [hasMic, setHasMic] = useState(false)
+  const [hasSharedAudio, setHasSharedAudio] = useState(false)
   const [micBusy, setMicBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const [visibility, setVisibility] = useState<Visibility>(stream.visibility)
@@ -280,6 +304,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     setSharing(false)
     setHasStarted(false)
     setHasMic(false)
+    setHasSharedAudio(false)
     setMicOn(false)
     setScreenLabel("")
   }, [])
@@ -306,6 +331,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     localStreamRef.current = media
     if (videoRef.current) videoRef.current.srcObject = media
     setSharing(false)
+    setHasSharedAudio(false)
     setScreenLabel("Compartilhamento pausado")
 
     await Promise.all(
@@ -363,12 +389,16 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     let display: MediaStream | null = null
     let mic: MediaStream | null = null
     try {
-      display = await navigator.mediaDevices.getDisplayMedia({
-        video: displayVideoConstraints(quality, frameRate),
-        audio: true,
-      })
+      display = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions(quality, frameRate, withSharedAudio))
       const displayTrack = display.getVideoTracks()[0]
       if (displayTrack) await optimizeDisplayTrack(displayTrack, quality, frameRate)
+      const sharedAudioTracks = display.getAudioTracks()
+      setHasSharedAudio(sharedAudioTracks.length > 0)
+      if (withSharedAudio && !sharedAudioTracks.length) {
+        toast.warning("A tela foi compartilhada sem áudio", {
+          description: "Ative Compartilhar áudio no seletor. Se a janela não oferecer essa opção, escolha a tela inteira ou uma aba do navegador.",
+        })
+      }
 
       let micTracks: MediaStreamTrack[] = []
       if (withMic) {
@@ -410,6 +440,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       displayStreamRef.current = null
       micStreamRef.current = null
       setHasMic(false)
+      setHasSharedAudio(false)
       setMicOn(false)
       const message = caught instanceof Error && caught.name === "NotAllowedError"
         ? "Você cancelou a seleção de tela."
@@ -427,12 +458,16 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
 
     let nextDisplay: MediaStream | null = null
     try {
-      nextDisplay = await navigator.mediaDevices.getDisplayMedia({
-        video: displayVideoConstraints(quality, frameRate),
-        audio: true,
-      })
+      nextDisplay = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions(quality, frameRate, withSharedAudio))
       const nextDisplayTrack = nextDisplay.getVideoTracks()[0]
       if (nextDisplayTrack) await optimizeDisplayTrack(nextDisplayTrack, quality, frameRate)
+      const nextSharedAudioTracks = nextDisplay.getAudioTracks()
+      setHasSharedAudio(nextSharedAudioTracks.length > 0)
+      if (withSharedAudio && !nextSharedAudioTracks.length) {
+        toast.warning("A nova tela está sem áudio", {
+          description: "Ative Compartilhar áudio no seletor. Algumas janelas só permitem enviar o áudio ao compartilhar a tela inteira.",
+        })
+      }
       const previousDisplay = displayStreamRef.current
       const previousPlaceholder = placeholderStreamRef.current
       const micTracks = micStreamRef.current?.getAudioTracks() ?? []
@@ -562,6 +597,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
             micBusy={micBusy}
             switchingScreen={switchingScreen}
             screenLabel={screenLabel}
+            hasSharedAudio={hasSharedAudio}
             onToggleMicrophone={toggleMicrophone}
             onSwitchScreen={switchScreen}
             onFinish={finish}
@@ -595,6 +631,8 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
         onFrameRateChange={setFrameRate}
         withMic={withMic}
         onWithMicChange={setWithMic}
+        withSharedAudio={withSharedAudio}
+        onWithSharedAudioChange={setWithSharedAudio}
         starting={startingShare}
         onStart={startShare}
       />

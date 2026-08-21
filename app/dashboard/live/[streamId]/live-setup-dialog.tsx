@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Copy, Gauge, Globe2, Link2, Lock, Mic, MicOff, MonitorUp } from "lucide-react"
+import { Check, Copy, Gauge, Globe2, Link2, Lock, Mic, MicOff, MonitorUp, Volume2, VolumeX } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
@@ -23,6 +23,8 @@ interface Props {
   onFrameRateChange: (frameRate: VideoFrameRate) => void
   withMic: boolean
   onWithMicChange: (withMic: boolean) => void
+  withSharedAudio: boolean
+  onWithSharedAudioChange: (withSharedAudio: boolean) => void
   starting: boolean
   onStart: () => Promise<void>
 }
@@ -41,6 +43,8 @@ export function LiveSetupDialog({
   onFrameRateChange,
   withMic,
   onWithMicChange,
+  withSharedAudio,
+  onWithSharedAudioChange,
   starting,
   onStart,
 }: Props) {
@@ -154,6 +158,21 @@ export function LiveSetupDialog({
                 <span className="min-w-0"><span className="block text-sm font-bold text-white">Link público</span><span className="mt-0.5 block text-[11px] leading-relaxed text-gray-400">Qualquer pessoa com o link pode assistir.</span></span>
               </button>
             </div>
+          </section>
+
+          <section>
+            <p className="mb-2 text-xs font-black uppercase tracking-wider text-gray-500">Áudio da tela ou janela</p>
+            <button
+              type="button"
+              onClick={() => onWithSharedAudioChange(!withSharedAudio)}
+              className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-3 text-left transition-colors ${withSharedAudio ? "border-blue-500/60 bg-blue-500/10" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
+            >
+              {withSharedAudio ? <Volume2 className="h-4 w-4 text-blue-300" /> : <VolumeX className="h-4 w-4 text-gray-500" />}
+              <span>
+                <span className="block text-sm font-bold text-white">{withSharedAudio ? "Compartilhar áudio" : "Sem áudio da tela"}</span>
+                <span className="block text-[11px] text-gray-500">Você ainda precisa confirmar Compartilhar áudio no seletor do navegador.</span>
+              </span>
+            </button>
           </section>
 
           <section>

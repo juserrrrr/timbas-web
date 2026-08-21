@@ -23,6 +23,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
   const videoRef = useRef<HTMLVideoElement>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([])
+  const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const iceServersRef = useRef<RTCIceServer[]>([])
   const iceServersPromiseRef = useRef<Promise<RTCIceServer[]> | null>(null)
 
@@ -49,6 +50,8 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
   }, [guestToken])
 
   const closePeer = useCallback(() => {
+    if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current)
+    disconnectTimerRef.current = null
     pcRef.current?.close()
     pcRef.current = null
     pendingIceRef.current = []
@@ -59,7 +62,16 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
     const token = getToken()
     if (!guestToken && !token) return
 
-    closePeer()
+    // ICE candidates can arrive before the offer because signaling uses
+    // separate requests. Preserve them while replacing an older connection.
+    const pendingCandidates = pendingIceRef.current
+    pendingIceRef.current = []
+    if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current)
+    disconnectTimerRef.current = null
+    pcRef.current?.close()
+    pcRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+    setStatus("connecting")
     const iceServers = await ensureIceServers()
 
     const pc = createLivePeerConnection(iceServers)
@@ -70,12 +82,11 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
       remote.addTrack(event.track)
       if (event.track.kind === "video") {
         event.track.onended = () => setStatus("waiting")
-        event.track.onunmute = () => setStatus("live")
+        event.track.onunmute = () => { void videoRef.current?.play().catch(() => {}) }
       }
       if (videoRef.current && videoRef.current.srcObject !== remote) {
         videoRef.current.srcObject = remote
       }
-      setStatus("live")
     }
 
     pc.onicecandidate = (event) => {
@@ -88,11 +99,27 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
     // The host closing the tab shows up here long before the API times it out.
     pc.onconnectionstatechange = () => {
       if (pcRef.current !== pc) return
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") setStatus("waiting")
+      if (pc.connectionState === "connected") {
+        if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current)
+        disconnectTimerRef.current = null
+        if ((videoRef.current?.readyState ?? 0) >= HTMLMediaElement.HAVE_CURRENT_DATA) setStatus("live")
+        return
+      }
+      if (pc.connectionState === "failed") {
+        setStatus("connecting")
+        return
+      }
+      if (pc.connectionState === "disconnected" && !disconnectTimerRef.current) {
+        disconnectTimerRef.current = setTimeout(() => {
+          if (pcRef.current === pc && pc.connectionState === "disconnected") setStatus("connecting")
+          disconnectTimerRef.current = null
+        }, 5_000)
+      }
     }
 
     await pc.setRemoteDescription(new RTCSessionDescription(offer))
-    for (const candidate of pendingIceRef.current) await pc.addIceCandidate(candidate).catch(() => {})
+    const queuedCandidates = [...pendingCandidates, ...pendingIceRef.current]
+    for (const candidate of queuedCandidates) await pc.addIceCandidate(candidate).catch(() => {})
     pendingIceRef.current = []
 
     const answer = await pc.createAnswer()
@@ -195,7 +222,15 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
       {/* Stage */}
       <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-black">
         <div className="relative aspect-video w-full">
-          <video ref={videoRef} autoPlay playsInline muted={muted} className="h-full w-full object-contain" />
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted={muted}
+            onLoadedData={() => setStatus("live")}
+            onPlaying={() => setStatus("live")}
+            className="h-full w-full object-contain"
+          />
 
           {status !== "live" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#07070c] px-6 text-center">
