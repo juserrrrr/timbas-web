@@ -45,8 +45,15 @@ function displayVideoConstraints(quality: VideoQuality, frameRate: VideoFrameRat
 
 function maxVideoBitrate(quality: VideoQuality, frameRate: VideoFrameRate) {
   if (quality === "720p") return frameRate === 60 ? 8_000_000 : 5_000_000
-  if (quality === "1080p") return frameRate === 60 ? 14_000_000 : 9_000_000
-  return frameRate === 60 ? 25_000_000 : 16_000_000
+  if (quality === "1080p") return frameRate === 60 ? 18_000_000 : 12_000_000
+  return frameRate === 60 ? 30_000_000 : 20_000_000
+}
+
+async function optimizeDisplayTrack(track: MediaStreamTrack, quality: VideoQuality, frameRate: VideoFrameRate) {
+  // Screen content needs readable pixels more than constant motion. When the
+  // connection gets worse WebRTC should reduce FPS before reducing resolution.
+  track.contentHint = "detail"
+  await track.applyConstraints(displayVideoConstraints(quality, frameRate)).catch(() => {})
 }
 
 export function HostStage({ streamId, peerId, stream, initialViewers, onReconnect }: Props) {
@@ -64,7 +71,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const iceServersPromiseRef = useRef<Promise<RTCIceServer[]> | null>(null)
   const previousPeerIdRef = useRef(peerId)
   const peerIdRef = useRef(peerId)
-  const videoProfileRef = useRef<{ quality: VideoQuality; frameRate: VideoFrameRate }>({ quality: "1080p", frameRate: 60 })
+  const videoProfileRef = useRef<{ quality: VideoQuality; frameRate: VideoFrameRate }>({ quality: "1080p", frameRate: 30 })
 
   const [viewers, setViewers] = useState<StreamPeer[]>(initialViewers)
   const [sharing, setSharing] = useState(false)
@@ -73,7 +80,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [setupOpen, setSetupOpen] = useState(true)
   const [setupVisibility, setSetupVisibility] = useState<Visibility>(stream.visibility)
   const [quality, setQuality] = useState<VideoQuality>("1080p")
-  const [frameRate, setFrameRate] = useState<VideoFrameRate>(60)
+  const [frameRate, setFrameRate] = useState<VideoFrameRate>(30)
   const [startingShare, setStartingShare] = useState(false)
   const [switchingScreen, setSwitchingScreen] = useState(false)
   const [screenLabel, setScreenLabel] = useState("")
@@ -134,7 +141,16 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       if (track.kind === "video") {
         const parameters = sender.getParameters()
         parameters.encodings = parameters.encodings?.length ? parameters.encodings : [{}]
-        parameters.encodings[0].maxBitrate = maxVideoBitrate(videoProfileRef.current.quality, videoProfileRef.current.frameRate)
+        parameters.encodings[0] = {
+          ...parameters.encodings[0],
+          active: true,
+          maxBitrate: maxVideoBitrate(videoProfileRef.current.quality, videoProfileRef.current.frameRate),
+          maxFramerate: videoProfileRef.current.frameRate,
+          scaleResolutionDownBy: 1,
+          priority: "high",
+          networkPriority: "high",
+        }
+        parameters.degradationPreference = "maintain-resolution"
         await sender.setParameters(parameters).catch(() => {})
       }
     }
@@ -352,7 +368,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
         audio: true,
       })
       const displayTrack = display.getVideoTracks()[0]
-      if (displayTrack) displayTrack.contentHint = frameRate === 60 ? "motion" : "detail"
+      if (displayTrack) await optimizeDisplayTrack(displayTrack, quality, frameRate)
 
       let micTracks: MediaStreamTrack[] = []
       if (withMic) {
@@ -416,7 +432,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
         audio: true,
       })
       const nextDisplayTrack = nextDisplay.getVideoTracks()[0]
-      if (nextDisplayTrack) nextDisplayTrack.contentHint = frameRate === 60 ? "motion" : "detail"
+      if (nextDisplayTrack) await optimizeDisplayTrack(nextDisplayTrack, quality, frameRate)
       const previousDisplay = displayStreamRef.current
       const previousPlaceholder = placeholderStreamRef.current
       const micTracks = micStreamRef.current?.getAudioTracks() ?? []

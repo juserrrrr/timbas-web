@@ -127,11 +127,11 @@ export function LiveSetupDialog({
                   onClick={() => onFrameRateChange(fps)}
                   className={`cursor-pointer rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${frameRate === fps ? "border-emerald-500/60 bg-emerald-500/10 text-white" : "border-white/[0.08] bg-white/[0.02] text-gray-400 hover:bg-white/[0.05]"}`}
                 >
-                  {fps} FPS <span className="font-normal text-gray-500">{fps === 30 ? "mais estável" : "mais fluido"}</span>
+                  {fps} FPS <span className="font-normal text-gray-500">{fps === 30 ? "mais nítido" : "mais fluido"}</span>
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-gray-500">O navegador pode reduzir a qualidade automaticamente se a conexão não aguentar.</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-gray-500">Full HD com 30 FPS é o recomendado para manter a imagem nítida no celular e fora da sua rede.</p>
           </section>
 
           <section>
