@@ -9,7 +9,7 @@ interface Props {
   switchingScreen: boolean
   screenLabel: string
   hasSharedAudio: boolean
-  sharedAudioSignal: "off" | "checking" | "active" | "silent"
+  sharedAudioSignal: "off" | "checking" | "active" | "silent" | "unavailable"
   addingSystemAudio: boolean
   onToggleMicrophone: () => Promise<void>
   onSwitchScreen: () => Promise<void>
@@ -41,6 +41,8 @@ export function HostLiveControls({
         ? "Som do PC detectado"
         : sharedAudioSignal === "silent"
           ? "Áudio conectado, mas silencioso"
+          : sharedAudioSignal === "unavailable"
+            ? "Navegador não liberou o áudio"
           : "Adicionar áudio do PC"
 
   return (
@@ -74,7 +76,13 @@ export function HostLiveControls({
         </span>
         <span className="min-w-0">
           <span className="block text-sm font-black text-white">{sharedAudioTitle}</span>
-          <span className="mt-1 block text-xs text-gray-400">{sharedAudioSignal === "silent" ? "Confira a saída de áudio do LoL e conecte novamente." : "Para jogos, escolha Tela inteira e confirme o áudio."}</span>
+          <span className="mt-1 block text-xs text-gray-400">
+            {sharedAudioSignal === "silent"
+              ? "Confira a saída de áudio do LoL e conecte novamente."
+              : sharedAudioSignal === "unavailable"
+                ? "Use Chrome ou Edge no Windows e marque Compartilhar áudio."
+                : "Para jogos, escolha Tela inteira e confirme o áudio."}
+          </span>
         </span>
       </button>
 

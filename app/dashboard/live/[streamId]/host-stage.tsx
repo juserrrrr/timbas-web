@@ -21,7 +21,7 @@ interface Props {
 }
 
 type Visibility = "MEMBERS" | "PUBLIC"
-type SharedAudioSignal = "off" | "checking" | "active" | "silent"
+type SharedAudioSignal = "off" | "checking" | "active" | "silent" | "unavailable"
 
 type ExtendedDisplayMediaOptions = DisplayMediaStreamOptions & {
   audioSelection?: "preferred"
@@ -68,8 +68,8 @@ function displayMediaOptions(quality: VideoQuality, frameRate: VideoFrameRate, w
 
 function systemAudioMediaOptions(): ExtendedDisplayMediaOptions {
   return {
-    video: { width: { ideal: 640, max: 640 }, height: { ideal: 360, max: 360 }, frameRate: { ideal: 1, max: 5 } },
-    audio: true,
+    video: true,
+    audio: { suppressLocalAudioPlayback: false },
     audioSelection: "preferred",
     selfBrowserSurface: "exclude",
     systemAudio: "include",
@@ -460,6 +460,8 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       const audioTrack = capture.getAudioTracks()[0]
       if (!audioTrack) {
         capture.getTracks().forEach((track) => track.stop())
+        setHasSharedAudio(false)
+        setSharedAudioSignal("unavailable")
         toast.error("O navegador não liberou o áudio do PC", {
           description: "Escolha Tela inteira e marque Compartilhar áudio. A janela do LoL sozinha normalmente não fornece o som do jogo.",
         })
@@ -467,8 +469,8 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       }
 
       // This second capture exists only to obtain system audio. Its video is
-      // never added to the live, so the original LoL window stays on screen.
-      capture.getVideoTracks().forEach((track) => { track.enabled = false })
+      // kept alive locally because some browsers end the linked audio when its
+      // video track is disabled. It is never added to the outgoing live.
 
       const micTrackIds = new Set(micStreamRef.current?.getAudioTracks().map((track) => track.id) ?? [])
       const previousSharedAudio = currentMedia.getAudioTracks().filter((track) => !micTrackIds.has(track.id))
