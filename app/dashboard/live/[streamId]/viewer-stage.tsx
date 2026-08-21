@@ -21,6 +21,7 @@ type Status = "connecting" | "live" | "waiting" | "ended"
 
 export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([])
   const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -29,6 +30,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
 
   const [status, setStatus] = useState<Status>("connecting")
   const [muted, setMuted] = useState(true)
+  const [hasRemoteAudio, setHasRemoteAudio] = useState(false)
   const [viewerCount, setViewerCount] = useState(stream.viewers)
 
   const ensureIceServers = useCallback(() => {
@@ -56,6 +58,8 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
     pcRef.current = null
     pendingIceRef.current = []
     if (videoRef.current) videoRef.current.srcObject = null
+    if (audioRef.current) audioRef.current.srcObject = null
+    setHasRemoteAudio(false)
   }, [])
 
   const acceptOffer = useCallback(async (from: string, offer: RTCSessionDescriptionInit) => {
@@ -71,21 +75,32 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
     pcRef.current?.close()
     pcRef.current = null
     if (videoRef.current) videoRef.current.srcObject = null
+    if (audioRef.current) audioRef.current.srcObject = null
+    setHasRemoteAudio(false)
     setStatus("connecting")
     const iceServers = await ensureIceServers()
 
     const pc = createLivePeerConnection(iceServers)
     pcRef.current = pc
 
-    const remote = new MediaStream()
+    const remoteVideo = new MediaStream()
+    const remoteAudio = new MediaStream()
     pc.ontrack = (event) => {
-      remote.addTrack(event.track)
       if (event.track.kind === "video") {
+        remoteVideo.addTrack(event.track)
         event.track.onended = () => setStatus("waiting")
         event.track.onunmute = () => { void videoRef.current?.play().catch(() => {}) }
-      }
-      if (videoRef.current && videoRef.current.srcObject !== remote) {
-        videoRef.current.srcObject = remote
+        if (videoRef.current && videoRef.current.srcObject !== remoteVideo) {
+          videoRef.current.srcObject = remoteVideo
+        }
+      } else if (event.track.kind === "audio") {
+        remoteAudio.addTrack(event.track)
+        setHasRemoteAudio(true)
+        if (audioRef.current && audioRef.current.srcObject !== remoteAudio) {
+          audioRef.current.srcObject = remoteAudio
+          audioRef.current.muted = muted
+          if (!muted) void audioRef.current.play().catch(() => {})
+        }
       }
     }
 
@@ -127,7 +142,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
     const signal = { from: peerId, to: from, type: "answer" as const, data: answer }
     if (guestToken) void sendPublicSignal(streamId, guestToken, signal)
     else if (token) void sendSignal(token, streamId, signal)
-  }, [closePeer, ensureIceServers, guestToken, peerId, streamId])
+  }, [closePeer, ensureIceServers, guestToken, muted, peerId, streamId])
 
   const handleEvent = useCallback(async (event: SignalEvent) => {
     if (event.type === "offer" && event.from) {
@@ -181,11 +196,11 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
   }, [closePeer, guestToken, peerId, streamId])
 
   const toggleSound = () => {
-    const video = videoRef.current
-    if (!video) return
-    video.muted = !video.muted
-    setMuted(video.muted)
-    if (!video.muted) void video.play().catch(() => {})
+    const audio = audioRef.current
+    if (!audio || !hasRemoteAudio) return
+    audio.muted = !audio.muted
+    setMuted(audio.muted)
+    if (!audio.muted) void audio.play().catch(() => {})
   }
 
   const goFullscreen = () => {
@@ -231,6 +246,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
             onPlaying={() => setStatus("live")}
             className="h-full w-full object-contain"
           />
+          <audio ref={audioRef} autoPlay playsInline muted={muted} />
 
           {status !== "live" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#07070c] px-6 text-center">
@@ -258,10 +274,11 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
             <div className="absolute bottom-3 right-3 flex items-center gap-2">
               <button
                 onClick={toggleSound}
+                disabled={!hasRemoteAudio}
                 className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-black/70 px-3 py-2 text-xs font-bold text-white ring-1 ring-white/10 backdrop-blur transition-colors hover:bg-black/85"
               >
                 {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                {muted ? "Ativar som" : "Som ligado"}
+                {!hasRemoteAudio ? "Live sem áudio" : muted ? "Ativar som" : "Som ligado"}
               </button>
               <button
                 onClick={goFullscreen}

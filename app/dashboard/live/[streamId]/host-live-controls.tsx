@@ -9,6 +9,7 @@ interface Props {
   switchingScreen: boolean
   screenLabel: string
   hasSharedAudio: boolean
+  sharedAudioSignal: "off" | "checking" | "active" | "silent"
   addingSystemAudio: boolean
   onToggleMicrophone: () => Promise<void>
   onSwitchScreen: () => Promise<void>
@@ -23,6 +24,7 @@ export function HostLiveControls({
   switchingScreen,
   screenLabel,
   hasSharedAudio,
+  sharedAudioSignal,
   addingSystemAudio,
   onToggleMicrophone,
   onSwitchScreen,
@@ -31,6 +33,15 @@ export function HostLiveControls({
 }: Props) {
   const micTitle = micOn ? "Microfone ligado" : hasMic ? "Microfone desligado" : "Microfone não conectado"
   const micDescription = micOn ? "Sua voz está indo para a live." : hasMic ? "Sua voz não está sendo enviada." : "Clique para permitir e adicionar sua voz."
+  const sharedAudioTitle = addingSystemAudio
+    ? "Conectando áudio..."
+    : sharedAudioSignal === "checking"
+      ? "Testando o som do PC..."
+      : sharedAudioSignal === "active"
+        ? "Som do PC detectado"
+        : sharedAudioSignal === "silent"
+          ? "Áudio conectado, mas silencioso"
+          : "Adicionar áudio do PC"
 
   return (
     <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
@@ -62,8 +73,8 @@ export function HostLiveControls({
           {hasSharedAudio ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
         </span>
         <span className="min-w-0">
-          <span className="block text-sm font-black text-white">{addingSystemAudio ? "Conectando áudio..." : hasSharedAudio ? "Áudio do PC ligado" : "Adicionar áudio do PC"}</span>
-          <span className="mt-1 block text-xs text-gray-400">Para jogos, escolha Tela inteira e confirme o áudio.</span>
+          <span className="block text-sm font-black text-white">{sharedAudioTitle}</span>
+          <span className="mt-1 block text-xs text-gray-400">{sharedAudioSignal === "silent" ? "Confira a saída de áudio do LoL e conecte novamente." : "Para jogos, escolha Tela inteira e confirme o áudio."}</span>
         </span>
       </button>
 
