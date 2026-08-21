@@ -8,6 +8,19 @@ const FALLBACK: RTCIceServer[] = [
 
 let cached: RTCIceServer[] | null = null
 
+export function createLivePeerConnection(iceServers: RTCIceServer[]) {
+  return new RTCPeerConnection({
+    iceServers,
+    // "all" keeps host and server-reflexive candidates enabled. ICE gives
+    // those direct routes priority over relay candidates, so TURN remains a
+    // fallback instead of becoming the default media path.
+    iceTransportPolicy: "all",
+    bundlePolicy: "max-bundle",
+    rtcpMuxPolicy: "require",
+    iceCandidatePoolSize: 4,
+  })
+}
+
 export async function getIceServers(token: string): Promise<RTCIceServer[]> {
   if (cached) return cached
   try {

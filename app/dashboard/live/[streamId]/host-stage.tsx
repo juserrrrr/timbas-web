@@ -6,7 +6,7 @@ import { Check, Copy, Globe2, Link2, Lock, MonitorUp, Radio, Users } from "lucid
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getDiscordAvatarUrl, getToken } from "@/lib/auth"
-import { getIceServers } from "@/lib/webrtc"
+import { createLivePeerConnection, getIceServers } from "@/lib/webrtc"
 import { endStream, getStreamViewers, leaveStream, sendSignal, startStream, updateStreamVisibility, type SignalEvent, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
 import { HostLiveControls } from "./host-live-controls"
@@ -126,7 +126,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
 
     pcsRef.current.get(target)?.close()
     offeredAtRef.current.set(target, Date.now())
-    const pc = new RTCPeerConnection({ iceServers })
+    const pc = createLivePeerConnection(iceServers)
     pcsRef.current.set(target, pc)
 
     for (const track of media.getTracks()) {

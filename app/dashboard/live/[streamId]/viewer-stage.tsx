@@ -5,7 +5,7 @@ import Link from "next/link"
 import { ArrowLeft, Maximize, Radio, Users, Volume2, VolumeX } from "lucide-react"
 import { getToken } from "@/lib/auth"
 import { PlayerAvatar } from "@/components/player-avatar"
-import { getIceServers } from "@/lib/webrtc"
+import { createLivePeerConnection, getIceServers } from "@/lib/webrtc"
 import { getPublicIceServers, leavePublicStream, leaveStream, sendPublicSignal, sendSignal, type SignalEvent, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
 
@@ -62,7 +62,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
     closePeer()
     const iceServers = await ensureIceServers()
 
-    const pc = new RTCPeerConnection({ iceServers })
+    const pc = createLivePeerConnection(iceServers)
     pcRef.current = pc
 
     const remote = new MediaStream()
