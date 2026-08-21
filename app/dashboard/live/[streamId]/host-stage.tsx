@@ -69,7 +69,7 @@ function displayMediaOptions(quality: VideoQuality, frameRate: VideoFrameRate, w
 function systemAudioMediaOptions(): ExtendedDisplayMediaOptions {
   return {
     video: true,
-    audio: { suppressLocalAudioPlayback: false },
+    audio: true,
     audioSelection: "preferred",
     selfBrowserSurface: "exclude",
     systemAudio: "include",
@@ -116,6 +116,30 @@ async function detectAudioSignal(track: MediaStreamTrack): Promise<boolean | nul
   } finally {
     await context?.close().catch(() => {})
   }
+}
+
+const LOOPBACK_DEVICE_PATTERN = /stereo mix|mixagem est[eé]reo|what u hear|wave out|cable output|vb-audio|loopback/i
+
+async function captureLoopbackAudio(): Promise<MediaStream | null> {
+  let devices = await navigator.mediaDevices.enumerateDevices()
+  if (!devices.some((device) => device.kind === "audioinput" && device.label)) {
+    const permissionProbe = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null)
+    permissionProbe?.getTracks().forEach((track) => track.stop())
+    devices = await navigator.mediaDevices.enumerateDevices()
+  }
+
+  const loopback = devices.find((device) => device.kind === "audioinput" && LOOPBACK_DEVICE_PATTERN.test(device.label))
+  if (!loopback) return null
+
+  return navigator.mediaDevices.getUserMedia({
+    audio: {
+      deviceId: { exact: loopback.deviceId },
+      autoGainControl: false,
+      echoCancellation: false,
+      noiseSuppression: false,
+      sampleRate: 48_000,
+    },
+  }).catch(() => null)
 }
 
 export function HostStage({ streamId, peerId, stream, initialViewers, onReconnect }: Props) {
@@ -457,15 +481,23 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     let capture: MediaStream | null = null
     try {
       capture = await navigator.mediaDevices.getDisplayMedia(systemAudioMediaOptions())
-      const audioTrack = capture.getAudioTracks()[0]
+      let audioTrack = capture.getAudioTracks()[0]
       if (!audioTrack) {
         capture.getTracks().forEach((track) => track.stop())
-        setHasSharedAudio(false)
-        setSharedAudioSignal("unavailable")
-        toast.error("O navegador não liberou o áudio do PC", {
-          description: "Escolha Tela inteira e marque Compartilhar áudio. A janela do LoL sozinha normalmente não fornece o som do jogo.",
-        })
-        return
+        const loopbackCapture = await captureLoopbackAudio()
+        if (!loopbackCapture?.getAudioTracks()[0]) {
+          loopbackCapture?.getTracks().forEach((track) => track.stop())
+          capture = null
+          setHasSharedAudio(false)
+          setSharedAudioSignal("unavailable")
+          toast.error("O Windows não disponibilizou o áudio do jogo", {
+            description: "Ative Mixagem Estéreo nas entradas de gravação do Windows ou instale o VB-Cable e tente novamente.",
+          })
+          return
+        }
+        capture = loopbackCapture
+        audioTrack = loopbackCapture.getAudioTracks()[0]
+        toast.info("Usando a entrada de áudio do Windows", { description: audioTrack.label })
       }
 
       // This second capture exists only to obtain system audio. Its video is

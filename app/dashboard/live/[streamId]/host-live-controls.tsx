@@ -80,7 +80,7 @@ export function HostLiveControls({
             {sharedAudioSignal === "silent"
               ? "Confira a saída de áudio do LoL e conecte novamente."
               : sharedAudioSignal === "unavailable"
-                ? "Use Chrome ou Edge no Windows e marque Compartilhar áudio."
+                ? "Ative Mixagem Estéreo ou VB-Cable no Windows."
                 : "Para jogos, escolha Tela inteira e confirme o áudio."}
           </span>
         </span>
