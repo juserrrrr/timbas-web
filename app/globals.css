@@ -331,3 +331,32 @@
 :where(button, [type="button"], [type="submit"]):disabled {
   cursor: not-allowed;
 }
+
+/* ── Controles nativos no tema escuro ─────────────────────────────────────────
+   O popup de um <select> é desenhado pelo sistema operacional, não pela página.
+   Sem color-scheme o Windows assume tema claro e devolve fundo branco com o
+   texto branco que a classe do elemento pediu, deixando a lista ilegível.
+   Declarar o esquema resolve select, scrollbar, date picker e spinner de uma
+   vez; as regras de option cobrem o Windows, que ainda pinta cada linha da
+   lista pelo tema do sistema. */
+html {
+  color-scheme: dark;
+}
+
+select,
+input,
+textarea {
+  color-scheme: dark;
+}
+
+select option,
+select optgroup {
+  background-color: #101014;
+  color: #e5e7eb;
+}
+
+select option:checked,
+select option:hover {
+  background-color: #1c1c24;
+  color: #ffffff;
+}
