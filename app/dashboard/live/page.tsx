@@ -132,7 +132,7 @@ export default function LivePage() {
           {streams.map((stream) => (
             <Link
               key={stream.id}
-              href={`/live/${stream.slug}`}
+              href={stream.isHost ? `/dashboard/live/${stream.id}/studio` : `/live/${stream.slug}`}
               className="group rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 transition-colors hover:border-red-500/25 hover:bg-white/[0.04]"
             >
               <div className="flex items-start gap-3">
@@ -150,6 +150,12 @@ export default function LivePage() {
               <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
                 <span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{stream.viewers}</span>
                 <span>começou {elapsed(stream.startedAt)}</span>
+                {stream.isHost && (
+                  <span className="ml-auto inline-flex items-center gap-1 font-bold text-blue-300">
+                    <MonitorUp className="h-3.5 w-3.5" />
+                    Seu estúdio
+                  </span>
+                )}
               </div>
             </Link>
           ))}

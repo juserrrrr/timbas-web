@@ -90,5 +90,13 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
   }
 
   const Stage = session.sfu ? SfuViewerStage : ViewerStage
-  return <Stage streamId={streamId} peerId={session.peerId} stream={session.stream} onReconnect={connect} />
+  return (
+    <Stage
+      streamId={streamId}
+      peerId={session.peerId}
+      stream={session.stream}
+      studioHref={session.owner ? `/dashboard/live/${streamId}/studio` : undefined}
+      onReconnect={connect}
+    />
+  )
 }

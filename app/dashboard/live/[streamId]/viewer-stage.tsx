@@ -21,6 +21,7 @@ interface Props {
   peerId: string
   stream: StreamSummary
   guestToken?: string
+  studioHref?: string
   onReconnect: () => Promise<void>
 }
 
@@ -28,7 +29,7 @@ interface Props {
  * Peer to peer playback: media arrives straight from the host's machine over a
  * single connection that is kept alive across screen changes and ICE restarts.
  */
-export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect }: Props) {
+export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, onReconnect }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -334,6 +335,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, onReconnect 
       stats={stats}
       videoRef={videoRef}
       audioRef={audioRef}
+      studioHref={studioHref}
       onToggleSound={toggleSound}
       onVolumeChange={changeVolume}
     />

@@ -14,6 +14,7 @@ interface WatchSession {
   guestToken?: string
   stream: StreamSummary
   sfu?: boolean
+  owner?: boolean
 }
 
 export function PublicStreamRoom({ streamId }: { streamId: string }) {
@@ -62,13 +63,24 @@ export function PublicStreamRoom({ streamId }: { streamId: string }) {
     return <div className="flex min-h-[100dvh] items-center justify-center bg-[#050508]"><Spinner className="size-5 text-red-400" /></div>
   }
 
+  // O link público leva o dono para a página de espectador da própria live, e
+  // sem essa saída ele fica preso assistindo até a transmissão encerrar.
+  const stageProps = {
+    streamId,
+    peerId: session.peerId,
+    stream: session.stream,
+    guestToken: session.guestToken,
+    studioHref: session.owner ? `/dashboard/live/${session.stream.id}/studio` : undefined,
+    onReconnect: connect,
+  }
+
   return (
     <main className="min-h-[100dvh] bg-[#050508] px-4 py-5 text-white sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-6xl">
         {session.sfu ? (
-          <SfuViewerStage streamId={streamId} peerId={session.peerId} stream={session.stream} guestToken={session.guestToken} onReconnect={connect} />
+          <SfuViewerStage {...stageProps} />
         ) : (
-          <ViewerStage streamId={streamId} peerId={session.peerId} stream={session.stream} guestToken={session.guestToken} onReconnect={connect} />
+          <ViewerStage {...stageProps} />
         )}
       </div>
     </main>

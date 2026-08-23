@@ -13,6 +13,8 @@ export interface StreamSummary {
   startedAt: string
   viewers: number
   live: boolean
+  /** Only filled by the stream list: the logged in user owns this live. */
+  isHost?: boolean
 }
 
 export interface StreamPeer {
@@ -28,6 +30,8 @@ export interface JoinStreamResult {
   stream: StreamSummary
   /** True when the API has an SFU configured, so media goes through it. */
   sfu?: boolean
+  /** The logged in user owns this live, even if they joined to watch. */
+  owner?: boolean
 }
 
 export type SignalType = 'offer' | 'answer' | 'ice'

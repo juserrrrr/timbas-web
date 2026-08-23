@@ -2,7 +2,7 @@
 
 import { useRef, type RefObject } from "react"
 import Link from "next/link"
-import { ArrowLeft, Maximize, Pause, Radio, Users, Volume2, VolumeX, Zap } from "lucide-react"
+import { ArrowLeft, Maximize, MonitorUp, Pause, Radio, Users, Volume2, VolumeX, Zap } from "lucide-react"
 import { PlayerAvatar } from "@/components/player-avatar"
 import type { StreamSummary } from "@/lib/services/streaming"
 
@@ -28,6 +28,8 @@ interface Props {
   stats: ViewerStats | null
   videoRef: RefObject<HTMLVideoElement | null>
   audioRef: RefObject<HTMLAudioElement | null>
+  /** Preenchido quando quem está assistindo é o dono da live. */
+  studioHref?: string
   onToggleSound: () => void
   onVolumeChange: (volume: number) => void
 }
@@ -47,6 +49,7 @@ export function ViewerShell({
   stats,
   videoRef,
   audioRef,
+  studioHref,
   onToggleSound,
   onVolumeChange,
 }: Props) {
@@ -74,9 +77,20 @@ export function ViewerShell({
           </div>
         </div>
 
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-gray-300 ring-1 ring-white/[0.08]">
-          <Users className="h-3.5 w-3.5" />{viewerCount}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-gray-300 ring-1 ring-white/[0.08]">
+            <Users className="h-3.5 w-3.5" />{viewerCount}
+          </span>
+          {studioHref && (
+            <Link
+              href={studioHref}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-500"
+            >
+              <MonitorUp className="h-3.5 w-3.5" />
+              Voltar ao estúdio
+            </Link>
+          )}
+        </div>
       </div>
 
       <div ref={stageRef} className="overflow-hidden rounded-2xl border border-white/[0.07] bg-black">

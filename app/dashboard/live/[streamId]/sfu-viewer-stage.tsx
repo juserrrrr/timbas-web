@@ -25,6 +25,7 @@ interface Props {
   peerId: string
   stream: StreamSummary
   guestToken?: string
+  studioHref?: string
   onReconnect: () => Promise<void>
 }
 
@@ -33,7 +34,7 @@ interface Props {
  * receiving the host's copy. The signaling channel stays in use for presence
  * and for knowing when the live ends.
  */
-export function SfuViewerStage({ streamId, peerId, stream, guestToken, onReconnect }: Props) {
+export function SfuViewerStage({ streamId, peerId, stream, guestToken, studioHref, onReconnect }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const roomRef = useRef<Room | null>(null)
@@ -245,6 +246,7 @@ export function SfuViewerStage({ streamId, peerId, stream, guestToken, onReconne
       stats={stats}
       videoRef={videoRef}
       audioRef={audioRef}
+      studioHref={studioHref}
       onToggleSound={toggleSound}
       onVolumeChange={changeVolume}
     />
