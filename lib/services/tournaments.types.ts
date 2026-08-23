@@ -4,6 +4,7 @@ export type TournamentStatus = "DRAFT" | "REGISTRATION" | "RUNNING" | "FINISHED"
 export type TournamentPhase = "GROUP" | "LEAGUE" | "WINNERS" | "LOSERS" | "GRAND_FINAL" | "THIRD_PLACE"
 export type TournamentMatchStatus = "PENDING" | "READY" | "AWAITING_PROOF" | "DISPUTED" | "FINISHED" | "WALKOVER"
 export type CompetitionRole = "OWNER" | "MODERATOR"
+export type TournamentAccessMode = "PUBLIC" | "INVITE_ONLY"
 export type MatchProofStatus = "PENDING" | "APPROVED" | "REJECTED"
 
 export interface UserRef {
@@ -19,6 +20,8 @@ export interface TournamentSummary {
   description: string | null
   game: CompetitionGame
   gameLabel: string | null
+  accessMode: TournamentAccessMode
+  inviteCode: string | null
   format: TournamentFormat
   status: TournamentStatus
   maxTeams: number
@@ -120,6 +123,8 @@ export interface TournamentAccess {
   isModerator: boolean
   canManage: boolean
   canModerate: boolean
+  canView: boolean
+  isInvited: boolean
   teamIds: string[]
 }
 
@@ -167,6 +172,7 @@ export interface ReportResultResponse {
   match: TournamentMatch | null
   proof: MatchProof | null
   autoApproved: boolean
+  processing: boolean
 }
 
 export const GAME_LABELS: Record<CompetitionGame, string> = {

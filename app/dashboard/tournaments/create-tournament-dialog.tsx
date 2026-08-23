@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, ArrowRight, Check, Loader2, TriangleAlert } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, Loader2, LockKeyhole, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -82,6 +82,8 @@ export function CreateTournamentDialog({
   const [description, setDescription] = useState("")
   const [game, setGame] = useState<CompetitionGame>("EA_FC")
   const [gameLabel, setGameLabel] = useState("")
+  const [privateTournament, setPrivateTournament] = useState(false)
+  const [invitedUsers, setInvitedUsers] = useState("")
   const [format, setFormat] = useState<TournamentFormat>("SINGLE_ELIMINATION")
   const [maxTeams, setMaxTeams] = useState(8)
   const [groupCount, setGroupCount] = useState(2)
@@ -121,6 +123,10 @@ export function CreateTournamentDialog({
         description: description.trim() || undefined,
         game,
         gameLabel: game === "OTHER" ? gameLabel.trim() || undefined : undefined,
+        accessMode: privateTournament ? "INVITE_ONLY" : "PUBLIC",
+        invitedUsernames: privateTournament
+          ? invitedUsers.split(",").map((value) => value.trim()).filter(Boolean)
+          : undefined,
         format,
         maxTeams,
         groupCount: isGroups ? activeGroupCount : undefined,
@@ -223,6 +229,31 @@ export function CreateTournamentDialog({
                   />
                 )}
               </div>
+
+              <ToggleRow
+                title="Campeonato fechado"
+                hint="Só entra quem receber o link ou for convidado pelo nome de usuário"
+                checked={privateTournament}
+                onChange={setPrivateTournament}
+              />
+              {privateTournament && (
+                <div className="space-y-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3">
+                  <Label htmlFor="invited-users" className="flex items-center gap-1.5">
+                    <LockKeyhole className="h-3.5 w-3.5 text-amber-400" />
+                    Convidar usuários agora
+                  </Label>
+                  <Input
+                    id="invited-users"
+                    value={invitedUsers}
+                    onChange={(event) => setInvitedUsers(event.target.value)}
+                    placeholder="nome1, nome2, nome3"
+                    className="border-white/10 bg-white/[0.03]"
+                  />
+                  <p className="text-[11px] text-gray-500">
+                    Use o nome exato do perfil, separado por vírgula. Você também poderá copiar o link do convite depois.
+                  </p>
+                </div>
+              )}
             </>
           )}
 
@@ -351,7 +382,7 @@ export function CreateTournamentDialog({
 
               <ToggleRow
                 title="Confirmar automaticamente"
-                hint="Quando a leitura da foto bater com o placar informado, o resultado entra na hora"
+                hint="Só confirma quando a foto bate com o placar e a IA tem pelo menos 90% de confiança"
                 checked={autoApproveProof}
                 onChange={setAutoApproveProof}
               />

@@ -1,11 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { listTournaments } from "@/lib/services/tournaments"
+import { joinTournamentByInvite, listTournaments } from "@/lib/services/tournaments"
 import {
   FORMAT_LABELS,
   GAME_LABELS,
@@ -40,6 +40,7 @@ const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done
 
 export default function TournamentsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
   const [filter, setFilter] = useState("all")
   const [loading, setLoading] = useState(true)
@@ -60,8 +61,19 @@ export default function TournamentsPage() {
   }, [])
 
   useEffect(() => {
-    void load()
-  }, [load])
+    const invite = searchParams.get("invite")
+    if (!invite) {
+      void load()
+      return
+    }
+    setLoading(true)
+    joinTournamentByInvite(invite)
+      .then(({ tournamentId }) => router.replace(`/dashboard/tournaments/${tournamentId}`))
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Não foi possível aceitar o convite")
+        setLoading(false)
+      })
+  }, [load, router, searchParams])
 
   const visible = useMemo(() => {
     const status = FILTERS.find((item) => item.id === filter)?.status

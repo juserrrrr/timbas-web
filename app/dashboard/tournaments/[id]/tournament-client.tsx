@@ -8,6 +8,7 @@ import {
   Coins,
   GitBranch,
   ListOrdered,
+  Link2,
   Loader2,
   Play,
   ShieldCheck,
@@ -158,6 +159,18 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         actions={
           <>
             <StatusPill tone={STATUS_TONES[tournament.status]}>{STATUS_LABELS[tournament.status]}</StatusPill>
+            {tournament.access.canManage && tournament.inviteCode && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const link = `${window.location.origin}/dashboard/tournaments?invite=${tournament.inviteCode}`
+                  void navigator.clipboard.writeText(link).then(() => setNotice("Link de convite copiado."))
+                }}
+              >
+                <Link2 className="mr-1.5 h-4 w-4" />
+                Copiar convite
+              </Button>
+            )}
             {tournament.access.canManage &&
               (tournament.status === "REGISTRATION" || tournament.status === "DRAFT") && (
                 <Button
@@ -259,6 +272,8 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
             setNotice(
               result.autoApproved
                 ? "Resultado confirmado e moedas creditadas."
+                : result.processing
+                  ? "Foto recebida. A IA está conferindo o placar em segundo plano."
                 : "Prova enviada. A organização vai revisar o placar.",
             )
             return { autoApproved: result.autoApproved }

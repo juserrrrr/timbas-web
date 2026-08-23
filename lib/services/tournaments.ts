@@ -32,6 +32,8 @@ export interface CreateTournamentInput {
   requireProof?: boolean
   autoApproveProof?: boolean
   autoApproveMinConfidence?: number
+  accessMode?: "PUBLIC" | "INVITE_ONLY"
+  invitedUsernames?: string[]
   registrationEndsAt?: string
   autoStartOnClose?: boolean
 }
@@ -52,6 +54,10 @@ export function getTournament(id: string): Promise<TournamentDetail> {
 
 export function createTournament(input: CreateTournamentInput): Promise<TournamentSummary> {
   return post("/tournaments", input)
+}
+
+export function joinTournamentByInvite(code: string): Promise<{ tournamentId: string }> {
+  return post("/tournaments/join-by-invite", { code })
 }
 
 export function updateTournament(id: string, input: Partial<CreateTournamentInput> & { status?: string }) {
