@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ClipboardList, Home, MoreHorizontal, Radio, Trophy, X } from "lucide-react"
+import { ClipboardList, Home, Lock, MoreHorizontal, Radio, Trophy, X } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge } from "@/components/ui/beta-badge"
-import { ACCENTS, FOOTER_ITEMS, isNavItemActive, visibleGroups, type NavItem } from "@/lib/navigation"
+import { ACCENTS, FOOTER_ITEMS, isNavItemActive, navGroupsFor, type NavItem } from "@/lib/navigation"
 import { useEnabledFeatures } from "@/hooks/use-enabled-features"
 
 const QUICK_HREFS = ["/dashboard", "/dashboard/active", "/dashboard/tournaments", "/dashboard/draft"]
@@ -51,7 +51,7 @@ export function MobileBottomNav() {
     setOpen(false)
   }, [pathname])
 
-  const groups = visibleGroups(flags)
+  const groups = navGroupsFor(flags)
   const allItems = [...groups.flatMap((group) => group.items), ...FOOTER_ITEMS]
   const quickItems = QUICK_HREFS.map((href) => allItems.find((item) => item.href === href)).filter(
     (item): item is NavItem => Boolean(item),
@@ -105,13 +105,16 @@ export function MobileBottomNav() {
                         isActive ? `${accent.bg} ${accent.text}` : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
                       }`}
                     >
-                      <item.icon className="mt-0.5 h-[18px] w-[18px] flex-shrink-0" />
+                      <item.icon className={`mt-0.5 h-[18px] w-[18px] flex-shrink-0 ${item.locked ? "opacity-50" : ""}`} />
                       <span className="min-w-0">
                         <span className="flex items-center gap-1.5 text-sm font-semibold leading-tight">
                           {item.label}
-                          {item.beta && <BetaBadge />}
+                          {item.beta && !item.locked && <BetaBadge />}
+                          {item.locked && <Lock className="h-3 w-3 text-amber-300/80" />}
                         </span>
-                        <span className="block truncate text-[11px] leading-tight text-gray-600">{item.description}</span>
+                        <span className={`block truncate text-[11px] leading-tight ${item.locked ? "text-amber-300/60" : "text-gray-600"}`}>
+                          {item.locked ? "Recurso desativado pelo admin" : item.description}
+                        </span>
                       </span>
                     </Link>
                   )

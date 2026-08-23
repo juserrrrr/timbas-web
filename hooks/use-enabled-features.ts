@@ -20,10 +20,14 @@ function loadEnabledFlags(): Promise<string[]> {
   return cache
 }
 
-/// Chaves das features ligadas. Serve para esconder da navegação o que o admin
-/// desligou; a API recusa de qualquer jeito.
-export function useEnabledFeatures(): string[] {
-  const [flags, setFlags] = useState<string[]>([])
+/// Chaves das features ligadas, ou null enquanto a resposta não chegou.
+///
+/// A diferença entre "ainda não sei" e "sei que está desligada" importa: as
+/// flags vêm por fetch, então tratar o estado inicial como lista vazia fazia o
+/// menu nascer com tudo bloqueado e destravar meio segundo depois. Com null a
+/// navegação não marca nada até ter a resposta de verdade.
+export function useEnabledFeatures(): string[] | null {
+  const [flags, setFlags] = useState<string[] | null>(null)
 
   useEffect(() => {
     let active = true

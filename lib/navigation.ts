@@ -24,8 +24,11 @@ export type NavItem = {
   href: string
   accent: NavAccent
   beta?: boolean
-  /// Item só aparece quando o admin liga essa feature flag.
+  /// Recurso controlado por feature flag. Com a flag desligada o item continua
+  /// na lista, marcado como bloqueado, em vez de sumir do menu.
   flag?: string
+  /// Preenchido em runtime por navGroupsFor: a flag do item está desligada.
+  locked?: boolean
 }
 
 export type NavGroup = {
@@ -128,13 +131,20 @@ export const FOOTER_ITEMS: NavItem[] = [
 
 export const ALL_NAV_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((group) => group.items), ...FOOTER_ITEMS]
 
-/// Esconde o que está atrás de feature flag desligada, do mesmo jeito que o
-/// painel esconde item sem permissão.
-export function visibleGroups(flags: string[]): NavGroup[] {
+/// Marca o que está atrás de feature flag desligada em vez de esconder. Item
+/// que aparece e some conforme o admin mexe nas flags confunde mais do que
+/// ajuda: a pessoa não sabe se o recurso existe, se sumiu ou se quebrou. Assim
+/// ele fica sempre visível, com cadeado, e a própria página explica o motivo.
+/// `flags` em null significa que a resposta da API ainda não chegou, e nesse
+/// caso nada é marcado: um cadeado que aparece e some é pior do que esperar.
+export function navGroupsFor(flags: string[] | null): NavGroup[] {
   return NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.flag || flags.includes(item.flag)),
-  })).filter((group) => group.items.length > 0)
+    items: group.items.map((item) => ({
+      ...item,
+      locked: Boolean(flags) && Boolean(item.flag) && !flags!.includes(item.flag!),
+    })),
+  }))
 }
 
 export function isNavItemActive(pathname: string, href: string): boolean {

@@ -1,7 +1,7 @@
 "use client"
 
 import { AppSidebar } from "@/components/app-sidebar"
-import { FOOTER_ITEMS, visibleGroups } from "@/lib/navigation"
+import { FOOTER_ITEMS, navGroupsFor } from "@/lib/navigation"
 import { useEnabledFeatures } from "@/hooks/use-enabled-features"
 
 export function DashboardSidebar() {
@@ -9,7 +9,7 @@ export function DashboardSidebar() {
 
   return (
     <AppSidebar
-      groups={visibleGroups(flags)}
+      groups={navGroupsFor(flags)}
       footerItems={FOOTER_ITEMS}
       homeHref="/dashboard"
       brand="Timbas"

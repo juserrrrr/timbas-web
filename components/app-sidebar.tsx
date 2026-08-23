@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react"
+import { Lock, PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge, BetaMark } from "@/components/ui/beta-badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -53,8 +53,11 @@ function NavLink({
       )}
 
       <span className="relative flex h-11 w-[41px] flex-shrink-0 items-center justify-center">
-        <item.icon className="h-[18px] w-[18px]" />
-        {item.beta && !expanded && <BetaMark className="absolute right-0.5 top-1" />}
+        <item.icon className={`h-[18px] w-[18px] ${item.locked ? "opacity-50" : ""}`} />
+        {item.locked && (
+          <Lock className="absolute bottom-1.5 right-1 h-2.5 w-2.5 text-amber-300/80" strokeWidth={3} />
+        )}
+        {item.beta && !item.locked && !expanded && <BetaMark className="absolute right-0.5 top-1" />}
       </span>
 
       <span
@@ -65,11 +68,11 @@ function NavLink({
         }`}
       >
         <span className="flex items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold leading-tight">
-          {item.label}
-          {item.beta && <BetaBadge />}
+          <span className={item.locked ? "text-gray-500" : ""}>{item.label}</span>
+          {item.beta && !item.locked && <BetaBadge />}
         </span>
-        <span className={`truncate text-[11px] leading-tight ${isActive ? "text-white/45" : "text-gray-600"}`}>
-          {item.description}
+        <span className={`truncate text-[11px] leading-tight ${item.locked ? "text-amber-300/60" : isActive ? "text-white/45" : "text-gray-600"}`}>
+          {item.locked ? "Recurso desativado pelo admin" : item.description}
         </span>
       </span>
     </Link>
@@ -86,10 +89,12 @@ function NavLink({
         className="max-w-[240px] border border-white/[0.08] bg-[#0d0d14] px-3 py-2 text-left shadow-2xl shadow-black/50 [&>span]:bg-[#0d0d14] [&>span]:fill-[#0d0d14]"
       >
         <span className="flex items-center gap-1.5">
-          <span className={`text-xs font-bold uppercase tracking-wider ${accent.text}`}>{item.label}</span>
-          {item.beta && <BetaBadge />}
+          <span className={`text-xs font-bold uppercase tracking-wider ${item.locked ? "text-gray-400" : accent.text}`}>{item.label}</span>
+          {item.beta && !item.locked && <BetaBadge />}
+          {item.locked && <Lock className="h-3 w-3 text-amber-300/80" />}
         </span>
         <span className="mt-0.5 block text-[11px] leading-snug text-gray-400">{item.description}</span>
+        {item.locked && <span className="mt-1 block text-[11px] font-semibold text-amber-300/80">Desativado pelo admin</span>}
       </TooltipContent>
     </Tooltip>
   )
