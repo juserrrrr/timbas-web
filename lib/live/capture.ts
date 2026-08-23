@@ -44,6 +44,19 @@ const HIGH_FIDELITY_AUDIO: MediaTrackConstraints = {
   sampleRate: 48_000,
 }
 
+const MIN_CAPTURE_FRAME_RATE = 30
+
+function enforcedVideoConstraints(profile: VideoProfile): MediaTrackConstraints {
+  return {
+    ...displayVideoConstraints(profile),
+    frameRate: {
+      min: MIN_CAPTURE_FRAME_RATE,
+      ideal: profile.frameRate,
+      max: profile.frameRate,
+    },
+  }
+}
+
 export function surfaceOf(track: MediaStreamTrack): DisplaySurface {
   const surface = (track.getSettings() as MediaTrackSettings & { displaySurface?: string }).displaySurface
   if (surface === "monitor" || surface === "window" || surface === "browser") return surface
@@ -80,7 +93,18 @@ export async function captureDisplay(profile: VideoProfile, withAudio: boolean):
   }
 
   video.contentHint = contentHintFor(profile)
-  await video.applyConstraints(displayVideoConstraints(profile)).catch(() => {})
+  try {
+    await video.applyConstraints(enforcedVideoConstraints(profile))
+  } catch {
+    stream.getTracks().forEach((track) => track.stop())
+    throw new Error("O navegador não conseguiu capturar a tela a pelo menos 30 FPS. Ative a aceleração gráfica e tente novamente.")
+  }
+
+  const negotiatedFrameRate = video.getSettings().frameRate
+  if (negotiatedFrameRate && negotiatedFrameRate < MIN_CAPTURE_FRAME_RATE) {
+    stream.getTracks().forEach((track) => track.stop())
+    throw new Error(`O navegador limitou a captura a ${Math.round(negotiatedFrameRate)} FPS. A live exige pelo menos 30 FPS.`)
+  }
 
   return {
     stream,

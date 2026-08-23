@@ -54,17 +54,15 @@ export interface SfuVideoOptions {
  * O host envia uma cópia só, não importa quantas pessoas estejam assistindo,
  * então o bitrate é o alvo cheio do perfil.
  *
- * Em 30 FPS a imagem é publicada em VP9, cujas camadas SVC deixam o servidor
- * entregar uma versão menor para quem está com internet ruim sem o host
- * codificar nada a mais. Em 60 FPS isso custa CPU demais ao lado de um jogo
- * rodando, então cai para H.264 com simulcast, que as GPUs do Windows
- * codificam em hardware.
+ * Em 30 FPS a imagem é publicada em VP9. Em 60 FPS ela usa H.264 para aproveitar
+ * a codificação por hardware do Windows, mas sem simulcast: codificar várias
+ * camadas ao mesmo tempo derruba o FPS no Edge durante uma captura 1080p.
  */
 export function sfuVideoOptions(profile: VideoProfile): SfuVideoOptions {
   const svc = profile.frameRate !== 60
   return {
     videoCodec: svc ? "vp9" : "h264",
-    simulcast: !svc,
+    simulcast: false,
     backupCodec: svc,
     videoEncoding: {
       maxBitrate: targetVideoBitrate(profile),
