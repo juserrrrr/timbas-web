@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"
 import { TIMBAS_SERVER_ID } from "@/lib/servers"
 import { getAnnouncementGuilds, setAnnouncementChannel, type AnnouncementGuild } from "@/lib/services/streaming"
+import { SfuPanel } from "./sfu-panel"
 
 export default function LiveAdminPage() {
   const [guilds, setGuilds] = useState<AnnouncementGuild[]>([])
@@ -49,8 +50,15 @@ export default function LiveAdminPage() {
         </div>
         <div>
           <h1 className="text-3xl font-black text-white">Transmissões</h1>
-          <p className="mt-1 text-sm text-gray-500">Escolha o canal em que o bot vai avisar quando alguém iniciar uma live.</p>
+          <p className="mt-1 text-sm text-gray-500">Configure o servidor de transmissão e o canal de anúncio das lives.</p>
         </div>
+      </div>
+
+      <SfuPanel />
+
+      <div>
+        <h2 className="text-sm font-black uppercase tracking-wider text-gray-500">Anúncio no Discord</h2>
+        <p className="mt-1 text-xs text-gray-600">Canal em que o bot avisa quando alguém inicia uma live.</p>
       </div>
 
       <Card className="border-white/[0.06] bg-white/[0.02] p-0">

@@ -7,11 +7,13 @@ import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"
 import { getLiveClientId, joinPublicStream, joinStream, type StreamSummary } from "@/lib/services/streaming"
 import { ViewerStage } from "@/app/dashboard/live/[streamId]/viewer-stage"
+import { SfuViewerStage } from "@/app/dashboard/live/[streamId]/sfu-viewer-stage"
 
 interface WatchSession {
   peerId: string
   guestToken?: string
   stream: StreamSummary
+  sfu?: boolean
 }
 
 export function PublicStreamRoom({ streamId }: { streamId: string }) {
@@ -63,7 +65,11 @@ export function PublicStreamRoom({ streamId }: { streamId: string }) {
   return (
     <main className="min-h-[100dvh] bg-[#050508] px-4 py-5 text-white sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-6xl">
-        <ViewerStage streamId={streamId} peerId={session.peerId} stream={session.stream} guestToken={session.guestToken} onReconnect={connect} />
+        {session.sfu ? (
+          <SfuViewerStage streamId={streamId} peerId={session.peerId} stream={session.stream} guestToken={session.guestToken} onReconnect={connect} />
+        ) : (
+          <ViewerStage streamId={streamId} peerId={session.peerId} stream={session.stream} guestToken={session.guestToken} onReconnect={connect} />
+        )}
       </div>
     </main>
   )

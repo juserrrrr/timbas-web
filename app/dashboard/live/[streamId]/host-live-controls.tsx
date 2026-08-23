@@ -1,115 +1,244 @@
 "use client"
 
-import { Mic, MicOff, RefreshCw, Square, Volume2, VolumeX } from "lucide-react"
+import { Activity, Mic, MicOff, MonitorUp, RefreshCw, Square, Volume2, VolumeX, Zap } from "lucide-react"
+import type { AudioMixerLevels, AudioSourceKind } from "@/lib/live/audio-mixer"
+import type { BroadcastStats } from "./broadcast-types"
+import type { GameAudioState } from "./use-live-media"
 
 interface Props {
+  transport: "p2p" | "sfu"
   micOn: boolean
-  hasMic: boolean
+  micReady: boolean
   micBusy: boolean
-  switchingScreen: boolean
+  gameAudioState: GameAudioState
+  gameAudioLabel: string
+  gameAudioBusy: boolean
+  audioInputs: MediaDeviceInfo[]
+  levels: AudioMixerLevels
+  stats: BroadcastStats | null
   screenLabel: string
-  hasSharedAudio: boolean
-  sharedAudioSignal: "off" | "checking" | "active" | "silent" | "unavailable"
-  addingSystemAudio: boolean
-  onToggleMicrophone: () => Promise<void>
-  onSwitchScreen: () => Promise<void>
-  onAddSystemAudio: () => Promise<void>
-  onFinish: () => Promise<void>
+  switchingScreen: boolean
+  onToggleMic: () => void
+  onConnectGameAudio: (deviceId?: string) => void
+  onDisconnectGameAudio: () => void
+  onVolumeChange: (kind: AudioSourceKind, volume: number) => void
+  onSwitchScreen: () => void
+  onFinish: () => void
+}
+
+const GAME_AUDIO_COPY: Record<GameAudioState, { title: string; detail: string }> = {
+  off: { title: "Áudio do jogo desligado", detail: "Conecte para a galera ouvir o LoL." },
+  connecting: { title: "Conectando o áudio...", detail: "Escolha a tela e marque compartilhar áudio." },
+  live: { title: "Áudio do jogo no ar", detail: "O som está saindo junto com a imagem." },
+  silent: { title: "Conectado, mas sem som", detail: "Confira a saída de áudio do Windows e do LoL." },
+  unavailable: { title: "Navegador não liberou o áudio", detail: "Ative a Mixagem estéreo ou instale o VB-Cable." },
 }
 
 export function HostLiveControls({
+  transport,
   micOn,
-  hasMic,
+  micReady,
   micBusy,
-  switchingScreen,
+  gameAudioState,
+  gameAudioLabel,
+  gameAudioBusy,
+  audioInputs,
+  levels,
+  stats,
   screenLabel,
-  hasSharedAudio,
-  sharedAudioSignal,
-  addingSystemAudio,
-  onToggleMicrophone,
+  switchingScreen,
+  onToggleMic,
+  onConnectGameAudio,
+  onDisconnectGameAudio,
+  onVolumeChange,
   onSwitchScreen,
-  onAddSystemAudio,
   onFinish,
 }: Props) {
-  const micTitle = micOn ? "Microfone ligado" : hasMic ? "Microfone desligado" : "Microfone não conectado"
-  const micDescription = micOn ? "Sua voz está indo para a live." : hasMic ? "Sua voz não está sendo enviada." : "Clique para permitir e adicionar sua voz."
-  const sharedAudioTitle = addingSystemAudio
-    ? "Conectando áudio..."
-    : sharedAudioSignal === "checking"
-      ? "Testando o som do PC..."
-      : sharedAudioSignal === "active"
-        ? "Som do PC detectado"
-        : sharedAudioSignal === "silent"
-          ? "Áudio conectado, mas silencioso"
-          : sharedAudioSignal === "unavailable"
-            ? "Navegador não liberou o áudio"
-          : "Adicionar áudio do PC"
+  const gameConnected = gameAudioState === "live" || gameAudioState === "silent"
+  const gameCopy = GAME_AUDIO_COPY[gameAudioState]
+  const gameTone = gameAudioState === "live" ? "emerald" : gameAudioState === "off" || gameAudioState === "connecting" ? "blue" : "amber"
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
-      <button
-        type="button"
-        onClick={() => { void onToggleMicrophone() }}
-        disabled={micBusy}
-        className={`flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left transition-colors disabled:cursor-wait disabled:opacity-60 ${micOn ? "border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15" : "border-red-500/25 bg-red-500/[0.07] hover:bg-red-500/10"}`}
-      >
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${micOn ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"}`}>
-          {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-        </span>
-        <span className="min-w-0">
-          <span className="flex items-center gap-2 text-sm font-black text-white">
-            {micBusy ? "Ativando microfone..." : micTitle}
-            <span className={`h-2 w-2 rounded-full ${micOn ? "bg-emerald-400" : "bg-red-400"}`} />
+    <div className="space-y-3">
+      {stats && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-4 py-2.5 text-[11px] font-semibold text-gray-400">
+          <span className="inline-flex items-center gap-1.5 text-gray-300">
+            <Activity className="h-3.5 w-3.5 text-blue-400" />
+            {stats.width ? `${stats.width}x${stats.height}` : "medindo"} · {stats.fps} FPS
           </span>
-          <span className="mt-1 block text-xs text-gray-400">{micDescription}</span>
-        </span>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => { void onAddSystemAudio() }}
-        disabled={addingSystemAudio}
-        className={`flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left transition-colors disabled:cursor-wait disabled:opacity-60 ${hasSharedAudio ? "border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15" : "border-amber-500/25 bg-amber-500/[0.07] hover:bg-amber-500/10"}`}
-      >
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${hasSharedAudio ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
-          {hasSharedAudio ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-black text-white">{sharedAudioTitle}</span>
-          <span className="mt-1 block text-xs text-gray-400">
-            {sharedAudioSignal === "silent"
-              ? "Confira a saída de áudio do LoL e conecte novamente."
-              : sharedAudioSignal === "unavailable"
-                ? "Ative Mixagem Estéreo ou VB-Cable no Windows."
-                : "Para jogos, escolha Tela inteira e confirme o áudio."}
+          <span>{(stats.kbps / 1000).toFixed(1)} Mbps de subida</span>
+          <span>{stats.rttMs ? `${stats.rttMs} ms de ida e volta` : "latência medindo"}</span>
+          <span className={`inline-flex items-center gap-1.5 ${stats.relayed ? "text-amber-300" : "text-emerald-300"}`}>
+            <Zap className="h-3.5 w-3.5" />
+            {transport === "sfu"
+              ? "Servidor de transmissão"
+              : stats.relayed ? "Passando por servidor" : "Conexão direta"}
           </span>
-        </span>
-      </button>
+        </div>
+      )}
 
-      <button
-        type="button"
-        onClick={() => { void onSwitchScreen() }}
-        disabled={switchingScreen}
-        className="flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border border-blue-500/25 bg-blue-500/[0.07] p-4 text-left transition-colors hover:bg-blue-500/12 disabled:cursor-wait disabled:opacity-60"
-      >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
-          <RefreshCw className={`h-5 w-5 ${switchingScreen ? "animate-spin" : ""}`} />
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-black text-white">{switchingScreen ? "Trocando tela..." : "Trocar tela"}</span>
-          <span className="mt-1 block truncate text-xs text-gray-400">
-            {screenLabel || "Escolha outra aba, janela ou monitor."} · {hasSharedAudio ? "áudio da tela ligado" : "sem áudio da tela"}
-          </span>
-        </span>
-      </button>
+      <div className="grid gap-3 xl:grid-cols-[1fr_1.35fr_1fr_auto]">
+        <ControlCard
+          tone={micOn ? "emerald" : "red"}
+          icon={micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+          title={micBusy ? "Ativando microfone..." : micOn ? "Microfone ligado" : micReady ? "Microfone mudo" : "Microfone desligado"}
+          detail={micOn ? "Sua voz está indo para a live." : micReady ? "Sua voz não está sendo enviada." : "Clique para liberar e entrar no ar."}
+          level={micOn ? levels.mic : 0}
+          onClick={onToggleMic}
+          disabled={micBusy}
+        >
+          {micReady && <VolumeSlider label="Volume da voz" onChange={(value) => onVolumeChange("mic", value)} />}
+        </ControlCard>
 
-      <button
-        type="button"
-        onClick={() => { void onFinish() }}
-        className="inline-flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 text-sm font-black text-white transition-colors hover:bg-red-500"
-      >
-        <Square className="h-4 w-4" /> Encerrar live
-      </button>
+        <ControlCard
+          tone={gameTone}
+          icon={gameConnected ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+          title={gameCopy.title}
+          detail={gameAudioLabel && gameConnected ? gameAudioLabel : gameCopy.detail}
+          level={gameConnected ? levels.game : 0}
+        >
+          <div className="mt-3 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => onConnectGameAudio()}
+                disabled={gameAudioBusy}
+                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-white/[0.06] px-3 text-[11px] font-bold text-gray-100 ring-1 ring-white/[0.1] transition-colors hover:bg-white/[0.12] disabled:cursor-wait disabled:opacity-50"
+              >
+                <MonitorUp className="h-3.5 w-3.5" />
+                {gameConnected ? "Trocar fonte" : "Pegar do sistema"}
+              </button>
+              {gameConnected && (
+                <button
+                  type="button"
+                  onClick={onDisconnectGameAudio}
+                  className="inline-flex h-8 cursor-pointer items-center rounded-lg bg-white/[0.03] px-3 text-[11px] font-bold text-gray-400 ring-1 ring-white/[0.08] transition-colors hover:bg-white/[0.08] hover:text-gray-200"
+                >
+                  Desligar
+                </button>
+              )}
+            </div>
+
+            {audioInputs.length > 0 && (
+              <select
+                value=""
+                onChange={(event) => { if (event.target.value) onConnectGameAudio(event.target.value) }}
+                className="h-8 w-full cursor-pointer rounded-lg border border-white/[0.08] bg-[#101014] px-2 text-[11px] font-semibold text-gray-300 outline-none focus:border-blue-500/50"
+              >
+                <option value="">Ou use uma entrada do Windows</option>
+                {audioInputs.map((device) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.label || "Entrada sem nome"}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {gameConnected && <VolumeSlider label="Volume do jogo" onChange={(value) => onVolumeChange("game", value)} />}
+          </div>
+        </ControlCard>
+
+        <ControlCard
+          tone="blue"
+          icon={<RefreshCw className={`h-5 w-5 ${switchingScreen ? "animate-spin" : ""}`} />}
+          title={switchingScreen ? "Trocando tela..." : "Trocar tela"}
+          detail={screenLabel || "Escolha outra janela, aba ou monitor."}
+          onClick={onSwitchScreen}
+          disabled={switchingScreen}
+        />
+
+        <button
+          type="button"
+          onClick={onFinish}
+          className="inline-flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 text-sm font-black text-white transition-colors hover:bg-red-500"
+        >
+          <Square className="h-4 w-4" /> Encerrar live
+        </button>
+      </div>
     </div>
+  )
+}
+
+const TONES = {
+  emerald: { border: "border-emerald-500/30 bg-emerald-500/[0.08]", icon: "bg-emerald-500/15 text-emerald-300", bar: "bg-emerald-400" },
+  red: { border: "border-red-500/25 bg-red-500/[0.07]", icon: "bg-red-500/15 text-red-300", bar: "bg-red-400" },
+  amber: { border: "border-amber-500/25 bg-amber-500/[0.07]", icon: "bg-amber-500/15 text-amber-300", bar: "bg-amber-400" },
+  blue: { border: "border-blue-500/25 bg-blue-500/[0.07]", icon: "bg-blue-500/15 text-blue-300", bar: "bg-blue-400" },
+} as const
+
+function ControlCard({
+  tone,
+  icon,
+  title,
+  detail,
+  level,
+  onClick,
+  disabled,
+  children,
+}: {
+  tone: keyof typeof TONES
+  icon: React.ReactNode
+  title: string
+  detail: string
+  level?: number
+  onClick?: () => void
+  disabled?: boolean
+  children?: React.ReactNode
+}) {
+  const palette = TONES[tone]
+  const header = (
+    <div className="flex w-full items-start gap-3 text-left">
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-black text-white">{title}</span>
+        <span className="mt-1 block truncate text-xs text-gray-400">{detail}</span>
+        {level !== undefined && <LevelMeter level={level} className={palette.bar} />}
+      </span>
+    </div>
+  )
+
+  return (
+    <div className={`min-h-20 rounded-2xl border p-4 ${palette.border}`}>
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          className="w-full cursor-pointer transition-opacity hover:opacity-80 disabled:cursor-wait disabled:opacity-60"
+        >
+          {header}
+        </button>
+      ) : (
+        header
+      )}
+      {children}
+    </div>
+  )
+}
+
+function LevelMeter({ level, className }: { level: number; className: string }) {
+  return (
+    <span className="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]">
+      <span
+        className={`block h-full rounded-full transition-[width] duration-150 ${className}`}
+        style={{ width: `${Math.min(100, Math.round(level * 140))}%` }}
+      />
+    </span>
+  )
+}
+
+function VolumeSlider({ label, onChange }: { label: string; onChange: (volume: number) => void }) {
+  return (
+    <label className="mt-3 block">
+      <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gray-500">{label}</span>
+      <input
+        type="range"
+        min={0}
+        max={200}
+        defaultValue={100}
+        onChange={(event) => onChange(Number(event.target.value) / 100)}
+        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.1] accent-blue-500"
+      />
+    </label>
   )
 }

@@ -26,6 +26,8 @@ export interface JoinStreamResult {
   hostPeerId: string | null
   viewers: StreamPeer[]
   stream: StreamSummary
+  /** True when the API has an SFU configured, so media goes through it. */
+  sfu?: boolean
 }
 
 export type SignalType = 'offer' | 'answer' | 'ice'
@@ -49,7 +51,9 @@ async function parse<T>(res: Response, fallback: string): Promise<T> {
   return res.json()
 }
 
-export async function getStreamPermission(token: string): Promise<{ canStream: boolean; featureEnabled: boolean }> {
+export async function getStreamPermission(
+  token: string,
+): Promise<{ canStream: boolean; featureEnabled: boolean; sfu?: boolean }> {
   const res = await apiFetch(`${API_URL}/streaming/permission`, { headers: h(token), cache: 'no-store' })
   if (res.status === 403) return { canStream: false, featureEnabled: false }
   return parse(res, 'Erro ao verificar permissão')
@@ -105,6 +109,7 @@ export interface PublicJoinStreamResult {
   guestToken: string
   hostPeerId: string | null
   stream: StreamSummary
+  sfu?: boolean
 }
 
 const LIVE_CLIENT_ID_KEY = 'timbas_live_client_id'
@@ -256,4 +261,102 @@ export async function createSignalTicket(token: string, streamId: string, peerId
 
 export function streamEventsUrl(streamId: string, ticket: string): string {
   return `${API_URL}/streaming/streams/${streamId}/events?ticket=${encodeURIComponent(ticket)}`
+}
+
+export interface RtcCredentials {
+  enabled: boolean
+  role?: 'host' | 'viewer'
+  url?: string
+  token?: string
+  room?: string
+}
+
+const RTC_DISABLED: RtcCredentials = { enabled: false }
+
+/**
+ * Credentials for the SFU. A disabled or unreachable SFU answers with
+ * `enabled: false` so the caller falls back to the peer to peer transport.
+ */
+export async function getRtcCredentials(
+  token: string,
+  streamId: string,
+  peerId: string,
+): Promise<RtcCredentials> {
+  try {
+    const res = await apiFetch(`${API_URL}/streaming/streams/${streamId}/rtc`, {
+      method: 'POST',
+      headers: h(token),
+      body: JSON.stringify({ peerId }),
+    })
+    if (!res.ok) return RTC_DISABLED
+    return await res.json()
+  } catch {
+    return RTC_DISABLED
+  }
+}
+
+export async function getPublicRtcCredentials(
+  streamId: string,
+  peerId: string,
+  guestToken: string,
+): Promise<RtcCredentials> {
+  try {
+    const res = await fetch(`${API_URL}/streaming/public/streams/${streamId}/rtc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ peerId, guestToken }),
+    })
+    if (!res.ok) return RTC_DISABLED
+    return await res.json()
+  } catch {
+    return RTC_DISABLED
+  }
+}
+
+// ─── SFU (admin) ────────────────────────────────────────────────────────────
+
+export interface SfuStatus {
+  url: string
+  apiKey: string
+  /** The secret never leaves the server, only whether one is stored. */
+  hasSecret: boolean
+  configured: boolean
+  enabled: boolean
+  featureEnabled: boolean
+  source: 'database' | 'environment' | 'none'
+  encryption: {
+    /** A key is available, so what gets stored is encrypted. */
+    active: boolean
+    /** Dedicated key instead of one derived from JWT_SECRET. */
+    dedicatedKey: boolean
+    /** Old keys still accepted for reading, used during a rotation. */
+    fallbackKeys: number
+  }
+}
+
+export async function getSfuStatus(token: string): Promise<SfuStatus> {
+  const res = await apiFetch(`${API_URL}/streaming/admin/sfu`, { headers: h(token), cache: 'no-store' })
+  return parse(res, 'Erro ao carregar a configuração do servidor de transmissão')
+}
+
+export async function saveSfuSettings(
+  token: string,
+  input: { url: string; apiKey: string; apiSecret?: string },
+): Promise<SfuStatus> {
+  const res = await apiFetch(`${API_URL}/streaming/admin/sfu`, {
+    method: 'PUT',
+    headers: h(token),
+    body: JSON.stringify(input),
+  })
+  return parse(res, 'Erro ao salvar o servidor de transmissão')
+}
+
+export async function clearSfuSettings(token: string): Promise<SfuStatus> {
+  const res = await apiFetch(`${API_URL}/streaming/admin/sfu`, { method: 'DELETE', headers: h(token) })
+  return parse(res, 'Erro ao apagar a configuração')
+}
+
+export async function testSfuConnection(token: string): Promise<{ ok: boolean; message: string }> {
+  const res = await apiFetch(`${API_URL}/streaming/admin/sfu/test`, { method: 'POST', headers: h(token) })
+  return parse(res, 'Erro ao testar o servidor de transmissão')
 }
