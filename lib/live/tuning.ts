@@ -46,7 +46,7 @@ export interface SfuVideoOptions {
   videoCodec: "vp9" | "h264"
   simulcast: boolean
   backupCodec: boolean
-  videoEncoding: { maxBitrate: number; maxFramerate: number }
+  screenShareEncoding: { maxBitrate: number; maxFramerate: number }
   degradationPreference: RTCDegradationPreference
 }
 
@@ -64,7 +64,7 @@ export function sfuVideoOptions(profile: VideoProfile): SfuVideoOptions {
     videoCodec: svc ? "vp9" : "h264",
     simulcast: false,
     backupCodec: svc,
-    videoEncoding: {
+    screenShareEncoding: {
       maxBitrate: targetVideoBitrate(profile),
       maxFramerate: profile.frameRate,
     },

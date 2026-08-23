@@ -88,7 +88,7 @@ export function useHostBroadcast(
           simulcast: options.simulcast,
           videoCodec: options.videoCodec,
           backupCodec: options.backupCodec,
-          videoEncoding: options.videoEncoding,
+          screenShareEncoding: options.screenShareEncoding,
           degradationPreference: options.degradationPreference,
           stopMicTrackOnMute: false,
         })
