@@ -6,7 +6,6 @@ import type { BroadcastStats } from "./broadcast-types"
 import type { GameAudioState } from "./use-live-media"
 
 interface Props {
-  transport: "p2p" | "sfu"
   micOn: boolean
   micReady: boolean
   micBusy: boolean
@@ -35,7 +34,6 @@ const GAME_AUDIO_COPY: Record<GameAudioState, { title: string; detail: string }>
 }
 
 export function HostLiveControls({
-  transport,
   micOn,
   micReady,
   micBusy,
@@ -68,11 +66,9 @@ export function HostLiveControls({
           </span>
           <span>{(stats.kbps / 1000).toFixed(1)} Mbps de subida</span>
           <span>{stats.rttMs ? `${stats.rttMs} ms de ida e volta` : "latência medindo"}</span>
-          <span className={`inline-flex items-center gap-1.5 ${stats.relayed ? "text-amber-300" : "text-emerald-300"}`}>
+          <span className="inline-flex items-center gap-1.5 text-emerald-300">
             <Zap className="h-3.5 w-3.5" />
-            {transport === "sfu"
-              ? "Servidor de transmissão"
-              : stats.relayed ? "Passando por servidor" : "Conexão direta"}
+            Servidor de transmissão
           </span>
         </div>
       )}

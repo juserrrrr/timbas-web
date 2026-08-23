@@ -6,7 +6,7 @@ import { ArrowLeft, Maximize, MonitorUp, Pause, Radio, Users, Volume2, VolumeX, 
 import { PlayerAvatar } from "@/components/player-avatar"
 import type { StreamSummary } from "@/lib/services/streaming"
 
-export type ViewerStatus = "connecting" | "live" | "paused" | "waiting" | "ended"
+export type ViewerStatus = "connecting" | "live" | "paused" | "waiting" | "unavailable" | "ended"
 
 export interface ViewerStats {
   kbps: number
@@ -113,6 +113,16 @@ export function ViewerShell({
                   <p className="text-sm font-bold text-white">{status === "waiting" ? "A live continua aberta" : "Conectando na transmissão"}</p>
                   <p className="text-xs text-gray-500">
                     {status === "waiting" ? "O host pode voltar ou escolher outra tela em até 90 segundos." : "Buscando o caminho mais rápido até quem está transmitindo."}
+                  </p>
+                </>
+              ) : status === "unavailable" ? (
+                <>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 ring-1 ring-amber-500/20">
+                    <Radio className="h-6 w-6 text-amber-300" />
+                  </div>
+                  <p className="text-sm font-bold text-white">Servidor de transmissão indisponível</p>
+                  <p className="max-w-sm text-xs text-gray-500">
+                    As lives passam por ele. Avise um administrador: não adianta ficar esperando aqui.
                   </p>
                 </>
               ) : (

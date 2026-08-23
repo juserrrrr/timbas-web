@@ -11,8 +11,6 @@ import { useSignalChannel } from "@/hooks/use-signal-channel"
 import { HostLiveControls } from "./host-live-controls"
 import { LiveSetupDialog, type LiveSetupValues } from "./live-setup-dialog"
 import { useHostBroadcast } from "./use-host-broadcast"
-import { useSfuBroadcast } from "./use-sfu-broadcast"
-import type { HostBroadcast } from "./broadcast-types"
 
 interface Props {
   streamId: string
@@ -24,20 +22,9 @@ interface Props {
 
 type Visibility = "MEMBERS" | "PUBLIC"
 
-/** Media travels through the SFU. One upload, room with no practical limit. */
-export function SfuHostStage(props: Props) {
-  const broadcast = useSfuBroadcast(props.streamId, props.peerId, props.initialViewers, props.stream.live)
-  return <HostStage {...props} broadcast={broadcast} />
-}
-
-/** Media travels straight to each viewer. Used when no SFU is configured. */
-export function PeerHostStage(props: Props) {
-  const broadcast = useHostBroadcast(props.streamId, props.peerId, props.initialViewers, props.stream.live)
-  return <HostStage {...props} broadcast={broadcast} />
-}
-
-function HostStage({ streamId, peerId, stream, initialViewers, onReconnect, broadcast }: Props & { broadcast: HostBroadcast }) {
+export function HostStage({ streamId, peerId, stream, initialViewers, onReconnect }: Props) {
   const router = useRouter()
+  const broadcast = useHostBroadcast(streamId, peerId, initialViewers, stream.live)
   const { resetPeers } = broadcast
   const previousPeerIdRef = useRef(peerId)
 
@@ -212,7 +199,6 @@ function HostStage({ streamId, peerId, stream, initialViewers, onReconnect, broa
             audioInputs={broadcast.audioInputs}
             levels={broadcast.levels}
             stats={broadcast.stats}
-            transport={broadcast.transport}
             screenLabel={broadcast.screen?.label ?? ""}
             switchingScreen={broadcast.switchingScreen}
             onToggleMic={() => { void broadcast.toggleMic() }}
@@ -223,11 +209,6 @@ function HostStage({ streamId, peerId, stream, initialViewers, onReconnect, broa
             onFinish={() => { void finishBroadcast() }}
           />
           {broadcast.error && <p className="text-xs text-amber-300">{broadcast.error}</p>}
-          {broadcast.transport === "p2p" && broadcast.viewers.length > 4 && (
-            <p className="text-xs text-amber-300/80">
-              Esta live está no modo ponto a ponto: cada espectador consome uma cópia da sua internet de subida, e acima de 4 pessoas a qualidade cai sozinha. Com o servidor de transmissão ligado esse limite deixa de existir.
-            </p>
-          )}
         </div>
       )}
 

@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Lock, MonitorPlay, MonitorUp, Radio, Users } from "lucide-react"
+import { Lock, MonitorPlay, MonitorUp, Radio, Server, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
@@ -25,6 +25,7 @@ export default function LivePage() {
   const [streams, setStreams] = useState<StreamSummary[]>([])
   const [canStream, setCanStream] = useState(false)
   const [featureEnabled, setFeatureEnabled] = useState(true)
+  const [sfuReady, setSfuReady] = useState(true)
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -36,10 +37,11 @@ export default function LivePage() {
 
     let active = true
     const load = async () => {
-      const permission = await getStreamPermission(token).catch(() => ({ canStream: false, featureEnabled: false }))
+      const permission = await getStreamPermission(token).catch(() => ({ canStream: false, featureEnabled: false, sfu: false }))
       if (!active) return
       setCanStream(permission.canStream)
       setFeatureEnabled(permission.featureEnabled)
+      setSfuReady(permission.sfu !== false)
 
       if (permission.featureEnabled) {
         const list = await listStreams(token).catch(() => [])
@@ -104,13 +106,25 @@ export default function LivePage() {
         {canStream && (
           <button
             onClick={() => setCreateOpen(true)}
-            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white transition-colors hover:bg-blue-500"
+            disabled={!sfuReady}
+            className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <MonitorUp className="h-4 w-4" />
             Iniciar transmissão
           </button>
         )}
       </div>
+
+      {!sfuReady && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4">
+          <Server className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-300" />
+          <p className="text-xs leading-relaxed text-gray-300">
+            <span className="font-bold text-amber-200">O servidor de transmissão não está no ar.</span>{" "}
+            As lives passam por ele, então ninguém consegue transmitir nem assistir enquanto isso.
+            Um administrador precisa configurar em Admin, Transmissões, e ligar a flag <span className="font-mono">live_sfu</span>.
+          </p>
+        </div>
+      )}
 
       {!canStream && (
         <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">

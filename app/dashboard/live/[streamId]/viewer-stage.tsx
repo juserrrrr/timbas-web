@@ -1,15 +1,19 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { getToken } from "@/lib/auth"
-import { createLivePeerConnection, getIceServers } from "@/lib/webrtc"
-import { tuneOpusSdp, tuneReceiverLatency } from "@/lib/live/tuning"
 import {
-  getPublicIceServers,
+  RemoteTrack,
+  RemoteTrackPublication,
+  Room,
+  RoomEvent,
+  Track,
+} from "livekit-client"
+import { getToken } from "@/lib/auth"
+import {
+  getPublicRtcCredentials,
+  getRtcCredentials,
   leavePublicStream,
   leaveStream,
-  sendPublicSignal,
-  sendSignal,
   type SignalEvent,
   type StreamSummary,
 } from "@/lib/services/streaming"
@@ -26,19 +30,15 @@ interface Props {
 }
 
 /**
- * Peer to peer playback: media arrives straight from the host's machine over a
- * single connection that is kept alive across screen changes and ICE restarts.
+ * Reprodução da live: uma conexão só, com o servidor que já está recebendo a
+ * cópia do host. O canal de eventos continua em uso para presença, contagem de
+ * quem está assistindo e para saber quando a transmissão acaba.
  */
 export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, onReconnect }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
-  const pcRef = useRef<RTCPeerConnection | null>(null)
-  const hostRef = useRef<string | null>(null)
-  const pendingIceRef = useRef<RTCIceCandidateInit[]>([])
-  const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pausedProbeRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const iceServersRef = useRef<RTCIceServer[]>([])
-  const iceServersPromiseRef = useRef<Promise<RTCIceServer[]> | null>(null)
+  const roomRef = useRef<Room | null>(null)
+  const videoTrackRef = useRef<RemoteTrack | null>(null)
   const statsSampleRef = useRef({ bytes: 0, at: 0 })
 
   const [status, setStatus] = useState<ViewerStatus>("connecting")
@@ -48,51 +48,6 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
   const [viewerCount, setViewerCount] = useState(stream.viewers)
   const [stats, setStats] = useState<ViewerStats | null>(null)
 
-  const ensureIceServers = useCallback(() => {
-    if (iceServersRef.current.length) return Promise.resolve(iceServersRef.current)
-    if (iceServersPromiseRef.current) return iceServersPromiseRef.current
-
-    const token = getToken()
-    const request = guestToken ? getPublicIceServers() : token ? getIceServers(token) : Promise.resolve<RTCIceServer[]>([])
-    iceServersPromiseRef.current = request
-      .then((servers) => {
-        iceServersRef.current = servers
-        return servers
-      })
-      .catch((caught: unknown) => {
-        iceServersPromiseRef.current = null
-        throw caught
-      })
-    return iceServersPromiseRef.current
-  }, [guestToken])
-
-  const signal = useCallback((to: string, type: "answer" | "ice", data: unknown) => {
-    const token = getToken()
-    const body = { from: peerId, to, type, data }
-    if (guestToken) void sendPublicSignal(streamId, guestToken, body)
-    else if (token) void sendSignal(token, streamId, body)
-  }, [guestToken, peerId, streamId])
-
-  const closePeer = useCallback(() => {
-    if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current)
-    if (pausedProbeRef.current) clearTimeout(pausedProbeRef.current)
-    disconnectTimerRef.current = null
-    pausedProbeRef.current = null
-    pcRef.current?.close()
-    pcRef.current = null
-    hostRef.current = null
-    pendingIceRef.current = []
-    if (videoRef.current) videoRef.current.srcObject = null
-    if (audioRef.current) audioRef.current.srcObject = null
-    setHasRemoteAudio(false)
-    setStats(null)
-  }, [])
-
-  /**
-   * Plays the sound as soon as the browser allows it. Autoplay with audio is
-   * blocked until the person has interacted with the site, so a refusal falls
-   * back to muted playback and the button takes over.
-   */
   const tryPlayAudio = useCallback(async () => {
     const audio = audioRef.current
     if (!audio?.srcObject) return
@@ -107,167 +62,124 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
     }
   }, [])
 
-  const attachPeerMedia = useCallback((pc: RTCPeerConnection) => {
-    const video = new MediaStream()
-    const audio = new MediaStream()
+  const attachTrack = useCallback((track: RemoteTrack, publication: RemoteTrackPublication) => {
+    // The default jitter buffer holds several hundred milliseconds. Nobody
+    // interacts with a live, but the delay still shows, so video plays as soon
+    // as it lands and audio keeps only a small cushion against crackling.
+    track.setPlayoutDelay(track.kind === Track.Kind.Video ? 0 : 0.06)
 
-    pc.ontrack = (event) => {
-      if (event.track.kind === "video") {
-        video.addTrack(event.track)
-        // The host pausing replaces the track with nothing, which mutes it on
-        // this side instead of turning the picture black. A track also starts
-        // out muted, so only a mute after real frames means a true pause.
-        event.track.onmute = () => setStatus((value) => (value === "live" ? "paused" : value))
-        event.track.onunmute = () => {
-          if (pausedProbeRef.current) clearTimeout(pausedProbeRef.current)
-          pausedProbeRef.current = null
-          setStatus("live")
-          void videoRef.current?.play().catch(() => {})
-        }
-        event.track.onended = () => setStatus("waiting")
-        if (videoRef.current && videoRef.current.srcObject !== video) videoRef.current.srcObject = video
-      } else {
-        audio.addTrack(event.track)
-        setHasRemoteAudio(true)
-        if (audioRef.current && audioRef.current.srcObject !== audio) {
-          audioRef.current.srcObject = audio
-          void tryPlayAudio()
-        }
-      }
-      tuneReceiverLatency(pc)
+    if (track.kind === Track.Kind.Video) {
+      videoTrackRef.current = track
+      if (videoRef.current) track.attach(videoRef.current)
+      setStatus(publication.isMuted ? "paused" : "live")
+      return
+    }
+
+    if (audioRef.current) {
+      track.attach(audioRef.current)
+      setHasRemoteAudio(true)
+      void tryPlayAudio()
     }
   }, [tryPlayAudio])
 
-  const acceptOffer = useCallback(async (from: string, offer: RTCSessionDescriptionInit) => {
-    const token = getToken()
-    if (!guestToken && !token) return
+  useEffect(() => {
+    let cancelled = false
+    let room: Room | null = null
 
-    const current = pcRef.current
-    // An offer from the same host on a healthy connection is a renegotiation
-    // or an ICE restart. Answering on the existing peer keeps the picture on
-    // screen; rebuilding it would blank the stage for a second or two.
-    const reusable = current && hostRef.current === from && current.connectionState !== "closed" && current.signalingState === "stable"
+    const connect = async () => {
+      const token = getToken()
+      const credentials = guestToken
+        ? await getPublicRtcCredentials(streamId, peerId, guestToken)
+        : token ? await getRtcCredentials(token, streamId, peerId) : { enabled: false as const }
 
-    let pc: RTCPeerConnection
-    if (reusable && current) {
-      pc = current
-    } else {
-      const pendingCandidates = pendingIceRef.current
-      closePeer()
-      pendingIceRef.current = pendingCandidates
-      setStatus("connecting")
-
-      pc = createLivePeerConnection(await ensureIceServers())
-      pcRef.current = pc
-      hostRef.current = from
-      attachPeerMedia(pc)
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate) signal(from, "ice", event.candidate.toJSON())
+      if (cancelled) return
+      if (!credentials.enabled || !credentials.url || !credentials.token) {
+        // Sem servidor não existe caminho nenhum para a mídia, então esperar
+        // aqui seria enganação.
+        setStatus("unavailable")
+        return
       }
 
-      // The host closing the tab shows up here long before the API times it out.
-      pc.onconnectionstatechange = () => {
-        if (pcRef.current !== pc) return
-        if (pc.connectionState === "connected") {
-          if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current)
-          disconnectTimerRef.current = null
-          tuneReceiverLatency(pc)
+      room = new Room({
+        // Lets the server drop this viewer to a smaller layer when the
+        // connection cannot keep up, instead of freezing the picture.
+        adaptiveStream: true,
+        dynacast: true,
+        disconnectOnPageLeave: true,
+      })
 
-          // Joining while the host is between screens gives a connected peer
-          // with no frames coming. Waiting a moment tells that apart from the
-          // normal gap before the first frame.
-          const videoTrack = pc.getReceivers().find((receiver) => receiver.track?.kind === "video")?.track
-          if (videoTrack?.muted) {
-            if (pausedProbeRef.current) clearTimeout(pausedProbeRef.current)
-            pausedProbeRef.current = setTimeout(() => {
-              if (pcRef.current === pc && videoTrack.muted) setStatus("paused")
-              pausedProbeRef.current = null
-            }, 3000)
-            return
-          }
-          setStatus((value) => (value === "paused" ? value : "live"))
-          return
+      room.on(RoomEvent.TrackSubscribed, attachTrack)
+      room.on(RoomEvent.TrackUnsubscribed, (track) => {
+        track.detach()
+        if (track.kind === Track.Kind.Video) {
+          videoTrackRef.current = null
+          setStatus("waiting")
+        } else {
+          setHasRemoteAudio(false)
         }
-        if (pc.connectionState === "failed") {
-          setStatus("connecting")
-          return
-        }
-        if (pc.connectionState === "disconnected" && !disconnectTimerRef.current) {
-          disconnectTimerRef.current = setTimeout(() => {
-            if (pcRef.current === pc && pc.connectionState === "disconnected") setStatus("connecting")
-            disconnectTimerRef.current = null
-          }, 5000)
-        }
+      })
+      room.on(RoomEvent.TrackMuted, (publication) => {
+        if (publication.kind === Track.Kind.Video) setStatus("paused")
+      })
+      room.on(RoomEvent.TrackUnmuted, (publication) => {
+        if (publication.kind === Track.Kind.Video) setStatus("live")
+      })
+      room.on(RoomEvent.ParticipantDisconnected, () => {
+        if (!room?.remoteParticipants.size) setStatus("waiting")
+      })
+      room.on(RoomEvent.Disconnected, () => setStatus((value) => (value === "ended" ? value : "connecting")))
+
+      await room.connect(credentials.url, credentials.token)
+      if (cancelled) {
+        await room.disconnect()
+        return
       }
+      roomRef.current = room
+
+      // Nothing is published yet when the host is between screens.
+      if (!room.remoteParticipants.size) setStatus("waiting")
     }
 
-    await pc.setRemoteDescription(new RTCSessionDescription(offer))
-    for (const candidate of pendingIceRef.current) await pc.addIceCandidate(candidate).catch(() => {})
-    pendingIceRef.current = []
+    void connect().catch(() => setStatus("unavailable"))
 
-    const answer = await pc.createAnswer()
-    await pc.setLocalDescription({ type: "answer", sdp: tuneOpusSdp(answer.sdp) })
-    tuneReceiverLatency(pc)
-
-    const description = pc.localDescription ?? answer
-    signal(from, "answer", { type: description.type, sdp: description.sdp })
-  }, [attachPeerMedia, closePeer, ensureIceServers, guestToken, signal])
+    return () => {
+      cancelled = true
+      roomRef.current = null
+      void room?.disconnect()
+    }
+  }, [attachTrack, guestToken, peerId, streamId])
 
   const handleEvent = useCallback(async (event: SignalEvent) => {
-    if (event.type === "offer" && event.from) {
-      await acceptOffer(event.from, event.payload)
-      return
-    }
-
-    if (event.type === "ice") {
-      const pc = pcRef.current
-      if (pc?.remoteDescription) await pc.addIceCandidate(event.payload).catch(() => {})
-      else pendingIceRef.current.push(event.payload)
-      return
-    }
-
-    if (event.type === "host_ready") {
-      closePeer()
-      setStatus("connecting")
-      return
-    }
-
-    if (event.type === "host_unavailable") {
-      closePeer()
-      setStatus("waiting")
-      return
-    }
-
     if (event.type === "viewers") {
       setViewerCount(event.payload?.count ?? 0)
       return
     }
 
-    if (event.type === "stream_ended") {
-      closePeer()
-      setStatus("ended")
+    if (event.type === "host_unavailable") {
+      setStatus("waiting")
+      return
     }
-  }, [acceptOffer, closePeer])
+
+    if (event.type === "stream_ended") {
+      setStatus("ended")
+      void roomRef.current?.disconnect()
+      roomRef.current = null
+    }
+  }, [])
 
   const connected = useSignalChannel(streamId, peerId, handleEvent, status !== "ended", guestToken, onReconnect)
 
-  useEffect(() => {
-    void ensureIceServers().catch(() => {})
-  }, [ensureIceServers])
-
   useEffect(() => () => {
-    closePeer()
     const token = getToken()
     if (guestToken) void leavePublicStream(streamId, peerId, guestToken)
     else if (token) void leaveStream(token, streamId, peerId)
-  }, [closePeer, guestToken, peerId, streamId])
+  }, [guestToken, peerId, streamId])
 
   useEffect(() => {
     if (status !== "live" && status !== "paused") return
 
     const collect = async () => {
-      const report = await pcRef.current?.getStats().catch(() => null)
+      const report = await videoTrackRef.current?.getRTCStatsReport().catch(() => undefined)
       if (!report) return
 
       let bytes = 0
@@ -275,12 +187,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
       let width = 0
       let height = 0
       let rttMs = 0
-      let relayed = false
-      const candidateTypes = new Map<string, string>()
 
-      report.forEach((entry) => {
-        if (entry.type === "local-candidate") candidateTypes.set(entry.id, entry.candidateType)
-      })
       report.forEach((entry) => {
         if (entry.type === "inbound-rtp" && entry.kind === "video") {
           bytes += entry.bytesReceived ?? 0
@@ -290,7 +197,6 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
         }
         if (entry.type === "candidate-pair" && entry.state === "succeeded" && entry.nominated) {
           rttMs = Math.round((entry.currentRoundTripTime ?? 0) * 1000)
-          if (candidateTypes.get(entry.localCandidateId) === "relay") relayed = true
         }
       })
 
@@ -299,7 +205,14 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
       statsSampleRef.current = { bytes, at: now }
       if (!previous.at || now <= previous.at) return
 
-      setStats({ kbps: Math.max(0, Math.round(((bytes - previous.bytes) * 8) / (now - previous.at))), fps, width, height, rttMs, relayed })
+      setStats({
+        kbps: Math.max(0, Math.round(((bytes - previous.bytes) * 8) / (now - previous.at))),
+        fps,
+        width,
+        height,
+        rttMs,
+        relayed: false,
+      })
     }
 
     void collect()

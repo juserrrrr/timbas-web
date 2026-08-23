@@ -34,10 +34,12 @@ export interface JoinStreamResult {
   owner?: boolean
 }
 
-export type SignalType = 'offer' | 'answer' | 'ice'
-
+/**
+ * Eventos do canal SSE. A mídia não passa mais por aqui: o servidor de
+ * transmissão cuida disso. Sobrou presença e ciclo de vida da live.
+ */
 export interface SignalEvent {
-  type: SignalType | 'ready' | 'viewer_joined' | 'viewer_left' | 'viewers' | 'host_ready' | 'host_unavailable' | 'stream_ended'
+  type: 'ready' | 'viewer_joined' | 'viewer_left' | 'viewers' | 'host_ready' | 'host_unavailable' | 'stream_ended'
   from?: string
   payload?: any
 }
@@ -146,18 +148,6 @@ export async function leavePublicStream(streamId: string, peerId: string, guestT
   }).catch(() => {})
 }
 
-export async function sendPublicSignal(
-  streamId: string,
-  guestToken: string,
-  body: { from: string; to: string; type: SignalType; data: unknown },
-): Promise<void> {
-  await fetch(`${API_URL}/streaming/public/streams/${streamId}/signal`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...body, guestToken }),
-  }).catch(() => {})
-}
-
 export async function createPublicSignalTicket(streamId: string, peerId: string, guestToken: string): Promise<string> {
   const res = await fetch(`${API_URL}/streaming/public/streams/${streamId}/events/ticket`, {
     method: 'POST',
@@ -170,12 +160,6 @@ export async function createPublicSignalTicket(streamId: string, peerId: string,
 
 export function publicStreamEventsUrl(streamId: string, ticket: string): string {
   return `${API_URL}/streaming/public/streams/${streamId}/events?ticket=${encodeURIComponent(ticket)}`
-}
-
-export async function getPublicIceServers(): Promise<RTCIceServer[]> {
-  const res = await fetch(`${API_URL}/streaming/public/ice`)
-  const data = await parse<{ iceServers: RTCIceServer[] }>(res, 'Erro ao obter os servidores de conexão')
-  return data.iceServers
 }
 
 export interface AnnouncementGuild {
@@ -239,18 +223,6 @@ export async function endStream(token: string, streamId: string): Promise<void> 
     headers: h(token),
   })
   if (!res.ok) throw new Error('Erro ao encerrar a transmissão')
-}
-
-export async function sendSignal(
-  token: string,
-  streamId: string,
-  body: { from: string; to: string; type: SignalType; data: unknown },
-): Promise<void> {
-  await apiFetch(`${API_URL}/streaming/streams/${streamId}/signal`, {
-    method: 'POST',
-    headers: h(token),
-    body: JSON.stringify(body),
-  }).catch(() => {})
 }
 
 export async function createSignalTicket(token: string, streamId: string, peerId: string): Promise<string> {

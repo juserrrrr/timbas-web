@@ -22,13 +22,8 @@ export interface StartOptions {
   withGameAudio: boolean
 }
 
-/**
- * What the studio screen needs from a transport, whether the media travels peer
- * to peer or through the SFU. Keeping the shape identical is what lets one set
- * of controls drive both.
- */
+/** O que a tela do estúdio precisa da camada que publica a live. */
 export interface HostBroadcast {
-  transport: "p2p" | "sfu"
   previewRef: RefObject<HTMLVideoElement | null>
   viewers: StreamPeer[]
   sharing: boolean

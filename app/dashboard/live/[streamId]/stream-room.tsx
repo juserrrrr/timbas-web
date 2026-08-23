@@ -6,9 +6,8 @@ import { ArrowLeft, Radio } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"
 import { getLiveClientId, joinStream, type JoinStreamResult } from "@/lib/services/streaming"
-import { PeerHostStage, SfuHostStage } from "./host-stage"
+import { HostStage } from "./host-stage"
 import { ViewerStage } from "./viewer-stage"
-import { SfuViewerStage } from "./sfu-viewer-stage"
 
 export function StreamRoom({ streamId, expectedRole }: { streamId: string; expectedRole: "host" | "viewer" }) {
   const [session, setSession] = useState<JoinStreamResult | null>(null)
@@ -75,11 +74,8 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
   }
 
   if (expectedRole === "host") {
-    // The transport is decided once, when the studio opens, because switching
-    // it mid live would mean tearing every connection down.
-    const Stage = session.sfu ? SfuHostStage : PeerHostStage
     return (
-      <Stage
+      <HostStage
         streamId={streamId}
         peerId={session.peerId}
         stream={session.stream}
@@ -89,9 +85,8 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
     )
   }
 
-  const Stage = session.sfu ? SfuViewerStage : ViewerStage
   return (
-    <Stage
+    <ViewerStage
       streamId={streamId}
       peerId={session.peerId}
       stream={session.stream}
