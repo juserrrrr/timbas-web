@@ -24,7 +24,8 @@ export function EaStatsView({ tournamentId }: { tournamentId: string }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setPlayers(await getTournamentEaStats(tournamentId))
+      const result = await getTournamentEaStats(tournamentId)
+      setPlayers(Array.isArray(result) ? result : [])
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar as estatísticas da EA.")
@@ -57,7 +58,7 @@ export function EaStatsView({ tournamentId }: { tournamentId: string }) {
               <tr key={`${player.team?.id}:${player.externalPlayerId ?? player.playerName}`} className="text-gray-300">
                 <td className="px-4 py-3"><div className="flex items-center gap-2"><span className="w-5 text-center font-black text-gray-600">{index + 1}</span><TeamCrest name={player.team?.name} logoUrl={player.team?.logoUrl} size={28} /><div><p className="font-bold text-white">{player.playerName}</p><p className="text-[10px] text-gray-600">{player.team?.name ?? "-"}</p></div></div></td>
                 <td className="px-3 py-3">{player.appearances}</td><td className="px-3 py-3 font-black text-emerald-300">{player.goals}</td><td className="px-3 py-3 text-blue-300">{player.assists}</td><td className="px-3 py-3 font-bold text-white">{player.goalContributions}</td><td className="px-3 py-3">{player.averageRating?.toFixed(1) ?? "-"}</td><td className="px-3 py-3">{player.mvps}</td>
-                <td className="px-4 py-3"><div className="flex flex-wrap gap-1">{player.tags.map((tag) => <span key={tag} className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-300">{TAGS[tag] ?? tag}</span>)}</div></td>
+                <td className="px-4 py-3"><div className="flex flex-wrap gap-1">{(player.tags ?? []).map((tag) => <span key={tag} className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-300">{TAGS[tag] ?? tag}</span>)}</div></td>
               </tr>
             ))}
           </tbody>

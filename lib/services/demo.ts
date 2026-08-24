@@ -81,7 +81,7 @@ export interface DemoEaMatch {
   awayClubName: string
   homeScore: number
   awayScore: number
-  players: unknown[]
+  playersByClub?: Record<string, unknown[]>
 }
 
 export function findDemoEaClub(name: string): Promise<{ externalClubId: string; name: string; platform: string }> {

@@ -277,7 +277,7 @@ export default function DemoLabPage() {
             })} className="w-full bg-cyan-500 text-black hover:bg-cyan-400">
               {busy === "ea-history" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-1.5 h-4 w-4" />} Buscar partidas
             </Button>
-            {eaHistory?.latest && <div className="rounded-lg bg-white/[0.04] p-2 text-[11px] text-gray-300"><b className="text-white">{eaHistory.latest.homeClubName} {eaHistory.latest.homeScore} x {eaHistory.latest.awayScore} {eaHistory.latest.awayClubName}</b><br />EA Match ID: <span className="font-mono">{eaHistory.latest.externalMatchId}</span><br />Jogadores recebidos: {eaHistory.latest.players.length}</div>}
+            {eaHistory?.latest && <div className="rounded-lg bg-white/[0.04] p-2 text-[11px] text-gray-300"><b className="text-white">{eaHistory.latest.homeClubName} {eaHistory.latest.homeScore} x {eaHistory.latest.awayScore} {eaHistory.latest.awayClubName}</b><br />EA Match ID: <span className="font-mono">{eaHistory.latest.externalMatchId}</span><br />Jogadores recebidos: {Object.values(eaHistory.latest.playersByClub ?? {}).reduce((total, players) => total + players.length, 0)}</div>}
           </div>
           <div className="space-y-2 rounded-xl border border-white/[0.07] bg-black/10 p-3">
             <Label>3. Sincronizar com partida do campeonato</Label>
