@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'timbas_token'
 const REFRESH_TOKEN_KEY = 'timbas_refresh_token'
+const IMPERSONATOR_TOKEN_KEY = 'timbas_impersonator_token'
 
 function getCookie(key: string): string | null {
   if (typeof window === 'undefined') return null
@@ -53,6 +54,26 @@ export function isTokenExpired(token: string): boolean {
 export function clearAllTokens() {
   clearToken()
   clearRefreshToken()
+  deleteCookie(IMPERSONATOR_TOKEN_KEY)
+}
+
+export function isImpersonating(): boolean {
+  return Boolean(getCookie(IMPERSONATOR_TOKEN_KEY))
+}
+
+export function beginImpersonation(token: string) {
+  const original = getToken()
+  if (!original) throw new Error('Sessão administrativa não encontrada')
+  setCookie(IMPERSONATOR_TOKEN_KEY, original, 60 * 30)
+  setToken(token)
+}
+
+export function endImpersonation(): boolean {
+  const original = getCookie(IMPERSONATOR_TOKEN_KEY)
+  if (!original) return false
+  setToken(original)
+  deleteCookie(IMPERSONATOR_TOKEN_KEY)
+  return true
 }
 
 export interface TokenPayload {
@@ -63,6 +84,8 @@ export interface TokenPayload {
   sub: string
   discordId?: string
   avatar?: string
+  impersonatedBy?: number
+  impersonatorName?: string
 }
 
 export function getDiscordAvatarUrl(discordId?: string, avatar?: string, size = 128): string | null {

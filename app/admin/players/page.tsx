@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import {
   Search, Trash2, ShieldCheck, ChevronDown,
-  RefreshCw, Users, UserCheck, Bot, Crown, Clock, Wifi,
+  RefreshCw, Users, UserCheck, Bot, Crown, Clock, Wifi, LogIn,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
@@ -15,8 +15,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { getToken, decodeToken } from "@/lib/auth"
-import { adminGetUsers, adminUpdateRole, adminDeleteUser, AdminUser, Role } from "@/lib/services/admin"
+import { beginImpersonation, getToken, decodeToken } from "@/lib/auth"
+import { adminGetUsers, adminUpdateRole, adminDeleteUser, adminImpersonateUser, AdminUser, Role } from "@/lib/services/admin"
 import { toast } from "sonner"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -156,6 +156,18 @@ export default function PlayersPage() {
         description: e instanceof Error ? e.message : undefined,
       })
     } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const impersonate = async (user: AdminUser) => {
+    setActionLoading(user.id)
+    try {
+      const result = await adminImpersonateUser(getToken()!, user.id)
+      beginImpersonation(result.token)
+      window.location.assign('/dashboard')
+    } catch (e: unknown) {
+      toast.error('Não foi possível entrar como usuário', { description: e instanceof Error ? e.message : undefined })
       setActionLoading(null)
     }
   }
@@ -357,6 +369,14 @@ export default function PlayersPage() {
                                     </DropdownMenuItem>
                                   )
                                 })}
+
+                              <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
+
+                              {user.role !== "ADMIN" && user.role !== "BOT" && (
+                                <DropdownMenuItem onClick={() => void impersonate(user)} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-blue-300 focus:bg-blue-500/10 focus:text-blue-200">
+                                  <LogIn className="h-3.5 w-3.5" />Entrar como usuário
+                                </DropdownMenuItem>
+                              )}
 
                               <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
 

@@ -1,8 +1,9 @@
-import { getToken, setToken, clearAllTokens, getRefreshToken, setRefreshToken } from './auth'
+import { getToken, setToken, clearAllTokens, endImpersonation, getRefreshToken, isImpersonating, setRefreshToken } from './auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 async function tryRefresh(): Promise<string | null> {
+  if (isImpersonating()) return null
   const refreshToken = getRefreshToken()
   if (!refreshToken) return null
 
@@ -27,6 +28,10 @@ async function tryRefresh(): Promise<string | null> {
 
 function redirectToLogin() {
   if (typeof window === 'undefined') return
+  if (endImpersonation()) {
+    window.location.href = '/admin/players'
+    return
+  }
   clearAllTokens()
   window.location.href = '/login'
 }

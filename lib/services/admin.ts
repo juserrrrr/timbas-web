@@ -58,3 +58,8 @@ export async function adminDeleteUser(token: string, id: number): Promise<void> 
     throw new Error(body?.message ?? `HTTP ${res.status}`)
   }
 }
+
+export async function adminImpersonateUser(token: string, id: number): Promise<{ token: string; user: { id: number; name: string }; expiresInSeconds: number }> {
+  const res = await fetch(`${API()}/admin/access/users/${id}/impersonate`, { method: 'POST', headers: headers(token) })
+  return handle(res)
+}

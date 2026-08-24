@@ -3,6 +3,7 @@ import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { UserMenu } from "@/components/user-menu"
 import { NavigationProvider } from "@/lib/navigation-context"
+import { ImpersonationBanner } from "@/components/impersonation-banner"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -21,6 +22,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Top bar */}
         <header className="fixed left-0 right-0 top-0 z-40 flex h-14 items-center justify-end gap-2 border-b border-white/[0.07] bg-[#07070c]/85 px-3 shadow-[0_10px_40px_-30px_rgba(59,130,246,0.45)] backdrop-blur-xl sm:gap-3 sm:px-6 md:left-[65px]">
+          <ImpersonationBanner />
           <UserMenu />
         </header>
 
