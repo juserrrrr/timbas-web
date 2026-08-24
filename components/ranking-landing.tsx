@@ -6,9 +6,10 @@ import { Trophy, ArrowRight, Medal, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Spinner } from "@/components/ui/spinner"
-import { getRanking, PlayerStats } from "@/lib/services/ranking"
+import { type PlayerStats } from "@/lib/services/ranking"
+import { getLandingData } from "@/lib/services/landing"
 import { getToken } from "@/lib/auth"
-import { TIMBAS_SERVER_ID, TIMBAS_SERVER_NAME } from "@/lib/servers"
+import { TIMBAS_SERVER_NAME } from "@/lib/servers"
 
 const MEDAL_STYLE = [
   { label: "1º", color: "text-yellow-400", border: "border-yellow-500/40", bg: "bg-yellow-500/10" },
@@ -29,8 +30,8 @@ export function RankingLanding() {
     const load = async () => {
       setIsLoading(true)
       try {
-        const data = await getRanking(token, TIMBAS_SERVER_ID)
-        setPlayers(data)
+        const data = await getLandingData(token)
+        setPlayers(data.players)
       } catch {
         setPlayers([])
       } finally {

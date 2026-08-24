@@ -6,10 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Sparkles, Swords, Users, Server } from "lucide-react"
 import { getToken } from "@/lib/auth"
-import { getRanking } from "@/lib/services/ranking"
-import { getMatchHistory } from "@/lib/services/matches"
-
-const DEFAULT_SERVER = "779382528821166100"
+import { getLandingData } from "@/lib/services/landing"
 
 export function HeroSection() {
   const [totalMatches, setTotalMatches] = useState(0)
@@ -18,12 +15,9 @@ export function HeroSection() {
   useEffect(() => {
     const token = getToken()
     if (!token) return
-    Promise.all([
-      getRanking(token, DEFAULT_SERVER).catch(() => []),
-      getMatchHistory(token, DEFAULT_SERVER).catch(() => []),
-    ]).then(([players, matches]) => {
+    getLandingData(token).then(({ players, totalMatches }) => {
       setTotalPlayers(players.length)
-      setTotalMatches(matches.length)
+      setTotalMatches(totalMatches)
     })
   }, [])
 
