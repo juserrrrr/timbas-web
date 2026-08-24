@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CoinAmount, StatusPill } from "@/components/competitions/shared"
+import { StatusPill } from "@/components/competitions/shared"
 import { removeStaff, setStaff, transferOwnership } from "@/lib/services/tournaments"
 import type { TournamentDetail } from "@/lib/services/tournaments.types"
 
@@ -121,24 +121,6 @@ export function StaffPanel({ tournament, onChanged }: { tournament: TournamentDe
         {error && <p className="mt-2 text-[11px] text-red-400">{error}</p>}
       </Card>
 
-      <Card className="border-white/[0.07] bg-white/[0.025] p-4">
-        <h3 className="mb-3 text-sm font-black text-white">Premiação em moedas</h3>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {[
-            { label: "Vitória", value: tournament.coinsWin },
-            { label: "Empate", value: tournament.coinsDraw },
-            { label: "Participação", value: tournament.coinsLoss },
-          ].map((prize) => (
-            <div key={prize.label} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600">{prize.label}</p>
-              <CoinAmount value={prize.value} className="mt-0.5 text-sm" />
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-[11px] text-gray-600">
-          As moedas são creditadas na carteira de cada jogador do time assim que o resultado é confirmado.
-        </p>
-      </Card>
     </div>
   )
 }

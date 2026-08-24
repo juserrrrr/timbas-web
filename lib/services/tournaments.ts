@@ -25,9 +25,6 @@ export interface CreateTournamentInput {
   legs?: number
   thirdPlace?: boolean
   allowDraws?: boolean
-  coinsWin?: number
-  coinsDraw?: number
-  coinsLoss?: number
   requireProof?: boolean
   autoApproveProof?: boolean
   autoApproveMinConfidence?: number

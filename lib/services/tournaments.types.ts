@@ -97,6 +97,7 @@ export interface TournamentMatch {
   awayScore: number | null
   winnerTeamId: string | null
   status: TournamentMatchStatus
+  readyAt: string | null
   scheduledAt: string | null
   homeGraceUsed: boolean
   awayGraceUsed: boolean
@@ -167,9 +168,6 @@ export interface TournamentDetail extends Omit<TournamentSummary, "owner" | "tea
   pointsWin: number
   pointsDraw: number
   pointsLoss: number
-  coinsWin: number
-  coinsDraw: number
-  coinsLoss: number
   requireProof: boolean
   requireOpponentConfirm: boolean
   woAfterHours: number

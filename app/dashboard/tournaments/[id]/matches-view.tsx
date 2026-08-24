@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Camera, CheckCircle2, Clock, Play } from "lucide-react"
 import { StatusPill, TeamCrest, formatDateTime } from "@/components/competitions/shared"
 import {
@@ -9,6 +10,7 @@ import {
   type TournamentMatch,
   type TournamentMatchStatus,
 } from "@/lib/services/tournaments.types"
+import { matchTiming } from "@/lib/tournament-match-timing"
 
 const TONES: Record<TournamentMatchStatus, "neutral" | "live" | "warn" | "done" | "danger"> = {
   PENDING: "neutral",
@@ -37,6 +39,11 @@ export function MatchesView({
   onSelectMatch: (match: TournamentMatch) => void
   onlyMine?: boolean
 }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
   const visibleMatches = onlyMine
     ? tournament.matches.filter((match) => tournament.access.teamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId))
     : tournament.matches
@@ -70,17 +77,19 @@ export function MatchesView({
                 const isMine = tournament.access.teamIds.some(
                   (id) => id === match.homeTeamId || id === match.awayTeamId,
                 )
+                const timing = matchTiming(match, tournament, now)
 
                 return (
                   <button
                     key={match.id}
                     onClick={() => onSelectMatch(match)}
-                    className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
+                    className={`grid w-full cursor-pointer gap-2 rounded-xl border px-3 py-2.5 text-left transition ${
                       isMine
                         ? "border-amber-500/30 bg-amber-500/[0.05] hover:border-amber-500/50"
                         : "border-white/[0.07] bg-white/[0.02] hover:border-white/20"
                     }`}
                   >
+                    <div className="flex min-w-0 items-center gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       <TeamCrest name={match.homeTeam?.name} logoUrl={match.homeTeam?.logoUrl} size={26} />
                       <span
@@ -119,6 +128,13 @@ export function MatchesView({
                         {MATCH_STATUS_LABELS[match.status]}
                       </StatusPill>
                     </div>
+                    </div>
+                    {timing && (
+                      <div className={`flex items-center justify-between border-t pt-2 text-[10px] font-bold ${timing.expired ? "border-red-500/15 text-red-400" : timing.waiting ? "border-blue-500/15 text-blue-300" : "border-amber-500/15 text-amber-300"}`}>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{timing.label}</span>
+                        <span className="text-gray-600">{match.homeGraceUsed || match.awayGraceUsed ? `${Number(match.homeGraceUsed) + Number(match.awayGraceUsed)} tolerância(s) usada(s)` : "Tolerâncias disponíveis"}</span>
+                      </div>
+                    )}
                   </button>
                 )
               })}

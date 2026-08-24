@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
+  CalendarClock,
   BarChart3,
   Camera,
   GitBranch,
@@ -19,6 +20,7 @@ import {
   UserPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   CompetitionHeader,
   ErrorState,
@@ -27,7 +29,7 @@ import {
   StatusPill,
 } from "@/components/competitions/shared"
 import { ReportResultDialog } from "@/components/competitions/report-result-dialog"
-import { declareWalkover, getTournament, reportResult, startTournament } from "@/lib/services/tournaments"
+import { declareWalkover, getTournament, reportResult, startTournament, updateTournament } from "@/lib/services/tournaments"
 import {
   FORMAT_LABELS,
   GAME_LABELS,
@@ -44,6 +46,7 @@ import { StaffPanel } from "./staff-panel"
 import { StandingsView } from "./standings-view"
 import { TeamsPanel } from "./teams-panel"
 import { EaStatsView } from "./ea-stats-view"
+import { matchTiming } from "@/lib/tournament-match-timing"
 
 const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done" | "danger"> = {
   DRAFT: "neutral",
@@ -67,6 +70,8 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const [photoMatch, setPhotoMatch] = useState<TournamentMatch | null>(null)
   const [starting, setStarting] = useState(false)
   const [notice, setNotice] = useState("")
+  const [now, setNow] = useState(() => Date.now())
+  const [startWhen, setStartWhen] = useState("")
 
   const load = useCallback(async () => {
     try {
@@ -89,6 +94,11 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const tabs = useMemo(() => {
     if (!tournament) return []
@@ -155,7 +165,30 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   ).length
   const myMatches = tournament.matches.filter((match) => tournament.access.teamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId))
   const nextMatch = myMatches.find((match) => match.status === "READY" || match.status === "AWAITING_PROOF" || match.status === "DISPUTED") ?? null
+  const nextMatchTiming = nextMatch ? matchTiming(nextMatch, tournament, now) : null
   const canRegister = (tournament.status === "REGISTRATION" || tournament.status === "DRAFT") && tournament.access.canView && tournament.access.teamIds.length === 0 && tournament.teams.length < tournament.maxTeams
+  const startsAtMs = tournament.startsAt ? new Date(tournament.startsAt).getTime() : null
+  const untilStart = startsAtMs === null ? null : Math.max(0, startsAtMs - now)
+  const countdown = untilStart === null ? null : {
+    days: Math.floor(untilStart / 86_400_000),
+    hours: Math.floor((untilStart % 86_400_000) / 3_600_000),
+    minutes: Math.floor((untilStart % 3_600_000) / 60_000),
+    seconds: Math.floor((untilStart % 60_000) / 1000),
+  }
+
+  const saveStart = async () => {
+    if (!startWhen) return
+    setStarting(true)
+    try {
+      await updateTournament(tournament.id, { startsAt: new Date(startWhen).toISOString() })
+      await load()
+      setNotice("Horário de início definido.")
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "Não foi possível definir o início.")
+    } finally {
+      setStarting(false)
+    }
+  }
 
   return (
     <div className="dashboard-view space-y-6">
@@ -215,9 +248,37 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         </button>
       )}
 
+      <div className={`rounded-2xl border p-4 ${untilStart !== null && untilStart > 0 ? "border-blue-500/30 bg-blue-500/[0.06]" : "border-emerald-500/25 bg-emerald-500/[0.05]"}`}>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${untilStart !== null && untilStart > 0 ? "bg-blue-500/15 text-blue-300" : "bg-emerald-500/15 text-emerald-300"}`}><CalendarClock className="h-5 w-5" /></span>
+            <span>
+              <span className="block text-[10px] font-black uppercase tracking-wider text-gray-500">Início do campeonato</span>
+              <span className="mt-0.5 block text-sm font-black text-white">{tournament.startsAt ? new Date(tournament.startsAt).toLocaleString("pt-BR") : "A organização ainda precisa definir o horário"}</span>
+              <span className="mt-1 block text-[11px] text-gray-500">{tournament.matchWindowMinutes > 0 ? `${tournament.matchWindowMinutes} minutos por confronto · ${tournament.graceMinutes} minutos de tolerância por time` : `${tournament.woAfterHours} horas para cada confronto`}</span>
+            </span>
+          </div>
+          {countdown && untilStart! > 0 ? (
+            <div className="flex items-center gap-1.5 font-mono text-white">
+              {countdown.days > 0 && <span className="rounded-lg bg-black/30 px-2.5 py-2 text-sm font-black">{countdown.days}d</span>}
+              <span className="rounded-lg bg-black/30 px-2.5 py-2 text-sm font-black">{String(countdown.hours).padStart(2, "0")}h</span>
+              <span className="rounded-lg bg-black/30 px-2.5 py-2 text-sm font-black">{String(countdown.minutes).padStart(2, "0")}m</span>
+              <span className="rounded-lg bg-black/30 px-2.5 py-2 text-sm font-black">{String(countdown.seconds).padStart(2, "0")}s</span>
+            </div>
+          ) : tournament.startsAt ? <StatusPill tone="live">Campeonato liberado</StatusPill> : <StatusPill tone="warn">Horário pendente</StatusPill>}
+        </div>
+        <p className="mt-3 border-t border-white/[0.06] pt-3 text-[11px] text-gray-400">A chave pode ser publicada antes. O prazo de uma partida só começa após este horário e quando os dois times daquele confronto estiverem definidos.</p>
+        {!tournament.startsAt && tournament.access.canManage && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-3">
+            <Input type="datetime-local" value={startWhen} onChange={(event) => setStartWhen(event.target.value)} className="h-9 w-60 border-white/10 bg-black/20 text-xs" />
+            <Button size="sm" disabled={!startWhen || starting} onClick={() => void saveStart()} className="h-9 bg-blue-500 px-3 text-xs text-white hover:bg-blue-400">{starting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="mr-1.5 h-3.5 w-3.5" />}Definir início</Button>
+          </div>
+        )}
+      </div>
+
       {nextMatch && (
         <button onClick={() => setSelectedMatch(nextMatch)} className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.06] p-4 text-left transition hover:border-emerald-400/55">
-          <span><span className="block text-[10px] font-black uppercase tracking-wider text-emerald-400">Sua próxima partida está pronta</span><span className="mt-1 block text-sm font-black text-white">{nextMatch.homeTeam?.name} × {nextMatch.awayTeam?.name}</span></span>
+          <span><span className="block text-[10px] font-black uppercase tracking-wider text-emerald-400">Sua próxima partida está pronta</span><span className="mt-1 block text-sm font-black text-white">{nextMatch.homeTeam?.name} × {nextMatch.awayTeam?.name}</span>{nextMatchTiming && <span className={`mt-1 flex items-center gap-1 text-[11px] font-bold ${nextMatchTiming.expired ? "text-red-400" : nextMatchTiming.waiting ? "text-blue-300" : "text-amber-300"}`}><CalendarClock className="h-3 w-3" />{nextMatchTiming.label}</span>}</span>
           <span className="flex flex-shrink-0 items-center rounded-lg bg-emerald-500 px-4 py-2 text-xs font-black text-black"><Play className="mr-1.5 h-4 w-4" />Abrir sala</span>
         </button>
       )}
@@ -296,7 +357,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
             await load()
             setNotice(
               result.autoApproved
-                ? "Resultado confirmado e moedas creditadas."
+                ? "Resultado confirmado."
                 : result.processing
                   ? "Foto recebida. A IA está conferindo o placar em segundo plano."
                 : "Prova enviada. A organização vai revisar o placar.",

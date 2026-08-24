@@ -1,8 +1,10 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Camera, Clock, Crown } from "lucide-react"
 import { StatusPill, TeamCrest, formatDateTime } from "@/components/competitions/shared"
 import type { TournamentDetail, TournamentMatch, TournamentPhase } from "@/lib/services/tournaments.types"
+import { matchTiming } from "@/lib/tournament-match-timing"
 
 const KNOCKOUT_PHASES: TournamentPhase[] = ["WINNERS", "LOSERS", "GRAND_FINAL", "THIRD_PLACE"]
 
@@ -10,14 +12,19 @@ function MatchCard({
   match,
   onSelect,
   highlightTeamIds,
+  tournament,
+  now,
 }: {
   match: TournamentMatch
   onSelect: (match: TournamentMatch) => void
   highlightTeamIds: string[]
+  tournament: TournamentDetail
+  now: number
 }) {
   const finished = match.status === "FINISHED" || match.status === "WALKOVER"
   const isMine = highlightTeamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId)
   const awaiting = match.status === "AWAITING_PROOF"
+  const timing = matchTiming(match, tournament, now)
 
   const side = (team: typeof match.homeTeam, score: number | null, isWinner: boolean) => (
     <div
@@ -62,6 +69,12 @@ function MatchCard({
       {side(match.homeTeam, match.homeScore, match.winnerTeamId === match.homeTeamId)}
       <div className="h-px bg-white/[0.05]" />
       {side(match.awayTeam, match.awayScore, match.winnerTeamId === match.awayTeamId)}
+      {timing && (
+        <div className={`flex items-center justify-between gap-2 border-t px-2.5 py-1.5 text-[9px] font-bold ${timing.expired ? "border-red-500/15 text-red-400" : timing.waiting ? "border-blue-500/15 text-blue-300" : "border-amber-500/15 text-amber-300"}`}>
+          <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" />{timing.label}</span>
+          {(match.homeGraceUsed || match.awayGraceUsed) && <span>+{(Number(match.homeGraceUsed) + Number(match.awayGraceUsed)) * tournament.graceMinutes}m</span>}
+        </div>
+      )}
     </button>
   )
 }
@@ -70,10 +83,14 @@ function BracketColumns({
   matches,
   onSelect,
   highlightTeamIds,
+  tournament,
+  now,
 }: {
   matches: TournamentMatch[]
   onSelect: (match: TournamentMatch) => void
   highlightTeamIds: string[]
+  tournament: TournamentDetail
+  now: number
 }) {
   const rounds = [...new Set(matches.map((match) => match.round))].sort((a, b) => a - b)
 
@@ -91,7 +108,7 @@ function BracketColumns({
             </p>
             <div className="flex flex-1 flex-col justify-around gap-3">
               {roundMatches.map((match) => (
-                <MatchCard key={match.id} match={match} onSelect={onSelect} highlightTeamIds={highlightTeamIds} />
+                <MatchCard key={match.id} match={match} onSelect={onSelect} highlightTeamIds={highlightTeamIds} tournament={tournament} now={now} />
               ))}
             </div>
           </div>
@@ -120,6 +137,11 @@ export function BracketView({
   tournament: TournamentDetail
   onSelectMatch: (match: TournamentMatch) => void
 }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
   const knockout = tournament.matches.filter((match) => KNOCKOUT_PHASES.includes(match.phase))
   if (knockout.length === 0) {
     return (
@@ -156,25 +178,25 @@ export function BracketView({
           title={losers.length > 0 ? "Chave dos vencedores" : "Chave principal"}
           subtitle="Toque em uma partida para lançar ou revisar o resultado"
         >
-          <BracketColumns matches={winners} onSelect={onSelectMatch} highlightTeamIds={highlightTeamIds} />
+          <BracketColumns matches={winners} onSelect={onSelectMatch} highlightTeamIds={highlightTeamIds} tournament={tournament} now={now} />
         </Section>
       )}
 
       {losers.length > 0 && (
         <Section title="Chave dos perdedores" subtitle="Quem cai na chave de cima ainda pode voltar por aqui">
-          <BracketColumns matches={losers} onSelect={onSelectMatch} highlightTeamIds={highlightTeamIds} />
+          <BracketColumns matches={losers} onSelect={onSelectMatch} highlightTeamIds={highlightTeamIds} tournament={tournament} now={now} />
         </Section>
       )}
 
       {grandFinal.length > 0 && (
         <Section title="Grande final">
-          <BracketColumns matches={grandFinal} onSelect={onSelectMatch} highlightTeamIds={highlightTeamIds} />
+          <BracketColumns matches={grandFinal} onSelect={onSelectMatch} highlightTeamIds={highlightTeamIds} tournament={tournament} now={now} />
         </Section>
       )}
 
       {thirdPlace.length > 0 && (
         <Section title="Disputa de 3º lugar">
-          <BracketColumns matches={thirdPlace} onSelect={onSelectMatch} highlightTeamIds={highlightTeamIds} />
+          <BracketColumns matches={thirdPlace} onSelect={onSelectMatch} highlightTeamIds={highlightTeamIds} tournament={tournament} now={now} />
         </Section>
       )}
     </div>

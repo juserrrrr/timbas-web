@@ -68,8 +68,8 @@ export default function SettingsPage() {
         </div>
         <div className="space-y-3 px-5 py-4">
           <p className="text-sm leading-relaxed text-gray-500">
-            Aqui ficam as moedas da sua conta, ganhas em campeonatos. O dinheiro da liga de draft é outro: ele
-            pertence à liga, paga salário e contratação lá dentro, e recomeça a cada draft.
+            Aqui fica o saldo geral da sua conta. O dinheiro da Liga Draft é separado: ele pertence à liga,
+            paga salários e contratações lá dentro, e recomeça a cada draft.
           </p>
           <Link
             href="/dashboard/wallet"

@@ -54,7 +54,7 @@ export default function WalletPage() {
       <CompetitionHeader
         eyebrow="Economia"
         title="Carteira"
-        subtitle="Suas moedas vêm de vitórias, empates e premiações. Use no mercado da Liga Draft."
+        subtitle="Consulte o saldo geral e todo o histórico de movimentações da sua conta."
         icon={Wallet}
       />
 
@@ -77,7 +77,7 @@ export default function WalletPage() {
             <EmptyState
               icon={Coins}
               title="Sua carteira ainda está zerada"
-              description="Jogue um campeonato ou uma rodada da Liga Draft para começar a ganhar moedas."
+              description="As movimentações da sua conta aparecerão aqui quando houver saldo ou ajustes."
             />
           ) : (
             <>

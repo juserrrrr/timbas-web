@@ -101,7 +101,6 @@ export function CreateTournamentDialog({
   const [graceMinutes, setGraceMinutes] = useState(5)
   const [requireProof, setRequireProof] = useState(true)
   const [autoApproveProof, setAutoApproveProof] = useState(true)
-  const [coinsWin, setCoinsWin] = useState(50)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [eaApiEnabled, setEaApiEnabled] = useState(false)
@@ -159,7 +158,6 @@ export function CreateTournamentDialog({
         graceMinutes,
         requireProof: game === "EA_FC" && eaApiEnabled ? false : aiEnabled ? true : requireProof,
         autoApproveProof: game === "EA_FC" && eaApiEnabled ? false : aiEnabled ? autoApproveProof : false,
-        coinsWin,
       })
       onOpenChange(false)
       reset()
@@ -435,19 +433,6 @@ export function CreateTournamentDialog({
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-3"><p className="text-sm font-bold text-amber-200">Resultado manual</p><p className="mt-1 text-[11px] text-gray-500">Como API e IA estão desligadas, um time informa o placar e o adversário confirma.</p></div>
               )}
 
-              <div className="grid gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="coins-win">Moedas por vitória</Label>
-                  <Input
-                    id="coins-win"
-                    type="number"
-                    min={0}
-                    value={coinsWin}
-                    onChange={(event) => setCoinsWin(Number(event.target.value))}
-                    className="border-white/10 bg-white/[0.03]"
-                  />
-                </div>
-              </div>
             </>
           )}
         </div>
@@ -487,7 +472,7 @@ export function CreateTournamentDialog({
           ) : (
             <Button
               onClick={() => void submit()}
-              disabled={busy || name.trim().length < 3}
+              disabled={busy || name.trim().length < 3 || !startsAt}
               className="bg-amber-500 text-black hover:bg-amber-400"
             >
               {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />}

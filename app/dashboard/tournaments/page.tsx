@@ -88,7 +88,7 @@ export default function TournamentsPage() {
       <CompetitionHeader
         eyebrow="Competições"
         title="Campeonatos"
-        subtitle="Monte chaves de qualquer jogo, valide resultados por foto e distribua moedas."
+        subtitle="Monte chaves de qualquer jogo e valide os resultados com segurança."
         icon={Trophy}
         actions={
           <Button onClick={() => setCreating(true)} className="bg-amber-500 text-black hover:bg-amber-400">
@@ -118,7 +118,7 @@ export default function TournamentsPage() {
         <EmptyState
           icon={Trophy}
           title="Nenhum campeonato por aqui"
-          description="Crie o primeiro campeonato. Você escolhe o jogo, o formato da chave e quantas moedas cada resultado vale."
+          description="Crie o primeiro campeonato. Você escolhe o jogo, o formato e o ritmo das partidas."
           action={
             <Button onClick={() => setCreating(true)} className="bg-amber-500 text-black hover:bg-amber-400">
               <Plus className="mr-1.5 h-4 w-4" />
