@@ -28,8 +28,6 @@ export interface CreateTournamentInput {
   coinsWin?: number
   coinsDraw?: number
   coinsLoss?: number
-  coinsChampion?: number
-  coinsRunnerUp?: number
   requireProof?: boolean
   autoApproveProof?: boolean
   autoApproveMinConfidence?: number

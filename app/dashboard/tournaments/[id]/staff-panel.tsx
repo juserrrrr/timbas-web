@@ -128,8 +128,6 @@ export function StaffPanel({ tournament, onChanged }: { tournament: TournamentDe
             { label: "Vitória", value: tournament.coinsWin },
             { label: "Empate", value: tournament.coinsDraw },
             { label: "Participação", value: tournament.coinsLoss },
-            { label: "Campeão", value: tournament.coinsChampion },
-            { label: "Vice", value: tournament.coinsRunnerUp },
           ].map((prize) => (
             <div key={prize.label} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600">{prize.label}</p>

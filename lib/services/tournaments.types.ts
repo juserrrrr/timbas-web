@@ -168,8 +168,6 @@ export interface TournamentDetail extends Omit<TournamentSummary, "owner" | "tea
   coinsWin: number
   coinsDraw: number
   coinsLoss: number
-  coinsChampion: number
-  coinsRunnerUp: number
   requireProof: boolean
   requireOpponentConfirm: boolean
   woAfterHours: number

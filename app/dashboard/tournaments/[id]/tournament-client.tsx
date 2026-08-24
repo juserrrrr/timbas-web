@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   BarChart3,
   Camera,
-  Coins,
   GitBranch,
   ListOrdered,
   Link2,
@@ -204,7 +203,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <StatTile label="Formato" value={FORMAT_LABELS[tournament.format]} icon={GitBranch} accent="text-amber-400" />
         <StatTile
           label="Times"
@@ -218,13 +217,6 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
           hint="encerradas"
           icon={ListOrdered}
           accent="text-blue-400"
-        />
-        <StatTile
-          label="Prêmio do campeão"
-          value={tournament.coinsChampion.toLocaleString("pt-BR")}
-          hint="moedas"
-          icon={Coins}
-          accent="text-amber-400"
         />
       </div>
 
