@@ -13,6 +13,7 @@ function duration(ms: number): string {
 
 export function matchTiming(match: TournamentMatch, tournament: TournamentDetail, now = Date.now()) {
   if (!OPEN.has(match.status) || !match.readyAt) return null
+  if (tournament.matchWindowMinutes > 0 && match.homeReadyAt && match.awayReadyAt) return null
   const readyAt = new Date(match.readyAt).getTime()
   const startsAt = tournament.startsAt ? new Date(tournament.startsAt).getTime() : 0
   const beginsAt = Math.max(readyAt, startsAt)

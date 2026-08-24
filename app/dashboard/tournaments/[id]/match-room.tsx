@@ -16,6 +16,7 @@ import {
   respondMatchSchedule,
   requestTournamentMatchReview,
   requestMatchGrace,
+  setTournamentMatchReady,
   type MatchRoom,
 } from "@/lib/services/tournaments"
 import type { TournamentDetail, TournamentMatch } from "@/lib/services/tournaments.types"
@@ -101,6 +102,16 @@ export function MatchRoomDialog({
   const remaining = remainingLabel(room?.deadlineAt ?? null)
   const quickMode = (room?.matchWindowMinutes ?? tournament.matchWindowMinutes) > 0
   const graceUsed = mySide === "HOME" ? room?.match.homeGraceUsed : mySide === "AWAY" ? room?.match.awayGraceUsed : false
+  const homeReady = Boolean(room?.match.homeReadyAt)
+  const awayReady = Boolean(room?.match.awayReadyAt)
+  const bothReady = homeReady && awayReady
+  const myReady = mySide === "HOME" ? homeReady : mySide === "AWAY" ? awayReady : false
+  const checkInBeginsAt = Math.max(
+    room?.match.readyAt ? new Date(room.match.readyAt).getTime() : 0,
+    tournament.startsAt ? new Date(tournament.startsAt).getTime() : 0,
+  )
+  const checkInOpen = checkInBeginsAt > 0 && Date.now() >= checkInBeginsAt
+  const checkInExpired = Boolean(room?.deadlineAt && Date.now() >= new Date(room.deadlineAt).getTime())
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -205,16 +216,49 @@ export function MatchRoomDialog({
             </div>
           )}
 
-          {!closed && mySide && quickMode && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-3">
+          {!closed && quickMode && room && (
+            <div className={`space-y-3 rounded-xl border p-3 ${bothReady ? "border-emerald-500/25 bg-emerald-500/[0.05]" : "border-amber-500/20 bg-amber-500/[0.05]"}`}>
               <div>
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-300">Confronto rápido</h3>
-                <p className="mt-1 text-[11px] text-gray-400">O prazo começou quando os dois times ficaram definidos. Cada lado pode adicionar {room?.graceMinutes ?? tournament.graceMinutes} minutos uma vez.</p>
+                <h3 className={`text-[11px] font-bold uppercase tracking-[0.14em] ${bothReady ? "text-emerald-300" : "text-amber-300"}`}>
+                  {bothReady ? "Partida liberada" : "Check-in da partida"}
+                </h3>
+                <p className="mt-1 text-[11px] text-gray-400">
+                  {bothReady
+                    ? "Os dois times confirmaram presença. Agora joguem o amistoso e sincronizem o resultado pela EA."
+                    : !checkInOpen
+                      ? "O check-in abre quando este confronto começar."
+                      : `Cada time precisa marcar Pronto antes do prazo. Quem não confirmar perde por W.O. Cada lado pode pedir +${room.graceMinutes} minutos uma vez.`}
+                </p>
               </div>
-              <Button size="sm" variant="outline" disabled={busy !== "" || graceUsed || (room?.graceMinutes ?? 0) <= 0} onClick={() => void run("grace", () => requestMatchGrace(tournament.id, match.id))} className="h-8 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
-                {busy === "grace" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Clock className="mr-1.5 h-3.5 w-3.5" />}
-                {graceUsed ? "Tolerância já usada" : `Pedir +${room?.graceMinutes ?? tournament.graceMinutes} min`}
-              </Button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className={`rounded-lg border px-3 py-2 text-center text-[11px] font-bold ${homeReady ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : "border-white/[0.07] bg-black/20 text-gray-500"}`}>
+                  {home}: {homeReady ? "Pronto" : "Pendente"}
+                </div>
+                <div className={`rounded-lg border px-3 py-2 text-center text-[11px] font-bold ${awayReady ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : "border-white/[0.07] bg-black/20 text-gray-500"}`}>
+                  {away}: {awayReady ? "Pronto" : "Pendente"}
+                </div>
+              </div>
+
+              {mySide && (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    disabled={busy !== "" || bothReady || !checkInOpen || checkInExpired}
+                    onClick={() => void run("ready", () => setTournamentMatchReady(tournament.id, match.id, !myReady))}
+                    className={myReady ? "h-9 border border-white/10 bg-white/[0.06] px-3 text-[11px] text-gray-300 hover:bg-white/[0.1]" : "h-9 bg-emerald-500 px-3 text-[11px] font-bold text-black hover:bg-emerald-400"}
+                  >
+                    {busy === "ready" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+                    {bothReady ? "Os dois estão prontos" : myReady ? "Desmarcar pronto" : "Pronto para jogar"}
+                  </Button>
+                  {!bothReady && (
+                    <Button size="sm" variant="outline" disabled={busy !== "" || graceUsed || room.graceMinutes <= 0 || !checkInOpen || checkInExpired} onClick={() => void run("grace", () => requestMatchGrace(tournament.id, match.id))} className="h-9 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
+                      {busy === "grace" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Clock className="mr-1.5 h-3.5 w-3.5" />}
+                      {graceUsed ? "Tolerância já usada" : `Pedir +${room.graceMinutes} min`}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -225,7 +269,7 @@ export function MatchRoomDialog({
               </p>
               <Button
                 size="sm"
-                disabled={busy !== "" || (!quickMode && !match.scheduledAt)}
+                disabled={busy !== "" || (quickMode ? !bothReady : !match.scheduledAt)}
                 onClick={() => void run("ea", () => checkTournamentEaResult(tournament.id, match.id))}
                 className="h-8 bg-blue-500 px-3 text-[11px] text-white hover:bg-blue-400"
               >

@@ -391,7 +391,7 @@ export function CreateTournamentDialog({
                 </div>
                 {deadlineMode === "FAST" ? (
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5"><Label htmlFor="match-window">Minutos por confronto</Label><Input id="match-window" type="number" min={1} max={10080} value={matchWindowMinutes} onChange={(event) => setMatchWindowMinutes(Number(event.target.value))} className="border-white/10 bg-white/[0.03]" /></div>
+                    <div className="space-y-1.5"><Label htmlFor="match-window">Janela de check-in por confronto</Label><Input id="match-window" type="number" min={1} max={10080} value={matchWindowMinutes} onChange={(event) => setMatchWindowMinutes(Number(event.target.value))} className="border-white/10 bg-white/[0.03]" /><p className="text-[10px] leading-snug text-gray-600">Cada time deve marcar Pronto dentro deste prazo para não perder por W.O.</p></div>
                     <div className="space-y-1.5"><Label htmlFor="grace-window">Tolerância por time</Label><Input id="grace-window" type="number" min={0} max={60} value={graceMinutes} onChange={(event) => setGraceMinutes(Number(event.target.value))} className="border-white/10 bg-white/[0.03]" /></div>
                   </div>
                 ) : (

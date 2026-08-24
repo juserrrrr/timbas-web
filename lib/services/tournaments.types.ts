@@ -99,6 +99,8 @@ export interface TournamentMatch {
   winnerTeamId: string | null
   status: TournamentMatchStatus
   readyAt: string | null
+  homeReadyAt: string | null
+  awayReadyAt: string | null
   scheduledAt: string | null
   homeGraceUsed: boolean
   awayGraceUsed: boolean
@@ -224,6 +226,25 @@ export interface TournamentEaPlayerStats {
   yellowCards: number
   redCards: number
   tags: string[]
+}
+
+export interface TournamentEaAward {
+  key: "ARTILHEIRO" | "GARCOM" | "CRAQUE" | "MAESTRO" | "XERIFE" | "MURALHA"
+  title: string
+  subtitle: string
+  player: TournamentEaPlayerStats
+  value: string
+}
+
+export interface TournamentEaAwardsResponse {
+  source: "EA_API"
+  finalized: boolean
+  criteria: {
+    craqueMinimumAppearances: number
+    craqueMinimumShare: number
+    tieBreakers: string[]
+  }
+  awards: TournamentEaAward[]
 }
 
 export const GAME_LABELS: Record<CompetitionGame, string> = {

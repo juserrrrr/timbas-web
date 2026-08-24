@@ -10,6 +10,7 @@ import type {
   TournamentSummary,
   TournamentTeam,
   TournamentEaPlayerStats,
+  TournamentEaAwardsResponse,
 } from "./tournaments.types"
 
 export interface CreateTournamentInput {
@@ -106,6 +107,10 @@ export function getTournamentEaStats(id: string) {
   return request<TournamentEaPlayerStats[]>(`/tournaments/${id}/ea-stats`)
 }
 
+export function getTournamentEaAwards(id: string) {
+  return request<TournamentEaAwardsResponse>(`/tournaments/${id}/ea-awards`)
+}
+
 export function updateTeam(id: string, teamId: string, input: Record<string, unknown>) {
   return patch<TournamentTeam>(`/tournaments/${id}/teams/${teamId}`, input)
 }
@@ -192,6 +197,10 @@ export function respondMatchSchedule(id: string, matchId: string, accept: boolea
 
 export function requestMatchGrace(id: string, matchId: string) {
   return post(`/tournaments/${id}/matches/${matchId}/grace`)
+}
+
+export function setTournamentMatchReady(id: string, matchId: string, ready: boolean) {
+  return post(`/tournaments/${id}/matches/${matchId}/ready`, { ready })
 }
 
 export function claimMatchResult(id: string, matchId: string, homeScore: number, awayScore: number) {

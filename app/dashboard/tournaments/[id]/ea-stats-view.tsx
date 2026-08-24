@@ -10,8 +10,8 @@ import "@fontsource/graduate"
 import "@fontsource/teko/600.css"
 import { Card } from "@/components/ui/card"
 import { EmptyState, TeamCrest } from "@/components/competitions/shared"
-import { getTournamentEaStats } from "@/lib/services/tournaments"
-import type { TournamentEaPlayerStats } from "@/lib/services/tournaments.types"
+import { getTournamentEaAwards, getTournamentEaStats } from "@/lib/services/tournaments"
+import type { TournamentEaAward, TournamentEaPlayerStats } from "@/lib/services/tournaments.types"
 import { awardCardByTitle, type AwardCardLayoutSettings } from "@/lib/award-card-config"
 import { renderAwardCard } from "@/lib/award-card-render"
 import { getAwardCardSettings } from "@/lib/services/award-cards"
@@ -119,18 +119,23 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
   link.click()
 }
 
-type TournamentAward = {
-  title: string
-  subtitle: string
-  player: TournamentEaPlayerStats
-  value: (player: TournamentEaPlayerStats) => string
+type TournamentAward = TournamentEaAward & {
   icon: typeof Goal
   tone: string
 }
 
+const AWARD_PRESENTATION: Record<TournamentEaAward["key"], Pick<TournamentAward, "icon" | "tone">> = {
+  ARTILHEIRO: { icon: Goal, tone: "from-amber-500/25 to-orange-500/[0.04] border-amber-500/30 text-amber-300" },
+  GARCOM: { icon: Sparkles, tone: "from-blue-500/25 to-cyan-500/[0.04] border-blue-500/30 text-blue-300" },
+  CRAQUE: { icon: Medal, tone: "from-violet-500/25 to-fuchsia-500/[0.04] border-violet-500/30 text-violet-300" },
+  MAESTRO: { icon: Crosshair, tone: "from-emerald-500/25 to-teal-500/[0.04] border-emerald-500/30 text-emerald-300" },
+  XERIFE: { icon: Shield, tone: "from-slate-400/20 to-slate-500/[0.03] border-slate-400/25 text-slate-300" },
+  MURALHA: { icon: Hand, tone: "from-rose-500/20 to-red-500/[0.03] border-rose-500/25 text-rose-300" },
+}
+
 function AwardCardPreview({ award, tournamentId, settings }: { award: TournamentAward; tournamentId: string; settings: AwardCardLayoutSettings }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const achievement = award.value(award.player)
+  const achievement = award.value
   const playerName = award.player.playerName
   const awardTitle = award.title
 
@@ -157,6 +162,7 @@ function AwardCardPreview({ award, tournamentId, settings }: { award: Tournament
 
 export function EaStatsView({ tournamentId, finished = false }: { tournamentId: string; finished?: boolean }) {
   const [players, setPlayers] = useState<TournamentEaPlayerStats[]>([])
+  const [officialAwards, setOfficialAwards] = useState<TournamentEaAward[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [awardSettings, setAwardSettings] = useState<AwardCardLayoutSettings>({})
@@ -164,11 +170,13 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [result, settings] = await Promise.all([
+      const [result, awardResult, settings] = await Promise.all([
         getTournamentEaStats(tournamentId),
+        getTournamentEaAwards(tournamentId),
         getAwardCardSettings().catch(() => ({})),
       ])
       setPlayers(Array.isArray(result) ? result : [])
+      setOfficialAwards(awardResult.awards)
       setAwardSettings(settings)
       setError("")
     } catch (err) {
@@ -186,34 +194,9 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
     return <EmptyState icon={BarChart3} title="Nenhuma estatística sincronizada" description="Depois que alguém checar uma partida na EA, gols, assistências, notas e destaques aparecem aqui." />
   }
 
-  const best = (score: (player: TournamentEaPlayerStats) => number) => [...players].sort((a, b) =>
-    score(b) - score(a)
-    || b.appearances - a.appearances
-    || b.mvps - a.mvps
-    || a.playerName.localeCompare(b.playerName),
-  )[0]
-  const ratedPlayers = players.filter((player) => player.averageRating !== null)
-  const mostRatedAppearances = Math.max(...ratedPlayers.map((player) => player.appearances), 0)
-  const minimumCraqueAppearances = mostRatedAppearances <= 1
-    ? mostRatedAppearances
-    : Math.max(2, Math.ceil(mostRatedAppearances * 0.5))
-  const craque = [...ratedPlayers]
-    .filter((player) => player.appearances >= minimumCraqueAppearances)
-    .sort((a, b) =>
-      (b.averageRating ?? 0) - (a.averageRating ?? 0)
-      || b.appearances - a.appearances
-      || b.mvps - a.mvps
-      || b.goalContributions - a.goalContributions
-      || a.playerName.localeCompare(b.playerName),
-    )[0]
-  const awards: TournamentAward[] = finished ? [
-    { title: "Artilheiro", subtitle: "Maior goleador", player: best((p) => p.goals), value: (p: TournamentEaPlayerStats) => `${p.goals} gols`, icon: Goal, tone: "from-amber-500/25 to-orange-500/[0.04] border-amber-500/30 text-amber-300" },
-    { title: "Garçom", subtitle: "Líder de assistências", player: best((p) => p.assists), value: (p: TournamentEaPlayerStats) => `${p.assists} assistências`, icon: Sparkles, tone: "from-blue-500/25 to-cyan-500/[0.04] border-blue-500/30 text-blue-300" },
-    ...(craque ? [{ title: "Craque do Campeonato", subtitle: `Melhor nota média · mínimo ${minimumCraqueAppearances} ${minimumCraqueAppearances === 1 ? "jogo" : "jogos"}`, player: craque, value: (p: TournamentEaPlayerStats) => `Nota ${p.averageRating?.toFixed(1) ?? "-"}`, icon: Medal, tone: "from-violet-500/25 to-fuchsia-500/[0.04] border-violet-500/30 text-violet-300" }] : []),
-    { title: "Maestro", subtitle: "Mais passes certos", player: best((p) => p.passesCompleted), value: (p: TournamentEaPlayerStats) => `${p.passesCompleted} passes · ${p.passAccuracy?.toFixed(0) ?? 0}%`, icon: Crosshair, tone: "from-emerald-500/25 to-teal-500/[0.04] border-emerald-500/30 text-emerald-300" },
-    { title: "Xerife", subtitle: "Mais desarmes certos", player: best((p) => p.tacklesCompleted), value: (p: TournamentEaPlayerStats) => `${p.tacklesCompleted} desarmes · ${p.tackleSuccess?.toFixed(0) ?? 0}%`, icon: Shield, tone: "from-slate-400/20 to-slate-500/[0.03] border-slate-400/25 text-slate-300" },
-    { title: "Muralha", subtitle: "Maior número de defesas", player: best((p) => p.saves), value: (p: TournamentEaPlayerStats) => `${p.saves} defesas`, icon: Hand, tone: "from-rose-500/20 to-red-500/[0.03] border-rose-500/25 text-rose-300" },
-  ] : []
+  const awards: TournamentAward[] = finished
+    ? officialAwards.map((award) => ({ ...award, ...AWARD_PRESENTATION[award.key] }))
+    : []
 
   return (
     <div className="space-y-4">

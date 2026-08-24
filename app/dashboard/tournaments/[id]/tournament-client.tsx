@@ -262,7 +262,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
             <span>
               <span className="block text-[10px] font-black uppercase tracking-wider text-gray-500">Início do campeonato</span>
               <span className="mt-0.5 block text-sm font-black text-white">{tournament.startsAt ? formatDateTime(tournament.startsAt) : "A organização ainda precisa definir o horário"}</span>
-              <span className="mt-1 block text-[11px] text-gray-500">{tournament.matchWindowMinutes > 0 ? `${tournament.matchWindowMinutes} minutos por confronto · ${tournament.graceMinutes} minutos de tolerância por time` : `${tournament.woAfterHours} horas para cada confronto`}</span>
+              <span className="mt-1 block text-[11px] text-gray-500">{tournament.matchWindowMinutes > 0 ? `${tournament.matchWindowMinutes} minutos para check-in · ${tournament.graceMinutes} minutos de tolerância por time` : `${tournament.woAfterHours} horas para cada confronto`}</span>
             </span>
           </div>
           {countdown && untilStart! > 0 ? (
