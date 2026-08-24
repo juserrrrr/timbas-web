@@ -31,11 +31,16 @@ const ICONS: Record<TournamentMatchStatus, typeof Clock> = {
 export function MatchesView({
   tournament,
   onSelectMatch,
+  onlyMine = false,
 }: {
   tournament: TournamentDetail
   onSelectMatch: (match: TournamentMatch) => void
+  onlyMine?: boolean
 }) {
-  if (tournament.matches.length === 0) {
+  const visibleMatches = onlyMine
+    ? tournament.matches.filter((match) => tournament.access.teamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId))
+    : tournament.matches
+  if (visibleMatches.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center text-sm text-gray-500">
         As partidas são geradas quando o campeonato começa.
@@ -44,7 +49,7 @@ export function MatchesView({
   }
 
   const byRound = new Map<string, TournamentMatch[]>()
-  for (const match of tournament.matches) {
+  for (const match of visibleMatches) {
     const key = `${match.phase}|${match.round}|${match.groupId ?? ""}`
     byRound.set(key, [...(byRound.get(key) ?? []), match])
   }

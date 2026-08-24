@@ -35,6 +35,10 @@ export interface CreateTournamentInput {
   invitedUsernames?: string[]
   registrationEndsAt?: string
   autoStartOnClose?: boolean
+  startsAt?: string
+  woAfterHours?: number
+  matchWindowMinutes?: number
+  graceMinutes?: number
 }
 
 export function listTournaments(params: {
@@ -167,6 +171,8 @@ export interface MatchRoom {
   mySide: "HOME" | "AWAY" | null
   canModerate: boolean
   deadlineAt: string | null
+  matchWindowMinutes: number
+  graceMinutes: number
   requireOpponentConfirm: boolean
   resultMode: "EA_API" | "AI_IMAGE" | "MANUAL"
 }
@@ -185,6 +191,10 @@ export function proposeMatchSchedule(id: string, matchId: string, scheduledAt: s
 
 export function respondMatchSchedule(id: string, matchId: string, accept: boolean) {
   return post(`/tournaments/${id}/matches/${matchId}/propose/respond`, { accept })
+}
+
+export function requestMatchGrace(id: string, matchId: string) {
+  return post(`/tournaments/${id}/matches/${matchId}/grace`)
 }
 
 export function claimMatchResult(id: string, matchId: string, homeScore: number, awayScore: number) {

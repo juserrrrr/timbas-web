@@ -94,6 +94,11 @@ export function CreateTournamentDialog({
   const [thirdPlace, setThirdPlace] = useState(false)
   const [registrationEndsAt, setRegistrationEndsAt] = useState("")
   const [autoStartOnClose, setAutoStartOnClose] = useState(true)
+  const [startsAt, setStartsAt] = useState("")
+  const [deadlineMode, setDeadlineMode] = useState<"FAST" | "FLEXIBLE">("FAST")
+  const [matchWindowMinutes, setMatchWindowMinutes] = useState(10)
+  const [woAfterHours, setWoAfterHours] = useState(72)
+  const [graceMinutes, setGraceMinutes] = useState(5)
   const [requireProof, setRequireProof] = useState(true)
   const [autoApproveProof, setAutoApproveProof] = useState(true)
   const [coinsWin, setCoinsWin] = useState(50)
@@ -148,6 +153,10 @@ export function CreateTournamentDialog({
         thirdPlace: isKnockout ? thirdPlace : false,
         registrationEndsAt: registrationEndsAt ? new Date(registrationEndsAt).toISOString() : undefined,
         autoStartOnClose: registrationEndsAt ? autoStartOnClose : false,
+        startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
+        matchWindowMinutes: deadlineMode === "FAST" ? matchWindowMinutes : 0,
+        woAfterHours: deadlineMode === "FLEXIBLE" ? woAfterHours : 0,
+        graceMinutes,
         requireProof: game === "EA_FC" && eaApiEnabled ? false : aiEnabled ? true : requireProof,
         autoApproveProof: game === "EA_FC" && eaApiEnabled ? false : aiEnabled ? autoApproveProof : false,
         coinsWin,
@@ -170,7 +179,7 @@ export function CreateTournamentDialog({
         if (!next) reset()
       }}
     >
-      <DialogContent className="max-w-xl border-white/10 bg-[#0b0b12]">
+      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto border-white/10 bg-[#0b0b12]">
         <DialogHeader>
           <DialogTitle className="text-white">Criar campeonato</DialogTitle>
           <DialogDescription>
@@ -362,6 +371,29 @@ export function CreateTournamentDialog({
 
           {step === 2 && (
             <>
+              <div className="space-y-2">
+                <Label htmlFor="tournament-starts">Início do campeonato</Label>
+                <Input id="tournament-starts" type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} className="border-white/10 bg-white/[0.03]" />
+                <p className="text-[11px] text-gray-600">A chave pode abrir antes, mas o cronômetro só começa neste horário.</p>
+              </div>
+
+              <div className="space-y-2 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+                <Label>Ritmo das partidas</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Chip active={deadlineMode === "FAST"} onClick={() => setDeadlineMode("FAST")}>Chave rápida</Chip>
+                  <Chip active={deadlineMode === "FLEXIBLE"} onClick={() => setDeadlineMode("FLEXIBLE")}>Prazo amplo</Chip>
+                </div>
+                {deadlineMode === "FAST" ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5"><Label htmlFor="match-window">Minutos por confronto</Label><Input id="match-window" type="number" min={1} max={10080} value={matchWindowMinutes} onChange={(event) => setMatchWindowMinutes(Number(event.target.value))} className="border-white/10 bg-white/[0.03]" /></div>
+                    <div className="space-y-1.5"><Label htmlFor="grace-window">Tolerância por time</Label><Input id="grace-window" type="number" min={0} max={60} value={graceMinutes} onChange={(event) => setGraceMinutes(Number(event.target.value))} className="border-white/10 bg-white/[0.03]" /></div>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5"><Label htmlFor="wo-hours">Horas para jogar</Label><Input id="wo-hours" type="number" min={1} max={720} value={woAfterHours} onChange={(event) => setWoAfterHours(Number(event.target.value))} className="border-white/10 bg-white/[0.03]" /></div>
+                )}
+                <p className="text-[11px] text-gray-500">Na chave rápida, o prazo só começa quando os dois times estiverem definidos. Cada time pode pedir tolerância uma vez por confronto.</p>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="registration-ends">Inscrições abertas até</Label>
                 <Input

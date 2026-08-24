@@ -98,6 +98,8 @@ export interface TournamentMatch {
   winnerTeamId: string | null
   status: TournamentMatchStatus
   scheduledAt: string | null
+  homeGraceUsed: boolean
+  awayGraceUsed: boolean
   playedAt: string | null
   eaMatchId: string | null
   eaVerifiedAt: string | null
@@ -171,6 +173,8 @@ export interface TournamentDetail extends Omit<TournamentSummary, "owner" | "tea
   requireProof: boolean
   requireOpponentConfirm: boolean
   woAfterHours: number
+  matchWindowMinutes: number
+  graceMinutes: number
   autoApproveProof: boolean
   autoApproveMinConfidence: number
   runnerUpTeamId: string | null

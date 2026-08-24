@@ -16,6 +16,7 @@ import {
   Table2,
   Trophy,
   Users,
+  UserPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -52,7 +53,7 @@ const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done
   CANCELLED: "danger",
 }
 
-type TabId = "bracket" | "standings" | "matches" | "teams" | "ea-stats" | "proofs" | "staff"
+type TabId = "bracket" | "standings" | "my-matches" | "matches" | "teams" | "ea-stats" | "proofs" | "staff"
 
 export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const router = useRouter()
@@ -100,6 +101,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     return [
       hasBracket && { id: "bracket" as const, label: "Chave", icon: GitBranch },
       (hasTable || tournament.matches.length === 0) && { id: "standings" as const, label: "Classificação", icon: Table2 },
+      tournament.access.teamIds.length > 0 && { id: "my-matches" as const, label: "Minhas partidas", icon: Play },
       { id: "matches" as const, label: "Partidas", icon: Swords },
       { id: "teams" as const, label: "Times", icon: Users },
       tournament.game === "EA_FC" && { id: "ea-stats" as const, label: "Estatísticas EA", icon: BarChart3 },
@@ -151,6 +153,9 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const finishedMatches = tournament.matches.filter(
     (match) => match.status === "FINISHED" || match.status === "WALKOVER",
   ).length
+  const myMatches = tournament.matches.filter((match) => tournament.access.teamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId))
+  const nextMatch = myMatches.find((match) => match.status === "READY" || match.status === "AWAITING_PROOF" || match.status === "DISPUTED") ?? null
+  const canRegister = (tournament.status === "REGISTRATION" || tournament.status === "DRAFT") && tournament.access.canView && tournament.access.teamIds.length === 0 && tournament.teams.length < tournament.maxTeams
 
   return (
     <div className="dashboard-view space-y-6">
@@ -203,6 +208,20 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         </p>
       )}
 
+      {canRegister && (
+        <button onClick={() => setTab("teams")} className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border border-amber-400/35 bg-gradient-to-r from-amber-500/15 to-orange-500/[0.06] p-4 text-left transition hover:border-amber-400/60">
+          <span><span className="block text-base font-black text-white">Inscreva seu time neste campeonato</span><span className="mt-1 block text-xs text-amber-100/60">Valide seu clube da EA e garanta sua vaga. Cada usuário pode representar somente um time.</span></span>
+          <span className="flex flex-shrink-0 items-center rounded-lg bg-amber-500 px-4 py-2 text-xs font-black text-black"><UserPlus className="mr-1.5 h-4 w-4" />Inscrever meu time</span>
+        </button>
+      )}
+
+      {nextMatch && (
+        <button onClick={() => setSelectedMatch(nextMatch)} className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.06] p-4 text-left transition hover:border-emerald-400/55">
+          <span><span className="block text-[10px] font-black uppercase tracking-wider text-emerald-400">Sua próxima partida está pronta</span><span className="mt-1 block text-sm font-black text-white">{nextMatch.homeTeam?.name} × {nextMatch.awayTeam?.name}</span></span>
+          <span className="flex flex-shrink-0 items-center rounded-lg bg-emerald-500 px-4 py-2 text-xs font-black text-black"><Play className="mr-1.5 h-4 w-4" />Abrir sala</span>
+        </button>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-3">
         <StatTile label="Formato" value={FORMAT_LABELS[tournament.format]} icon={GitBranch} accent="text-amber-400" />
         <StatTile
@@ -242,6 +261,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
 
       {tab === "bracket" && <BracketView tournament={tournament} onSelectMatch={setSelectedMatch} />}
       {tab === "standings" && <StandingsView tournament={tournament} />}
+      {tab === "my-matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} onlyMine />}
       {tab === "matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} />}
       {tab === "teams" && <TeamsPanel tournament={tournament} onChanged={() => void load()} />}
       {tab === "ea-stats" && <EaStatsView tournamentId={tournament.id} />}

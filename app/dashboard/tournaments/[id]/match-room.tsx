@@ -15,6 +15,7 @@ import {
   respondMatchClaim,
   respondMatchSchedule,
   requestTournamentMatchReview,
+  requestMatchGrace,
   type MatchRoom,
 } from "@/lib/services/tournaments"
 import type { TournamentDetail, TournamentMatch } from "@/lib/services/tournaments.types"
@@ -100,6 +101,8 @@ export function MatchRoomDialog({
   const claimed = room?.match.claimedHomeScore !== null && room?.match.claimedHomeScore !== undefined
   const claimIsMine = room?.match.claimedByTeamId === myTeamId
   const remaining = remainingLabel(room?.deadlineAt ?? null)
+  const quickMode = (room?.matchWindowMinutes ?? tournament.matchWindowMinutes) > 0
+  const graceUsed = mySide === "HOME" ? room?.match.homeGraceUsed : mySide === "AWAY" ? room?.match.awayGraceUsed : false
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -146,7 +149,7 @@ export function MatchRoomDialog({
             </p>
           )}
 
-          {!closed && mySide && (
+          {!closed && mySide && !quickMode && (
             <div className="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3">
               <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">Horário</h3>
 
@@ -204,6 +207,19 @@ export function MatchRoomDialog({
             </div>
           )}
 
+          {!closed && mySide && quickMode && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-3">
+              <div>
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-300">Confronto rápido</h3>
+                <p className="mt-1 text-[11px] text-gray-400">O prazo começou quando os dois times ficaram definidos. Cada lado pode adicionar {room?.graceMinutes ?? tournament.graceMinutes} minutos uma vez.</p>
+              </div>
+              <Button size="sm" variant="outline" disabled={busy !== "" || graceUsed || (room?.graceMinutes ?? 0) <= 0} onClick={() => void run("grace", () => requestMatchGrace(tournament.id, match.id))} className="h-8 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
+                {busy === "grace" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Clock className="mr-1.5 h-3.5 w-3.5" />}
+                {graceUsed ? "Tolerância já usada" : `Pedir +${room?.graceMinutes ?? tournament.graceMinutes} min`}
+              </Button>
+            </div>
+          )}
+
           {!closed && room?.resultMode === "EA_API" && (mySide || room?.canModerate) && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-500/15 bg-blue-500/[0.05] p-2.5">
               <p className="text-[11px] text-blue-200">
@@ -211,7 +227,7 @@ export function MatchRoomDialog({
               </p>
               <Button
                 size="sm"
-                disabled={busy !== "" || !match.scheduledAt}
+                disabled={busy !== "" || (!quickMode && !match.scheduledAt)}
                 onClick={() => void run("ea", () => checkTournamentEaResult(tournament.id, match.id))}
                 className="h-8 bg-blue-500 px-3 text-[11px] text-white hover:bg-blue-400"
               >
