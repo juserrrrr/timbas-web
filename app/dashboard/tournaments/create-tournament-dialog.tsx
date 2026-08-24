@@ -125,6 +125,13 @@ export function CreateTournamentDialog({
   const activeGroupCount = pickOption(groupOptions, groupCount, 2)
   const advanceOptions = advancePerGroupOptions(maxTeams, activeGroupCount)
   const activeAdvance = pickOption(advanceOptions, advancePerGroup, 1)
+  const scheduleIssue = !registrationEndsAt
+    ? "Defina o fim das inscrições."
+    : !startsAt
+      ? "Defina o início do campeonato."
+      : new Date(startsAt).getTime() <= new Date(registrationEndsAt).getTime()
+        ? "O campeonato precisa começar depois do fim das inscrições."
+        : ""
 
   const reset = () => {
     setStep(0)
@@ -370,7 +377,7 @@ export function CreateTournamentDialog({
           {step === 2 && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="tournament-starts">Início do campeonato</Label>
+                <Label htmlFor="tournament-starts">Início do campeonato <span className="text-red-400">*</span></Label>
                 <Input id="tournament-starts" type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} className="border-white/10 bg-white/[0.03]" />
                 <p className="text-[11px] text-gray-600">A chave pode abrir antes, mas o cronômetro só começa neste horário.</p>
               </div>
@@ -393,7 +400,7 @@ export function CreateTournamentDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="registration-ends">Inscrições abertas até</Label>
+                <Label htmlFor="registration-ends">Inscrições abertas até <span className="text-red-400">*</span></Label>
                 <Input
                   id="registration-ends"
                   type="datetime-local"
@@ -402,7 +409,7 @@ export function CreateTournamentDialog({
                   className="border-white/10 bg-white/[0.03]"
                 />
                 <p className="text-[11px] text-gray-600">
-                  Deixe vazio para fechar as inscrições na mão quando quiser.
+                  Obrigatório. Depois desse horário não entram novos times.
                 </p>
               </div>
 
@@ -432,6 +439,8 @@ export function CreateTournamentDialog({
               /></> : (
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-3"><p className="text-sm font-bold text-amber-200">Resultado manual</p><p className="mt-1 text-[11px] text-gray-500">Como API e IA estão desligadas, um time informa o placar e o adversário confirma.</p></div>
               )}
+
+              {scheduleIssue && <p className="rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-[11px] font-bold text-red-300">{scheduleIssue}</p>}
 
             </>
           )}
@@ -472,7 +481,7 @@ export function CreateTournamentDialog({
           ) : (
             <Button
               onClick={() => void submit()}
-              disabled={busy || name.trim().length < 3 || !startsAt}
+              disabled={busy || name.trim().length < 3 || Boolean(scheduleIssue)}
               className="bg-amber-500 text-black hover:bg-amber-400"
             >
               {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />}
