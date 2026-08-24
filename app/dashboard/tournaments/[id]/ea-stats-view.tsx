@@ -142,12 +142,12 @@ function AwardCardPreview({ award, tournamentId, settings }: { award: Tournament
   }, [achievement, awardTitle, playerName, settings, tournamentId])
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-black/30 p-2 shadow-2xl">
-      <canvas ref={canvasRef} className="aspect-[3/4] w-full rounded-xl object-contain" aria-label={`${award.title}: ${award.player.playerName}`} />
+    <article className="group relative overflow-hidden rounded-[26px] bg-black shadow-[0_18px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 transition duration-300 hover:-translate-y-1 hover:ring-amber-400/30">
+      <canvas ref={canvasRef} className="block aspect-[4/5] w-full object-cover" aria-label={`${award.title}: ${award.player.playerName}`} />
       <button
         type="button"
         onClick={() => void downloadAwardPng(award.title, award.subtitle, award.player, achievement, tournamentId, settings)}
-        className="absolute bottom-4 right-4 flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/15 bg-black/80 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur transition hover:border-amber-400/60 hover:text-amber-300"
+        className="absolute bottom-3 right-3 flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/15 bg-black/80 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white shadow-lg backdrop-blur transition hover:border-amber-400/60 hover:text-amber-300"
       >
         <Download className="h-3.5 w-3.5" /> Baixar PNG
       </button>
