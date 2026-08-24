@@ -295,7 +295,7 @@ export default function DemoLabPage() {
             })} className="w-full bg-emerald-500 text-black hover:bg-emerald-400">
               {busy === "ea-prepare" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />} Preparar teste como jogador
             </Button>
-            {preparedMatchId && <Link href={`/dashboard/tournaments/${eaTournamentId.trim()}`} className="block rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-xs font-bold text-blue-300">Abrir campeonato e jogar o teste</Link>}
+            {preparedMatchId && <Link href={`/dashboard/tournaments/${eaTournamentId.trim()}?match=${encodeURIComponent(preparedMatchId)}&lab=ea`} className="block rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-xs font-bold text-blue-300">Abrir diretamente a partida [LAB]</Link>}
           </div>
         </div>
       </Card>

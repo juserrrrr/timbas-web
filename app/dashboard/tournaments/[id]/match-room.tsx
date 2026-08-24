@@ -202,7 +202,7 @@ export function MatchRoomDialog({
             </div>
           )}
 
-          {!closed && tournament.game === "EA_FC" && (mySide || room?.canModerate) && (
+          {!closed && room?.resultMode === "EA_API" && (mySide || room?.canModerate) && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-500/15 bg-blue-500/[0.05] p-2.5">
               <p className="text-[11px] text-blue-200">
                 Terminou o amistoso? Busque placar e estatísticas dos jogadores direto na EA.
@@ -219,7 +219,14 @@ export function MatchRoomDialog({
             </div>
           )}
 
-          {!closed && mySide && (
+          {!closed && mySide && room?.resultMode === "AI_IMAGE" && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-500/15 bg-violet-500/[0.04] p-3">
+              <div><h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-violet-300">Resultado por IA</h3><p className="mt-1 text-[11px] text-gray-500">Envie a tela final da partida. O placar será lido e validado pela IA.</p></div>
+              <Button size="sm" variant="outline" onClick={onOpenPhoto} className="h-9 border-violet-500/25 px-3 text-[12px] text-violet-300 hover:bg-violet-500/10"><Camera className="mr-1.5 h-3.5 w-3.5" />Enviar imagem</Button>
+            </div>
+          )}
+
+          {!closed && mySide && room?.resultMode === "MANUAL" && (
             <div className="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3">
               <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">Resultado</h3>
 
@@ -285,15 +292,6 @@ export function MatchRoomDialog({
                       className="h-9 bg-amber-500 px-3 text-[12px] text-black hover:bg-amber-400"
                     >
                       Informar placar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={onOpenPhoto}
-                      className="h-9 px-3 text-[12px]"
-                    >
-                      <Camera className="mr-1.5 h-3.5 w-3.5" />
-                      Com foto
                     </Button>
                   </div>
                   <p className="text-[11px] leading-snug text-gray-600">

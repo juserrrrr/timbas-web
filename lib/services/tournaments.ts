@@ -158,6 +158,7 @@ export interface MatchRoom {
   canModerate: boolean
   deadlineAt: string | null
   requireOpponentConfirm: boolean
+  resultMode: "EA_API" | "AI_IMAGE" | "MANUAL"
 }
 
 export function getMatchRoom(id: string, matchId: string): Promise<MatchRoom> {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
   BarChart3,
@@ -57,6 +57,8 @@ type TabId = "bracket" | "standings" | "matches" | "teams" | "ea-stats" | "proof
 
 export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const requestedMatchId = searchParams.get("match")
   const [tournament, setTournament] = useState<TournamentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -70,7 +72,11 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     try {
       const next = await getTournament(tournamentId)
       setTournament(next)
-      setSelectedMatch((current) => current ? next.matches.find((match) => match.id === current.id) ?? null : null)
+      setSelectedMatch((current) => {
+        const id = current?.id ?? requestedMatchId
+        return id ? next.matches.find((match) => match.id === id) ?? null : null
+      })
+      if (requestedMatchId) setTab("matches")
       setPhotoMatch((current) => current ? next.matches.find((match) => match.id === current.id) ?? null : null)
       setError("")
     } catch (err) {
@@ -78,7 +84,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     } finally {
       setLoading(false)
     }
-  }, [tournamentId])
+  }, [requestedMatchId, tournamentId])
 
   useEffect(() => {
     void load()
