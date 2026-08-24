@@ -186,11 +186,30 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
     return <EmptyState icon={BarChart3} title="Nenhuma estatística sincronizada" description="Depois que alguém checar uma partida na EA, gols, assistências, notas e destaques aparecem aqui." />
   }
 
-  const best = (score: (player: TournamentEaPlayerStats) => number) => [...players].sort((a, b) => score(b) - score(a))[0]
+  const best = (score: (player: TournamentEaPlayerStats) => number) => [...players].sort((a, b) =>
+    score(b) - score(a)
+    || b.appearances - a.appearances
+    || b.mvps - a.mvps
+    || a.playerName.localeCompare(b.playerName),
+  )[0]
+  const ratedPlayers = players.filter((player) => player.averageRating !== null)
+  const mostRatedAppearances = Math.max(...ratedPlayers.map((player) => player.appearances), 0)
+  const minimumCraqueAppearances = mostRatedAppearances <= 1
+    ? mostRatedAppearances
+    : Math.max(2, Math.ceil(mostRatedAppearances * 0.5))
+  const craque = [...ratedPlayers]
+    .filter((player) => player.appearances >= minimumCraqueAppearances)
+    .sort((a, b) =>
+      (b.averageRating ?? 0) - (a.averageRating ?? 0)
+      || b.appearances - a.appearances
+      || b.mvps - a.mvps
+      || b.goalContributions - a.goalContributions
+      || a.playerName.localeCompare(b.playerName),
+    )[0]
   const awards: TournamentAward[] = finished ? [
     { title: "Artilheiro", subtitle: "Maior goleador", player: best((p) => p.goals), value: (p: TournamentEaPlayerStats) => `${p.goals} gols`, icon: Goal, tone: "from-amber-500/25 to-orange-500/[0.04] border-amber-500/30 text-amber-300" },
     { title: "Garçom", subtitle: "Líder de assistências", player: best((p) => p.assists), value: (p: TournamentEaPlayerStats) => `${p.assists} assistências`, icon: Sparkles, tone: "from-blue-500/25 to-cyan-500/[0.04] border-blue-500/30 text-blue-300" },
-    { title: "Craque do Campeonato", subtitle: "Melhor nota média", player: best((p) => p.averageRating ?? 0), value: (p: TournamentEaPlayerStats) => `Nota ${p.averageRating?.toFixed(1) ?? "-"}`, icon: Medal, tone: "from-violet-500/25 to-fuchsia-500/[0.04] border-violet-500/30 text-violet-300" },
+    ...(craque ? [{ title: "Craque do Campeonato", subtitle: `Melhor nota média · mínimo ${minimumCraqueAppearances} ${minimumCraqueAppearances === 1 ? "jogo" : "jogos"}`, player: craque, value: (p: TournamentEaPlayerStats) => `Nota ${p.averageRating?.toFixed(1) ?? "-"}`, icon: Medal, tone: "from-violet-500/25 to-fuchsia-500/[0.04] border-violet-500/30 text-violet-300" }] : []),
     { title: "Maestro", subtitle: "Mais passes certos", player: best((p) => p.passesCompleted), value: (p: TournamentEaPlayerStats) => `${p.passesCompleted} passes · ${p.passAccuracy?.toFixed(0) ?? 0}%`, icon: Crosshair, tone: "from-emerald-500/25 to-teal-500/[0.04] border-emerald-500/30 text-emerald-300" },
     { title: "Xerife", subtitle: "Mais desarmes certos", player: best((p) => p.tacklesCompleted), value: (p: TournamentEaPlayerStats) => `${p.tacklesCompleted} desarmes · ${p.tackleSuccess?.toFixed(0) ?? 0}%`, icon: Shield, tone: "from-slate-400/20 to-slate-500/[0.03] border-slate-400/25 text-slate-300" },
     { title: "Muralha", subtitle: "Maior número de defesas", player: best((p) => p.saves), value: (p: TournamentEaPlayerStats) => `${p.saves} defesas`, icon: Hand, tone: "from-rose-500/20 to-red-500/[0.03] border-rose-500/25 text-rose-300" },
