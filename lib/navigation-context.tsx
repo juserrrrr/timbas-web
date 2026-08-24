@@ -8,15 +8,16 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
 import { useRouter } from "next/navigation"
 import { LoadingState } from "@/components/ui/loading-state"
 
-type NavCtx = { navigate: (href: string) => void; setRouteLoading: (v: boolean) => void }
+type NavCtx = { navigate: (href: string) => void; prepare: (href: string) => void; setRouteLoading: (v: boolean) => void }
 
-const NavigationContext = createContext<NavCtx>({ navigate: () => {}, setRouteLoading: () => {} })
+const NavigationContext = createContext<NavCtx>({ navigate: () => {}, prepare: () => {}, setRouteLoading: () => {} })
 
 // useLayoutEffect warns during SSR; loading.tsx renders on the server on hard loads
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect
@@ -25,6 +26,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [pending, startTransition] = useTransition()
   const [routeLoading, setRouteLoading] = useState(false)
   const router = useRouter()
+  const prepared = useRef(new Set<string>())
 
   const navigate = useCallback((href: string) => {
     startTransition(() => {
@@ -32,7 +34,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     })
   }, [router])
 
-  const value = useMemo(() => ({ navigate, setRouteLoading }), [navigate])
+  const prepare = useCallback((href: string) => {
+    if (prepared.current.has(href)) return
+    prepared.current.add(href)
+    router.prefetch(href)
+  }, [router])
+
+  const value = useMemo(() => ({ navigate, prepare, setRouteLoading }), [navigate, prepare])
 
   // pending: client transition via navigate(), routeLoading: route segment suspended (loading.tsx)
   const visible = pending || routeLoading

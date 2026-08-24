@@ -173,7 +173,7 @@ export default function TournamentsPage() {
             <Link
               key={tournament.id}
               href={`/dashboard/tournaments/${tournament.id}`}
-              prefetch
+              prefetch={false}
               className="text-left"
             >
               <Card className="h-full border-white/[0.07] bg-white/[0.025] p-5 transition hover:border-amber-500/30 hover:bg-amber-500/[0.04]">

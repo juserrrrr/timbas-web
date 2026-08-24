@@ -213,6 +213,21 @@
   }
 }
 
+@keyframes award-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.award-card-enter {
+  animation: award-card-enter 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @layer components {
   .dashboard-view {
     width: 100%;
@@ -280,7 +295,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .dashboard-view,
-  .dashboard-view > * {
+  .dashboard-view > *,
+  .award-card-enter {
     animation: none !important;
   }
 
