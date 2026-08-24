@@ -21,6 +21,7 @@ import {
 import { AWARD_FONT_WEIGHT, renderAwardCard } from "@/lib/award-card-render"
 import { createCenteredAwardQr } from "@/lib/award-qr"
 import { getAdminAwardCardSettings, saveAdminAwardCardSettings } from "@/lib/services/award-cards"
+import { publicTournamentUrl } from "@/lib/public-site-url"
 
 type EditableElement = "nick" | "stat" | "qr"
 
@@ -51,7 +52,7 @@ export function AwardCardStudio() {
   const weight = AWARD_FONT_WEIGHT[layout.font]
 
   useEffect(() => {
-    setQrUrl(`${window.location.origin}/dashboard/tournaments/exemplo`)
+    setQrUrl(publicTournamentUrl("exemplo"))
     void getAdminAwardCardSettings().then((saved) => {
       setLayouts((current) => ({ ...current, ...saved }))
     }).catch(() => setNotice("Usando os ajustes padrão; a API de layouts não respondeu."))

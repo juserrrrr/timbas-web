@@ -15,6 +15,7 @@ import type { TournamentEaPlayerStats } from "@/lib/services/tournaments.types"
 import { awardCardByTitle, type AwardCardLayoutSettings } from "@/lib/award-card-config"
 import { renderAwardCard } from "@/lib/award-card-render"
 import { getAwardCardSettings } from "@/lib/services/award-cards"
+import { publicTournamentUrl } from "@/lib/public-site-url"
 
 const TAGS: Record<string, string> = {
   MVP: "MVP",
@@ -29,7 +30,7 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
   const template = awardCardByTitle(title, settings)
   if (template) {
     const output = document.createElement("canvas")
-    await renderAwardCard(output, template, player.playerName, value, `${window.location.origin}/t/${tournamentId}`)
+    await renderAwardCard(output, template, player.playerName, value, publicTournamentUrl(tournamentId))
     const download = document.createElement("a")
     download.download = `${title}-${player.playerName}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase() + ".png"
     download.href = output.toDataURL("image/png", 1)
@@ -137,7 +138,7 @@ function AwardCardPreview({ award, tournamentId, settings }: { award: Tournament
     const template = awardCardByTitle(awardTitle, settings)
     const canvas = canvasRef.current
     if (!template || !canvas) return
-    void renderAwardCard(canvas, template, playerName, achievement, `${window.location.origin}/t/${tournamentId}`)
+    void renderAwardCard(canvas, template, playerName, achievement, publicTournamentUrl(tournamentId))
   }, [achievement, awardTitle, playerName, settings, tournamentId])
 
   return (
