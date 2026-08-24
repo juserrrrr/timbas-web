@@ -83,7 +83,7 @@ export function DashboardHeader() {
                 className="mx-2 rounded-lg text-red-400 transition-all hover:bg-red-500/10 hover:text-red-400 focus:bg-red-500/10 focus:text-red-400"
                 asChild
               >
-                <Link href="/login" className="flex items-center">
+                <Link href="/dashboard" className="flex items-center">
                   <LogOut className="mr-3 h-4 w-4" />
                   Sair
                 </Link>

@@ -52,7 +52,7 @@ export function HeroSection() {
                 asChild
                 className="group h-12 bg-blue-600 px-7 text-base font-semibold hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
               >
-                <Link href="/login">
+                <Link href="/dashboard">
                   Entrar com Discord
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>

@@ -75,7 +75,7 @@ export function Header() {
             Dashboard
           </Link>
           <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20 font-semibold px-4">
-            <Link href="/login">Entrar com Discord</Link>
+            <Link href="/dashboard">Entrar com Discord</Link>
           </Button>
         </div>
       </div>

@@ -28,7 +28,7 @@ export function Footer() {
               <li><a href="#features" className="cursor-pointer hover:text-white transition-colors">Features</a></li>
               <li><a href="#how-it-works" className="cursor-pointer hover:text-white transition-colors">Como Funciona</a></li>
               <li><a href="#commands" className="cursor-pointer hover:text-white transition-colors">Comandos</a></li>
-              <li><Link href="/login" className="cursor-pointer hover:text-white transition-colors">Dashboard</Link></li>
+              <li><Link href="/dashboard" className="cursor-pointer hover:text-white transition-colors">Dashboard</Link></li>
             </ul>
           </div>
 

@@ -27,7 +27,7 @@ function NavLink({
   expanded: boolean
   onNavigate: () => void
 }) {
-  const { navigate, prepare } = useNavigation()
+  const { navigate } = useNavigation()
   const accent = ACCENTS[item.accent]
 
   const link = (
@@ -35,8 +35,6 @@ function NavLink({
       href={item.href}
       prefetch={false}
       aria-label={item.label}
-      onPointerEnter={() => prepare(item.href)}
-      onFocus={() => prepare(item.href)}
       onClick={(event) => {
         event.preventDefault()
         onNavigate()

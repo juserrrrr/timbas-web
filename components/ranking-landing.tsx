@@ -100,7 +100,7 @@ export function RankingLanding() {
                 Faça login com seu Discord para ver o ranking completo com dados reais.
               </p>
               <Button asChild className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30">
-                <Link href="/login">
+                <Link href="/dashboard">
                   Entrar com Discord
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
