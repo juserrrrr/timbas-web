@@ -421,7 +421,7 @@ export default function DemoLabPage() {
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Operação real · modo debug</p>
             <h3 className="mt-1 text-base font-black text-white">Corujão ao vivo, passo a passo</h3>
-            <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-gray-400">Cadastre clubes reais sem usuário responsável, monte os grupos manualmente e sincronize cada amistoso pela EA. Este modo não possui check-in, tolerância, timeout ou W.O. automático.</p>
+            <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-gray-400">Cadastre clubes reais sem usuário responsável, monte os grupos manualmente e sincronize cada amistoso pela EA. Este modo não possui check-in, tolerância, timeout ou W.O. automático; o admin ainda pode aplicar W.O. manual na sala da partida.</p>
           </div>
           <div className="flex min-w-0 gap-2 lg:w-[420px]">
             <input value={liveTournamentId} onChange={(event) => setLiveTournamentId(event.target.value)} placeholder="ID de uma operação existente" className="h-9 min-w-0 flex-1 rounded-lg border border-white/10 bg-black/25 px-3 font-mono text-[11px] text-white outline-none focus:border-cyan-400/50" />

@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { CalendarClock, Camera, Check, Clock, DatabaseZap, Loader2, Send, TriangleAlert, X } from "lucide-react"
+import { CalendarClock, Camera, Check, Clock, DatabaseZap, Loader2, Send, TriangleAlert, UserX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -275,6 +275,19 @@ export function MatchRoomDialog({
               >
                 {busy === "ea" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="mr-1.5 h-3.5 w-3.5" />}
                 Checar na EA
+              </Button>
+            </div>
+          )}
+
+          {!closed && tournament.labMode && room?.canModerate && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-500/20 bg-red-500/[0.045] p-2.5">
+              <div>
+                <p className="text-[11px] font-bold text-red-200">Um dos clubes não disputou a partida?</p>
+                <p className="mt-0.5 text-[10px] text-gray-600">O W.O. é aplicado somente pelo admin, sem prazo automático.</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={onOpenPhoto} className="h-8 border-red-500/25 px-3 text-[11px] text-red-300 hover:bg-red-500/10">
+                <UserX className="mr-1.5 h-3.5 w-3.5" />
+                Aplicar W.O. manual
               </Button>
             </div>
           )}

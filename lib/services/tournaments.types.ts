@@ -162,6 +162,7 @@ export interface TournamentAccess {
 }
 
 export interface TournamentDetail extends Omit<TournamentSummary, "owner" | "teamCount" | "matchCount"> {
+  labMode: boolean
   teamSize: number
   groupCount: number
   advancePerGroup: number
