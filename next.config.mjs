@@ -6,7 +6,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    localPatterns: [{ pathname: '/images/awards/**' }],
+    localPatterns: [
+      { pathname: '/images/awards/**' },
+      { pathname: '/OIG.kjxVRTfiWRNi.jpg' },
+      { pathname: '/timbasBot.png' },
+    ],
     remotePatterns: [
       { protocol: 'https', hostname: 'cdn.discordapp.com' },
       { protocol: 'https', hostname: 'ddragon.leagueoflegends.com' },
