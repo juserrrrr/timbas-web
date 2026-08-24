@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { BarChart3, Crosshair, Download, Goal, Hand, Loader2, Medal, Shield, Sparkles } from "lucide-react"
 import "@fontsource/anton"
 import "@fontsource/tourney/600.css"
@@ -118,6 +118,39 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
   link.click()
 }
 
+type TournamentAward = {
+  title: string
+  subtitle: string
+  player: TournamentEaPlayerStats
+  value: (player: TournamentEaPlayerStats) => string
+  icon: typeof Goal
+  tone: string
+}
+
+function AwardCardPreview({ award, tournamentId, settings }: { award: TournamentAward; tournamentId: string; settings: AwardCardLayoutSettings }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const template = awardCardByTitle(award.title, settings)
+    const canvas = canvasRef.current
+    if (!template || !canvas) return
+    void renderAwardCard(canvas, template, award.player.playerName, award.value(award.player), `${window.location.origin}/t/${tournamentId}`)
+  }, [award, settings, tournamentId])
+
+  return (
+    <article className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-black/30 p-2 shadow-2xl">
+      <canvas ref={canvasRef} className="aspect-[3/4] w-full rounded-xl object-contain" aria-label={`${award.title}: ${award.player.playerName}`} />
+      <button
+        type="button"
+        onClick={() => void downloadAwardPng(award.title, award.subtitle, award.player, award.value(award.player), tournamentId, settings)}
+        className="absolute bottom-4 right-4 flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/15 bg-black/80 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur transition hover:border-amber-400/60 hover:text-amber-300"
+      >
+        <Download className="h-3.5 w-3.5" /> Baixar PNG
+      </button>
+    </article>
+  )
+}
+
 export function EaStatsView({ tournamentId, finished = false }: { tournamentId: string; finished?: boolean }) {
   const [players, setPlayers] = useState<TournamentEaPlayerStats[]>([])
   const [loading, setLoading] = useState(true)
@@ -150,7 +183,7 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
   }
 
   const best = (score: (player: TournamentEaPlayerStats) => number) => [...players].sort((a, b) => score(b) - score(a))[0]
-  const awards = finished ? [
+  const awards: TournamentAward[] = finished ? [
     { title: "Artilheiro", subtitle: "Maior goleador", player: best((p) => p.goals), value: (p: TournamentEaPlayerStats) => `${p.goals} gols`, icon: Goal, tone: "from-amber-500/25 to-orange-500/[0.04] border-amber-500/30 text-amber-300" },
     { title: "Garçom", subtitle: "Líder de assistências", player: best((p) => p.assists), value: (p: TournamentEaPlayerStats) => `${p.assists} assistências`, icon: Sparkles, tone: "from-blue-500/25 to-cyan-500/[0.04] border-blue-500/30 text-blue-300" },
     { title: "Craque do Campeonato", subtitle: "Melhor nota média", player: best((p) => p.averageRating ?? 0), value: (p: TournamentEaPlayerStats) => `Nota ${p.averageRating?.toFixed(1) ?? "-"}`, icon: Medal, tone: "from-violet-500/25 to-fuchsia-500/[0.04] border-violet-500/30 text-violet-300" },
@@ -161,7 +194,7 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
 
   return (
     <div className="space-y-4">
-      {awards.length > 0 && <div><div className="mb-3"><h3 className="text-lg font-black text-white">Seleção do campeonato</h3><p className="text-[11px] text-gray-500">Prêmios oficiais calculados com os dados sincronizados da EA.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{awards.map((award) => <div key={award.title} className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 ${award.tone}`}><award.icon className="absolute right-3 top-3 h-12 w-12 opacity-10" /><button type="button" onClick={() => void downloadAwardPng(award.title, award.subtitle, award.player, award.value(award.player), tournamentId, awardSettings)} className="absolute bottom-3 right-3 z-10 cursor-pointer rounded-lg border border-white/10 bg-black/30 p-2 text-gray-400 transition hover:text-white" title="Baixar card em PNG"><Download className="h-3.5 w-3.5" /></button><p className="text-[10px] font-black uppercase tracking-[0.18em]">{award.title}</p><p className="mt-0.5 text-[10px] text-gray-500">{award.subtitle}</p><div className="mt-5 flex items-center gap-3"><TeamCrest name={award.player.team?.name} logoUrl={award.player.team?.logoUrl} size={38} /><div className="min-w-0"><p className="truncate text-base font-black text-white">{award.player.playerName}</p><p className="text-[10px] text-gray-500">{award.player.team?.name ?? "Sem time"}</p></div></div><p className="mt-4 border-t border-white/10 pt-3 pr-10 text-xl font-black text-white">{award.value(award.player)}</p></div>)}</div></div>}
+      {awards.length > 0 && <section className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">Premiação oficial</p><h3 className="mt-1 text-xl font-black text-white">Seleção do campeonato</h3><p className="mt-1 text-[11px] text-gray-400">Cada carta usa todas as partidas e estatísticas sincronizadas durante o campeonato inteiro, não somente a final.</p></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{awards.map((award) => <AwardCardPreview key={award.title} award={award} tournamentId={tournamentId} settings={awardSettings} />)}</div></section>}
     <Card className="overflow-hidden border-white/[0.07] bg-white/[0.025]">
       <div className="border-b border-white/[0.06] p-4">
         <h3 className="flex items-center gap-2 text-sm font-black text-white"><Medal className="h-4 w-4 text-amber-400" />Estatísticas do campeonato</h3>

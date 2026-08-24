@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
@@ -74,11 +74,16 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const [notice, setNotice] = useState("")
   const [now, setNow] = useState(() => Date.now())
   const [startWhen, setStartWhen] = useState("")
+  const initialTabChosen = useRef(false)
 
   const load = useCallback(async () => {
     try {
       const next = await getTournament(tournamentId)
       setTournament(next)
+      if (!initialTabChosen.current && !requestedMatchId && next.status === "FINISHED" && next.game === "EA_FC") {
+        setTab("ea-stats")
+      }
+      initialTabChosen.current = true
       setSelectedMatch((current) => {
         const id = current?.id ?? requestedMatchId
         return id ? next.matches.find((match) => match.id === id) ?? null : null
@@ -116,7 +121,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
       tournament.access.teamIds.length > 0 && { id: "my-matches" as const, label: "Minhas partidas", icon: Play },
       { id: "matches" as const, label: "Partidas", icon: Swords },
       { id: "teams" as const, label: "Times", icon: Users },
-      tournament.game === "EA_FC" && { id: "ea-stats" as const, label: "Estatísticas EA", icon: BarChart3 },
+      tournament.game === "EA_FC" && { id: "ea-stats" as const, label: tournament.status === "FINISHED" ? "Premiações e estatísticas" : "Estatísticas EA", icon: BarChart3 },
       tournament.access.canModerate && {
         id: "proofs" as const,
         label: "Aprovações",

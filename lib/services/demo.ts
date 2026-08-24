@@ -92,6 +92,14 @@ export function getDemoEaHistory(clubId: string): Promise<{ count: number; lates
   return post("/admin/demo/ea/history", { clubId })
 }
 
+export function buildRealEaTournament(input: {
+  clubName: string
+  teamCount: number
+  maxMatches: number
+}): Promise<DemoTournamentResult> {
+  return post("/admin/demo/ea/tournament", input)
+}
+
 export function syncDemoEaMatch(tournamentId: string, matchId: string): Promise<{ id: string }> {
   return post("/admin/demo/ea/sync", { tournamentId, matchId })
 }

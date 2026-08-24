@@ -20,6 +20,7 @@ import { formatMoney } from "@/lib/money"
 import {
   buildDemoDraft,
   buildDemoTournament,
+  buildRealEaTournament,
   clearDemoData,
   findDemoEaClub,
   getDemoEaHistory,
@@ -153,6 +154,9 @@ export default function DemoLabPage() {
   const [eaMatchId, setEaMatchId] = useState("")
   const [eaSide, setEaSide] = useState<"HOME" | "AWAY">("HOME")
   const [preparedMatchId, setPreparedMatchId] = useState("")
+  const [realEaTeamCount, setRealEaTeamCount] = useState(8)
+  const [realEaMatchCount, setRealEaMatchCount] = useState(24)
+  const [realEaTournamentUrl, setRealEaTournamentUrl] = useState("")
 
   const [rosterCount, setRosterCount] = useState(4)
   const [rosterSize, setRosterSize] = useState(25)
@@ -323,6 +327,56 @@ export default function DemoLabPage() {
               {busy === "ea-prepare" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />} Preparar teste como jogador
             </Button>
             {preparedMatchId && <Link href={`/dashboard/tournaments/${eaTournamentId.trim()}?match=${encodeURIComponent(preparedMatchId)}&lab=ea`} className="block rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-xs font-bold text-blue-300">Abrir diretamente a partida [LAB]</Link>}
+          </div>
+        </div>
+        <div className="mt-4 rounded-xl border border-violet-500/25 bg-violet-500/[0.045] p-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-300">Simulação completa com dados reais</p>
+              <h4 className="mt-1 text-base font-black text-white">Reconstruir um campeonato a partir dos amistosos da EA</h4>
+              <p className="mt-1 text-[11px] leading-relaxed text-gray-400">
+                Começa pelo clube informado, descobre adversários reais, busca o histórico desses clubes e cria um campeonato encerrado com placares, jogadores, estatísticas, campeão e cartas de premiação.
+              </p>
+              <div className="mt-3 grid gap-2 text-[10px] text-gray-400 sm:grid-cols-4">
+                {[
+                  "1 · Validar clube",
+                  "2 · Descobrir adversários",
+                  "3 · Sincronizar amistosos",
+                  "4 · Encerrar e premiar",
+                ].map((step) => <span key={step} className="rounded-md border border-white/[0.06] bg-black/20 px-2 py-1.5">{step}</span>)}
+              </div>
+            </div>
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:w-[420px]">
+              <div className="space-y-1.5">
+                <Label>Clubes reais</Label>
+                <Chips options={[4, 6, 8, 10, 12]} value={realEaTeamCount} onChange={setRealEaTeamCount} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Máximo de amistosos</Label>
+                <Chips options={[8, 16, 24, 32, 40]} value={realEaMatchCount} onChange={setRealEaMatchCount} />
+              </div>
+              <Button
+                disabled={busy !== "" || eaClubName.trim().length < 2}
+                onClick={() => void run("ea-real-tournament", "Campeonato EA reconstruído", async () => {
+                  const result = await buildRealEaTournament({
+                    clubName: eaClubName.trim(),
+                    teamCount: realEaTeamCount,
+                    maxMatches: realEaMatchCount,
+                  })
+                  setRealEaTournamentUrl(result.url)
+                  return result
+                })}
+                className="sm:col-span-2 bg-violet-500 text-white hover:bg-violet-400"
+              >
+                {busy === "ea-real-tournament" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Trophy className="mr-1.5 h-4 w-4" />}
+                Montar campeonato real completo
+              </Button>
+              {realEaTournamentUrl && (
+                <Link href={realEaTournamentUrl} className="sm:col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-black text-violet-200">
+                  Abrir resultado final, estatísticas e cartas <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </Card>
