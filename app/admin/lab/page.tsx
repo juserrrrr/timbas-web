@@ -146,7 +146,8 @@ export default function DemoLabPage() {
   const [debug, setDebug] = useState<{ title: string; data: DemoDebug } | null>(null)
   const [eaClubName, setEaClubName] = useState("")
   const [eaClub, setEaClub] = useState<{ externalClubId: string; name: string; platform: string } | null>(null)
-  const [eaHistory, setEaHistory] = useState<{ count: number; latest: DemoEaMatch | null } | null>(null)
+  const [eaHistory, setEaHistory] = useState<{ count: number; latest: DemoEaMatch | null; matches: DemoEaMatch[] } | null>(null)
+  const [selectedEaMatchId, setSelectedEaMatchId] = useState("")
   const [eaTournamentId, setEaTournamentId] = useState("")
   const [eaMatchId, setEaMatchId] = useState("")
   const [eaSide, setEaSide] = useState<"HOME" | "AWAY">("HOME")
@@ -263,6 +264,7 @@ export default function DemoLabPage() {
               const club = await findDemoEaClub(eaClubName.trim())
               setEaClub(club)
               setEaHistory(null)
+              setSelectedEaMatchId("")
               return { message: `Clube confirmado: ${club.name} (${club.externalClubId})` }
             })} className="w-full bg-blue-500 text-white hover:bg-blue-400">
               {busy === "ea-club" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Search className="mr-1.5 h-4 w-4" />} Procurar
@@ -270,16 +272,40 @@ export default function DemoLabPage() {
             {eaClub && <p className="rounded-lg bg-emerald-500/10 p-2 font-mono text-[11px] text-emerald-300">{eaClub.name} · ID {eaClub.externalClubId}</p>}
           </div>
           <div className="space-y-2 rounded-xl border border-white/[0.07] bg-black/10 p-3">
-            <Label>2. Buscar histórico e última partida</Label>
-            <p className="min-h-9 text-[11px] text-gray-500">Usa o Club ID confirmado e mostra o amistoso mais recente com placar e adversário.</p>
+            <Label>2. Buscar as 10 partidas mais recentes</Label>
+            <p className="min-h-9 text-[11px] text-gray-500">Usa o Club ID confirmado e mostra os 10 amistosos mais recentes com placar, adversário e EA Match ID.</p>
             <Button disabled={busy !== "" || !eaClub} onClick={() => void run("ea-history", "Histórico da EA", async () => {
               const history = await getDemoEaHistory(eaClub!.externalClubId)
-              setEaHistory({ count: history.count, latest: history.latest })
+              const matches = history.matches.slice(0, 10)
+              setEaHistory({ count: history.count, latest: history.latest, matches })
+              setSelectedEaMatchId(matches[0]?.externalMatchId ?? "")
               return { message: history.latest ? `${history.count} partidas. Última: ${history.latest.homeClubName} ${history.latest.homeScore} x ${history.latest.awayScore} ${history.latest.awayClubName}` : "Nenhum amistoso encontrado." }
             })} className="w-full bg-cyan-500 text-black hover:bg-cyan-400">
               {busy === "ea-history" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-1.5 h-4 w-4" />} Buscar partidas
             </Button>
-            {eaHistory?.latest && <div className="rounded-lg bg-white/[0.04] p-2 text-[11px] text-gray-300"><b className="text-white">{eaHistory.latest.homeClubName} {eaHistory.latest.homeScore} x {eaHistory.latest.awayScore} {eaHistory.latest.awayClubName}</b><br />EA Match ID: <span className="font-mono">{eaHistory.latest.externalMatchId}</span><br />Jogadores recebidos: {Object.values(eaHistory.latest.playersByClub ?? {}).reduce((total, players) => total + players.length, 0)}</div>}
+            {eaHistory && eaHistory.matches.length > 0 && (
+              <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                {eaHistory.matches.map((match, index) => {
+                  const selected = selectedEaMatchId === match.externalMatchId
+                  const playerCount = Object.values(match.playersByClub ?? {}).reduce((total, players) => total + players.length, 0)
+                  return (
+                    <button
+                      key={match.externalMatchId}
+                      type="button"
+                      onClick={() => setSelectedEaMatchId(match.externalMatchId)}
+                      className={`w-full rounded-lg border p-2 text-left text-[11px] transition ${selected ? "border-cyan-400/50 bg-cyan-500/10" : "border-white/[0.06] bg-white/[0.03] hover:border-white/15"}`}
+                    >
+                      <span className="flex items-center justify-between gap-2">
+                        <b className="text-white">{match.homeClubName} {match.homeScore} x {match.awayScore} {match.awayClubName}</b>
+                        <span className={selected ? "font-bold text-cyan-300" : "text-gray-600"}>#{index + 1}</span>
+                      </span>
+                      <span className="mt-1 block text-gray-500">{formatDateTime(match.playedAt)} · {playerCount} jogadores</span>
+                      <span className="mt-0.5 block font-mono text-gray-400">EA Match ID: {match.externalMatchId}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
           <div className="space-y-2 rounded-xl border border-white/[0.07] bg-black/10 p-3">
             <Label>3. Preparar confronto para testar como jogador</Label>
@@ -288,8 +314,8 @@ export default function DemoLabPage() {
             <div className="grid grid-cols-2 gap-2">
               {(["HOME", "AWAY"] as const).map((side) => <button key={side} onClick={() => setEaSide(side)} className={`rounded-lg border px-2 py-2 text-[11px] font-bold ${eaSide === side ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300" : "border-white/10 text-gray-500"}`}>{side === "HOME" ? "Entrar no mandante" : "Entrar no visitante"}</button>)}
             </div>
-            <Button disabled={busy !== "" || !eaTournamentId.trim() || !eaMatchId.trim() || !eaClub || !eaHistory?.latest} onClick={() => void run("ea-prepare", "Confronto de teste preparado", async () => {
-              const prepared = await prepareDemoEaMatch({ tournamentId: eaTournamentId.trim(), matchId: eaMatchId.trim(), clubId: eaClub!.externalClubId, externalMatchId: eaHistory!.latest!.externalMatchId, side: eaSide })
+            <Button disabled={busy !== "" || !eaTournamentId.trim() || !eaMatchId.trim() || !eaClub || !selectedEaMatchId} onClick={() => void run("ea-prepare", "Confronto de teste preparado", async () => {
+              const prepared = await prepareDemoEaMatch({ tournamentId: eaTournamentId.trim(), matchId: eaMatchId.trim(), clubId: eaClub!.externalClubId, externalMatchId: selectedEaMatchId, side: eaSide })
               setPreparedMatchId(prepared.matchId)
               return { message: "Sua conta foi colocada no time. Abra o campeonato, entre na partida [LAB] e clique em Checar na EA." }
             })} className="w-full bg-emerald-500 text-black hover:bg-emerald-400">
