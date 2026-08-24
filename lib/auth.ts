@@ -1,6 +1,7 @@
 const TOKEN_KEY = 'timbas_token'
 const REFRESH_TOKEN_KEY = 'timbas_refresh_token'
 const IMPERSONATOR_TOKEN_KEY = 'timbas_impersonator_token'
+const SESSION_HINT_KEY = 'timbas_session_hint'
 
 function getCookie(key: string): string | null {
   if (typeof window === 'undefined') return null
@@ -18,7 +19,12 @@ function deleteCookie(key: string) {
 }
 
 export function getToken(): string | null {
-  return getCookie(TOKEN_KEY)
+  return getCookie(TOKEN_KEY) ?? getCookie(SESSION_HINT_KEY)
+}
+
+export function setSessionHint(payload: TokenPayload) {
+  const encoded = btoa(JSON.stringify(payload))
+  setCookie(SESSION_HINT_KEY, `session.${encoded}.hint`, 60 * 60 * 24 * 7)
 }
 
 export function setToken(token: string) {
@@ -26,7 +32,14 @@ export function setToken(token: string) {
 }
 
 export function clearToken() {
+  if (typeof window !== 'undefined') {
+    void fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+  }
   deleteCookie(TOKEN_KEY)
+  deleteCookie(SESSION_HINT_KEY)
 }
 
 export function getRefreshToken(): string | null {
@@ -55,6 +68,7 @@ export function clearAllTokens() {
   clearToken()
   clearRefreshToken()
   deleteCookie(IMPERSONATOR_TOKEN_KEY)
+  deleteCookie(SESSION_HINT_KEY)
 }
 
 export function isImpersonating(): boolean {

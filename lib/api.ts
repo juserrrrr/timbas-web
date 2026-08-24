@@ -1,28 +1,19 @@
-import { getToken, setToken, clearAllTokens, endImpersonation, getRefreshToken, isImpersonating, setRefreshToken } from './auth'
+import { clearAllTokens, endImpersonation, isImpersonating } from './auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
-async function tryRefresh(): Promise<string | null> {
-  if (isImpersonating()) return null
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return null
+async function tryRefresh(): Promise<boolean> {
+  if (isImpersonating()) return false
 
   try {
     const res = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (data.acessToken) {
-      setToken(data.acessToken)
-      if (data.refreshToken) setRefreshToken(data.refreshToken)
-      return data.acessToken
-    }
-    return null
+    return res.ok
   } catch {
-    return null
+    return false
   }
 }
 
@@ -37,17 +28,13 @@ function redirectToLogin() {
 }
 
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  let res = await fetch(url, options)
+  let res = await fetch(url, { ...options, credentials: options.credentials ?? 'include' })
 
   if (res.status === 401) {
-    const newToken = await tryRefresh()
+    const refreshed = await tryRefresh()
 
-    if (newToken) {
-      const headers: Record<string, string> = {
-        ...((options.headers as Record<string, string>) ?? {}),
-        Authorization: `Bearer ${newToken}`,
-      }
-      res = await fetch(url, { ...options, headers })
+    if (refreshed) {
+      res = await fetch(url, { ...options, credentials: options.credentials ?? 'include' })
     }
 
     if (res.status === 401) {

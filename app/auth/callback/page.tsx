@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { setToken, setRefreshToken, decodeToken } from "@/lib/auth"
+import { setSessionHint, type TokenPayload } from "@/lib/auth"
 import { Bot } from "lucide-react"
 
 const ADMIN_ROLES = ["ADMIN", "admin", "Admin"]
@@ -12,19 +12,18 @@ export default function AuthCallbackPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const token = searchParams.get("token")
-    const refreshToken = searchParams.get("refreshToken")
     const error = searchParams.get("error")
     const isAdminPending =
       typeof window !== "undefined" && sessionStorage.getItem("adminPending") === "1"
 
-    if (token) {
-      setToken(token)
-      if (refreshToken) setRefreshToken(refreshToken)
-
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/validate-token`, { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("invalid session")
+        const result = await response.json() as { data: TokenPayload }
+        setSessionHint(result.data)
       if (isAdminPending) {
         sessionStorage.removeItem("adminPending")
-        const payload = decodeToken(token)
+        const payload = result.data
         const isAdmin = payload?.role && ADMIN_ROLES.includes(payload.role)
         if (isAdmin) {
           router.replace("/admin?welcome=1")
@@ -39,14 +38,15 @@ export default function AuthCallbackPage() {
           router.replace("/dashboard")
         }
       }
-    } else {
+      })
+      .catch(() => {
       if (isAdminPending) {
         sessionStorage.removeItem("adminPending")
         router.replace(`/admin/login?error=${error ?? "auth_failed"}`)
       } else {
         router.replace(`/login?error=${error ?? "auth_failed"}`)
       }
-    }
+      })
   }, [])
 
   return (
