@@ -210,6 +210,8 @@ export interface TournamentEaPlayerStats {
   externalPlayerId: string | null
   team: { id: string; name: string; logoUrl: string | null } | null
   appearances: number
+  ratedAppearances: number
+  teamMatches: number
   goals: number
   assists: number
   goalContributions: number
@@ -242,6 +244,9 @@ export interface TournamentEaAwardsResponse {
   criteria: {
     craqueMinimumAppearances: number
     craqueMinimumShare: number
+    craquePriorGames: number
+    craqueTournamentAverageRating: number
+    craqueFormula: string
     tieBreakers: string[]
   }
   awards: TournamentEaAward[]
