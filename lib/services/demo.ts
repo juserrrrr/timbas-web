@@ -95,3 +95,13 @@ export function getDemoEaHistory(clubId: string): Promise<{ count: number; lates
 export function syncDemoEaMatch(tournamentId: string, matchId: string): Promise<{ id: string }> {
   return post("/admin/demo/ea/sync", { tournamentId, matchId })
 }
+
+export function prepareDemoEaMatch(input: {
+  tournamentId: string
+  matchId: string
+  clubId: string
+  externalMatchId: string
+  side: "HOME" | "AWAY"
+}): Promise<{ tournamentId: string; matchId: string; side: "HOME" | "AWAY"; scheduledAt: string }> {
+  return post("/admin/demo/ea/prepare", input)
+}

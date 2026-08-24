@@ -23,7 +23,7 @@ import {
   findDemoEaClub,
   getDemoEaHistory,
   listDemoData,
-  syncDemoEaMatch,
+  prepareDemoEaMatch,
   type DemoEaMatch,
   type DemoDebug,
   type DemoDraftStage,
@@ -149,6 +149,8 @@ export default function DemoLabPage() {
   const [eaHistory, setEaHistory] = useState<{ count: number; latest: DemoEaMatch | null } | null>(null)
   const [eaTournamentId, setEaTournamentId] = useState("")
   const [eaMatchId, setEaMatchId] = useState("")
+  const [eaSide, setEaSide] = useState<"HOME" | "AWAY">("HOME")
+  const [preparedMatchId, setPreparedMatchId] = useState("")
 
   const [rosterCount, setRosterCount] = useState(4)
   const [rosterSize, setRosterSize] = useState(25)
@@ -280,15 +282,20 @@ export default function DemoLabPage() {
             {eaHistory?.latest && <div className="rounded-lg bg-white/[0.04] p-2 text-[11px] text-gray-300"><b className="text-white">{eaHistory.latest.homeClubName} {eaHistory.latest.homeScore} x {eaHistory.latest.awayScore} {eaHistory.latest.awayClubName}</b><br />EA Match ID: <span className="font-mono">{eaHistory.latest.externalMatchId}</span><br />Jogadores recebidos: {Object.values(eaHistory.latest.playersByClub ?? {}).reduce((total, players) => total + players.length, 0)}</div>}
           </div>
           <div className="space-y-2 rounded-xl border border-white/[0.07] bg-black/10 p-3">
-            <Label>3. Sincronizar com partida do campeonato</Label>
+            <Label>3. Preparar confronto para testar como jogador</Label>
             <input value={eaTournamentId} onChange={(event) => setEaTournamentId(event.target.value)} placeholder="Tournament ID" className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 font-mono text-xs text-white outline-none focus:border-blue-500/50" />
-            <input value={eaMatchId} onChange={(event) => setEaMatchId(event.target.value)} placeholder="Match ID interno do campeonato" className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 font-mono text-xs text-white outline-none focus:border-blue-500/50" />
-            <Button disabled={busy !== "" || !eaTournamentId.trim() || !eaMatchId.trim()} onClick={() => void run("ea-sync", "Sincronização concluída", async () => {
-              await syncDemoEaMatch(eaTournamentId.trim(), eaMatchId.trim())
-              return { message: "Partida associada, placar finalizado e estatísticas importadas da EA." }
+            <input value={eaMatchId} onChange={(event) => setEaMatchId(event.target.value)} placeholder="Match ID interno usado como base" className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 font-mono text-xs text-white outline-none focus:border-blue-500/50" />
+            <div className="grid grid-cols-2 gap-2">
+              {(["HOME", "AWAY"] as const).map((side) => <button key={side} onClick={() => setEaSide(side)} className={`rounded-lg border px-2 py-2 text-[11px] font-bold ${eaSide === side ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300" : "border-white/10 text-gray-500"}`}>{side === "HOME" ? "Entrar no mandante" : "Entrar no visitante"}</button>)}
+            </div>
+            <Button disabled={busy !== "" || !eaTournamentId.trim() || !eaMatchId.trim() || !eaClub || !eaHistory?.latest} onClick={() => void run("ea-prepare", "Confronto de teste preparado", async () => {
+              const prepared = await prepareDemoEaMatch({ tournamentId: eaTournamentId.trim(), matchId: eaMatchId.trim(), clubId: eaClub!.externalClubId, externalMatchId: eaHistory!.latest!.externalMatchId, side: eaSide })
+              setPreparedMatchId(prepared.matchId)
+              return { message: "Sua conta foi colocada no time. Abra o campeonato, entre na partida [LAB] e clique em Checar na EA." }
             })} className="w-full bg-emerald-500 text-black hover:bg-emerald-400">
-              {busy === "ea-sync" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />} Sincronizar de verdade
+              {busy === "ea-prepare" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />} Preparar teste como jogador
             </Button>
+            {preparedMatchId && <Link href={`/dashboard/tournaments/${eaTournamentId.trim()}`} className="block rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-xs font-bold text-blue-300">Abrir campeonato e jogar o teste</Link>}
           </div>
         </div>
       </Card>
