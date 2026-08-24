@@ -254,7 +254,7 @@ export function AppSidebar({
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 [scrollbar-width:thin]">
+        <nav className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {groups.map((group, index) => (
             <div key={group.id}>
               <GroupHeader title={group.title} expanded={expanded} divided={index > 0} />
