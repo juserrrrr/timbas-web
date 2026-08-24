@@ -328,10 +328,10 @@ export default function DemoLabPage() {
       </Card>
 
       <Card className="overflow-hidden border-emerald-500/20 bg-emerald-500/[0.035] p-4">
-        <div className="grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
-          <div>
+        <div>
+          <div className="max-w-3xl">
             <h3 className="text-sm font-black text-white">Exemplo do banner de premiação</h3>
-            <p className="mt-1 text-[11px] leading-relaxed text-gray-500">Cada categoria possui um modelo visual fixo próprio. Somente nome, time e feito estatístico mudam com os dados da EA; o destaque individual não depende do time campeão.</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-gray-500">Cada categoria possui arte e título fixos. Somente nick, feito estatístico e QR Code do campeonato são aplicados dinamicamente.</p>
             <p className="mt-3 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-[11px] text-emerald-300">Abra um campeonato encerrado → Estatísticas EA → botão de download no card.</p>
           </div>
           <AwardCardStudio />

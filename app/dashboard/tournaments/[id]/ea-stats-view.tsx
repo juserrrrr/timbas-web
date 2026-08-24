@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { BarChart3, Crosshair, Download, Goal, Hand, Loader2, Medal, Shield, Sparkles } from "lucide-react"
 import QRCode from "qrcode"
+import "@fontsource/bebas-neue"
 import { Card } from "@/components/ui/card"
 import { EmptyState, TeamCrest } from "@/components/competitions/shared"
 import { getTournamentEaStats } from "@/lib/services/tournaments"
@@ -28,6 +29,7 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
   }
   const template = templates[title]
   if (template) {
+    await document.fonts.load('400 100px "Bebas Neue"')
     const background = new Image()
     background.src = template.image
     await background.decode()
@@ -38,26 +40,35 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
     if (!outputContext) return
     outputContext.drawImage(background, 0, 0)
     const center = output.width / 2
+    const fit = (text: string, maxWidth: number, initialSize: number) => {
+      let size = initialSize
+      do { outputContext.font = `400 ${size}px "Bebas Neue", Impact, sans-serif`; size -= 2 } while (size > 30 && outputContext.measureText(text).width > maxWidth)
+    }
     outputContext.textAlign = "center"
-    outputContext.shadowColor = "#000"
-    outputContext.shadowBlur = Math.max(4, output.width * 0.006)
-    outputContext.fillStyle = template.color
-    outputContext.font = `900 ${Math.round(output.width * (title.length > 18 ? 0.052 : 0.073))}px Impact, Arial Black, sans-serif`
-    outputContext.fillText(title.toUpperCase(), center, output.height * 0.665)
+    outputContext.textBaseline = "middle"
+    outputContext.lineJoin = "round"
+    outputContext.shadowColor = "rgba(0,0,0,.95)"
+    outputContext.shadowBlur = output.width * 0.012
+    outputContext.strokeStyle = "rgba(0,0,0,.85)"
+    outputContext.lineWidth = output.width * 0.006
     outputContext.fillStyle = "#fff"
-    outputContext.font = `900 ${Math.round(output.width * 0.067)}px Impact, Arial Black, sans-serif`
-    outputContext.fillText(player.playerName, center, output.height * 0.745)
+    fit(player.playerName, output.width * 0.58, output.width * 0.076)
+    outputContext.strokeText(player.playerName, center, output.height * 0.758)
+    outputContext.fillText(player.playerName, center, output.height * 0.758)
     outputContext.fillStyle = template.color
-    outputContext.font = `900 ${Math.round(output.width * 0.045)}px Impact, Arial Black, sans-serif`
-    outputContext.fillText(value.toUpperCase(), center, output.height * 0.805)
-    outputContext.fillStyle = "#aeb6c2"
-    outputContext.font = `600 ${Math.round(output.width * 0.025)}px Arial`
-    outputContext.fillText(player.team?.name ?? "Sem time", center, output.height * 0.85)
+    fit(value.toUpperCase(), output.width * 0.56, output.width * 0.049)
+    outputContext.strokeText(value.toUpperCase(), center, output.height * 0.826)
+    outputContext.fillText(value.toUpperCase(), center, output.height * 0.826)
     const qr = new Image()
-    qr.src = await QRCode.toDataURL(`${window.location.origin}/dashboard/tournaments/${tournamentId}`, { margin: 1, width: 360, color: { dark: template.color, light: "#050505" } })
+    qr.src = await QRCode.toDataURL(`${window.location.origin}/dashboard/tournaments/${tournamentId}`, { margin: 1, width: 320, color: { dark: "#050505", light: "#ffffff" } })
     await qr.decode()
-    const qrSize = output.width * 0.13
-    outputContext.drawImage(qr, output.width * 0.77, output.height * 0.79, qrSize, qrSize)
+    const qrSize = output.width * 0.105
+    const qrX = output.width * 0.79
+    const qrY = output.height * 0.835
+    outputContext.shadowBlur = 0
+    outputContext.fillStyle = template.color
+    outputContext.fillRect(qrX - 5, qrY - 5, qrSize + 10, qrSize + 10)
+    outputContext.drawImage(qr, qrX, qrY, qrSize, qrSize)
     const download = document.createElement("a")
     download.download = `${title}-${player.playerName}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase() + ".png"
     download.href = output.toDataURL("image/png", 1)
