@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { BarChart3, Crosshair, Download, Goal, Hand, Loader2, Medal, Shield, Sparkles } from "lucide-react"
 import QRCode from "qrcode"
-import "@fontsource/bebas-neue"
+import "@fontsource/anton"
 import { Card } from "@/components/ui/card"
 import { EmptyState, TeamCrest } from "@/components/competitions/shared"
 import { getTournamentEaStats } from "@/lib/services/tournaments"
@@ -22,7 +22,7 @@ const TAGS: Record<string, string> = {
 async function downloadAwardPng(title: string, subtitle: string, player: TournamentEaPlayerStats, value: string, tournamentId: string) {
   const template = awardCardByTitle(title)
   if (template) {
-    await document.fonts.load('400 100px "Bebas Neue"')
+    await document.fonts.load('400 100px Anton')
     const background = new Image()
     background.src = template.image
     await background.decode()
@@ -34,7 +34,7 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
     outputContext.drawImage(background, 0, 0)
     const fit = (text: string, maxWidth: number, initialSize: number) => {
       let size = initialSize
-      do { outputContext.font = `400 ${size}px "Bebas Neue", Impact, sans-serif`; size -= 2 } while (size > 30 && outputContext.measureText(text).width > maxWidth)
+      do { outputContext.font = `400 ${size}px Anton, Impact, sans-serif`; size -= 2 } while (size > 30 && outputContext.measureText(text).width > maxWidth)
     }
     const metallicGradient = (y: number, size: number, top: string, middle: string, bottom: string) => {
       const gradient = outputContext.createLinearGradient(0, y - size * 0.55, 0, y + size * 0.55)
@@ -47,15 +47,17 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
     outputContext.textAlign = "center"
     outputContext.textBaseline = "middle"
     outputContext.lineJoin = "round"
-    outputContext.shadowColor = template.color
-    outputContext.shadowBlur = output.width * 0.014
+    outputContext.shadowColor = "rgba(0,0,0,.95)"
+    outputContext.shadowBlur = output.width * 0.007
+    outputContext.shadowOffsetY = output.width * 0.004
     outputContext.strokeStyle = "rgba(0,0,0,.96)"
-    outputContext.lineWidth = output.width * 0.007
+    outputContext.lineWidth = output.width * 0.005
+    const nick = player.playerName.toUpperCase()
     const nickSize = output.width * 0.068
-    fit(player.playerName, output.width * template.textWidth, nickSize)
+    fit(nick, output.width * template.textWidth, nickSize)
     outputContext.fillStyle = metallicGradient(output.height * template.nickY, nickSize, "#ffffff", "#9aa4b2", "#f8fafc")
-    outputContext.strokeText(player.playerName, output.width * template.nickX, output.height * template.nickY)
-    outputContext.fillText(player.playerName, output.width * template.nickX, output.height * template.nickY)
+    outputContext.strokeText(nick, output.width * template.nickX, output.height * template.nickY)
+    outputContext.fillText(nick, output.width * template.nickX, output.height * template.nickY)
     const statSize = output.width * 0.046
     fit(value.toUpperCase(), output.width * template.textWidth, statSize)
     outputContext.fillStyle = metallicGradient(output.height * template.statY, statSize, template.highlight, "#ffffff", template.color)

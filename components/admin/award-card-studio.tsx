@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react"
 import { Download, ExternalLink, QrCode } from "lucide-react"
 import QRCode from "qrcode"
-import "@fontsource/bebas-neue"
+import "@fontsource/anton"
 import { Button } from "@/components/ui/button"
 import { AWARD_CARD_CONFIG as AWARDS, type AwardCardKey as AwardKey } from "@/lib/award-card-config"
 
 function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, initialSize: number) {
   let size = initialSize
   do {
-    ctx.font = `400 ${size}px "Bebas Neue", Impact, sans-serif`
+    ctx.font = `400 ${size}px Anton, Impact, sans-serif`
     size -= 2
   } while (size > 30 && ctx.measureText(text).width > maxWidth)
 }
@@ -44,7 +44,7 @@ export function AwardCardStudio() {
   }
 
   async function download() {
-    await document.fonts.load('400 100px "Bebas Neue"')
+    await document.fonts.load('400 100px Anton')
     const background = new Image()
     background.src = award.image
     await background.decode()
@@ -54,15 +54,16 @@ export function AwardCardStudio() {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
     ctx.drawImage(background, 0, 0)
-    const nick = (name.trim() || "Jogador").slice(0, 28)
+    const nick = (name.trim() || "Jogador").toUpperCase().slice(0, 28)
     const achievement = (value.trim() || "0").toUpperCase().slice(0, 34)
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.lineJoin = "round"
-    ctx.shadowColor = award.color
-    ctx.shadowBlur = canvas.width * 0.014
+    ctx.shadowColor = "rgba(0,0,0,.95)"
+    ctx.shadowBlur = canvas.width * 0.007
+    ctx.shadowOffsetY = canvas.width * 0.004
     ctx.strokeStyle = "rgba(0,0,0,.96)"
-    ctx.lineWidth = canvas.width * 0.007
+    ctx.lineWidth = canvas.width * 0.005
     const nickSize = canvas.width * 0.068
     fitText(ctx, nick, canvas.width * award.textWidth, nickSize)
     ctx.fillStyle = metallicGradient(ctx, canvas.height * award.nickY, nickSize, "#ffffff", "#9aa4b2", "#f8fafc")
@@ -110,8 +111,8 @@ export function AwardCardStudio() {
         <div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-500">Prévia real</span><span className="flex items-center gap-1 text-[10px] text-gray-600"><ExternalLink className="h-3 w-3" />4:5</span></div>
         <div className="relative mx-auto aspect-[4/5] w-full max-w-[440px] overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10">
           <img src={award.image} alt={`Template ${award.title}`} className="absolute inset-0 h-full w-full object-cover" />
-          <p className="absolute w-[52%] -translate-x-1/2 -translate-y-1/2 truncate bg-clip-text text-center text-[clamp(26px,4.5vw,39px)] leading-none text-transparent [font-family:'Bebas_Neue',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.9)]" style={{ backgroundImage: "linear-gradient(180deg,#fff 0%,#9aa4b2 44%,#fff 58%,#cbd5e1 100%)", filter: `drop-shadow(0 0 5px ${award.color}99) drop-shadow(0 3px 2px #000)`, left: `${award.nickX * 100}%`, top: `${award.nickY * 100}%` }}>{name || "Jogador"}</p>
-          <p className="absolute w-[52%] -translate-x-1/2 -translate-y-1/2 truncate bg-clip-text text-center text-[clamp(17px,3vw,25px)] leading-none text-transparent [font-family:'Bebas_Neue',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.9)]" style={{ backgroundImage: `linear-gradient(180deg,${award.highlight} 0%,#fff 48%,${award.color} 100%)`, filter: `drop-shadow(0 0 5px ${award.color}aa) drop-shadow(0 3px 2px #000)`, left: `${award.statX * 100}%`, top: `${award.statY * 100}%` }}>{value || "0"}</p>
+          <p className="absolute w-[52%] -translate-x-1/2 -translate-y-1/2 truncate bg-clip-text text-center text-[clamp(28px,4.5vw,40px)] leading-none tracking-[0.025em] text-transparent [font-family:'Anton',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.95)]" style={{ backgroundImage: "linear-gradient(180deg,#fff 0%,#aab2bd 44%,#fff 58%,#cbd5e1 100%)", filter: "drop-shadow(0 3px 2px #000)", left: `${award.nickX * 100}%`, top: `${award.nickY * 100}%` }}>{(name || "Jogador").toUpperCase()}</p>
+          <p className="absolute w-[52%] truncate bg-clip-text text-center text-[clamp(18px,3vw,25px)] leading-none tracking-[0.02em] text-transparent [font-family:'Anton',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.95)]" style={{ backgroundImage: `linear-gradient(180deg,${award.highlight} 0%,#fff 45%,${award.color} 100%)`, filter: "drop-shadow(0 3px 2px #000)", left: `${award.statX * 100}%`, top: `${award.statY * 100}%`, transform: `translate(-50%,-50%) scale(${award.statScale})` }}>{value || "0"}</p>
           {qrPreview && <span className="absolute block aspect-square overflow-hidden" style={{ left: `${award.qrX * 100}%`, top: `${award.qrY * 100}%`, width: `${award.qrSize * 100}%` }}><img src={qrPreview} alt="QR Code do campeonato" className="h-full w-full" /></span>}
         </div>
       </div>
