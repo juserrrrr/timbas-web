@@ -100,6 +100,50 @@ export function buildRealEaTournament(input: {
   return post("/admin/demo/ea/tournament", input)
 }
 
+export interface LiveEaWorkspace {
+  id: string
+  name: string
+  status: TournamentStatus
+  groupCount: number
+  advancePerGroup: number
+  teams: Array<{ id: string; name: string; tag: string | null; eaClubId: string | null; groupId: string | null }>
+  groups: Array<{ id: string; name: string; order: number }>
+  matches: Array<{
+    id: string
+    phase: string
+    status: string
+    label: string | null
+    homeTeam: { id: string; name: string } | null
+    awayTeam: { id: string; name: string } | null
+    homeScore: number | null
+    awayScore: number | null
+    eaMatchId: string | null
+  }>
+  groupProgress: { finished: number; total: number }
+  url: string
+}
+
+export function createLiveEaTournament(input: {
+  name: string
+  clubNames: string[]
+  groupCount: number
+  advancePerGroup: number
+}): Promise<LiveEaWorkspace> {
+  return post("/admin/demo/ea/live", input)
+}
+
+export function getLiveEaTournament(id: string): Promise<LiveEaWorkspace> {
+  return request(`/admin/demo/ea/live/${id}`)
+}
+
+export function assignLiveEaGroups(id: string, assignments: Array<{ teamId: string; group: number }>): Promise<LiveEaWorkspace> {
+  return post(`/admin/demo/ea/live/${id}/groups`, { assignments })
+}
+
+export function buildLiveEaKnockout(id: string): Promise<LiveEaWorkspace> {
+  return post(`/admin/demo/ea/live/${id}/knockout`)
+}
+
 export function syncDemoEaMatch(tournamentId: string, matchId: string): Promise<{ id: string }> {
   return post("/admin/demo/ea/sync", { tournamentId, matchId })
 }

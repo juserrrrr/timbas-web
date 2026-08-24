@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowUpRight, Bug, DatabaseZap, FlaskConical, Loader2, Play, Search, Trash2, Trophy, Users } from "lucide-react"
+import { ArrowUpRight, Bug, DatabaseZap, FlaskConical, GitBranch, Loader2, Play, RefreshCw, Search, Trash2, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,10 @@ import {
   buildDemoDraft,
   buildDemoTournament,
   buildRealEaTournament,
+  buildLiveEaKnockout,
+  createLiveEaTournament,
+  assignLiveEaGroups,
+  getLiveEaTournament,
   clearDemoData,
   findDemoEaClub,
   getDemoEaHistory,
@@ -30,6 +34,7 @@ import {
   type DemoDebug,
   type DemoDraftStage,
   type DemoInventory,
+  type LiveEaWorkspace,
   type DemoTournamentStage,
 } from "@/lib/services/demo"
 import { RESULT_MODE_HINTS, RESULT_MODE_LABELS, type DraftResultMode } from "@/lib/services/draft.types"
@@ -157,6 +162,13 @@ export default function DemoLabPage() {
   const [realEaTeamCount, setRealEaTeamCount] = useState(8)
   const [realEaMatchCount, setRealEaMatchCount] = useState(24)
   const [realEaTournamentUrl, setRealEaTournamentUrl] = useState("")
+  const [liveName, setLiveName] = useState("Corujão")
+  const [liveClubNames, setLiveClubNames] = useState("")
+  const [liveGroupCount, setLiveGroupCount] = useState(2)
+  const [liveAdvancePerGroup, setLiveAdvancePerGroup] = useState(2)
+  const [liveTournamentId, setLiveTournamentId] = useState("")
+  const [liveWorkspace, setLiveWorkspace] = useState<LiveEaWorkspace | null>(null)
+  const [liveAssignments, setLiveAssignments] = useState<Record<string, number>>({})
 
   const [rosterCount, setRosterCount] = useState(4)
   const [rosterSize, setRosterSize] = useState(25)
@@ -188,6 +200,24 @@ export default function DemoLabPage() {
     void load()
   }, [load])
 
+  const adoptLiveWorkspace = useCallback((workspace: LiveEaWorkspace) => {
+    setLiveWorkspace(workspace)
+    setLiveTournamentId(workspace.id)
+    const groupById = new Map(workspace.groups.map((group) => [group.id, group.order]))
+    setLiveAssignments(Object.fromEntries(workspace.teams.map((team, index) => [
+      team.id,
+      team.groupId ? (groupById.get(team.groupId) ?? index % workspace.groupCount) : index % workspace.groupCount,
+    ])))
+    window.localStorage.setItem("timbas.lab.liveTournamentId", workspace.id)
+  }, [])
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("timbas.lab.liveTournamentId")
+    if (!saved) return
+    setLiveTournamentId(saved)
+    void getLiveEaTournament(saved).then(adoptLiveWorkspace).catch(() => window.localStorage.removeItem("timbas.lab.liveTournamentId"))
+  }, [adoptLiveWorkspace])
+
   if (loading) return <PageLoading />
   if (error && !inventory) return <ErrorState message={error} retry={() => void load()} />
 
@@ -208,13 +238,17 @@ export default function DemoLabPage() {
   }
 
   const total = (inventory?.tournaments.length ?? 0) + (inventory?.leagues.length ?? 0)
+  const liveClubList = liveClubNames.split(/\r?\n/).map((name) => name.trim()).filter(Boolean)
+  const liveGroupsPublished = liveWorkspace?.status === "RUNNING" || liveWorkspace?.status === "FINISHED"
+  const liveGroupMatches = liveWorkspace?.matches.filter((match) => match.phase === "GROUP") ?? []
+  const liveKnockoutMatches = liveWorkspace?.matches.filter((match) => match.phase !== "GROUP") ?? []
 
   return (
     <div className="space-y-6">
       <CompetitionHeader
         eyebrow="Administração"
         title="Laboratório"
-        subtitle="Gere campeonatos e ligas de mentira para conferir chave, tabela e telas antes de valer."
+        subtitle="Gere cenários isolados ou opere campeonatos EA reais, passo a passo, antes de liberar o fluxo oficial."
         icon={FlaskConical}
         accent="text-orange-400"
         accentBg="bg-orange-500/10 border-orange-500/20"
@@ -380,6 +414,90 @@ export default function DemoLabPage() {
             </div>
           </div>
         </div>
+      </Card>
+
+      <Card className="border-cyan-500/25 bg-cyan-500/[0.035] p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Operação real · modo debug</p>
+            <h3 className="mt-1 text-base font-black text-white">Corujão ao vivo, passo a passo</h3>
+            <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-gray-400">Cadastre clubes reais sem usuário responsável, monte os grupos manualmente e sincronize cada amistoso pela EA. Este modo não possui check-in, tolerância, timeout ou W.O. automático.</p>
+          </div>
+          <div className="flex min-w-0 gap-2 lg:w-[420px]">
+            <input value={liveTournamentId} onChange={(event) => setLiveTournamentId(event.target.value)} placeholder="ID de uma operação existente" className="h-9 min-w-0 flex-1 rounded-lg border border-white/10 bg-black/25 px-3 font-mono text-[11px] text-white outline-none focus:border-cyan-400/50" />
+            <Button variant="outline" disabled={busy !== "" || !liveTournamentId.trim()} onClick={() => void run("live-load", "Operação ao vivo carregada", async () => { const workspace = await getLiveEaTournament(liveTournamentId.trim()); adoptLiveWorkspace(workspace); return { message: "Operação recarregada com o estado atual da API." } })} className="h-9 border-cyan-400/25 text-cyan-300"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Carregar</Button>
+          </div>
+        </div>
+
+        {!liveWorkspace && (
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr]">
+            <div className="space-y-3 rounded-xl border border-white/[0.07] bg-black/15 p-3">
+              <div className="space-y-1.5"><Label>Nome do evento</Label><input value={liveName} onChange={(event) => setLiveName(event.target.value)} className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-xs text-white outline-none focus:border-cyan-400/50" /></div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5"><Label>Quantidade de grupos</Label><Chips options={[2, 4]} value={liveGroupCount} onChange={setLiveGroupCount} /></div>
+                <div className="space-y-1.5"><Label>Classificados por grupo</Label><Chips options={[1, 2, 3, 4]} value={liveAdvancePerGroup} onChange={setLiveAdvancePerGroup} /></div>
+              </div>
+            </div>
+            <div className="space-y-2 rounded-xl border border-white/[0.07] bg-black/15 p-3">
+              <Label>Clubes da EA · um nome exato por linha</Label>
+              <textarea value={liveClubNames} onChange={(event) => setLiveClubNames(event.target.value)} rows={7} placeholder={"Bote Seu Pix\nTimbas EC\nTerreiros Club\nOutro clube"} className="w-full resize-y rounded-lg border border-white/10 bg-black/20 px-3 py-2 font-mono text-xs leading-relaxed text-white outline-none focus:border-cyan-400/50" />
+              <Button disabled={busy !== "" || liveName.trim().length < 3 || liveClubList.length < 4} onClick={() => void run("live-create", "Operação ao vivo criada", async () => { const workspace = await createLiveEaTournament({ name: liveName.trim(), clubNames: liveClubList, groupCount: liveGroupCount, advancePerGroup: liveAdvancePerGroup }); adoptLiveWorkspace(workspace); return { message: `${workspace.teams.length} clubes validados pela EA. Agora distribua os grupos.` } })} className="w-full bg-cyan-500 font-bold text-black hover:bg-cyan-400">{busy === "live-create" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-1.5 h-4 w-4" />}Validar clubes e criar</Button>
+            </div>
+          </div>
+        )}
+
+        {liveWorkspace && (
+          <div className="mt-4 space-y-4">
+            <div className="grid gap-2 sm:grid-cols-4">
+              <div className="rounded-lg border border-white/[0.07] bg-black/20 p-2.5"><span className="block text-[9px] font-bold uppercase text-gray-600">Clubes</span><b className="text-lg text-white">{liveWorkspace.teams.length}</b></div>
+              <div className="rounded-lg border border-white/[0.07] bg-black/20 p-2.5"><span className="block text-[9px] font-bold uppercase text-gray-600">Grupos</span><b className="text-lg text-white">{liveWorkspace.groupCount}</b></div>
+              <div className="rounded-lg border border-white/[0.07] bg-black/20 p-2.5"><span className="block text-[9px] font-bold uppercase text-gray-600">Fase de grupos</span><b className="text-lg text-white">{liveWorkspace.groupProgress.finished}/{liveWorkspace.groupProgress.total}</b></div>
+              <div className="rounded-lg border border-white/[0.07] bg-black/20 p-2.5"><span className="block text-[9px] font-bold uppercase text-gray-600">Mata-mata</span><b className="text-lg text-white">{liveKnockoutMatches.filter((match) => match.homeTeam && match.awayTeam).length}</b></div>
+            </div>
+
+            {!liveGroupsPublished ? (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.035] p-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-amber-300">2 · Distribuição manual dos grupos</h4>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {liveWorkspace.teams.map((team) => <label key={team.id} className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-black/20 px-3 py-2"><span className="min-w-0 flex-1 truncate text-xs font-bold text-white">{team.name}</span><select value={liveAssignments[team.id] ?? 0} onChange={(event) => setLiveAssignments((current) => ({ ...current, [team.id]: Number(event.target.value) }))} className="h-8 rounded-md border border-white/10 bg-[#0b0b10] px-2 text-[11px] text-white">{Array.from({ length: liveWorkspace.groupCount }, (_, group) => <option key={group} value={group}>Grupo {String.fromCharCode(65 + group)}</option>)}</select></label>)}
+                </div>
+                <Button disabled={busy !== "" || liveWorkspace.teams.some((team) => liveAssignments[team.id] === undefined)} onClick={() => void run("live-groups", "Grupos publicados", async () => { const workspace = await assignLiveEaGroups(liveWorkspace.id, liveWorkspace.teams.map((team) => ({ teamId: team.id, group: liveAssignments[team.id] }))); adoptLiveWorkspace(workspace); return { message: `${workspace.groupProgress.total} confrontos publicados sem timeout. Abra o campeonato para sincronizar ao vivo.` } })} className="mt-3 bg-amber-500 font-bold text-black hover:bg-amber-400"><GitBranch className="mr-1.5 h-4 w-4" />Publicar grupos e confrontos</Button>
+              </div>
+            ) : (
+              <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.035] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><div><h4 className="text-xs font-black uppercase tracking-wider text-emerald-300">3 · Sincronização ao vivo</h4><p className="mt-1 text-[11px] text-gray-500">Abra um confronto e use Checar na EA. Não há relógio nem W.O. neste campeonato.</p></div><Link href={liveWorkspace.url} className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-xs font-black text-emerald-300">Abrir campeonato <ArrowUpRight className="ml-1 inline h-3.5 w-3.5" /></Link></div>
+                  <div className="mt-3 max-h-72 space-y-1.5 overflow-y-auto">{liveGroupMatches.map((match) => <Link key={match.id} href={`${liveWorkspace.url}?match=${encodeURIComponent(match.id)}&lab=live`} className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-[11px]"><span className="min-w-0 flex-1 truncate text-gray-300">{match.homeTeam?.name} × {match.awayTeam?.name}</span><b className={match.status === "FINISHED" ? "text-emerald-300" : "text-amber-300"}>{match.status === "FINISHED" ? `${match.homeScore} × ${match.awayScore}` : "Checar EA"}</b></Link>)}</div>
+                </div>
+                <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.035] p-3"><h4 className="text-xs font-black uppercase tracking-wider text-violet-300">4 · Montar mata-mata</h4><p className="mt-1 text-[11px] leading-relaxed text-gray-500">A API usa a classificação oficial dos grupos somente quando você confirmar.</p><Button disabled={busy !== "" || liveWorkspace.groupProgress.total === 0 || liveWorkspace.groupProgress.finished < liveWorkspace.groupProgress.total || liveKnockoutMatches.some((match) => match.homeTeam || match.awayTeam)} onClick={() => void run("live-knockout", "Mata-mata publicado", async () => { const workspace = await buildLiveEaKnockout(liveWorkspace.id); adoptLiveWorkspace(workspace); return { message: "Classificados posicionados e mata-mata liberado para sincronização ao vivo." } })} className="mt-3 w-full bg-violet-500 text-white hover:bg-violet-400"><Trophy className="mr-1.5 h-4 w-4" />{liveKnockoutMatches.some((match) => match.homeTeam || match.awayTeam) ? "Mata-mata publicado" : "Gerar mata-mata"}</Button><p className="mt-2 text-center text-[10px] text-gray-600">{liveKnockoutMatches.some((match) => match.homeTeam || match.awayTeam) ? "Chave em andamento" : liveWorkspace.groupProgress.finished < liveWorkspace.groupProgress.total ? `Faltam ${liveWorkspace.groupProgress.total - liveWorkspace.groupProgress.finished} resultados` : "Grupos concluídos · pronto para gerar"}</p></div>
+              </div>
+            )}
+
+            {liveGroupsPublished && liveKnockoutMatches.some((match) => match.homeTeam && match.awayTeam) && (
+              <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.035] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-violet-300">Mata-mata ao vivo</h4>
+                    <p className="mt-1 text-[11px] text-gray-500">Cada fase seguinte só fica disponível quando os dois classificados estiverem definidos.</p>
+                  </div>
+                  <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 text-[10px] font-black text-violet-200">
+                    {liveKnockoutMatches.filter((match) => match.status === "FINISHED").length}/{liveKnockoutMatches.length} encerradas
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+                  {liveKnockoutMatches.filter((match) => match.homeTeam && match.awayTeam).map((match) => (
+                    <Link key={match.id} href={`${liveWorkspace.url}?match=${encodeURIComponent(match.id)}&lab=live`} className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-[11px]">
+                      <span className="min-w-0 flex-1 truncate text-gray-300">{match.homeTeam?.name} × {match.awayTeam?.name}</span>
+                      <b className={match.status === "FINISHED" ? "text-emerald-300" : "text-violet-300"}>{match.status === "FINISHED" ? `${match.homeScore} × ${match.awayScore}` : "Checar EA"}</b>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button type="button" onClick={() => { setLiveWorkspace(null); setLiveTournamentId(""); setLiveAssignments({}); window.localStorage.removeItem("timbas.lab.liveTournamentId") }} className="text-[10px] font-bold text-gray-600 hover:text-red-300">Desvincular esta operação do painel</button>
+          </div>
+        )}
       </Card>
 
       <Card className="overflow-hidden border-emerald-500/20 bg-emerald-500/[0.035] p-4">
