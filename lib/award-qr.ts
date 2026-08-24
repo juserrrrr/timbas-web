@@ -1,17 +1,7 @@
 import QRCode from "qrcode"
 
 export function compactTournamentUrl(value: string) {
-  try {
-    const url = new URL(value)
-    const match = url.pathname.match(/^\/dashboard\/tournaments\/([^/]+)\/?$/)
-    if (!match) return value
-    url.pathname = `/t/${match[1]}`
-    url.search = ""
-    url.hash = ""
-    return url.toString()
-  } catch {
-    return value
-  }
+  return value.trim()
 }
 
 function loadImage(src: string) {

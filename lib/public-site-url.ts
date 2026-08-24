@@ -1,6 +1,5 @@
-const PUBLIC_SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://juser.dev").replace(/\/+$/, "")
+const PUBLIC_SITE_URL = "https://timbas.juserdev.com"
 
 export function publicTournamentUrl(tournamentId: string) {
-  return `${PUBLIC_SITE_URL}/t/${encodeURIComponent(tournamentId)}`
+  return `${PUBLIC_SITE_URL}/dashboard/tournaments/${encodeURIComponent(tournamentId)}`
 }
-

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react"
 import { Download, Move, QrCode, RotateCcw, Save, Type } from "lucide-react"
 import "@fontsource/anton"
 import "@fontsource/tourney/600.css"
@@ -27,8 +27,19 @@ type EditableElement = "nick" | "stat" | "qr"
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value))
 
-function RangeControl({ label, value, min, max, step = 0.001, onChange }: { label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void }) {
-  return <label className="grid grid-cols-[86px_1fr_54px] items-center gap-2 text-[10px] font-bold text-gray-500"><span>{label}</span><input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="accent-amber-400" /><span className="rounded-md bg-black/35 px-1.5 py-1 text-center font-mono text-gray-300">{(value * 100).toFixed(1)}</span></label>
+function RangeControl({ label, value, min, max, step = 0.0001, onChange }: { label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [draft, setDraft] = useState(() => (value * 100).toFixed(2))
+  const updatePercent = (raw: string) => {
+    setDraft(raw)
+    const percent = Number(raw.replace(",", "."))
+    if (Number.isFinite(percent)) onChange(clamp(percent / 100, min, max))
+  }
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) setDraft((value * 100).toFixed(2))
+  }, [value])
+  const finishEditing = () => setDraft((value * 100).toFixed(2))
+  return <label className="grid grid-cols-[78px_1fr_68px] items-center gap-2 text-[10px] font-bold text-gray-500"><span>{label}</span><input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="min-w-0 accent-amber-400" /><input ref={inputRef} aria-label={`${label} em porcentagem`} title="Digite o valor ou use as setas para ajuste fino" type="number" min={min * 100} max={max * 100} step={step * 100} value={draft} onChange={(event) => updatePercent(event.target.value)} onBlur={finishEditing} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur() }} className="h-7 w-full rounded-md border border-white/10 bg-black/35 px-1 text-center font-mono text-[10px] text-gray-200 outline-none focus:border-amber-400" /></label>
 }
 
 export function AwardCardStudio() {
@@ -90,7 +101,33 @@ export function AwardCardStudio() {
     event.preventDefault()
     dragging.current = element
     setSelected(element)
+    previewRef.current?.focus({ preventScroll: true })
     event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function selectElement(element: EditableElement) {
+    setSelected(element)
+    requestAnimationFrame(() => previewRef.current?.focus({ preventScroll: true }))
+  }
+
+  function nudgeSelected(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (!(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"] as string[]).includes(event.key)) return
+    event.preventDefault()
+    const amount = event.altKey ? 0.0001 : event.shiftKey ? 0.01 : 0.001
+    const dx = event.key === "ArrowLeft" ? -amount : event.key === "ArrowRight" ? amount : 0
+    const dy = event.key === "ArrowUp" ? -amount : event.key === "ArrowDown" ? amount : 0
+    if (selected === "nick") updateLayout({
+      nickX: clamp(layout.nickX + dx, 0.15, 0.85),
+      nickY: clamp(layout.nickY + dy, 0.5, 0.92),
+    })
+    if (selected === "stat") updateLayout({
+      statX: clamp(layout.statX + dx, 0.15, 0.85),
+      statY: clamp(layout.statY + dy, 0.55, 0.95),
+    })
+    if (selected === "qr") updateLayout({
+      qrX: clamp(layout.qrX + dx, 0.4, 0.9),
+      qrY: clamp(layout.qrY + dy, 0.5, 0.9),
+    })
   }
 
   async function save() {
@@ -127,7 +164,7 @@ export function AwardCardStudio() {
       <label className="block space-y-1.5 text-[10px] font-bold text-gray-500">Fonte<select value={layout.font} onChange={(event) => updateLayout({ font: event.target.value as AwardCardLayout["font"] })} className="h-10 w-full rounded-xl border border-white/10 bg-[#0b0b10] px-3 text-xs text-white outline-none focus:border-amber-400">{AWARD_FONT_OPTIONS.map((font) => <option key={font.key} value={font.key}>{font.label}</option>)}</select></label>
       <div className="grid grid-cols-2 gap-2"><label className="space-y-1 text-[10px] font-bold text-gray-500">Nick<input value={nickname} maxLength={28} onChange={(event) => setNickname(event.target.value)} className="h-10 w-full rounded-xl border border-white/10 bg-black/35 px-3 text-xs text-white outline-none focus:border-amber-400" /></label><label className="space-y-1 text-[10px] font-bold text-gray-500">Feito<input value={achievement} maxLength={34} onChange={(event) => setAchievement(event.target.value)} className="h-10 w-full rounded-xl border border-white/10 bg-black/35 px-3 text-xs text-white outline-none focus:border-amber-400" /></label></div>
       <label className="block space-y-1 text-[10px] font-bold text-gray-500">Link do QR<input value={qrUrl} onChange={(event) => setQrUrl(event.target.value)} className="h-10 w-full rounded-xl border border-white/10 bg-black/35 px-3 text-xs text-white outline-none focus:border-amber-400" /></label>
-      <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-gray-500">Elemento para ajustar</p><div className="grid grid-cols-3 gap-2">{([{ key: "nick", label: "Nick", icon: Type }, { key: "stat", label: "Feito", icon: Move }, { key: "qr", label: "QR", icon: QrCode }] as const).map((item) => <button key={item.key} type="button" onClick={() => setSelected(item.key)} className={`flex h-10 items-center justify-center gap-1.5 rounded-xl border text-[10px] font-black ${selected === item.key ? "border-emerald-400 bg-emerald-400/10 text-emerald-300" : "border-white/10 text-gray-500"}`}><item.icon className="h-3.5 w-3.5" />{item.label}</button>)}</div></div>
+      <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-gray-500">Elemento para ajustar</p><div className="grid grid-cols-3 gap-2">{([{ key: "nick", label: "Nick", icon: Type }, { key: "stat", label: "Feito", icon: Move }, { key: "qr", label: "QR", icon: QrCode }] as const).map((item) => <button key={item.key} type="button" onClick={() => selectElement(item.key)} className={`flex h-10 items-center justify-center gap-1.5 rounded-xl border text-[10px] font-black ${selected === item.key ? "border-emerald-400 bg-emerald-400/10 text-emerald-300" : "border-white/10 text-gray-500"}`}><item.icon className="h-3.5 w-3.5" />{item.label}</button>)}</div></div>
       <div className="space-y-2 rounded-xl border border-white/[0.07] bg-black/25 p-3">
         {selected === "nick" && <><RangeControl label="Horizontal" value={layout.nickX} min={0.15} max={0.85} onChange={(nickX) => updateLayout({ nickX })} /><RangeControl label="Vertical" value={layout.nickY} min={0.5} max={0.92} onChange={(nickY) => updateLayout({ nickY })} /><RangeControl label="Tamanho" value={layout.nickSize} min={0.025} max={0.12} onChange={(nickSize) => updateLayout({ nickSize })} /></>}
         {selected === "stat" && <><RangeControl label="Horizontal" value={layout.statX} min={0.15} max={0.85} onChange={(statX) => updateLayout({ statX })} /><RangeControl label="Vertical" value={layout.statY} min={0.55} max={0.95} onChange={(statY) => updateLayout({ statY })} /><RangeControl label="Tamanho" value={layout.statSize} min={0.02} max={0.09} onChange={(statSize) => updateLayout({ statSize })} /></>}
@@ -139,8 +176,8 @@ export function AwardCardStudio() {
       <Button type="button" onClick={() => void download()} className="w-full gap-2 bg-amber-500 text-black hover:bg-amber-400"><Download className="h-4 w-4" />Baixar PNG desta prévia</Button>
       {notice && <p className="rounded-lg border border-white/[0.07] bg-white/[0.025] p-2 text-[10px] leading-relaxed text-gray-400">{notice}</p>}
     </div>
-    <div className="min-w-0"><div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.16em] text-gray-500"><span>Editor visual · arraste o elemento selecionado</span><span>1122 × 1402</span></div>
-      <div ref={previewRef} onPointerMove={move} onPointerUp={() => { dragging.current = null }} onPointerCancel={() => { dragging.current = null }} className="relative mx-auto aspect-[4/5] w-full max-w-[620px] touch-none overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10" style={{ containerType: "inline-size" }}>
+    <div className="min-w-0"><div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.16em] text-gray-500"><span>Arraste ou use setas · Alt 0,01 · normal 0,1 · Shift 1,0</span><span>1122 × 1402</span></div>
+      <div ref={previewRef} tabIndex={0} onKeyDown={nudgeSelected} onPointerMove={move} onPointerUp={() => { dragging.current = null }} onPointerCancel={() => { dragging.current = null }} className="relative mx-auto aspect-[4/5] w-full max-w-[620px] touch-none overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-emerald-400/60" style={{ containerType: "inline-size" }}>
         <img src={award.image} alt={`Template ${award.title}`} className="pointer-events-none absolute inset-0 h-full w-full object-contain" />
         {guides && <><span className="pointer-events-none absolute inset-y-0 w-px bg-emerald-300/55" style={{ left: `${selectedX * 100}%` }} /><span className="pointer-events-none absolute inset-x-0 h-px bg-emerald-300/55" style={{ top: `${selectedY * 100}%` }} /></>}
         <button type="button" onPointerDown={(event) => beginDrag(event, "nick")} className={`absolute cursor-move whitespace-nowrap border border-dashed px-1 text-center uppercase leading-none ${selected === "nick" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ color: "#f4f6f8", fontFamily: family, fontWeight: weight, fontSize: `${layout.nickSize * 100}cqw`, left: `${layout.nickX * 100}%`, top: `${layout.nickY * 100}%`, maxWidth: `${layout.textWidth * 100}%`, transform: `translate(-50%,-50%) scale(${nickScale})` }}>{nickname || "Jogador"}</button>
