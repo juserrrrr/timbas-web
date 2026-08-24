@@ -335,14 +335,14 @@ export default function DemoLabPage() {
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-300">Simulação completa com dados reais</p>
               <h4 className="mt-1 text-base font-black text-white">Reconstruir um campeonato a partir dos amistosos da EA</h4>
               <p className="mt-1 text-[11px] leading-relaxed text-gray-400">
-                Começa pelo clube informado, descobre adversários reais e monta Grupos + mata-mata. Os amistosos alimentam a campanha, os classificados avançam pela chave e o campeonato termina com placares, jogadores, campeão e cartas de premiação.
+                Começa pelo clube informado, descobre adversários reais e monta Grupos + mata-mata. Cada confronto exige um EA Match ID único e posterior à fase anterior; sem uma partida real compatível, o teste avisa o confronto ausente e não inventa resultado.
               </p>
               <span className="mt-2 inline-flex rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-300">Formato fixo: Grupos + mata-mata</span>
               <div className="mt-3 grid gap-2 text-[10px] text-gray-400 sm:grid-cols-4">
                 {[
                   "1 · Validar clube",
                   "2 · Descobrir adversários",
-                  "3 · Sincronizar amistosos",
+                  "3 · Separar por horário e fase",
                   "4 · Encerrar e premiar",
                 ].map((step) => <span key={step} className="rounded-md border border-white/[0.06] bg-black/20 px-2 py-1.5">{step}</span>)}
               </div>
