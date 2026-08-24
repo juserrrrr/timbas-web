@@ -1,10 +1,10 @@
 export const AWARD_CARD_CONFIG = {
-  artilheiro: { title: "ARTILHEIRO", value: "12 GOLS", image: "/images/awards/artilheiro-template.png", color: "#ffbd35", qrLight: "#ffe09a", nickX: 0.42, nickY: 0.73, statX: 0.42, statY: 0.80, qrX: 0.66, qrY: 0.71, qrSize: 0.13, textWidth: 0.43 },
-  garcom: { title: "GARÇOM", value: "9 ASSISTÊNCIAS", image: "/images/awards/garcom-template.png", color: "#38bdf8", qrLight: "#a9e4ff", nickX: 0.42, nickY: 0.735, statX: 0.42, statY: 0.795, qrX: 0.66, qrY: 0.71, qrSize: 0.13, textWidth: 0.41 },
-  craque: { title: "CRAQUE DO CAMPEONATO", value: "NOTA 9,2", image: "/images/awards/craque-template.png", color: "#f4c542", qrLight: "#f3dd91", nickX: 0.42, nickY: 0.715, statX: 0.42, statY: 0.795, qrX: 0.66, qrY: 0.71, qrSize: 0.13, textWidth: 0.42 },
-  maestro: { title: "MAESTRO", value: "184 PASSES CERTOS", image: "/images/awards/maestro-template.png", color: "#2dd4bf", qrLight: "#a2f3e8", nickX: 0.42, nickY: 0.755, statX: 0.42, statY: 0.84, qrX: 0.66, qrY: 0.71, qrSize: 0.13, textWidth: 0.42 },
-  xerife: { title: "XERIFE", value: "31 DESARMES", image: "/images/awards/xerife-template.png", color: "#e2e8f0", qrLight: "#dce3ea", nickX: 0.42, nickY: 0.705, statX: 0.42, statY: 0.80, qrX: 0.66, qrY: 0.71, qrSize: 0.13, textWidth: 0.48 },
-  muralha: { title: "MURALHA", value: "27 DEFESAS", image: "/images/awards/muralha-template.png", color: "#ef4444", qrLight: "#ffaaaa", nickX: 0.42, nickY: 0.715, statX: 0.42, statY: 0.79, qrX: 0.66, qrY: 0.71, qrSize: 0.13, textWidth: 0.43 },
+  artilheiro: { title: "ARTILHEIRO", value: "12 GOLS", image: "/images/awards/artilheiro-template.png?v=4", color: "#ffbd35", highlight: "#fff0b0", nickX: 0.41, nickY: 0.73, statX: 0.41, statY: 0.80, qrX: 0.655, qrY: 0.714, qrSize: 0.132, textWidth: 0.43 },
+  garcom: { title: "GARÇOM", value: "9 ASSISTÊNCIAS", image: "/images/awards/garcom-template.png?v=4", color: "#38bdf8", highlight: "#d8f5ff", nickX: 0.41, nickY: 0.735, statX: 0.41, statY: 0.795, qrX: 0.655, qrY: 0.708, qrSize: 0.132, textWidth: 0.41 },
+  craque: { title: "CRAQUE DO CAMPEONATO", value: "NOTA 9,2", image: "/images/awards/craque-template.png?v=4", color: "#f4c542", highlight: "#fff2a8", nickX: 0.40, nickY: 0.714, statX: 0.40, statY: 0.803, qrX: 0.655, qrY: 0.684, qrSize: 0.132, textWidth: 0.42 },
+  maestro: { title: "MAESTRO", value: "184 PASSES CERTOS", image: "/images/awards/maestro-template.png?v=4", color: "#2dd4bf", highlight: "#c9fff7", nickX: 0.42, nickY: 0.695, statX: 0.42, statY: 0.776, qrX: 0.652, qrY: 0.667, qrSize: 0.132, textWidth: 0.42 },
+  xerife: { title: "XERIFE", value: "31 DESARMES", image: "/images/awards/xerife-template.png?v=4", color: "#e2e8f0", highlight: "#ffffff", nickX: 0.41, nickY: 0.708, statX: 0.41, statY: 0.79, qrX: 0.652, qrY: 0.686, qrSize: 0.132, textWidth: 0.48 },
+  muralha: { title: "MURALHA", value: "27 DEFESAS", image: "/images/awards/muralha-template.png?v=4", color: "#ef4444", highlight: "#ffc2c2", nickX: 0.41, nickY: 0.715, statX: 0.41, statY: 0.79, qrX: 0.652, qrY: 0.686, qrSize: 0.132, textWidth: 0.43 },
 } as const
 
 export type AwardCardKey = keyof typeof AWARD_CARD_CONFIG

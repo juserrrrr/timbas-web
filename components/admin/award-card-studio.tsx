@@ -15,6 +15,15 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, 
   } while (size > 30 && ctx.measureText(text).width > maxWidth)
 }
 
+function metallicGradient(ctx: CanvasRenderingContext2D, y: number, size: number, top: string, middle: string, bottom: string) {
+  const gradient = ctx.createLinearGradient(0, y - size * 0.55, 0, y + size * 0.55)
+  gradient.addColorStop(0, top)
+  gradient.addColorStop(0.42, middle)
+  gradient.addColorStop(0.58, "#ffffff")
+  gradient.addColorStop(1, bottom)
+  return gradient
+}
+
 export function AwardCardStudio() {
   const [category, setCategory] = useState<AwardKey>("artilheiro")
   const [name, setName] = useState("Indio")
@@ -26,8 +35,8 @@ export function AwardCardStudio() {
   useEffect(() => { setTournamentUrl(`${window.location.origin}/dashboard/tournaments/exemplo`) }, [])
   useEffect(() => {
     if (!tournamentUrl.trim()) return setQrPreview("")
-    void QRCode.toDataURL(tournamentUrl.trim(), { margin: 1, width: 256, color: { dark: "#050505", light: award.qrLight } }).then(setQrPreview)
-  }, [award.qrLight, tournamentUrl])
+    void QRCode.toDataURL(tournamentUrl.trim(), { errorCorrectionLevel: "H", margin: 2, width: 320, color: { dark: award.color, light: "#080808" } }).then(setQrPreview)
+  }, [award.color, tournamentUrl])
 
   function changeCategory(next: AwardKey) {
     setCategory(next)
@@ -50,28 +59,28 @@ export function AwardCardStudio() {
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.lineJoin = "round"
-    ctx.shadowColor = "rgba(0,0,0,.95)"
-    ctx.shadowBlur = canvas.width * 0.012
-    ctx.strokeStyle = "rgba(0,0,0,.85)"
-    ctx.lineWidth = canvas.width * 0.006
-    ctx.fillStyle = "#fff"
-    fitText(ctx, nick, canvas.width * award.textWidth, canvas.width * 0.068)
+    ctx.shadowColor = award.color
+    ctx.shadowBlur = canvas.width * 0.014
+    ctx.strokeStyle = "rgba(0,0,0,.96)"
+    ctx.lineWidth = canvas.width * 0.007
+    const nickSize = canvas.width * 0.068
+    fitText(ctx, nick, canvas.width * award.textWidth, nickSize)
+    ctx.fillStyle = metallicGradient(ctx, canvas.height * award.nickY, nickSize, "#ffffff", "#9aa4b2", "#f8fafc")
     ctx.strokeText(nick, canvas.width * award.nickX, canvas.height * award.nickY)
     ctx.fillText(nick, canvas.width * award.nickX, canvas.height * award.nickY)
-    ctx.fillStyle = award.color
-    fitText(ctx, achievement, canvas.width * award.textWidth, canvas.width * 0.046)
+    const statSize = canvas.width * 0.046
+    fitText(ctx, achievement, canvas.width * award.textWidth, statSize)
+    ctx.fillStyle = metallicGradient(ctx, canvas.height * award.statY, statSize, award.highlight, "#ffffff", award.color)
     ctx.strokeText(achievement, canvas.width * award.statX, canvas.height * award.statY)
     ctx.fillText(achievement, canvas.width * award.statX, canvas.height * award.statY)
     if (tournamentUrl.trim()) {
       const qr = new Image()
-      qr.src = await QRCode.toDataURL(tournamentUrl.trim(), { margin: 1, width: 320, color: { dark: "#050505", light: award.qrLight } })
+      qr.src = await QRCode.toDataURL(tournamentUrl.trim(), { errorCorrectionLevel: "H", margin: 2, width: 384, color: { dark: award.color, light: "#080808" } })
       await qr.decode()
       const size = canvas.width * award.qrSize
       const x = canvas.width * award.qrX
       const y = canvas.height * award.qrY
       ctx.shadowBlur = 0
-      ctx.fillStyle = award.color
-      ctx.fillRect(x - 5, y - 5, size + 10, size + 10)
       ctx.drawImage(qr, x, y, size, size)
     }
     const link = document.createElement("a")
@@ -101,9 +110,9 @@ export function AwardCardStudio() {
         <div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-500">Prévia real</span><span className="flex items-center gap-1 text-[10px] text-gray-600"><ExternalLink className="h-3 w-3" />4:5</span></div>
         <div className="relative mx-auto aspect-[4/5] w-full max-w-[440px] overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10">
           <img src={award.image} alt={`Template ${award.title}`} className="absolute inset-0 h-full w-full object-cover" />
-          <p className="absolute w-[52%] -translate-x-1/2 -translate-y-1/2 truncate text-center text-[clamp(26px,4.5vw,39px)] leading-none text-white [font-family:'Bebas_Neue',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.7)] drop-shadow-[0_3px_3px_rgba(0,0,0,1)]" style={{ left: `${award.nickX * 100}%`, top: `${award.nickY * 100}%` }}>{name || "Jogador"}</p>
-          <p className="absolute w-[52%] -translate-x-1/2 -translate-y-1/2 truncate text-center text-[clamp(17px,3vw,25px)] leading-none [font-family:'Bebas_Neue',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.7)] drop-shadow-[0_3px_3px_rgba(0,0,0,1)]" style={{ color: award.color, left: `${award.statX * 100}%`, top: `${award.statY * 100}%` }}>{value || "0"}</p>
-          {qrPreview && <span className="absolute block p-[2px]" style={{ backgroundColor: award.color, left: `${award.qrX * 100}%`, top: `${award.qrY * 100}%`, width: `${award.qrSize * 100}%`, height: `${award.qrSize * 80}%` }}><img src={qrPreview} alt="QR Code do campeonato" className="h-full w-full" /></span>}
+          <p className="absolute w-[52%] -translate-x-1/2 -translate-y-1/2 truncate bg-clip-text text-center text-[clamp(26px,4.5vw,39px)] leading-none text-transparent [font-family:'Bebas_Neue',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.9)]" style={{ backgroundImage: "linear-gradient(180deg,#fff 0%,#9aa4b2 44%,#fff 58%,#cbd5e1 100%)", filter: `drop-shadow(0 0 5px ${award.color}99) drop-shadow(0 3px 2px #000)`, left: `${award.nickX * 100}%`, top: `${award.nickY * 100}%` }}>{name || "Jogador"}</p>
+          <p className="absolute w-[52%] -translate-x-1/2 -translate-y-1/2 truncate bg-clip-text text-center text-[clamp(17px,3vw,25px)] leading-none text-transparent [font-family:'Bebas_Neue',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.9)]" style={{ backgroundImage: `linear-gradient(180deg,${award.highlight} 0%,#fff 48%,${award.color} 100%)`, filter: `drop-shadow(0 0 5px ${award.color}aa) drop-shadow(0 3px 2px #000)`, left: `${award.statX * 100}%`, top: `${award.statY * 100}%` }}>{value || "0"}</p>
+          {qrPreview && <span className="absolute block aspect-square overflow-hidden" style={{ left: `${award.qrX * 100}%`, top: `${award.qrY * 100}%`, width: `${award.qrSize * 100}%` }}><img src={qrPreview} alt="QR Code do campeonato" className="h-full w-full" /></span>}
         </div>
       </div>
     </div>

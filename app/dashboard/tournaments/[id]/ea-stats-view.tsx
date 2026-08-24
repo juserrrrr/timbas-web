@@ -36,30 +36,38 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
       let size = initialSize
       do { outputContext.font = `400 ${size}px "Bebas Neue", Impact, sans-serif`; size -= 2 } while (size > 30 && outputContext.measureText(text).width > maxWidth)
     }
+    const metallicGradient = (y: number, size: number, top: string, middle: string, bottom: string) => {
+      const gradient = outputContext.createLinearGradient(0, y - size * 0.55, 0, y + size * 0.55)
+      gradient.addColorStop(0, top)
+      gradient.addColorStop(0.42, middle)
+      gradient.addColorStop(0.58, "#ffffff")
+      gradient.addColorStop(1, bottom)
+      return gradient
+    }
     outputContext.textAlign = "center"
     outputContext.textBaseline = "middle"
     outputContext.lineJoin = "round"
-    outputContext.shadowColor = "rgba(0,0,0,.95)"
-    outputContext.shadowBlur = output.width * 0.012
-    outputContext.strokeStyle = "rgba(0,0,0,.85)"
-    outputContext.lineWidth = output.width * 0.006
-    outputContext.fillStyle = "#fff"
-    fit(player.playerName, output.width * template.textWidth, output.width * 0.068)
+    outputContext.shadowColor = template.color
+    outputContext.shadowBlur = output.width * 0.014
+    outputContext.strokeStyle = "rgba(0,0,0,.96)"
+    outputContext.lineWidth = output.width * 0.007
+    const nickSize = output.width * 0.068
+    fit(player.playerName, output.width * template.textWidth, nickSize)
+    outputContext.fillStyle = metallicGradient(output.height * template.nickY, nickSize, "#ffffff", "#9aa4b2", "#f8fafc")
     outputContext.strokeText(player.playerName, output.width * template.nickX, output.height * template.nickY)
     outputContext.fillText(player.playerName, output.width * template.nickX, output.height * template.nickY)
-    outputContext.fillStyle = template.color
-    fit(value.toUpperCase(), output.width * template.textWidth, output.width * 0.046)
+    const statSize = output.width * 0.046
+    fit(value.toUpperCase(), output.width * template.textWidth, statSize)
+    outputContext.fillStyle = metallicGradient(output.height * template.statY, statSize, template.highlight, "#ffffff", template.color)
     outputContext.strokeText(value.toUpperCase(), output.width * template.statX, output.height * template.statY)
     outputContext.fillText(value.toUpperCase(), output.width * template.statX, output.height * template.statY)
     const qr = new Image()
-    qr.src = await QRCode.toDataURL(`${window.location.origin}/dashboard/tournaments/${tournamentId}`, { margin: 1, width: 320, color: { dark: "#050505", light: template.qrLight } })
+    qr.src = await QRCode.toDataURL(`${window.location.origin}/dashboard/tournaments/${tournamentId}`, { errorCorrectionLevel: "H", margin: 2, width: 384, color: { dark: template.color, light: "#080808" } })
     await qr.decode()
     const qrSize = output.width * template.qrSize
     const qrX = output.width * template.qrX
     const qrY = output.height * template.qrY
     outputContext.shadowBlur = 0
-    outputContext.fillStyle = template.color
-    outputContext.fillRect(qrX - 5, qrY - 5, qrSize + 10, qrSize + 10)
     outputContext.drawImage(qr, qrX, qrY, qrSize, qrSize)
     const download = document.createElement("a")
     download.download = `${title}-${player.playerName}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase() + ".png"
