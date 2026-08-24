@@ -31,6 +31,10 @@ export function AwardCardStudio() {
   const [tournamentUrl, setTournamentUrl] = useState("")
   const [qrPreview, setQrPreview] = useState("")
   const award = AWARDS[category]
+  const previewNick = (name.trim() || "Jogador").toUpperCase()
+  const previewValue = (value.trim() || "0").toUpperCase()
+  const nickScale = Math.min(1, 12 / Math.max(previewNick.length, 1))
+  const statScale = Math.min(1, 15 / Math.max(previewValue.length, 1))
 
   useEffect(() => { setTournamentUrl(`${window.location.origin}/dashboard/tournaments/exemplo`) }, [])
   useEffect(() => {
@@ -110,9 +114,9 @@ export function AwardCardStudio() {
       <div className="min-w-0">
         <div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-500">Prévia real</span><span className="flex items-center gap-1 text-[10px] text-gray-600"><ExternalLink className="h-3 w-3" />4:5</span></div>
         <div className="relative mx-auto aspect-[4/5] w-full max-w-[440px] overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10">
-          <img src={award.image} alt={`Template ${award.title}`} className="absolute inset-0 h-full w-full object-cover" />
-          <p className="absolute w-[52%] -translate-x-1/2 -translate-y-1/2 truncate bg-clip-text text-center text-[clamp(28px,4.5vw,40px)] leading-none tracking-[0.025em] text-transparent [font-family:'Anton',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.95)]" style={{ backgroundImage: "linear-gradient(180deg,#fff 0%,#aab2bd 44%,#fff 58%,#cbd5e1 100%)", filter: "drop-shadow(0 3px 2px #000)", left: `${award.nickX * 100}%`, top: `${award.nickY * 100}%` }}>{(name || "Jogador").toUpperCase()}</p>
-          <p className="absolute w-[52%] truncate bg-clip-text text-center text-[clamp(18px,3vw,25px)] leading-none tracking-[0.02em] text-transparent [font-family:'Anton',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.95)]" style={{ backgroundImage: `linear-gradient(180deg,${award.highlight} 0%,#fff 45%,${award.color} 100%)`, filter: "drop-shadow(0 3px 2px #000)", left: `${award.statX * 100}%`, top: `${award.statY * 100}%`, transform: `translate(-50%,-50%) scale(${award.statScale})` }}>{value || "0"}</p>
+          <img src={award.image} alt={`Template ${award.title}`} className="absolute inset-0 h-full w-full object-contain" />
+          <p className="absolute w-[52%] truncate bg-clip-text text-center text-[clamp(28px,4.5vw,40px)] leading-none tracking-[0.025em] text-transparent [font-family:'Anton',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.95)]" style={{ backgroundImage: "linear-gradient(180deg,#fff 0%,#aab2bd 44%,#fff 58%,#cbd5e1 100%)", filter: "drop-shadow(0 3px 2px #000)", left: `${award.nickX * 100}%`, top: `${award.nickY * 100}%`, transform: `translate(-50%,-50%) scale(${nickScale})` }}>{previewNick}</p>
+          <p className="absolute w-[52%] truncate bg-clip-text text-center text-[clamp(18px,3vw,25px)] leading-none tracking-[0.02em] text-transparent [font-family:'Anton',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.95)]" style={{ backgroundImage: `linear-gradient(180deg,${award.highlight} 0%,#fff 45%,${award.color} 100%)`, filter: "drop-shadow(0 3px 2px #000)", left: `${award.statX * 100}%`, top: `${award.statY * 100}%`, transform: `translate(-50%,-50%) scale(${statScale})` }}>{previewValue}</p>
           {qrPreview && <span className="absolute block aspect-square overflow-hidden" style={{ left: `${award.qrX * 100}%`, top: `${award.qrY * 100}%`, width: `${award.qrSize * 100}%` }}><img src={qrPreview} alt="QR Code do campeonato" className="h-full w-full" /></span>}
         </div>
       </div>
