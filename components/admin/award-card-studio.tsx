@@ -5,17 +5,7 @@ import { Download, ExternalLink, QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import "@fontsource/bebas-neue"
 import { Button } from "@/components/ui/button"
-
-const AWARDS = {
-  artilheiro: { title: "ARTILHEIRO", value: "12 GOLS", image: "/images/awards/artilheiro-template.png", color: "#ffbd35" },
-  garcom: { title: "GARÇOM", value: "9 ASSISTÊNCIAS", image: "/images/awards/garcom-template.png", color: "#38bdf8" },
-  craque: { title: "CRAQUE DO CAMPEONATO", value: "NOTA 9,2", image: "/images/awards/craque-template.png", color: "#f4c542" },
-  maestro: { title: "MAESTRO", value: "184 PASSES CERTOS", image: "/images/awards/maestro-template.png", color: "#2dd4bf" },
-  xerife: { title: "XERIFE", value: "31 DESARMES", image: "/images/awards/xerife-template.png", color: "#e2e8f0" },
-  muralha: { title: "MURALHA", value: "27 DEFESAS", image: "/images/awards/muralha-template.png", color: "#ef4444" },
-} as const
-
-type AwardKey = keyof typeof AWARDS
+import { AWARD_CARD_CONFIG as AWARDS, type AwardCardKey as AwardKey } from "@/lib/award-card-config"
 
 function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, initialSize: number) {
   let size = initialSize
@@ -36,8 +26,8 @@ export function AwardCardStudio() {
   useEffect(() => { setTournamentUrl(`${window.location.origin}/dashboard/tournaments/exemplo`) }, [])
   useEffect(() => {
     if (!tournamentUrl.trim()) return setQrPreview("")
-    void QRCode.toDataURL(tournamentUrl.trim(), { margin: 1, width: 256, color: { dark: "#050505", light: "#ffffff" } }).then(setQrPreview)
-  }, [tournamentUrl])
+    void QRCode.toDataURL(tournamentUrl.trim(), { margin: 1, width: 256, color: { dark: "#050505", light: award.qrLight } }).then(setQrPreview)
+  }, [award.qrLight, tournamentUrl])
 
   function changeCategory(next: AwardKey) {
     setCategory(next)
@@ -55,7 +45,6 @@ export function AwardCardStudio() {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
     ctx.drawImage(background, 0, 0)
-    const center = canvas.width / 2
     const nick = (name.trim() || "Jogador").slice(0, 28)
     const achievement = (value.trim() || "0").toUpperCase().slice(0, 34)
     ctx.textAlign = "center"
@@ -66,20 +55,20 @@ export function AwardCardStudio() {
     ctx.strokeStyle = "rgba(0,0,0,.85)"
     ctx.lineWidth = canvas.width * 0.006
     ctx.fillStyle = "#fff"
-    fitText(ctx, nick, canvas.width * 0.58, canvas.width * 0.076)
-    ctx.strokeText(nick, center, canvas.height * 0.758)
-    ctx.fillText(nick, center, canvas.height * 0.758)
+    fitText(ctx, nick, canvas.width * award.textWidth, canvas.width * 0.068)
+    ctx.strokeText(nick, canvas.width * award.nickX, canvas.height * award.nickY)
+    ctx.fillText(nick, canvas.width * award.nickX, canvas.height * award.nickY)
     ctx.fillStyle = award.color
-    fitText(ctx, achievement, canvas.width * 0.56, canvas.width * 0.049)
-    ctx.strokeText(achievement, center, canvas.height * 0.826)
-    ctx.fillText(achievement, center, canvas.height * 0.826)
+    fitText(ctx, achievement, canvas.width * award.textWidth, canvas.width * 0.046)
+    ctx.strokeText(achievement, canvas.width * award.statX, canvas.height * award.statY)
+    ctx.fillText(achievement, canvas.width * award.statX, canvas.height * award.statY)
     if (tournamentUrl.trim()) {
       const qr = new Image()
-      qr.src = await QRCode.toDataURL(tournamentUrl.trim(), { margin: 1, width: 320, color: { dark: "#050505", light: "#fff" } })
+      qr.src = await QRCode.toDataURL(tournamentUrl.trim(), { margin: 1, width: 320, color: { dark: "#050505", light: award.qrLight } })
       await qr.decode()
-      const size = canvas.width * 0.105
-      const x = canvas.width * 0.79
-      const y = canvas.height * 0.835
+      const size = canvas.width * award.qrSize
+      const x = canvas.width * award.qrX
+      const y = canvas.height * award.qrY
       ctx.shadowBlur = 0
       ctx.fillStyle = award.color
       ctx.fillRect(x - 5, y - 5, size + 10, size + 10)
@@ -112,11 +101,9 @@ export function AwardCardStudio() {
         <div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-500">Prévia real</span><span className="flex items-center gap-1 text-[10px] text-gray-600"><ExternalLink className="h-3 w-3" />4:5</span></div>
         <div className="relative mx-auto aspect-[4/5] w-full max-w-[440px] overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10">
           <img src={award.image} alt={`Template ${award.title}`} className="absolute inset-0 h-full w-full object-cover" />
-          <div className="absolute inset-x-[20%] top-[72.8%] text-center [font-family:'Bebas_Neue',Impact,sans-serif] drop-shadow-[0_3px_3px_rgba(0,0,0,1)]">
-            <p className="truncate text-[clamp(28px,5vw,42px)] leading-none text-white [-webkit-text-stroke:1px_rgba(0,0,0,.7)]">{name || "Jogador"}</p>
-            <p className="mt-[8%] truncate text-[clamp(18px,3.2vw,27px)] leading-none [-webkit-text-stroke:1px_rgba(0,0,0,.7)]" style={{ color: award.color }}>{value || "0"}</p>
-          </div>
-          {qrPreview && <span className="absolute bottom-[6.2%] right-[10.5%] block h-[10.5%] w-[10.5%] p-[2px]" style={{ backgroundColor: award.color }}><img src={qrPreview} alt="QR Code do campeonato" className="h-full w-full" /></span>}
+          <p className="absolute w-[52%] -translate-x-1/2 -translate-y-1/2 truncate text-center text-[clamp(26px,4.5vw,39px)] leading-none text-white [font-family:'Bebas_Neue',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.7)] drop-shadow-[0_3px_3px_rgba(0,0,0,1)]" style={{ left: `${award.nickX * 100}%`, top: `${award.nickY * 100}%` }}>{name || "Jogador"}</p>
+          <p className="absolute w-[52%] -translate-x-1/2 -translate-y-1/2 truncate text-center text-[clamp(17px,3vw,25px)] leading-none [font-family:'Bebas_Neue',Impact,sans-serif] [-webkit-text-stroke:1px_rgba(0,0,0,.7)] drop-shadow-[0_3px_3px_rgba(0,0,0,1)]" style={{ color: award.color, left: `${award.statX * 100}%`, top: `${award.statY * 100}%` }}>{value || "0"}</p>
+          {qrPreview && <span className="absolute block p-[2px]" style={{ backgroundColor: award.color, left: `${award.qrX * 100}%`, top: `${award.qrY * 100}%`, width: `${award.qrSize * 100}%`, height: `${award.qrSize * 80}%` }}><img src={qrPreview} alt="QR Code do campeonato" className="h-full w-full" /></span>}
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { EmptyState, TeamCrest } from "@/components/competitions/shared"
 import { getTournamentEaStats } from "@/lib/services/tournaments"
 import type { TournamentEaPlayerStats } from "@/lib/services/tournaments.types"
+import { awardCardByTitle } from "@/lib/award-card-config"
 
 const TAGS: Record<string, string> = {
   MVP: "MVP",
@@ -19,15 +20,7 @@ const TAGS: Record<string, string> = {
 }
 
 async function downloadAwardPng(title: string, subtitle: string, player: TournamentEaPlayerStats, value: string, tournamentId: string) {
-  const templates: Record<string, { image: string; color: string }> = {
-    Artilheiro: { image: "/images/awards/artilheiro-template.png", color: "#ffbd35" },
-    "Garçom": { image: "/images/awards/garcom-template.png", color: "#38bdf8" },
-    "Craque do Campeonato": { image: "/images/awards/craque-template.png", color: "#f4c542" },
-    Maestro: { image: "/images/awards/maestro-template.png", color: "#2dd4bf" },
-    Xerife: { image: "/images/awards/xerife-template.png", color: "#e2e8f0" },
-    Muralha: { image: "/images/awards/muralha-template.png", color: "#ef4444" },
-  }
-  const template = templates[title]
+  const template = awardCardByTitle(title)
   if (template) {
     await document.fonts.load('400 100px "Bebas Neue"')
     const background = new Image()
@@ -39,7 +32,6 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
     const outputContext = output.getContext("2d")
     if (!outputContext) return
     outputContext.drawImage(background, 0, 0)
-    const center = output.width / 2
     const fit = (text: string, maxWidth: number, initialSize: number) => {
       let size = initialSize
       do { outputContext.font = `400 ${size}px "Bebas Neue", Impact, sans-serif`; size -= 2 } while (size > 30 && outputContext.measureText(text).width > maxWidth)
@@ -52,19 +44,19 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
     outputContext.strokeStyle = "rgba(0,0,0,.85)"
     outputContext.lineWidth = output.width * 0.006
     outputContext.fillStyle = "#fff"
-    fit(player.playerName, output.width * 0.58, output.width * 0.076)
-    outputContext.strokeText(player.playerName, center, output.height * 0.758)
-    outputContext.fillText(player.playerName, center, output.height * 0.758)
+    fit(player.playerName, output.width * template.textWidth, output.width * 0.068)
+    outputContext.strokeText(player.playerName, output.width * template.nickX, output.height * template.nickY)
+    outputContext.fillText(player.playerName, output.width * template.nickX, output.height * template.nickY)
     outputContext.fillStyle = template.color
-    fit(value.toUpperCase(), output.width * 0.56, output.width * 0.049)
-    outputContext.strokeText(value.toUpperCase(), center, output.height * 0.826)
-    outputContext.fillText(value.toUpperCase(), center, output.height * 0.826)
+    fit(value.toUpperCase(), output.width * template.textWidth, output.width * 0.046)
+    outputContext.strokeText(value.toUpperCase(), output.width * template.statX, output.height * template.statY)
+    outputContext.fillText(value.toUpperCase(), output.width * template.statX, output.height * template.statY)
     const qr = new Image()
-    qr.src = await QRCode.toDataURL(`${window.location.origin}/dashboard/tournaments/${tournamentId}`, { margin: 1, width: 320, color: { dark: "#050505", light: "#ffffff" } })
+    qr.src = await QRCode.toDataURL(`${window.location.origin}/dashboard/tournaments/${tournamentId}`, { margin: 1, width: 320, color: { dark: "#050505", light: template.qrLight } })
     await qr.decode()
-    const qrSize = output.width * 0.105
-    const qrX = output.width * 0.79
-    const qrY = output.height * 0.835
+    const qrSize = output.width * template.qrSize
+    const qrX = output.width * template.qrX
+    const qrY = output.height * template.qrY
     outputContext.shadowBlur = 0
     outputContext.fillStyle = template.color
     outputContext.fillRect(qrX - 5, qrY - 5, qrSize + 10, qrSize + 10)
