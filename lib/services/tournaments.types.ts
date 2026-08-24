@@ -213,6 +213,16 @@ export interface TournamentEaPlayerStats {
   goalContributions: number
   averageRating: number | null
   mvps: number
+  passesAttempted: number
+  passesCompleted: number
+  passAccuracy: number | null
+  tacklesAttempted: number
+  tacklesCompleted: number
+  tackleSuccess: number | null
+  shots: number
+  saves: number
+  yellowCards: number
+  redCards: number
   tags: string[]
 }
 

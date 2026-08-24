@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { AwardCardStudio } from "@/components/admin/award-card-studio"
 import {
   CompetitionHeader,
   ErrorState,
@@ -323,6 +324,17 @@ export default function DemoLabPage() {
             </Button>
             {preparedMatchId && <Link href={`/dashboard/tournaments/${eaTournamentId.trim()}?match=${encodeURIComponent(preparedMatchId)}&lab=ea`} className="block rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-xs font-bold text-blue-300">Abrir diretamente a partida [LAB]</Link>}
           </div>
+        </div>
+      </Card>
+
+      <Card className="overflow-hidden border-emerald-500/20 bg-emerald-500/[0.035] p-4">
+        <div className="grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+          <div>
+            <h3 className="text-sm font-black text-white">Exemplo do banner de premiação</h3>
+            <p className="mt-1 text-[11px] leading-relaxed text-gray-500">Cada categoria possui um modelo visual fixo próprio. Somente nome, time e feito estatístico mudam com os dados da EA; o destaque individual não depende do time campeão.</p>
+            <p className="mt-3 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-[11px] text-emerald-300">Abra um campeonato encerrado → Estatísticas EA → botão de download no card.</p>
+          </div>
+          <AwardCardStudio />
         </div>
       </Card>
 

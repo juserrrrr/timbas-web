@@ -6,6 +6,7 @@ import { CalendarClock, Plus, Timer, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { joinTournamentByInvite, listTournaments } from "@/lib/services/tournaments"
+import { getMyPermissions } from "@/lib/services/access"
 import {
   FORMAT_LABELS,
   GAME_LABELS,
@@ -63,6 +64,7 @@ export default function TournamentsPage() {
   const [error, setError] = useState("")
   const [creating, setCreating] = useState(false)
   const [now, setNow] = useState(() => Date.now())
+  const [canCreate, setCanCreate] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -93,6 +95,10 @@ export default function TournamentsPage() {
   }, [load, router, searchParams])
 
   useEffect(() => {
+    void getMyPermissions().then((result) => setCanCreate(result.permissions.includes("tournament.create"))).catch(() => setCanCreate(false))
+  }, [])
+
+  useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [])
@@ -112,11 +118,11 @@ export default function TournamentsPage() {
         title="Campeonatos"
         subtitle="Monte chaves de qualquer jogo e valide os resultados com segurança."
         icon={Trophy}
-        actions={
+        actions={canCreate ?
           <Button onClick={() => setCreating(true)} className="bg-amber-500 text-black hover:bg-amber-400">
             <Plus className="mr-1.5 h-4 w-4" />
             Criar campeonato
-          </Button>
+          </Button> : null
         }
       />
 
@@ -141,11 +147,11 @@ export default function TournamentsPage() {
           icon={Trophy}
           title="Nenhum campeonato por aqui"
           description="Crie o primeiro campeonato. Você escolhe o jogo, o formato e o ritmo das partidas."
-          action={
+          action={canCreate ?
             <Button onClick={() => setCreating(true)} className="bg-amber-500 text-black hover:bg-amber-400">
               <Plus className="mr-1.5 h-4 w-4" />
               Criar campeonato
-            </Button>
+            </Button> : undefined
           }
         />
       ) : (
@@ -217,11 +223,11 @@ export default function TournamentsPage() {
         </div>
       )}
 
-      <CreateTournamentDialog
+      {canCreate && <CreateTournamentDialog
         open={creating}
         onOpenChange={setCreating}
         onCreated={(id) => router.push(`/dashboard/tournaments/${id}`)}
-      />
+      />}
     </div>
   )
 }

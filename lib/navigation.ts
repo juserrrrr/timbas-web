@@ -52,6 +52,28 @@ export const ACCENTS = {
 
 export const NAV_GROUPS: NavGroup[] = [
   {
+    id: "competicoes",
+    title: "Competições",
+    items: [
+      {
+        icon: Trophy,
+        label: "Campeonatos",
+        description: "Chaves, grupos e mata-mata de qualquer jogo",
+        href: "/dashboard/tournaments",
+        accent: "amber",
+        beta: true,
+      },
+      {
+        icon: ClipboardList,
+        label: "Liga Draft",
+        description: "Monte seu elenco no draft e dispute as rodadas",
+        href: "/dashboard/draft",
+        accent: "emerald",
+        beta: true,
+      },
+    ],
+  },
+  {
     id: "geral",
     title: "Geral",
     items: [
@@ -77,28 +99,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { icon: Users, label: "Duplas", description: "Quem joga melhor junto", href: "/dashboard/teams", accent: "emerald" },
       { icon: BarChart3, label: "Estatísticas", description: "Números detalhados das partidas", href: "/dashboard/stats", accent: "rose" },
       { icon: Swords, label: "Comparação", description: "Confronto direto entre jogadores", href: "/dashboard/versus", accent: "orange" },
-    ],
-  },
-  {
-    id: "competicoes",
-    title: "Competições",
-    items: [
-      {
-        icon: Trophy,
-        label: "Campeonatos",
-        description: "Chaves, grupos e mata-mata de qualquer jogo",
-        href: "/dashboard/tournaments",
-        accent: "amber",
-        beta: true,
-      },
-      {
-        icon: ClipboardList,
-        label: "Liga Draft",
-        description: "Monte seu elenco no draft e dispute as rodadas",
-        href: "/dashboard/draft",
-        accent: "emerald",
-        beta: true,
-      },
     ],
   },
   {

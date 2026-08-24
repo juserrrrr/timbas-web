@@ -327,7 +327,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
       {tab === "my-matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} onlyMine />}
       {tab === "matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} />}
       {tab === "teams" && <TeamsPanel tournament={tournament} onChanged={() => void load()} />}
-      {tab === "ea-stats" && <EaStatsView tournamentId={tournament.id} />}
+      {tab === "ea-stats" && <EaStatsView tournamentId={tournament.id} finished={tournament.status === "FINISHED"} />}
       {tab === "proofs" && <ProofReviewPanel tournamentId={tournament.id} onReviewed={() => void load()} />}
       {tab === "staff" && <StaffPanel tournament={tournament} onChanged={() => void load()} />}
 
