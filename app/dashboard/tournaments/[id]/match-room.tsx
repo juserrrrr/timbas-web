@@ -14,6 +14,7 @@ import {
   proposeMatchSchedule,
   respondMatchClaim,
   respondMatchSchedule,
+  requestTournamentMatchReview,
   type MatchRoom,
 } from "@/lib/services/tournaments"
 import type { TournamentDetail, TournamentMatch } from "@/lib/services/tournaments.types"
@@ -55,6 +56,7 @@ export function MatchRoomDialog({
   const [when, setWhen] = useState(() => localInputValue(new Date(Date.now() + 24 * 3_600_000)))
   const [homeScore, setHomeScore] = useState("")
   const [awayScore, setAwayScore] = useState("")
+  const [reviewReason, setReviewReason] = useState("")
   const [busy, setBusy] = useState("")
   const [error, setError] = useState("")
 
@@ -318,10 +320,12 @@ export function MatchRoomDialog({
                     <div key={teamId} className="overflow-hidden rounded-lg border border-white/[0.06] bg-black/20">
                       <p className="border-b border-white/[0.05] px-2.5 py-2 text-[11px] font-bold text-white">{team?.name ?? "Time"}</p>
                       {players.map((player) => (
-                        <div key={player.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 border-b border-white/[0.04] px-2.5 py-1.5 text-[10px] last:border-0">
+                        <div key={player.id} className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-2 border-b border-white/[0.04] px-2.5 py-1.5 text-[10px] last:border-0">
                           <span className="truncate text-gray-300">{player.playerName}</span>
                           <span className="text-emerald-300">{player.goals} G</span>
                           <span className="text-blue-300">{player.assists} A</span>
+                          <span className="text-yellow-300">{player.yellowCards ?? 0} CA</span>
+                          <span className="text-red-400">{player.redCards ?? 0} CV</span>
                           <span className="w-7 text-right font-bold text-white">{player.rating?.toFixed(1) ?? "-"}</span>
                         </div>
                       ))}
@@ -329,6 +333,13 @@ export function MatchRoomDialog({
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {!closed && mySide && match.status !== "DISPUTED" && (
+            <div className="flex flex-wrap gap-2 rounded-xl border border-red-500/15 bg-red-500/[0.03] p-3">
+              <Input value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} placeholder="Motivo para pedir análise da organização" className="h-9 min-w-56 flex-1 border-white/10 bg-black/30 text-xs" />
+              <Button variant="outline" disabled={busy !== "" || reviewReason.trim().length < 3} onClick={() => void run("review", () => requestTournamentMatchReview(tournament.id, match.id, reviewReason.trim()))} className="h-9 border-red-500/25 text-xs text-red-300 hover:bg-red-500/10"><TriangleAlert className="mr-1.5 h-3.5 w-3.5" />Pedir análise</Button>
             </div>
           )}
 

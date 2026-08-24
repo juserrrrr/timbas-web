@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ArrowLeft, ArrowRight, Check, Loader2, LockKeyhole, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { advancePerGroupOptions, groupCountOptions, pickOption } from "@/lib/group-plan"
 import { createTournament } from "@/lib/services/tournaments"
+import { getToken } from "@/lib/auth"
+import { FEATURE_TOURNAMENT_AI_RESULTS, FEATURE_TOURNAMENT_EA_RESULTS, getFeatureFlags } from "@/lib/services/feature-flags"
 import {
   FORMAT_DESCRIPTIONS,
   FORMAT_LABELS,
@@ -98,6 +100,18 @@ export function CreateTournamentDialog({
   const [coinsChampion, setCoinsChampion] = useState(500)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const [eaApiEnabled, setEaApiEnabled] = useState(false)
+  const [aiEnabled, setAiEnabled] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const token = getToken()
+    if (!token) return
+    void getFeatureFlags(token).then((flags) => {
+      setEaApiEnabled(Boolean(flags.find((flag) => flag.key === FEATURE_TOURNAMENT_EA_RESULTS)?.enabled))
+      setAiEnabled(Boolean(flags.find((flag) => flag.key === FEATURE_TOURNAMENT_AI_RESULTS)?.enabled))
+    })
+  }, [open])
 
   const isGroups = format === "GROUPS_KNOCKOUT"
   const isLeague = format === "ROUND_ROBIN" || isGroups
@@ -135,8 +149,8 @@ export function CreateTournamentDialog({
         thirdPlace: isKnockout ? thirdPlace : false,
         registrationEndsAt: registrationEndsAt ? new Date(registrationEndsAt).toISOString() : undefined,
         autoStartOnClose: registrationEndsAt ? autoStartOnClose : false,
-        requireProof,
-        autoApproveProof,
+        requireProof: game === "EA_FC" && eaApiEnabled ? false : aiEnabled ? true : requireProof,
+        autoApproveProof: game === "EA_FC" && eaApiEnabled ? false : aiEnabled ? autoApproveProof : false,
         coinsWin,
         coinsChampion,
       })
@@ -373,7 +387,9 @@ export function CreateTournamentDialog({
                 />
               )}
 
-              <ToggleRow
+              {game === "EA_FC" && eaApiEnabled ? (
+                <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-3"><p className="text-sm font-bold text-blue-200">Resultados pela API da EA</p><p className="mt-1 text-[11px] text-gray-500">Os jogadores usam Checar na EA. Placar, atletas e estatísticas são sincronizados automaticamente.</p></div>
+              ) : aiEnabled ? <><ToggleRow
                 title="Exigir foto do placar"
                 hint="Jogadores só lançam resultado com print da tela final"
                 checked={requireProof}
@@ -385,7 +401,9 @@ export function CreateTournamentDialog({
                 hint="Só confirma quando a foto bate com o placar e a IA tem pelo menos 90% de confiança"
                 checked={autoApproveProof}
                 onChange={setAutoApproveProof}
-              />
+              /></> : (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-3"><p className="text-sm font-bold text-amber-200">Resultado manual</p><p className="mt-1 text-[11px] text-gray-500">Como API e IA estão desligadas, um time informa o placar e o adversário confirma.</p></div>
+              )}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">

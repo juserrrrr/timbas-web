@@ -102,6 +102,8 @@ export interface TournamentMatch {
   eaMatchId: string | null
   eaVerifiedAt: string | null
   eaTags: string[]
+  reviewRequestedAt?: string | null
+  reviewReason?: string | null
   eaPlayerStats: Array<{
     id: string
     teamId: string
@@ -116,7 +118,9 @@ export interface TournamentMatch {
     passesCompleted: number | null
     tacklesAttempted: number | null
     tacklesCompleted: number | null
-    saves: number | null
+  saves: number | null
+  yellowCards: number | null
+  redCards: number | null
     manOfTheMatch: boolean | null
     tags: string[]
   }>

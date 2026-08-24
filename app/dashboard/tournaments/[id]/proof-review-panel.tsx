@@ -5,8 +5,8 @@ import { Check, Loader2, ScanLine, ShieldCheck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { EmptyState, StatusPill, TeamCrest, formatDateTime } from "@/components/competitions/shared"
-import { fetchProofImage, listPendingProofs, reviewProof } from "@/lib/services/tournaments"
-import type { PendingProof } from "@/lib/services/tournaments.types"
+import { fetchProofImage, listPendingMatchReviews, listPendingProofs, resolveTournamentMatchReview, reviewProof } from "@/lib/services/tournaments"
+import type { PendingProof, TournamentMatch } from "@/lib/services/tournaments.types"
 
 function ProofImage({ tournamentId, proofId }: { tournamentId: string; proofId: string }) {
   const [url, setUrl] = useState("")
@@ -48,6 +48,8 @@ function ProofImage({ tournamentId, proofId }: { tournamentId: string; proofId: 
 
 export function ProofReviewPanel({ tournamentId, onReviewed }: { tournamentId: string; onReviewed: () => void }) {
   const [proofs, setProofs] = useState<PendingProof[]>([])
+  const [reviews, setReviews] = useState<TournamentMatch[]>([])
+  const [scores, setScores] = useState<Record<string, { home: string; away: string }>>({})
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState("")
   const [error, setError] = useState("")
@@ -55,7 +57,9 @@ export function ProofReviewPanel({ tournamentId, onReviewed }: { tournamentId: s
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setProofs(await listPendingProofs(tournamentId))
+      const [nextProofs, nextReviews] = await Promise.all([listPendingProofs(tournamentId), listPendingMatchReviews(tournamentId)])
+      setProofs(nextProofs)
+      setReviews(nextReviews)
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar as provas pendentes")
@@ -82,6 +86,19 @@ export function ProofReviewPanel({ tournamentId, onReviewed }: { tournamentId: s
     }
   }
 
+  const resolveRequest = async (matchId: string) => {
+    const score = scores[matchId]
+    if (!score || score.home === "" || score.away === "") return
+    setBusyId(matchId)
+    try {
+      await resolveTournamentMatchReview(tournamentId, matchId, Number(score.home), Number(score.away))
+      await load()
+      onReviewed()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível resolver a análise.")
+    } finally { setBusyId("") }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-10">
@@ -90,7 +107,7 @@ export function ProofReviewPanel({ tournamentId, onReviewed }: { tournamentId: s
     )
   }
 
-  if (proofs.length === 0) {
+  if (proofs.length === 0 && reviews.length === 0) {
     return (
       <EmptyState
         icon={ShieldCheck}
@@ -103,6 +120,11 @@ export function ProofReviewPanel({ tournamentId, onReviewed }: { tournamentId: s
   return (
     <div className="space-y-3">
       {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-300">{error}</p>}
+
+      {reviews.map((match) => {
+        const score = scores[match.id] ?? { home: "", away: "" }
+        return <Card key={match.id} className="border-red-500/20 bg-red-500/[0.035] p-4"><div className="flex flex-wrap items-center gap-3"><div className="min-w-52 flex-1"><p className="text-sm font-black text-white">{match.homeTeam?.name} × {match.awayTeam?.name}</p><p className="mt-1 text-xs text-red-200">{match.reviewReason ?? "Análise solicitada pelos jogadores."}</p></div><input aria-label="Placar mandante" value={score.home} onChange={(event) => setScores((old) => ({ ...old, [match.id]: { ...score, home: event.target.value.replace(/\D/g, "").slice(0, 2) } }))} className="h-9 w-14 rounded-lg border border-white/10 bg-black/30 text-center text-sm text-white" /><span className="text-gray-600">×</span><input aria-label="Placar visitante" value={score.away} onChange={(event) => setScores((old) => ({ ...old, [match.id]: { ...score, away: event.target.value.replace(/\D/g, "").slice(0, 2) } }))} className="h-9 w-14 rounded-lg border border-white/10 bg-black/30 text-center text-sm text-white" /><Button disabled={busyId === match.id || score.home === "" || score.away === ""} onClick={() => void resolveRequest(match.id)} className="bg-emerald-500 text-black hover:bg-emerald-400">Resolver partida</Button></div></Card>
+      })}
 
       {proofs.map((proof) => {
         const aiRead = proof.aiConfidence !== null && proof.aiHomeScore !== null

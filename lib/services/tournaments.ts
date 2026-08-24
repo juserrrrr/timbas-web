@@ -91,6 +91,18 @@ export function checkTournamentEaResult(id: string, matchId: string) {
   return post<TournamentMatch>(`/tournaments/${id}/matches/${matchId}/check-ea`)
 }
 
+export function requestTournamentMatchReview(id: string, matchId: string, reason: string) {
+  return post(`/tournaments/${id}/matches/${matchId}/request-review`, { reason })
+}
+
+export function listPendingMatchReviews(id: string): Promise<TournamentMatch[]> {
+  return request(`/tournaments/${id}/reviews/pending`)
+}
+
+export function resolveTournamentMatchReview(id: string, matchId: string, homeScore: number, awayScore: number) {
+  return post(`/tournaments/${id}/matches/${matchId}/resolve-review`, { homeScore, awayScore })
+}
+
 export function getTournamentEaStats(id: string) {
   return request<TournamentEaPlayerStats[]>(`/tournaments/${id}/ea-stats`)
 }
