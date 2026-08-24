@@ -12,6 +12,7 @@ import type { TournamentDetail } from "@/lib/services/tournaments.types"
 export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDetail; onChanged: () => void }) {
   const [name, setName] = useState("")
   const [tag, setTag] = useState("")
+  const [captainUsername, setCaptainUsername] = useState("")
   const [busy, setBusy] = useState(false)
   const [validating, setValidating] = useState(false)
   const [eaClub, setEaClub] = useState<{ externalClubId: string; name: string; platform: string } | null>(null)
@@ -32,9 +33,11 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
         tag: tag.trim() || undefined,
         eaClubId: eaClub?.externalClubId,
         eaPlatform: eaClub?.platform,
+        captainUsername: access.canModerate ? captainUsername.trim() : undefined,
       })
       setName("")
       setTag("")
+      setCaptainUsername("")
       setEaClub(null)
       onChanged()
     } catch (err) {
@@ -82,7 +85,8 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
               {access.canModerate ? "Inscrever um time" : "Inscrever meu time"}
             </h3>
           </div>
-          <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_7rem_auto]">
+          <div className="space-y-2">
+            <div className={`grid items-center gap-2 ${tournament.game === "EA_FC" ? "sm:grid-cols-[minmax(0,1fr)_auto]" : ""}`}>
             <Input
               value={name}
               onChange={(event) => {
@@ -103,6 +107,9 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
                 <span className="ml-1.5">{eaClub ? "Validado" : "Validar na EA"}</span>
               </Button>
             )}
+            </div>
+            <div className={`grid items-center gap-2 ${access.canModerate ? "sm:grid-cols-[minmax(0,1fr)_7rem_auto]" : "sm:grid-cols-[minmax(0,1fr)_auto]"}`}>
+            {access.canModerate && <Input value={captainUsername} onChange={(event) => setCaptainUsername(event.target.value)} placeholder="Nome exato do usuário responsável" className="h-10 min-w-0 border-white/10 bg-white/[0.03]" />}
             <Input
               value={tag}
               onChange={(event) => setTag(event.target.value.toUpperCase().slice(0, 6))}
@@ -111,12 +118,13 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
             />
             <Button
               onClick={() => void submit()}
-              disabled={busy || name.trim().length < 2 || (tournament.game === "EA_FC" && !eaClub)}
+              disabled={busy || name.trim().length < 2 || (access.canModerate && captainUsername.trim().length < 2) || (tournament.game === "EA_FC" && !eaClub)}
               className="h-10 rounded-md bg-amber-500 px-4 text-black hover:bg-amber-400"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               <span className="ml-1.5">Inscrever</span>
             </Button>
+            </div>
           </div>
           {error && <p className="mt-2 text-[11px] text-red-400">{error}</p>}
         </Card>

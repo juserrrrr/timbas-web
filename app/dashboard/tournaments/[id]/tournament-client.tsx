@@ -170,7 +170,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         icon={Trophy}
         actions={
           <>
-            <span className="inline-flex h-9 items-center"><StatusPill tone={STATUS_TONES[tournament.status]}>{STATUS_LABELS[tournament.status]}</StatusPill></span>
+            <StatusPill tone={STATUS_TONES[tournament.status]} className="h-9 rounded-md px-3 py-0">{STATUS_LABELS[tournament.status]}</StatusPill>
             {tournament.access.canManage && tournament.inviteCode && (
               <Button
                 variant="outline"

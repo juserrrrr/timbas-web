@@ -144,10 +144,10 @@ const STATUS_TONES: Record<string, string> = {
   danger: "border-red-500/25 bg-red-500/10 text-red-400",
 }
 
-export function StatusPill({ tone = "neutral", children }: { tone?: keyof typeof STATUS_TONES; children: ReactNode }) {
+export function StatusPill({ tone = "neutral", children, className = "" }: { tone?: keyof typeof STATUS_TONES; children: ReactNode; className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${STATUS_TONES[tone]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${STATUS_TONES[tone]} ${className}`}
     >
       {children}
     </span>

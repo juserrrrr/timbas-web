@@ -75,7 +75,7 @@ export function startTournament(id: string) {
 
 export function addTeam(
   id: string,
-  input: { name: string; tag?: string; logoUrl?: string; eaClubId?: string; eaPlatform?: string; memberIds?: number[] },
+  input: { name: string; tag?: string; logoUrl?: string; eaClubId?: string; eaPlatform?: string; memberIds?: number[]; captainUsername?: string },
 ) {
   return post<TournamentTeam>(`/tournaments/${id}/teams`, input)
 }
