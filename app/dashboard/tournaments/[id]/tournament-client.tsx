@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
+  BarChart3,
   Camera,
   Coins,
   GitBranch,
@@ -42,6 +43,7 @@ import { ProofReviewPanel } from "./proof-review-panel"
 import { StaffPanel } from "./staff-panel"
 import { StandingsView } from "./standings-view"
 import { TeamsPanel } from "./teams-panel"
+import { EaStatsView } from "./ea-stats-view"
 
 const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done" | "danger"> = {
   DRAFT: "neutral",
@@ -51,7 +53,7 @@ const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done
   CANCELLED: "danger",
 }
 
-type TabId = "bracket" | "standings" | "matches" | "teams" | "proofs" | "staff"
+type TabId = "bracket" | "standings" | "matches" | "teams" | "ea-stats" | "proofs" | "staff"
 
 export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const router = useRouter()
@@ -66,7 +68,10 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
 
   const load = useCallback(async () => {
     try {
-      setTournament(await getTournament(tournamentId))
+      const next = await getTournament(tournamentId)
+      setTournament(next)
+      setSelectedMatch((current) => current ? next.matches.find((match) => match.id === current.id) ?? null : null)
+      setPhotoMatch((current) => current ? next.matches.find((match) => match.id === current.id) ?? null : null)
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar o campeonato")
@@ -92,6 +97,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
       (hasTable || tournament.matches.length === 0) && { id: "standings" as const, label: "Classificação", icon: Table2 },
       { id: "matches" as const, label: "Partidas", icon: Swords },
       { id: "teams" as const, label: "Times", icon: Users },
+      tournament.game === "EA_FC" && { id: "ea-stats" as const, label: "Estatísticas EA", icon: BarChart3 },
       tournament.access.canModerate && {
         id: "proofs" as const,
         label: "Aprovações",
@@ -240,6 +246,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
       {tab === "standings" && <StandingsView tournament={tournament} />}
       {tab === "matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} />}
       {tab === "teams" && <TeamsPanel tournament={tournament} onChanged={() => void load()} />}
+      {tab === "ea-stats" && <EaStatsView tournamentId={tournament.id} />}
       {tab === "proofs" && <ProofReviewPanel tournamentId={tournament.id} onReviewed={() => void load()} />}
       {tab === "staff" && <StaffPanel tournament={tournament} onChanged={() => void load()} />}
 

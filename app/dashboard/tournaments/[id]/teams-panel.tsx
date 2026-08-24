@@ -1,18 +1,20 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, Plus, Trash2, UserPlus, Users } from "lucide-react"
+import { BadgeCheck, Loader2, Plus, Search, Trash2, UserPlus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { EmptyState, StatusPill, TeamCrest } from "@/components/competitions/shared"
-import { addTeam, removeTeam } from "@/lib/services/tournaments"
+import { addTeam, removeTeam, validateTournamentEaClub } from "@/lib/services/tournaments"
 import type { TournamentDetail } from "@/lib/services/tournaments.types"
 
 export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDetail; onChanged: () => void }) {
   const [name, setName] = useState("")
   const [tag, setTag] = useState("")
   const [busy, setBusy] = useState(false)
+  const [validating, setValidating] = useState(false)
+  const [eaClub, setEaClub] = useState<{ externalClubId: string; name: string; platform: string } | null>(null)
   const [error, setError] = useState("")
 
   const { access, status } = tournament
@@ -25,14 +27,35 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
     setBusy(true)
     setError("")
     try {
-      await addTeam(tournament.id, { name: name.trim(), tag: tag.trim() || undefined })
+      await addTeam(tournament.id, {
+        name: eaClub?.name ?? name.trim(),
+        tag: tag.trim() || undefined,
+        eaClubId: eaClub?.externalClubId,
+        eaPlatform: eaClub?.platform,
+      })
       setName("")
       setTag("")
+      setEaClub(null)
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível inscrever o time.")
     } finally {
       setBusy(false)
+    }
+  }
+
+  const validateEa = async () => {
+    setValidating(true)
+    setError("")
+    try {
+      const club = await validateTournamentEaClub(tournament.id, name.trim())
+      setEaClub(club)
+      setName(club.name)
+    } catch (err) {
+      setEaClub(null)
+      setError(err instanceof Error ? err.message : "Não foi possível validar o clube na EA.")
+    } finally {
+      setValidating(false)
     }
   }
 
@@ -62,10 +85,24 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Nome do time"
+              onChange={(event) => {
+                setName(event.target.value)
+                setEaClub(null)
+              }}
+              placeholder={tournament.game === "EA_FC" ? "Nome exato do clube na EA" : "Nome do time"}
               className="border-white/10 bg-white/[0.03]"
             />
+            {tournament.game === "EA_FC" && (
+              <Button
+                variant="outline"
+                onClick={() => void validateEa()}
+                disabled={validating || name.trim().length < 2}
+                className="whitespace-nowrap"
+              >
+                {validating ? <Loader2 className="h-4 w-4 animate-spin" /> : eaClub ? <BadgeCheck className="h-4 w-4 text-emerald-400" /> : <Search className="h-4 w-4" />}
+                <span className="ml-1.5">{eaClub ? "Validado" : "Validar na EA"}</span>
+              </Button>
+            )}
             <Input
               value={tag}
               onChange={(event) => setTag(event.target.value.toUpperCase().slice(0, 6))}
@@ -74,7 +111,7 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
             />
             <Button
               onClick={() => void submit()}
-              disabled={busy || name.trim().length < 2}
+              disabled={busy || name.trim().length < 2 || (tournament.game === "EA_FC" && !eaClub)}
               className="bg-amber-500 text-black hover:bg-amber-400"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}

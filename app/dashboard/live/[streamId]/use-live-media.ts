@@ -227,7 +227,7 @@ export function useLiveMedia(monitor: boolean, onVideoTrack: (track: MediaStream
       if (withMic) await enableMic()
       else mixer.setMuted("mic", true)
       await adoptDisplay(capture, withGameAudio)
-      publishVideo(capture.video)
+      videoTrackRef.current = capture.video
       return capture
     } catch (caught: unknown) {
       stopCapture(capture)
@@ -236,7 +236,7 @@ export function useLiveMedia(monitor: boolean, onVideoTrack: (track: MediaStream
       setSharing(false)
       throw caught
     }
-  }, [adoptDisplay, enableMic, ensureMixer, publishVideo])
+  }, [adoptDisplay, enableMic, ensureMixer])
 
   /** Swapping the source keeps the transport untouched, so viewers see the new
    * screen on the next frame instead of reconnecting. */
@@ -246,7 +246,7 @@ export function useLiveMedia(monitor: boolean, onVideoTrack: (track: MediaStream
     const previous = displayRef.current
 
     await adoptDisplay(capture, wantGameAudio)
-    publishVideo(capture.video)
+    videoTrackRef.current = capture.video
 
     if (previous && previous !== capture) {
       if (gameAudioRef.current?.stream === previous.stream) {
@@ -258,7 +258,7 @@ export function useLiveMedia(monitor: boolean, onVideoTrack: (track: MediaStream
       }
     }
     return capture
-  }, [adoptDisplay, publishVideo])
+  }, [adoptDisplay])
 
   const stopMedia = useCallback(() => {
     releaseGameAudio()

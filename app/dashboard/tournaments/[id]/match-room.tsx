@@ -1,13 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { CalendarClock, Camera, Check, Clock, Loader2, Send, TriangleAlert, X } from "lucide-react"
+import { CalendarClock, Camera, Check, Clock, DatabaseZap, Loader2, Send, TriangleAlert, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { StatusPill, TeamCrest, formatDateTime } from "@/components/competitions/shared"
 import {
   claimMatchResult,
+  checkTournamentEaResult,
   getMatchRoom,
   postMatchMessage,
   proposeMatchSchedule,
@@ -201,6 +202,23 @@ export function MatchRoomDialog({
             </div>
           )}
 
+          {!closed && tournament.game === "EA_FC" && (mySide || room?.canModerate) && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-500/15 bg-blue-500/[0.05] p-2.5">
+              <p className="text-[11px] text-blue-200">
+                Terminou o amistoso? Busque placar e estatísticas dos jogadores direto na EA.
+              </p>
+              <Button
+                size="sm"
+                disabled={busy !== "" || !match.scheduledAt}
+                onClick={() => void run("ea", () => checkTournamentEaResult(tournament.id, match.id))}
+                className="h-8 bg-blue-500 px-3 text-[11px] text-white hover:bg-blue-400"
+              >
+                {busy === "ea" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="mr-1.5 h-3.5 w-3.5" />}
+                Checar na EA
+              </Button>
+            </div>
+          )}
+
           {!closed && mySide && (
             <div className="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3">
               <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">Resultado</h3>
@@ -285,6 +303,34 @@ export function MatchRoomDialog({
                   </p>
                 </>
               )}
+            </div>
+          )}
+
+          {(match.eaPlayerStats?.length ?? 0) > 0 && (
+            <div className="space-y-3 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.035] p-3">
+              <div>
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-400">Dados oficiais da EA</h3>
+                <p className="mt-1 text-[10px] text-gray-600">Partida e desempenho dos jogadores sincronizados do Clubs.</p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {([match.homeTeamId, match.awayTeamId] as const).map((teamId) => {
+                  const team = teamId === match.homeTeamId ? match.homeTeam : match.awayTeam
+                  const players = match.eaPlayerStats.filter((player) => player.teamId === teamId)
+                  return (
+                    <div key={teamId} className="overflow-hidden rounded-lg border border-white/[0.06] bg-black/20">
+                      <p className="border-b border-white/[0.05] px-2.5 py-2 text-[11px] font-bold text-white">{team?.name ?? "Time"}</p>
+                      {players.map((player) => (
+                        <div key={player.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 border-b border-white/[0.04] px-2.5 py-1.5 text-[10px] last:border-0">
+                          <span className="truncate text-gray-300">{player.playerName}</span>
+                          <span className="text-emerald-300">{player.goals} G</span>
+                          <span className="text-blue-300">{player.assists} A</span>
+                          <span className="w-7 text-right font-bold text-white">{player.rating?.toFixed(1) ?? "-"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 

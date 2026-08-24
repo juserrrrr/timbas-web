@@ -1,8 +1,8 @@
 "use client"
 
-import { useRef, type RefObject } from "react"
+import { useEffect, useRef, useState, type RefObject } from "react"
 import Link from "next/link"
-import { ArrowLeft, Maximize, MonitorUp, Pause, Radio, Users, Volume2, VolumeX, Zap } from "lucide-react"
+import { ArrowLeft, Maximize, Minimize, MonitorUp, Pause, Radio, Users, Volume2, VolumeX, Zap } from "lucide-react"
 import { PlayerAvatar } from "@/components/player-avatar"
 import type { StreamSummary } from "@/lib/services/streaming"
 
@@ -54,9 +54,20 @@ export function ViewerShell({
   onVolumeChange,
 }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
+  const [fullscreen, setFullscreen] = useState(false)
   const showingPicture = status === "live" || status === "paused"
 
-  const goFullscreen = () => {
+  useEffect(() => {
+    const syncFullscreen = () => setFullscreen(document.fullscreenElement === stageRef.current)
+    document.addEventListener("fullscreenchange", syncFullscreen)
+    return () => document.removeEventListener("fullscreenchange", syncFullscreen)
+  }, [])
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {})
+      return
+    }
     void stageRef.current?.requestFullscreen?.().catch(() => {})
   }
 
@@ -93,14 +104,14 @@ export function ViewerShell({
         </div>
       </div>
 
-      <div ref={stageRef} className="overflow-hidden rounded-2xl border border-white/[0.07] bg-black">
+      <div ref={stageRef} className="overflow-hidden rounded-2xl border border-white/[0.07] bg-black fullscreen:flex fullscreen:items-center fullscreen:rounded-none fullscreen:border-0">
         <div className="relative aspect-video w-full">
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            onDoubleClick={goFullscreen}
+            onDoubleClick={toggleFullscreen}
             className="h-full w-full object-contain"
           />
           <audio ref={audioRef} autoPlay playsInline />
@@ -183,11 +194,11 @@ export function ViewerShell({
                   )}
                 </div>
                 <button
-                  onClick={goFullscreen}
-                  aria-label="Tela cheia"
+                  onClick={toggleFullscreen}
+                  aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"}
                   className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-black/70 text-white ring-1 ring-white/10 backdrop-blur transition-colors hover:bg-black/85"
                 >
-                  <Maximize className="h-4 w-4" />
+                  {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                 </button>
               </div>
             </>

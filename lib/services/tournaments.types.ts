@@ -43,6 +43,8 @@ export interface TournamentTeam {
   seed: number | null
   groupId: string | null
   ownerDiscordId: string | null
+  eaClubId: string | null
+  eaPlatform: string | null
   eliminated: boolean
   played: number
   wins: number
@@ -97,6 +99,27 @@ export interface TournamentMatch {
   status: TournamentMatchStatus
   scheduledAt: string | null
   playedAt: string | null
+  eaMatchId: string | null
+  eaVerifiedAt: string | null
+  eaTags: string[]
+  eaPlayerStats: Array<{
+    id: string
+    teamId: string
+    externalPlayerId: string | null
+    playerName: string
+    position: string | null
+    rating: number | null
+    goals: number
+    assists: number
+    shots: number | null
+    passesAttempted: number | null
+    passesCompleted: number | null
+    tacklesAttempted: number | null
+    tacklesCompleted: number | null
+    saves: number | null
+    manOfTheMatch: boolean | null
+    tags: string[]
+  }>
   proofs: MatchProof[]
 }
 
@@ -173,6 +196,19 @@ export interface ReportResultResponse {
   proof: MatchProof | null
   autoApproved: boolean
   processing: boolean
+}
+
+export interface TournamentEaPlayerStats {
+  playerName: string
+  externalPlayerId: string | null
+  team: { id: string; name: string; logoUrl: string | null } | null
+  appearances: number
+  goals: number
+  assists: number
+  goalContributions: number
+  averageRating: number | null
+  mvps: number
+  tags: string[]
 }
 
 export const GAME_LABELS: Record<CompetitionGame, string> = {

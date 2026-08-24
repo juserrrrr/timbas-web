@@ -44,16 +44,17 @@ const HIGH_FIDELITY_AUDIO: MediaTrackConstraints = {
   sampleRate: 48_000,
 }
 
-const MIN_CAPTURE_FRAME_RATE = 30
+const TRACK_SETTLE_MS = 250
 
-function enforcedVideoConstraints(profile: VideoProfile): MediaTrackConstraints {
-  return {
-    ...displayVideoConstraints(profile),
-    frameRate: {
-      min: MIN_CAPTURE_FRAME_RATE,
-      ideal: profile.frameRate,
-      max: profile.frameRate,
-    },
+async function tuneDisplayTrack(video: MediaStreamTrack, profile: VideoProfile) {
+  video.contentHint = contentHintFor(profile)
+  const constraints = displayVideoConstraints(profile)
+  await video.applyConstraints(constraints).catch(() => {})
+
+  // Chromium may expose a new window track at 30 FPS until its first frames arrive.
+  if (profile.frameRate === 60 && (video.getSettings().frameRate ?? 0) < 60) {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, TRACK_SETTLE_MS))
+    await video.applyConstraints(constraints).catch(() => {})
   }
 }
 
@@ -92,19 +93,7 @@ export async function captureDisplay(profile: VideoProfile, withAudio: boolean):
     throw new Error("A tela selecionada não retornou imagem.")
   }
 
-  video.contentHint = contentHintFor(profile)
-  try {
-    await video.applyConstraints(enforcedVideoConstraints(profile))
-  } catch {
-    stream.getTracks().forEach((track) => track.stop())
-    throw new Error("O navegador não conseguiu capturar a tela a pelo menos 30 FPS. Ative a aceleração gráfica e tente novamente.")
-  }
-
-  const negotiatedFrameRate = video.getSettings().frameRate
-  if (negotiatedFrameRate && negotiatedFrameRate < MIN_CAPTURE_FRAME_RATE) {
-    stream.getTracks().forEach((track) => track.stop())
-    throw new Error(`O navegador limitou a captura a ${Math.round(negotiatedFrameRate)} FPS. A live exige pelo menos 30 FPS.`)
-  }
+  await tuneDisplayTrack(video, profile)
 
   return {
     stream,

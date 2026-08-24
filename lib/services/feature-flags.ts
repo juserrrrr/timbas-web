@@ -3,6 +3,9 @@ import { apiFetch } from '../api'
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 export const FEATURE_SCREEN_SHARE = 'screen_share'
+export const FEATURE_TOURNAMENT_EA_RESULTS = 'tournament_ea_results'
+export const FEATURE_TOURNAMENT_AI_RESULTS = 'tournament_ai_results'
+export const FEATURE_LIVE_LIMIT_720P_30FPS = 'live_limit_720p_30fps'
 
 export interface FeatureFlag {
   key: string

@@ -71,3 +71,27 @@ export function buildDemoDraft(input: {
 export function clearDemoData(): Promise<{ tournaments: number; leagues: number; users: number }> {
   return remove("/admin/demo")
 }
+
+export interface DemoEaMatch {
+  externalMatchId: string
+  playedAt: string
+  homeClubId: string
+  awayClubId: string
+  homeClubName: string
+  awayClubName: string
+  homeScore: number
+  awayScore: number
+  players: unknown[]
+}
+
+export function findDemoEaClub(name: string): Promise<{ externalClubId: string; name: string; platform: string }> {
+  return post("/admin/demo/ea/club", { name })
+}
+
+export function getDemoEaHistory(clubId: string): Promise<{ count: number; latest: DemoEaMatch | null; matches: DemoEaMatch[] }> {
+  return post("/admin/demo/ea/history", { clubId })
+}
+
+export function syncDemoEaMatch(tournamentId: string, matchId: string): Promise<{ id: string }> {
+  return post("/admin/demo/ea/sync", { tournamentId, matchId })
+}

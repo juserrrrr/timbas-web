@@ -59,7 +59,7 @@ async function parse<T>(res: Response, fallback: string): Promise<T> {
 
 export async function getStreamPermission(
   token: string,
-): Promise<{ canStream: boolean; featureEnabled: boolean; sfu?: boolean }> {
+): Promise<{ canStream: boolean; featureEnabled: boolean; sfu?: boolean; limit720p30fps?: boolean }> {
   const res = await apiFetch(`${API_URL}/streaming/permission`, { headers: h(token), cache: 'no-store' })
   if (res.status === 403) return { canStream: false, featureEnabled: false }
   return parse(res, 'Erro ao verificar permissão')

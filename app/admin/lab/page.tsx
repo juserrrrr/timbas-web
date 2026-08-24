@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowUpRight, Bug, FlaskConical, Loader2, Play, Trash2, Trophy, Users } from "lucide-react"
+import { ArrowUpRight, Bug, DatabaseZap, FlaskConical, Loader2, Play, Search, Trash2, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -20,7 +20,11 @@ import {
   buildDemoDraft,
   buildDemoTournament,
   clearDemoData,
+  findDemoEaClub,
+  getDemoEaHistory,
   listDemoData,
+  syncDemoEaMatch,
+  type DemoEaMatch,
   type DemoDebug,
   type DemoDraftStage,
   type DemoInventory,
@@ -140,6 +144,11 @@ export default function DemoLabPage() {
   const [tournamentStage, setTournamentStage] = useState<DemoTournamentStage>("PARTIAL")
 
   const [debug, setDebug] = useState<{ title: string; data: DemoDebug } | null>(null)
+  const [eaClubName, setEaClubName] = useState("")
+  const [eaClub, setEaClub] = useState<{ externalClubId: string; name: string; platform: string } | null>(null)
+  const [eaHistory, setEaHistory] = useState<{ count: number; latest: DemoEaMatch | null } | null>(null)
+  const [eaTournamentId, setEaTournamentId] = useState("")
+  const [eaMatchId, setEaMatchId] = useState("")
 
   const [rosterCount, setRosterCount] = useState(4)
   const [rosterSize, setRosterSize] = useState(25)
@@ -235,6 +244,54 @@ export default function DemoLabPage() {
 
       {notice && <p className="rounded-lg bg-white/[0.03] px-3 py-2 text-[12px] text-gray-300">{notice}</p>}
       {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[12px] text-red-300">{error}</p>}
+
+      <Card className="border-blue-500/20 bg-blue-500/[0.035] p-4">
+        <div className="mb-4 flex items-center gap-2">
+          <DatabaseZap className="h-4 w-4 text-blue-400" />
+          <div>
+            <h3 className="text-sm font-black text-white">Diagnóstico EA Sports FC Clubs</h3>
+            <p className="text-[11px] text-gray-500">Teste cada módulo isoladamente antes de sincronizar uma partida real do campeonato.</p>
+          </div>
+        </div>
+        <div className="grid gap-4 xl:grid-cols-3">
+          <div className="space-y-2 rounded-xl border border-white/[0.07] bg-black/10 p-3">
+            <Label>1. Procurar clube pelo nome exato</Label>
+            <input value={eaClubName} onChange={(event) => setEaClubName(event.target.value)} placeholder="Nome do clube na EA" className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-xs text-white outline-none focus:border-blue-500/50" />
+            <Button disabled={busy !== "" || eaClubName.trim().length < 2} onClick={() => void run("ea-club", "Clube encontrado", async () => {
+              const club = await findDemoEaClub(eaClubName.trim())
+              setEaClub(club)
+              setEaHistory(null)
+              return { message: `Clube confirmado: ${club.name} (${club.externalClubId})` }
+            })} className="w-full bg-blue-500 text-white hover:bg-blue-400">
+              {busy === "ea-club" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Search className="mr-1.5 h-4 w-4" />} Procurar
+            </Button>
+            {eaClub && <p className="rounded-lg bg-emerald-500/10 p-2 font-mono text-[11px] text-emerald-300">{eaClub.name} · ID {eaClub.externalClubId}</p>}
+          </div>
+          <div className="space-y-2 rounded-xl border border-white/[0.07] bg-black/10 p-3">
+            <Label>2. Buscar histórico e última partida</Label>
+            <p className="min-h-9 text-[11px] text-gray-500">Usa o Club ID confirmado e mostra o amistoso mais recente com placar e adversário.</p>
+            <Button disabled={busy !== "" || !eaClub} onClick={() => void run("ea-history", "Histórico da EA", async () => {
+              const history = await getDemoEaHistory(eaClub!.externalClubId)
+              setEaHistory({ count: history.count, latest: history.latest })
+              return { message: history.latest ? `${history.count} partidas. Última: ${history.latest.homeClubName} ${history.latest.homeScore} x ${history.latest.awayScore} ${history.latest.awayClubName}` : "Nenhum amistoso encontrado." }
+            })} className="w-full bg-cyan-500 text-black hover:bg-cyan-400">
+              {busy === "ea-history" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-1.5 h-4 w-4" />} Buscar partidas
+            </Button>
+            {eaHistory?.latest && <div className="rounded-lg bg-white/[0.04] p-2 text-[11px] text-gray-300"><b className="text-white">{eaHistory.latest.homeClubName} {eaHistory.latest.homeScore} x {eaHistory.latest.awayScore} {eaHistory.latest.awayClubName}</b><br />EA Match ID: <span className="font-mono">{eaHistory.latest.externalMatchId}</span><br />Jogadores recebidos: {eaHistory.latest.players.length}</div>}
+          </div>
+          <div className="space-y-2 rounded-xl border border-white/[0.07] bg-black/10 p-3">
+            <Label>3. Sincronizar com partida do campeonato</Label>
+            <input value={eaTournamentId} onChange={(event) => setEaTournamentId(event.target.value)} placeholder="Tournament ID" className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 font-mono text-xs text-white outline-none focus:border-blue-500/50" />
+            <input value={eaMatchId} onChange={(event) => setEaMatchId(event.target.value)} placeholder="Match ID interno do campeonato" className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 font-mono text-xs text-white outline-none focus:border-blue-500/50" />
+            <Button disabled={busy !== "" || !eaTournamentId.trim() || !eaMatchId.trim()} onClick={() => void run("ea-sync", "Sincronização concluída", async () => {
+              await syncDemoEaMatch(eaTournamentId.trim(), eaMatchId.trim())
+              return { message: "Partida associada, placar finalizado e estatísticas importadas da EA." }
+            })} className="w-full bg-emerald-500 text-black hover:bg-emerald-400">
+              {busy === "ea-sync" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />} Sincronizar de verdade
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card className="border-white/[0.07] bg-white/[0.025] p-4">

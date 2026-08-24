@@ -62,12 +62,12 @@ export function useHostBroadcast(
    * A null track means the host paused, which is signalled as a mute so the
    * viewer can show an overlay over the frozen frame.
    */
-  const publishVideoTrack = useCallback((track: MediaStreamTrack | null) => {
+  const publishVideoTrack = useCallback(async (track: MediaStreamTrack | null) => {
     const publication = videoPubRef.current
     const room = roomRef.current
     if (!room) return
 
-    void (async () => {
+    await (async () => {
       try {
         if (!track) {
           await publication?.mute()
@@ -94,6 +94,7 @@ export function useHostBroadcast(
         })
       } catch (caught: unknown) {
         setError(caught instanceof Error ? caught.message : "Não foi possível publicar a imagem.")
+        throw caught
       }
     })()
   }, [])
@@ -168,7 +169,7 @@ export function useHostBroadcast(
       const room = await connectRoom()
       const mixer = ensureMixer()
       await publishAudioTrack(room, mixer.track)
-      publishVideoTrack(videoTrackRef.current)
+      await publishVideoTrack(videoTrackRef.current)
 
       await updateStreamVisibility(token, streamId, visibility).catch(() => null)
       await startStream(token, streamId)
@@ -200,7 +201,7 @@ export function useHostBroadcast(
 
       const room = await connectRoom()
       await publishAudioTrack(room, mixer.track)
-      publishVideoTrack(videoTrackRef.current)
+      await publishVideoTrack(videoTrackRef.current)
       toast.success("Tela trocada", { description: "A live seguiu no mesmo link, sem cortar." })
     } catch (caught: unknown) {
       if (caught instanceof Error && caught.name !== "NotAllowedError") {

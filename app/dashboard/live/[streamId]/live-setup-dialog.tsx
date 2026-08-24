@@ -26,6 +26,7 @@ interface Props {
   onChange: (patch: Partial<LiveSetupValues>) => void
   loopbackDevices: MediaDeviceInfo[]
   starting: boolean
+  limit720p30fps?: boolean
   onStart: () => void
 }
 
@@ -39,6 +40,7 @@ export function LiveSetupDialog({
   onChange,
   loopbackDevices,
   starting,
+  limit720p30fps = false,
   onStart,
 }: Props) {
   const [copied, setCopied] = useState(false)
@@ -105,7 +107,8 @@ export function LiveSetupDialog({
                   key={option.value}
                   type="button"
                   onClick={() => onChange({ quality: option.value })}
-                  className={`min-w-0 cursor-pointer rounded-xl border px-2 py-3 text-center transition-colors ${values.quality === option.value ? "border-blue-500/60 bg-blue-500/10" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
+                  disabled={limit720p30fps && option.value !== "720p"}
+                  className={`min-w-0 cursor-pointer rounded-xl border px-2 py-3 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${values.quality === option.value ? "border-blue-500/60 bg-blue-500/10" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
                 >
                   <span className="block truncate text-xs font-black text-white">{option.label}</span>
                   <span className="mt-0.5 block text-[10px] text-gray-500">{option.detail}</span>
@@ -121,7 +124,8 @@ export function LiveSetupDialog({
                   key={option.fps}
                   type="button"
                   onClick={() => onChange({ frameRate: option.fps })}
-                  className={`cursor-pointer rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${values.frameRate === option.fps ? "border-emerald-500/60 bg-emerald-500/10 text-white" : "border-white/[0.08] bg-white/[0.02] text-gray-400 hover:bg-white/[0.05]"}`}
+                  disabled={limit720p30fps && option.fps !== 30}
+                  className={`cursor-pointer rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${values.frameRate === option.fps ? "border-emerald-500/60 bg-emerald-500/10 text-white" : "border-white/[0.08] bg-white/[0.02] text-gray-400 hover:bg-white/[0.05]"}`}
                 >
                   {option.fps} FPS <span className="font-normal text-gray-500">{option.hint}</span>
                 </button>

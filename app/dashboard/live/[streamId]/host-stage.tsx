@@ -6,7 +6,7 @@ import { Check, Copy, Globe2, Link2, Lock, MonitorUp, Radio, Users } from "lucid
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getDiscordAvatarUrl, getToken } from "@/lib/auth"
-import { updateStreamVisibility, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
+import { getStreamPermission, updateStreamVisibility, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
 import { HostLiveControls } from "./host-live-controls"
 import { LiveSetupDialog, type LiveSetupValues } from "./live-setup-dialog"
@@ -41,6 +41,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [savingPrivacy, setSavingPrivacy] = useState(false)
   const [origin, setOrigin] = useState("")
   const [copied, setCopied] = useState(false)
+  const [limit720p30fps, setLimit720p30fps] = useState(false)
 
   const connected = useSignalChannel(streamId, peerId, broadcast.handleEvent, true, undefined, onReconnect)
   const liveUrl = origin ? `${origin}/live/${stream.slug}` : ""
@@ -48,6 +49,14 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
 
   useEffect(() => {
     setOrigin(window.location.origin)
+    const token = getToken()
+    if (token) {
+      void getStreamPermission(token).then((permission) => {
+        if (!permission.limit720p30fps) return
+        setLimit720p30fps(true)
+        setSetup((current) => ({ ...current, quality: "720p", frameRate: 30 }))
+      })
+    }
   }, [])
 
   // A dropped signaling session comes back with a new peer id, so the old
@@ -59,8 +68,16 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   }, [initialViewers, peerId, resetPeers])
 
   const startBroadcast = async () => {
+    const token = getToken()
+    const serverLimit = token
+      ? Boolean((await getStreamPermission(token).catch(() => null))?.limit720p30fps)
+      : limit720p30fps
+    if (serverLimit && !limit720p30fps) {
+      setLimit720p30fps(true)
+      setSetup((current) => ({ ...current, quality: "720p", frameRate: 30 }))
+    }
     const started = await broadcast.start({
-      profile: { quality: setup.quality, frameRate: setup.frameRate },
+      profile: serverLimit ? { quality: "720p", frameRate: 30 } : { quality: setup.quality, frameRate: setup.frameRate },
       visibility: setup.visibility,
       withMic: setup.withMic,
       withGameAudio: setup.withGameAudio,
@@ -239,6 +256,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
         avatarUrl={avatarUrl}
         liveUrl={liveUrl}
         values={setup}
+        limit720p30fps={limit720p30fps}
         onChange={(patch) => setSetup((current) => ({ ...current, ...patch }))}
         loopbackDevices={broadcast.loopbackDevices}
         starting={broadcast.starting}

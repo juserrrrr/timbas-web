@@ -9,6 +9,7 @@ import type {
   TournamentMatch,
   TournamentSummary,
   TournamentTeam,
+  TournamentEaPlayerStats,
 } from "./tournaments.types"
 
 export interface CreateTournamentInput {
@@ -74,9 +75,24 @@ export function startTournament(id: string) {
 
 export function addTeam(
   id: string,
-  input: { name: string; tag?: string; logoUrl?: string; eaClubId?: string; memberIds?: number[] },
+  input: { name: string; tag?: string; logoUrl?: string; eaClubId?: string; eaPlatform?: string; memberIds?: number[] },
 ) {
   return post<TournamentTeam>(`/tournaments/${id}/teams`, input)
+}
+
+export function validateTournamentEaClub(id: string, name: string) {
+  return post<{ externalClubId: string; name: string; platform: string }>(`/tournaments/${id}/ea-club/validate`, {
+    name,
+    platform: "common-gen5",
+  })
+}
+
+export function checkTournamentEaResult(id: string, matchId: string) {
+  return post<TournamentMatch>(`/tournaments/${id}/matches/${matchId}/check-ea`)
+}
+
+export function getTournamentEaStats(id: string) {
+  return request<TournamentEaPlayerStats[]>(`/tournaments/${id}/ea-stats`)
 }
 
 export function updateTeam(id: string, teamId: string, input: Record<string, unknown>) {
