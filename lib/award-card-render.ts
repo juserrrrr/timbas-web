@@ -20,7 +20,11 @@ function loadImage(src: string) {
   })
 }
 
-function fitText(ctx: CanvasRenderingContext2D, text: string, family: string, weight: number, maxWidth: number, initialSize: number) {
+function fitText(ctx: CanvasRenderingContext2D, text: string, family: string, weight: number, maxWidth: number, initialSize: number, enabled: boolean) {
+  if (!enabled) {
+    ctx.font = `${weight} ${initialSize}px "${family}", Impact, sans-serif`
+    return initialSize
+  }
   let size = initialSize
   do {
     ctx.font = `${weight} ${size}px "${family}", Impact, sans-serif`
@@ -51,10 +55,10 @@ export async function renderAwardCard(
 
   const nick = (nickname.trim() || "Jogador").toUpperCase().slice(0, 28)
   const value = (achievement.trim() || "0").toUpperCase().slice(0, 34)
-  const nickSize = fitText(ctx, nick, family, weight, canvas.width * award.textWidth, canvas.width * award.nickSize)
+  const nickSize = fitText(ctx, nick, family, weight, canvas.width * award.textWidth, canvas.width * award.nickSize, award.nickAutoFit)
   ctx.fillStyle = "#f4f6f8"
   ctx.fillText(nick, canvas.width * award.nickX, canvas.height * award.nickY)
-  const statSize = fitText(ctx, value, family, weight, canvas.width * award.textWidth, canvas.width * award.statSize)
+  const statSize = fitText(ctx, value, family, weight, canvas.width * award.textWidth, canvas.width * award.statSize, award.statAutoFit)
   ctx.fillStyle = award.highlight
   ctx.fillText(value, canvas.width * award.statX, canvas.height * award.statY)
 

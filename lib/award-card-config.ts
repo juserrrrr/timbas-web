@@ -22,6 +22,8 @@ export interface AwardCardLayout {
   qrY: number
   qrSize: number
   textWidth: number
+  nickAutoFit: boolean
+  statAutoFit: boolean
 }
 
 export type AwardCardLayoutSettings = Partial<Record<AwardCardKey, AwardCardLayout>>
@@ -34,7 +36,7 @@ export interface AwardCardConfig extends AwardCardLayout {
   highlight: string
 }
 
-const shared = { qrSize: 0.132, textWidth: 0.43, nickSize: 0.068, statSize: 0.046 }
+const shared = { qrSize: 0.132, textWidth: 0.43, nickSize: 0.068, statSize: 0.046, nickAutoFit: true, statAutoFit: true }
 
 export const AWARD_CARD_CONFIG: Record<AwardCardKey, AwardCardConfig> = {
   artilheiro: { title: "ARTILHEIRO", value: "12 GOLS", image: "/images/awards/artilheiro-template.png?v=11", color: "#ffbd35", highlight: "#fff0b0", font: "teko", nickX: 0.42, nickY: 0.736, statX: 0.42, statY: 0.81, qrX: 0.667, qrY: 0.72, ...shared },
@@ -50,8 +52,8 @@ export const AWARD_FONT_FAMILY: Record<AwardFontKey, string> = Object.fromEntrie
 ) as Record<AwardFontKey, string>
 
 export function layoutOf(card: AwardCardConfig): AwardCardLayout {
-  const { font, nickX, nickY, nickSize, statX, statY, statSize, qrX, qrY, qrSize, textWidth } = card
-  return { font, nickX, nickY, nickSize, statX, statY, statSize, qrX, qrY, qrSize, textWidth }
+  const { font, nickX, nickY, nickSize, statX, statY, statSize, qrX, qrY, qrSize, textWidth, nickAutoFit, statAutoFit } = card
+  return { font, nickX, nickY, nickSize, statX, statY, statSize, qrX, qrY, qrSize, textWidth, nickAutoFit, statAutoFit }
 }
 
 export function awardLayoutsFromDefaults(): Record<AwardCardKey, AwardCardLayout> {
