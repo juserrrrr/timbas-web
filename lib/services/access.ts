@@ -41,8 +41,16 @@ export const USER_STATUS_LABELS: Record<UserStatus, string> = {
   BLOCKED: "Bloqueado",
 }
 
+let myPermissionsCache: { expiresAt: number; request: Promise<{ role: string; permissions: string[] }> } | null = null
+
 export function getMyPermissions(): Promise<{ role: string; permissions: string[] }> {
-  return request("/admin/access/me")
+  if (myPermissionsCache && myPermissionsCache.expiresAt > Date.now()) return myPermissionsCache.request
+  const next = request<{ role: string; permissions: string[] }>("/admin/access/me").catch((error) => {
+    myPermissionsCache = null
+    throw error
+  })
+  myPermissionsCache = { expiresAt: Date.now() + 30_000, request: next }
+  return next
 }
 
 export function getPermissionCatalog(): Promise<PermissionCategory[]> {

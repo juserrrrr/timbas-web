@@ -14,15 +14,26 @@ export interface FeatureFlag {
   updatedAt: string | null
 }
 
+let flagsCache: { expiresAt: number; request: Promise<FeatureFlag[]> } | null = null
+
 const h = (token: string): HeadersInit => ({
   'Content-Type': 'application/json',
   Authorization: `Bearer ${token}`,
 })
 
 export async function getFeatureFlags(token: string): Promise<FeatureFlag[]> {
-  const res = await apiFetch(`${API_URL}/feature-flags`, { headers: h(token), cache: 'no-store' })
-  if (!res.ok) throw new Error('Erro ao carregar as feature flags')
-  return res.json()
+  if (flagsCache && flagsCache.expiresAt > Date.now()) return flagsCache.request
+  const request = apiFetch(`${API_URL}/feature-flags`, { headers: h(token), cache: 'no-store' })
+    .then((res) => {
+      if (!res.ok) throw new Error('Erro ao carregar as feature flags')
+      return res.json() as Promise<FeatureFlag[]>
+    })
+    .catch((error) => {
+      flagsCache = null
+      throw error
+    })
+  flagsCache = { expiresAt: Date.now() + 30_000, request }
+  return request
 }
 
 export async function updateFeatureFlag(token: string, key: string, enabled: boolean): Promise<FeatureFlag> {
@@ -32,5 +43,6 @@ export async function updateFeatureFlag(token: string, key: string, enabled: boo
     body: JSON.stringify({ enabled }),
   })
   if (!res.ok) throw new Error('Erro ao atualizar a feature flag')
+  flagsCache = null
   return res.json()
 }

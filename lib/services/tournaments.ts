@@ -39,6 +39,8 @@ export interface CreateTournamentInput {
   graceMinutes?: number
 }
 
+const tournamentListCache = new Map<string, { expiresAt: number; request: Promise<{ total: number; items: TournamentSummary[] }> }>()
+
 export function listTournaments(params: {
   status?: string
   game?: string
@@ -46,7 +48,16 @@ export function listTournaments(params: {
   const search = new URLSearchParams(
     Object.entries(params).filter(([, value]) => Boolean(value)) as [string, string][],
   )
-  return request(`/tournaments${search.size ? `?${search}` : ""}`)
+  const path = `/tournaments${search.size ? `?${search}` : ""}`
+  const cached = tournamentListCache.get(path)
+  if (cached && cached.expiresAt > Date.now()) return cached.request
+
+  const next = request<{ total: number; items: TournamentSummary[] }>(path).catch((error) => {
+    tournamentListCache.delete(path)
+    throw error
+  })
+  tournamentListCache.set(path, { expiresAt: Date.now() + 2_000, request: next })
+  return next
 }
 
 export function getTournament(id: string): Promise<TournamentDetail> {
