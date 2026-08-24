@@ -2,13 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { BarChart3, Crosshair, Download, Goal, Hand, Loader2, Medal, Shield, Sparkles } from "lucide-react"
-import QRCode from "qrcode"
 import "@fontsource/anton"
+import "@fontsource/tourney/600.css"
+import "@fontsource/cinzel-decorative/700.css"
+import "@fontsource/black-ops-one"
+import "@fontsource/graduate"
+import "@fontsource/teko/600.css"
 import { Card } from "@/components/ui/card"
 import { EmptyState, TeamCrest } from "@/components/competitions/shared"
 import { getTournamentEaStats } from "@/lib/services/tournaments"
 import type { TournamentEaPlayerStats } from "@/lib/services/tournaments.types"
-import { awardCardByTitle } from "@/lib/award-card-config"
+import { awardCardByTitle, type AwardCardLayoutSettings } from "@/lib/award-card-config"
+import { renderAwardCard } from "@/lib/award-card-render"
+import { getAwardCardSettings } from "@/lib/services/award-cards"
 
 const TAGS: Record<string, string> = {
   MVP: "MVP",
@@ -19,58 +25,11 @@ const TAGS: Record<string, string> = {
   NOTA_9_PLUS: "Nota 9+",
 }
 
-async function downloadAwardPng(title: string, subtitle: string, player: TournamentEaPlayerStats, value: string, tournamentId: string) {
-  const template = awardCardByTitle(title)
+async function downloadAwardPng(title: string, subtitle: string, player: TournamentEaPlayerStats, value: string, tournamentId: string, settings: AwardCardLayoutSettings) {
+  const template = awardCardByTitle(title, settings)
   if (template) {
-    await document.fonts.load('400 100px Anton')
-    const background = new Image()
-    background.src = template.image
-    await background.decode()
     const output = document.createElement("canvas")
-    output.width = background.naturalWidth
-    output.height = background.naturalHeight
-    const outputContext = output.getContext("2d")
-    if (!outputContext) return
-    outputContext.drawImage(background, 0, 0)
-    const fit = (text: string, maxWidth: number, initialSize: number) => {
-      let size = initialSize
-      do { outputContext.font = `400 ${size}px Anton, Impact, sans-serif`; size -= 2 } while (size > 30 && outputContext.measureText(text).width > maxWidth)
-    }
-    const metallicGradient = (y: number, size: number, top: string, middle: string, bottom: string) => {
-      const gradient = outputContext.createLinearGradient(0, y - size * 0.55, 0, y + size * 0.55)
-      gradient.addColorStop(0, top)
-      gradient.addColorStop(0.42, middle)
-      gradient.addColorStop(0.58, "#ffffff")
-      gradient.addColorStop(1, bottom)
-      return gradient
-    }
-    outputContext.textAlign = "center"
-    outputContext.textBaseline = "middle"
-    outputContext.lineJoin = "round"
-    outputContext.shadowColor = "rgba(0,0,0,.95)"
-    outputContext.shadowBlur = output.width * 0.007
-    outputContext.shadowOffsetY = output.width * 0.004
-    outputContext.strokeStyle = "rgba(0,0,0,.96)"
-    outputContext.lineWidth = output.width * 0.005
-    const nick = player.playerName.toUpperCase()
-    const nickSize = output.width * 0.068
-    fit(nick, output.width * template.textWidth, nickSize)
-    outputContext.fillStyle = metallicGradient(output.height * template.nickY, nickSize, "#ffffff", "#9aa4b2", "#f8fafc")
-    outputContext.strokeText(nick, output.width * template.nickX, output.height * template.nickY)
-    outputContext.fillText(nick, output.width * template.nickX, output.height * template.nickY)
-    const statSize = output.width * 0.046
-    fit(value.toUpperCase(), output.width * template.textWidth, statSize)
-    outputContext.fillStyle = metallicGradient(output.height * template.statY, statSize, template.highlight, "#ffffff", template.color)
-    outputContext.strokeText(value.toUpperCase(), output.width * template.statX, output.height * template.statY)
-    outputContext.fillText(value.toUpperCase(), output.width * template.statX, output.height * template.statY)
-    const qr = new Image()
-    qr.src = await QRCode.toDataURL(`${window.location.origin}/dashboard/tournaments/${tournamentId}`, { errorCorrectionLevel: "H", margin: 2, width: 384, color: { dark: template.color, light: "#080808" } })
-    await qr.decode()
-    const qrSize = output.width * template.qrSize
-    const qrX = output.width * template.qrX
-    const qrY = output.height * template.qrY
-    outputContext.shadowBlur = 0
-    outputContext.drawImage(qr, qrX, qrY, qrSize, qrSize)
+    await renderAwardCard(output, template, player.playerName, value, `${window.location.origin}/t/${tournamentId}`)
     const download = document.createElement("a")
     download.download = `${title}-${player.playerName}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase() + ".png"
     download.href = output.toDataURL("image/png", 1)
@@ -163,12 +122,17 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
   const [players, setPlayers] = useState<TournamentEaPlayerStats[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [awardSettings, setAwardSettings] = useState<AwardCardLayoutSettings>({})
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const result = await getTournamentEaStats(tournamentId)
+      const [result, settings] = await Promise.all([
+        getTournamentEaStats(tournamentId),
+        getAwardCardSettings().catch(() => ({})),
+      ])
       setPlayers(Array.isArray(result) ? result : [])
+      setAwardSettings(settings)
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar as estatísticas da EA.")
@@ -197,7 +161,7 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
 
   return (
     <div className="space-y-4">
-      {awards.length > 0 && <div><div className="mb-3"><h3 className="text-lg font-black text-white">Seleção do campeonato</h3><p className="text-[11px] text-gray-500">Prêmios oficiais calculados com os dados sincronizados da EA.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{awards.map((award) => <div key={award.title} className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 ${award.tone}`}><award.icon className="absolute right-3 top-3 h-12 w-12 opacity-10" /><button type="button" onClick={() => void downloadAwardPng(award.title, award.subtitle, award.player, award.value(award.player), tournamentId)} className="absolute bottom-3 right-3 z-10 cursor-pointer rounded-lg border border-white/10 bg-black/30 p-2 text-gray-400 transition hover:text-white" title="Baixar card em PNG"><Download className="h-3.5 w-3.5" /></button><p className="text-[10px] font-black uppercase tracking-[0.18em]">{award.title}</p><p className="mt-0.5 text-[10px] text-gray-500">{award.subtitle}</p><div className="mt-5 flex items-center gap-3"><TeamCrest name={award.player.team?.name} logoUrl={award.player.team?.logoUrl} size={38} /><div className="min-w-0"><p className="truncate text-base font-black text-white">{award.player.playerName}</p><p className="text-[10px] text-gray-500">{award.player.team?.name ?? "Sem time"}</p></div></div><p className="mt-4 border-t border-white/10 pt-3 pr-10 text-xl font-black text-white">{award.value(award.player)}</p></div>)}</div></div>}
+      {awards.length > 0 && <div><div className="mb-3"><h3 className="text-lg font-black text-white">Seleção do campeonato</h3><p className="text-[11px] text-gray-500">Prêmios oficiais calculados com os dados sincronizados da EA.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{awards.map((award) => <div key={award.title} className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 ${award.tone}`}><award.icon className="absolute right-3 top-3 h-12 w-12 opacity-10" /><button type="button" onClick={() => void downloadAwardPng(award.title, award.subtitle, award.player, award.value(award.player), tournamentId, awardSettings)} className="absolute bottom-3 right-3 z-10 cursor-pointer rounded-lg border border-white/10 bg-black/30 p-2 text-gray-400 transition hover:text-white" title="Baixar card em PNG"><Download className="h-3.5 w-3.5" /></button><p className="text-[10px] font-black uppercase tracking-[0.18em]">{award.title}</p><p className="mt-0.5 text-[10px] text-gray-500">{award.subtitle}</p><div className="mt-5 flex items-center gap-3"><TeamCrest name={award.player.team?.name} logoUrl={award.player.team?.logoUrl} size={38} /><div className="min-w-0"><p className="truncate text-base font-black text-white">{award.player.playerName}</p><p className="text-[10px] text-gray-500">{award.player.team?.name ?? "Sem time"}</p></div></div><p className="mt-4 border-t border-white/10 pt-3 pr-10 text-xl font-black text-white">{award.value(award.player)}</p></div>)}</div></div>}
     <Card className="overflow-hidden border-white/[0.07] bg-white/[0.025]">
       <div className="border-b border-white/[0.06] p-4">
         <h3 className="flex items-center gap-2 text-sm font-black text-white"><Medal className="h-4 w-4 text-amber-400" />Estatísticas do campeonato</h3>
