@@ -82,7 +82,7 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
               {access.canModerate ? "Inscrever um time" : "Inscrever meu time"}
             </h3>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_7rem_auto]">
             <Input
               value={name}
               onChange={(event) => {
@@ -90,14 +90,14 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
                 setEaClub(null)
               }}
               placeholder={tournament.game === "EA_FC" ? "Nome exato do clube na EA" : "Nome do time"}
-              className="border-white/10 bg-white/[0.03]"
+              className="h-10 min-w-0 border-white/10 bg-white/[0.03]"
             />
             {tournament.game === "EA_FC" && (
               <Button
                 variant="outline"
                 onClick={() => void validateEa()}
                 disabled={validating || name.trim().length < 2}
-                className="whitespace-nowrap"
+                className="h-10 rounded-md px-4 whitespace-nowrap"
               >
                 {validating ? <Loader2 className="h-4 w-4 animate-spin" /> : eaClub ? <BadgeCheck className="h-4 w-4 text-emerald-400" /> : <Search className="h-4 w-4" />}
                 <span className="ml-1.5">{eaClub ? "Validado" : "Validar na EA"}</span>
@@ -107,12 +107,12 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
               value={tag}
               onChange={(event) => setTag(event.target.value.toUpperCase().slice(0, 6))}
               placeholder="TAG"
-              className="border-white/10 bg-white/[0.03] sm:w-28"
+              className="h-10 border-white/10 bg-white/[0.03]"
             />
             <Button
               onClick={() => void submit()}
               disabled={busy || name.trim().length < 2 || (tournament.game === "EA_FC" && !eaClub)}
-              className="bg-amber-500 text-black hover:bg-amber-400"
+              className="h-10 rounded-md bg-amber-500 px-4 text-black hover:bg-amber-400"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               <span className="ml-1.5">Inscrever</span>

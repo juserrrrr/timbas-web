@@ -44,12 +44,12 @@ export function DraftStandings({ league, onChanged }: { league: DraftLeagueDetai
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Nome do seu time"
-              className="border-white/10 bg-white/[0.03]"
+              className="h-10 border-white/10 bg-white/[0.03]"
             />
             <Button
               onClick={() => void run(() => joinDraftLeague(league.id, { name: name.trim() }))}
               disabled={busy || name.trim().length < 2}
-              className="bg-emerald-500 text-black hover:bg-emerald-400"
+              className="h-10 bg-emerald-500 text-black hover:bg-emerald-400"
             >
               {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <LogIn className="mr-1.5 h-4 w-4" />}
               Entrar
