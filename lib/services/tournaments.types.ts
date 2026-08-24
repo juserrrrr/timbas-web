@@ -110,7 +110,7 @@ export interface TournamentMatch {
   eaTags: string[]
   reviewRequestedAt?: string | null
   reviewReason?: string | null
-  eaPlayerStats: Array<{
+  eaPlayerStats?: Array<{
     id: string
     teamId: string
     externalPlayerId: string | null
@@ -242,6 +242,7 @@ export interface TournamentEaAward {
 export interface TournamentEaAwardsResponse {
   source: "EA_API"
   finalized: boolean
+  players: TournamentEaPlayerStats[]
   criteria: {
     craqueMinimumAppearances: number
     craqueMinimumShare: number

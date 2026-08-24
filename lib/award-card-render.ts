@@ -20,6 +20,10 @@ function loadImage(src: string) {
   })
 }
 
+function optimizedTemplateUrl(src: string) {
+  return `/_next/image?url=${encodeURIComponent(src)}&w=1200&q=75`
+}
+
 function fitText(ctx: CanvasRenderingContext2D, text: string, family: string, weight: number, maxWidth: number, initialSize: number, enabled: boolean) {
   if (!enabled) {
     ctx.font = `${weight} ${initialSize}px "${family}", Impact, sans-serif`
@@ -44,7 +48,7 @@ export async function renderAwardCard(
   const family = AWARD_FONT_FAMILY[award.font]
   const weight = AWARD_FONT_WEIGHT[award.font]
   await document.fonts.load(`${weight} 100px "${family}"`)
-  const background = await loadImage(award.image)
+  const background = await loadImage(optimizedTemplateUrl(award.image)).catch(() => loadImage(award.image))
   canvas.width = background.naturalWidth
   canvas.height = background.naturalHeight
   const ctx = canvas.getContext("2d")

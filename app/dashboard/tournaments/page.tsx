@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { CalendarClock, Plus, Timer, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -169,9 +170,10 @@ export default function TournamentsPage() {
                   ? "Campeonato em andamento"
                   : null
             return (
-            <button
+            <Link
               key={tournament.id}
-              onClick={() => router.push(`/dashboard/tournaments/${tournament.id}`)}
+              href={`/dashboard/tournaments/${tournament.id}`}
+              prefetch
               className="text-left"
             >
               <Card className="h-full border-white/[0.07] bg-white/[0.025] p-5 transition hover:border-amber-500/30 hover:bg-amber-500/[0.04]">
@@ -217,7 +219,7 @@ export default function TournamentsPage() {
                   <span className="text-[11px] text-gray-600">Criado em {formatDateTime(tournament.createdAt)}</span>
                 </div>
               </Card>
-            </button>
+            </Link>
             )
           })}
         </div>

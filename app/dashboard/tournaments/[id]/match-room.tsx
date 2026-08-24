@@ -112,6 +112,7 @@ export function MatchRoomDialog({
   )
   const checkInOpen = checkInBeginsAt > 0 && Date.now() >= checkInBeginsAt
   const checkInExpired = Boolean(room?.deadlineAt && Date.now() >= new Date(room.deadlineAt).getTime())
+  const eaPlayerStats = room?.match.eaPlayerStats ?? match.eaPlayerStats ?? []
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -377,7 +378,7 @@ export function MatchRoomDialog({
             </div>
           )}
 
-          {(match.eaPlayerStats?.length ?? 0) > 0 && (
+          {eaPlayerStats.length > 0 && (
             <div className="space-y-3 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.035] p-3">
               <div>
                 <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-400">Dados oficiais da EA</h3>
@@ -386,7 +387,7 @@ export function MatchRoomDialog({
               <div className="grid gap-3 md:grid-cols-2">
                 {([match.homeTeamId, match.awayTeamId] as const).map((teamId) => {
                   const team = teamId === match.homeTeamId ? match.homeTeam : match.awayTeam
-                  const players = match.eaPlayerStats.filter((player) => player.teamId === teamId)
+                  const players = eaPlayerStats.filter((player) => player.teamId === teamId)
                   return (
                     <div key={teamId} className="overflow-hidden rounded-lg border border-white/[0.06] bg-black/20">
                       <p className="border-b border-white/[0.05] px-2.5 py-2 text-[11px] font-bold text-white">{team?.name ?? "Time"}</p>

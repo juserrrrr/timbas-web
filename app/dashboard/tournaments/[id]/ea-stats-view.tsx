@@ -10,7 +10,7 @@ import "@fontsource/graduate"
 import "@fontsource/teko/600.css"
 import { Card } from "@/components/ui/card"
 import { EmptyState, TeamCrest } from "@/components/competitions/shared"
-import { getTournamentEaAwards, getTournamentEaStats } from "@/lib/services/tournaments"
+import { getTournamentEaAwards } from "@/lib/services/tournaments"
 import type { TournamentEaAward, TournamentEaPlayerStats } from "@/lib/services/tournaments.types"
 import { awardCardByTitle, type AwardCardLayoutSettings } from "@/lib/award-card-config"
 import { renderAwardCard } from "@/lib/award-card-render"
@@ -135,6 +135,8 @@ const AWARD_PRESENTATION: Record<TournamentEaAward["key"], Pick<TournamentAward,
 
 function AwardCardPreview({ award, tournamentId, settings }: { award: TournamentAward; tournamentId: string; settings: AwardCardLayoutSettings }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [rendering, setRendering] = useState(true)
+  const [renderError, setRenderError] = useState(false)
   const achievement = award.value
   const playerName = award.player.playerName
   const awardTitle = award.title
@@ -142,13 +144,30 @@ function AwardCardPreview({ award, tournamentId, settings }: { award: Tournament
   useEffect(() => {
     const template = awardCardByTitle(awardTitle, settings)
     const canvas = canvasRef.current
-    if (!template || !canvas) return
+    if (!template || !canvas) {
+      setRendering(false)
+      setRenderError(true)
+      return
+    }
+    let active = true
+    setRendering(true)
+    setRenderError(false)
     void renderAwardCard(canvas, template, playerName, achievement, publicTournamentUrl(tournamentId))
+      .then(() => active && setRendering(false))
+      .catch(() => {
+        if (active) {
+          setRendering(false)
+          setRenderError(true)
+        }
+      })
+    return () => { active = false }
   }, [achievement, awardTitle, playerName, settings, tournamentId])
 
   return (
     <article className="group relative overflow-hidden rounded-[26px] bg-black shadow-[0_18px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 transition duration-300 hover:-translate-y-1 hover:ring-amber-400/30">
-      <canvas ref={canvasRef} className="block aspect-[4/5] w-full object-cover" aria-label={`${award.title}: ${award.player.playerName}`} />
+      <canvas ref={canvasRef} className={`block aspect-[4/5] w-full object-cover transition-opacity ${rendering || renderError ? "opacity-20" : "opacity-100"}`} aria-label={`${award.title}: ${award.player.playerName}`} />
+      {rendering && <span className="absolute inset-0 flex items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-amber-300" /></span>}
+      {renderError && <span className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs font-bold text-red-300">NÃ£o foi possÃ­vel carregar a arte deste card.</span>}
       <button
         type="button"
         onClick={() => void downloadAwardPng(award.title, award.subtitle, award.player, achievement, tournamentId, settings)}
@@ -170,12 +189,11 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [result, awardResult, settings] = await Promise.all([
-        getTournamentEaStats(tournamentId),
+      const [awardResult, settings] = await Promise.all([
         getTournamentEaAwards(tournamentId),
         getAwardCardSettings().catch(() => ({})),
       ])
-      setPlayers(Array.isArray(result) ? result : [])
+      setPlayers(Array.isArray(awardResult.players) ? awardResult.players : [])
       setOfficialAwards(awardResult.awards)
       setAwardSettings(settings)
       setError("")
