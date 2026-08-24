@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Plus, Trophy, Users } from "lucide-react"
+import { CalendarClock, Plus, Timer, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { joinTournamentByInvite, listTournaments } from "@/lib/services/tournaments"
@@ -38,6 +38,22 @@ const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done
   CANCELLED: "danger",
 }
 
+function countdownLabel(target: string | null, now: number): string | null {
+  if (!target) return null
+  const diff = new Date(target).getTime() - now
+  if (diff <= 0) return null
+  const total = Math.floor(diff / 1000)
+  const days = Math.floor(total / 86400)
+  const hours = Math.floor((total % 86400) / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  return days > 0
+    ? `${days}d ${hours}h ${minutes}m`
+    : hours > 0
+      ? `${hours}h ${minutes}m ${seconds}s`
+      : `${minutes}m ${String(seconds).padStart(2, "0")}s`
+}
+
 export default function TournamentsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -46,6 +62,7 @@ export default function TournamentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [creating, setCreating] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -74,6 +91,11 @@ export default function TournamentsPage() {
         setLoading(false)
       })
   }, [load, router, searchParams])
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const visible = useMemo(() => {
     const status = FILTERS.find((item) => item.id === filter)?.status
@@ -128,7 +150,19 @@ export default function TournamentsPage() {
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {visible.map((tournament) => (
+          {visible.map((tournament) => {
+            const registrationCountdown = tournament.status === "REGISTRATION"
+              ? countdownLabel(tournament.registrationEndsAt, now)
+              : null
+            const startCountdown = countdownLabel(tournament.startsAt, now)
+            const nextLabel = registrationCountdown
+              ? `Inscrições encerram em ${registrationCountdown}`
+              : startCountdown
+                ? `Campeonato começa em ${startCountdown}`
+                : tournament.status === "RUNNING"
+                  ? "Campeonato em andamento"
+                  : null
+            return (
             <button
               key={tournament.id}
               onClick={() => router.push(`/dashboard/tournaments/${tournament.id}`)}
@@ -158,15 +192,28 @@ export default function TournamentsPage() {
                   <span>{tournament.matchCount} partidas</span>
                 </div>
 
+                <div className="mt-4 space-y-2 rounded-xl border border-white/[0.06] bg-black/20 p-3">
+                  <div className="flex items-center justify-between gap-3 text-[11px]">
+                    <span className="flex items-center gap-1.5 text-gray-500"><CalendarClock className="h-3.5 w-3.5 text-amber-400" />Fim das inscrições</span>
+                    <span className="font-semibold text-gray-300">{tournament.registrationEndsAt ? formatDateTime(tournament.registrationEndsAt) : "Não definido"}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-[11px]">
+                    <span className="flex items-center gap-1.5 text-gray-500"><CalendarClock className="h-3.5 w-3.5 text-blue-400" />Início</span>
+                    <span className="font-semibold text-gray-300">{tournament.startsAt ? formatDateTime(tournament.startsAt) : "Não definido"}</span>
+                  </div>
+                  {nextLabel && <div className={`flex items-center gap-1.5 border-t border-white/[0.06] pt-2 text-[11px] font-black ${registrationCountdown ? "text-amber-300" : startCountdown ? "text-blue-300" : "text-emerald-300"}`}><Timer className="h-3.5 w-3.5" />{nextLabel}</div>}
+                </div>
+
                 <div className="mt-3 flex items-center justify-between border-t border-white/[0.05] pt-3">
                   <span className="truncate text-[11px] text-gray-600">
                     {tournament.owner ? `Organizado por ${tournament.owner.name}` : "Sem organizador"}
                   </span>
-                  <span className="text-[11px] text-gray-600">{formatDateTime(tournament.startsAt)}</span>
+                  <span className="text-[11px] text-gray-600">Criado em {formatDateTime(tournament.createdAt)}</span>
                 </div>
               </Card>
             </button>
-          ))}
+            )
+          })}
         </div>
       )}
 

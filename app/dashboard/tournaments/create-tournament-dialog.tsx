@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { advancePerGroupOptions, groupCountOptions, pickOption } from "@/lib/group-plan"
 import { createTournament } from "@/lib/services/tournaments"
 import { getToken } from "@/lib/auth"
+import { brasiliaLocalToIso } from "@/lib/date-time"
 import { FEATURE_TOURNAMENT_AI_RESULTS, FEATURE_TOURNAMENT_EA_RESULTS, getFeatureFlags } from "@/lib/services/feature-flags"
 import {
   FORMAT_DESCRIPTIONS,
@@ -129,7 +130,7 @@ export function CreateTournamentDialog({
     ? "Defina o fim das inscrições."
     : !startsAt
       ? "Defina o início do campeonato."
-      : new Date(startsAt).getTime() <= new Date(registrationEndsAt).getTime()
+      : brasiliaLocalToIso(startsAt) <= brasiliaLocalToIso(registrationEndsAt)
         ? "O campeonato precisa começar depois do fim das inscrições."
         : ""
 
@@ -157,9 +158,9 @@ export function CreateTournamentDialog({
         advancePerGroup: isGroups ? activeAdvance : undefined,
         legs: isLeague ? legs : 1,
         thirdPlace: isKnockout ? thirdPlace : false,
-        registrationEndsAt: registrationEndsAt ? new Date(registrationEndsAt).toISOString() : undefined,
+        registrationEndsAt: registrationEndsAt ? brasiliaLocalToIso(registrationEndsAt) : undefined,
         autoStartOnClose: registrationEndsAt ? autoStartOnClose : false,
-        startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
+        startsAt: startsAt ? brasiliaLocalToIso(startsAt) : undefined,
         matchWindowMinutes: deadlineMode === "FAST" ? matchWindowMinutes : 0,
         woAfterHours: deadlineMode === "FLEXIBLE" ? woAfterHours : 0,
         graceMinutes,
@@ -377,7 +378,7 @@ export function CreateTournamentDialog({
           {step === 2 && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="tournament-starts">Início do campeonato <span className="text-red-400">*</span></Label>
+                <Label htmlFor="tournament-starts">Início do campeonato — horário de Brasília (BRT) <span className="text-red-400">*</span></Label>
                 <Input id="tournament-starts" type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} className="border-white/10 bg-white/[0.03]" />
                 <p className="text-[11px] text-gray-600">A chave pode abrir antes, mas o cronômetro só começa neste horário.</p>
               </div>
@@ -400,7 +401,7 @@ export function CreateTournamentDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="registration-ends">Inscrições abertas até <span className="text-red-400">*</span></Label>
+                <Label htmlFor="registration-ends">Inscrições abertas até — horário de Brasília (BRT) <span className="text-red-400">*</span></Label>
                 <Input
                   id="registration-ends"
                   type="datetime-local"

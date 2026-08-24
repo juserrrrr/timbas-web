@@ -47,6 +47,7 @@ import { StandingsView } from "./standings-view"
 import { TeamsPanel } from "./teams-panel"
 import { EaStatsView } from "./ea-stats-view"
 import { matchTiming } from "@/lib/tournament-match-timing"
+import { brasiliaLocalToIso } from "@/lib/date-time"
 
 const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done" | "danger"> = {
   DRAFT: "neutral",
@@ -180,7 +181,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     if (!startWhen) return
     setStarting(true)
     try {
-      await updateTournament(tournament.id, { startsAt: new Date(startWhen).toISOString() })
+      await updateTournament(tournament.id, { startsAt: brasiliaLocalToIso(startWhen) })
       await load()
       setNotice("Horário de início definido.")
     } catch (err) {
@@ -254,7 +255,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
             <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${untilStart !== null && untilStart > 0 ? "bg-blue-500/15 text-blue-300" : "bg-emerald-500/15 text-emerald-300"}`}><CalendarClock className="h-5 w-5" /></span>
             <span>
               <span className="block text-[10px] font-black uppercase tracking-wider text-gray-500">Início do campeonato</span>
-              <span className="mt-0.5 block text-sm font-black text-white">{tournament.startsAt ? new Date(tournament.startsAt).toLocaleString("pt-BR") : "A organização ainda precisa definir o horário"}</span>
+              <span className="mt-0.5 block text-sm font-black text-white">{tournament.startsAt ? formatDateTime(tournament.startsAt) : "A organização ainda precisa definir o horário"}</span>
               <span className="mt-1 block text-[11px] text-gray-500">{tournament.matchWindowMinutes > 0 ? `${tournament.matchWindowMinutes} minutos por confronto · ${tournament.graceMinutes} minutos de tolerância por time` : `${tournament.woAfterHours} horas para cada confronto`}</span>
             </span>
           </div>

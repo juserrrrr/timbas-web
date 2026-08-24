@@ -27,6 +27,7 @@ export interface TournamentSummary {
   maxTeams: number
   bannerUrl: string | null
   startsAt: string | null
+  registrationEndsAt: string | null
   finishedAt: string | null
   championTeamId: string | null
   createdAt: string

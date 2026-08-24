@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { formatMoney } from "@/lib/money"
+import { brasiliaLocalToIso } from "@/lib/date-time"
 import { listCompetitions } from "@/lib/services/catalog"
 import { createDraftLeague } from "@/lib/services/draft"
 import {
@@ -173,7 +174,7 @@ export function CreateDraftLeagueDialog({
         resultMode,
         orderType,
         startMode,
-        draftStartsAt: draftStartsAt ? new Date(draftStartsAt).toISOString() : undefined,
+        draftStartsAt: draftStartsAt ? brasiliaLocalToIso(draftStartsAt) : undefined,
         rosterSize,
         formation,
         pickSeconds,

@@ -19,6 +19,7 @@ import {
   type MatchRoom,
 } from "@/lib/services/tournaments"
 import type { TournamentDetail, TournamentMatch } from "@/lib/services/tournaments.types"
+import { brasiliaInputValue, brasiliaLocalToIso } from "@/lib/date-time"
 
 const POLL_MS = 8000
 
@@ -33,10 +34,7 @@ function remainingLabel(deadlineAt: string | null): string | null {
 }
 
 function localInputValue(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, "0")
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
-    date.getMinutes(),
-  )}`
+  return brasiliaInputValue(date)
 }
 
 export function MatchRoomDialog({
@@ -151,7 +149,7 @@ export function MatchRoomDialog({
 
           {!closed && mySide && !quickMode && (
             <div className="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3">
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">Horário</h3>
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">Horário de Brasília (BRT)</h3>
 
               {proposal ? (
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -195,7 +193,7 @@ export function MatchRoomDialog({
                     disabled={busy !== "" || !when}
                     onClick={() =>
                       void run("schedule", () =>
-                        proposeMatchSchedule(tournament.id, match.id, new Date(when).toISOString()),
+                        proposeMatchSchedule(tournament.id, match.id, brasiliaLocalToIso(when)),
                       )
                     }
                     className="h-9 bg-blue-500 px-3 text-[12px] text-white hover:bg-blue-400"
