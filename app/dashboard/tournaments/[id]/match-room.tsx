@@ -94,6 +94,7 @@ export function MatchRoomDialog({
   const checkEa = async (eaMatchId?: string) => {
     setBusy("ea")
     setError("")
+    if (!eaMatchId) setEaChoices([])
     try {
       const result = await checkTournamentEaResult(tournament.id, match.id, eaMatchId)
       if ("selectionRequired" in result) {
@@ -303,9 +304,22 @@ export function MatchRoomDialog({
 
           {!closed && eaChoices.length > 0 && (mySide || room?.canModerate) && (
             <div className="space-y-2 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.045] p-3">
-              <div>
-                <p className="text-[11px] font-bold text-cyan-200">Confirme qual amistoso pertence a este confronto</p>
-                <p className="mt-0.5 text-[10px] text-gray-500">Confira data e placar antes de confirmar. Se o resultado correto ainda não apareceu, não escolha uma opção e tente novamente em alguns minutos.</p>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-[11px] font-bold text-cyan-200">Confirme qual amistoso pertence a este confronto</p>
+                  <p className="mt-0.5 text-[10px] text-gray-500">Confira data e placar antes de confirmar. Se o resultado correto ainda não apareceu, faça uma nova busca.</p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={busy !== ""}
+                  onClick={() => void checkEa()}
+                  className="h-8 border-cyan-500/25 px-3 text-[10px] text-cyan-300 hover:bg-cyan-500/10"
+                >
+                  {busy === "ea" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                  Rescanear na EA
+                </Button>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {eaChoices.map((candidate, index) => (
