@@ -82,12 +82,14 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
   }
 
   return (
-    <ViewerStage
-      streamId={streamId}
-      peerId={session.peerId}
-      stream={session.stream}
-      studioHref={session.owner ? `/dashboard/live/${streamId}/studio` : undefined}
-      onReconnect={connect}
-    />
+    <div className="-mx-2 sm:-mx-3 md:-mx-5 xl:-mx-8">
+      <ViewerStage
+        streamId={streamId}
+        peerId={session.peerId}
+        stream={session.stream}
+        studioHref={session.owner ? `/dashboard/live/${streamId}/studio` : undefined}
+        onReconnect={connect}
+      />
+    </div>
   )
 }

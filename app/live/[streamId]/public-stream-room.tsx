@@ -78,8 +78,8 @@ export function PublicStreamRoom({ streamId }: { streamId: string }) {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-[#050508] px-4 py-5 text-white sm:px-6 sm:py-8">
-      <div className="mx-auto w-full max-w-6xl">
+    <main className="min-h-[100dvh] bg-[#050508] px-2 py-3 text-white sm:px-3 sm:py-4">
+      <div className="mx-auto w-full max-w-[1920px]">
         <ViewerStage {...stageProps} />
       </div>
     </main>
