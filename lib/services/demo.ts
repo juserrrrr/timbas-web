@@ -110,6 +110,10 @@ export function buildRealEaTournament(input: {
   return post("/admin/demo/ea/tournament", input)
 }
 
+export function buildEaFourGroupsTournament(name: string, externalMatchId: string): Promise<DemoTournamentResult> {
+  return post("/admin/demo/ea/tournament/four-groups", { name, externalMatchId })
+}
+
 export interface LiveEaWorkspace {
   id: string
   name: string

@@ -1,8 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowUpRight, Bug, DatabaseZap, FlaskConical, GitBranch, Loader2, Play, RefreshCw, Search, Trash2, Trophy, Users } from "lucide-react"
+import { ArrowUpRight, Bug, DatabaseZap, FlaskConical, GitBranch, Loader2, Play, Radio, RefreshCw, Search, Trash2, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,7 @@ import {
   buildDemoDraft,
   buildDemoTournament,
   buildRealEaTournament,
+  buildEaFourGroupsTournament,
   buildLiveEaKnockout,
   createLiveEaTournament,
   assignLiveEaGroups,
@@ -161,9 +162,21 @@ export default function DemoLabPage() {
   const [eaMatchId, setEaMatchId] = useState("")
   const [eaSide, setEaSide] = useState<"HOME" | "AWAY">("HOME")
   const [preparedMatchId, setPreparedMatchId] = useState("")
+  const [monitorClubName, setMonitorClubName] = useState("")
+  const [monitorClubId, setMonitorClubId] = useState("")
+  const [monitorLatest, setMonitorLatest] = useState<DemoEaMatch | null>(null)
+  const [monitorCheckedAt, setMonitorCheckedAt] = useState<Date | null>(null)
+  const [monitoring, setMonitoring] = useState(false)
+  const [monitorError, setMonitorError] = useState("")
+  const monitorBusy = useRef(false)
   const [realEaTeamCount, setRealEaTeamCount] = useState(8)
   const [realEaMatchCount, setRealEaMatchCount] = useState(24)
   const [realEaTournamentUrl, setRealEaTournamentUrl] = useState("")
+  const [fourGroupClubName, setFourGroupClubName] = useState("")
+  const [fourGroupClubId, setFourGroupClubId] = useState("")
+  const [fourGroupMatches, setFourGroupMatches] = useState<DemoEaMatch[]>([])
+  const [fourGroupAnchorId, setFourGroupAnchorId] = useState("")
+  const [fourGroupTournamentUrl, setFourGroupTournamentUrl] = useState("")
   const [liveName, setLiveName] = useState("Corujão")
   const [liveClubNames, setLiveClubNames] = useState("")
   const [liveClubQuery, setLiveClubQuery] = useState("")
@@ -221,6 +234,34 @@ export default function DemoLabPage() {
     setLiveTournamentId(saved)
     void getLiveEaTournament(saved).then(adoptLiveWorkspace).catch(() => window.localStorage.removeItem("timbas.lab.liveTournamentId"))
   }, [adoptLiveWorkspace])
+
+  const refreshEaMonitor = useCallback(async () => {
+    if (monitorBusy.current || monitorClubName.trim().length < 2) return
+    monitorBusy.current = true
+    try {
+      const club = monitorClubId
+        ? { externalClubId: monitorClubId, name: monitorClubName.trim() }
+        : await findDemoEaClub(monitorClubName.trim())
+      const history = await getDemoEaHistory(club.externalClubId)
+      setMonitorClubId(club.externalClubId)
+      setMonitorClubName(club.name)
+      setMonitorLatest(history.latest)
+      setMonitorCheckedAt(new Date())
+      setMonitorError("")
+    } catch (err) {
+      setMonitorError(err instanceof Error ? err.message : "Não foi possível consultar as partidas da EA.")
+      setMonitoring(false)
+    } finally {
+      monitorBusy.current = false
+    }
+  }, [monitorClubId, monitorClubName])
+
+  useEffect(() => {
+    if (!monitoring) return
+    void refreshEaMonitor()
+    const interval = window.setInterval(() => { void refreshEaMonitor() }, 15_000)
+    return () => window.clearInterval(interval)
+  }, [monitoring, refreshEaMonitor])
 
   if (loading) return <PageLoading />
   if (error && !inventory) return <ErrorState message={error} retry={() => void load()} />
@@ -367,6 +408,55 @@ export default function DemoLabPage() {
             {preparedMatchId && <Link href={`/dashboard/tournaments/${eaTournamentId.trim()}?match=${encodeURIComponent(preparedMatchId)}&lab=ea`} className="block rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-xs font-bold text-blue-300">Abrir diretamente a partida [LAB]</Link>}
           </div>
         </div>
+        <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.035] p-4">
+          <div className="grid gap-4 lg:grid-cols-[1fr_420px] lg:items-start">
+            <div>
+              <div className="flex items-center gap-2">
+                <Radio className={`h-4 w-4 text-emerald-300 ${monitoring ? "animate-pulse" : ""}`} />
+                <h4 className="text-sm font-black text-white">Monitor de partidas da EA</h4>
+                {monitoring && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-300">consultando a cada 15 s</span>}
+              </div>
+              <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-gray-400">
+                A EA não expõe placar enquanto a partida está acontecendo. Este monitor consulta continuamente e mostra o confronto assim que a EA publicar o resultado após o fim do jogo.
+              </p>
+              {monitorLatest ? (
+                <div className="mt-3 rounded-xl border border-emerald-400/20 bg-black/20 p-3">
+                  <p className="text-[9px] font-black uppercase tracking-wider text-emerald-300">Última partida publicada</p>
+                  <p className="mt-1 text-base font-black text-white">{monitorLatest.homeClubName} {monitorLatest.homeScore} × {monitorLatest.awayScore} {monitorLatest.awayClubName}</p>
+                  <p className="mt-1 text-[10px] text-gray-500">Jogada em {formatDateTime(monitorLatest.playedAt)} · EA Match ID {monitorLatest.externalMatchId}</p>
+                </div>
+              ) : monitorCheckedAt ? (
+                <p className="mt-3 rounded-lg border border-white/[0.07] bg-black/20 p-3 text-[11px] text-gray-400">Nenhuma partida recente foi publicada para este clube.</p>
+              ) : null}
+              {monitorCheckedAt && <p className="mt-2 text-[9px] text-gray-600">Última consulta: {monitorCheckedAt.toLocaleTimeString("pt-BR")}</p>}
+              {monitorError && <p className="mt-2 rounded-lg border border-red-500/20 bg-red-500/[0.06] p-2 text-[11px] text-red-300">{monitorError}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Nome exato do clube</Label>
+              <input
+                value={monitorClubName}
+                onChange={(event) => {
+                  setMonitorClubName(event.target.value)
+                  setMonitorClubId("")
+                  setMonitorLatest(null)
+                  setMonitorCheckedAt(null)
+                  setMonitoring(false)
+                }}
+                placeholder="Digite o clube que está jogando"
+                className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-xs text-white outline-none focus:border-emerald-400/50"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="outline" disabled={monitorClubName.trim().length < 2} onClick={() => void refreshEaMonitor()} className="border-emerald-400/25 text-emerald-200">
+                  <RefreshCw className="mr-1.5 h-4 w-4" />Consultar agora
+                </Button>
+                <Button type="button" disabled={monitorClubName.trim().length < 2} onClick={() => setMonitoring((current) => !current)} className={monitoring ? "bg-red-500/15 text-red-200 hover:bg-red-500/25" : "bg-emerald-500 font-bold text-black hover:bg-emerald-400"}>
+                  <Radio className="mr-1.5 h-4 w-4" />{monitoring ? "Parar" : "Monitorar"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="mt-4 rounded-xl border border-violet-500/25 bg-violet-500/[0.045] p-4">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-2xl">
@@ -413,6 +503,90 @@ export default function DemoLabPage() {
               {realEaTournamentUrl && (
                 <Link href={realEaTournamentUrl} className="sm:col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-black text-violet-200">
                   Abrir resultado final, estatísticas e cartas <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/[0.04] p-4">
+          <div className="grid gap-4 lg:grid-cols-[1fr_420px] lg:items-end">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fuchsia-300">Varredura expandida · 16 clubes</p>
+              <h4 className="mt-1 text-base font-black text-white">Montar 4 grupos de 4 a partir de um clube</h4>
+              <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-gray-400">
+                Carregue um clube e selecione uma partida que você sabe que pertenceu ao campeonato. Ela vira a âncora: a busca parte dos dois adversários, percorre relações anteriores e posteriores e escolhe os 16 clubes mais conectados antes de reconstruir grupos e chave.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-bold text-gray-400">
+                <span className="rounded-md border border-white/[0.07] bg-black/20 px-2 py-1.5">4 grupos × 4 clubes</span>
+                <span className="rounded-md border border-white/[0.07] bg-black/20 px-2 py-1.5">2 classificados por grupo</span>
+                <span className="rounded-md border border-white/[0.07] bg-black/20 px-2 py-1.5">até 48 históricos varridos</span>
+                <span className="rounded-md border border-white/[0.07] bg-black/20 px-2 py-1.5">sem inventar resultados</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Clube inicial</Label>
+              <input
+                value={fourGroupClubName}
+                onChange={(event) => {
+                  setFourGroupClubName(event.target.value)
+                  setFourGroupClubId("")
+                  setFourGroupMatches([])
+                  setFourGroupAnchorId("")
+                }}
+                placeholder="Nome exato do clube na EA"
+                className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-xs text-white outline-none focus:border-fuchsia-400/50"
+              />
+              <Button
+                disabled={busy !== "" || fourGroupClubName.trim().length < 2}
+                onClick={() => void run("ea-four-history", "Partidas do clube carregadas", async () => {
+                  const club = await findDemoEaClub(fourGroupClubName.trim())
+                  const history = await getDemoEaHistory(club.externalClubId)
+                  setFourGroupClubId(club.externalClubId)
+                  setFourGroupClubName(club.name)
+                  setFourGroupMatches(history.matches)
+                  setFourGroupAnchorId(history.matches[0]?.externalMatchId ?? "")
+                  return { message: `${history.matches.length} partida(s) encontradas. Selecione a que pertenceu ao campeonato.` }
+                })}
+                variant="outline"
+                className="w-full border-fuchsia-400/30 text-fuchsia-200 hover:bg-fuchsia-500/10"
+              >
+                {busy === "ea-four-history" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Search className="mr-1.5 h-4 w-4" />}
+                Carregar partidas para escolher a âncora
+              </Button>
+              {fourGroupClubId && fourGroupMatches.length === 0 && <p className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-2 text-[11px] text-amber-200">Nenhum amistoso recente retornado pela EA.</p>}
+              {fourGroupMatches.length > 0 && (
+                <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                  {fourGroupMatches.map((match) => {
+                    const selected = fourGroupAnchorId === match.externalMatchId
+                    return (
+                      <button
+                        key={match.externalMatchId}
+                        type="button"
+                        onClick={() => setFourGroupAnchorId(match.externalMatchId)}
+                        className={`w-full rounded-lg border px-2.5 py-2 text-left transition ${selected ? "border-fuchsia-400/50 bg-fuchsia-500/10" : "border-white/[0.07] bg-black/20 hover:border-white/15"}`}
+                      >
+                        <span className="block truncate text-[11px] font-bold text-white">{match.homeClubName} {match.homeScore} × {match.awayScore} {match.awayClubName}</span>
+                        <span className="mt-0.5 block text-[9px] text-gray-500">{formatDateTime(match.playedAt)} · EA Match ID {match.externalMatchId}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              <Button
+                disabled={busy !== "" || !fourGroupClubId || !fourGroupAnchorId}
+                onClick={() => void run("ea-four-groups", "Campeonato EA 4 × 4 reconstruído", async () => {
+                  const result = await buildEaFourGroupsTournament(fourGroupClubName.trim(), fourGroupAnchorId)
+                  setFourGroupTournamentUrl(result.url)
+                  return result
+                })}
+                className="w-full bg-fuchsia-500 font-bold text-white hover:bg-fuchsia-400"
+              >
+                {busy === "ea-four-groups" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <GitBranch className="mr-1.5 h-4 w-4" />}
+                Varrer rede e montar campeonato
+              </Button>
+              {fourGroupTournamentUrl && (
+                <Link href={fourGroupTournamentUrl} className="flex items-center justify-center gap-1.5 rounded-lg border border-fuchsia-400/30 bg-fuchsia-400/10 px-3 py-2 text-xs font-black text-fuchsia-200">
+                  Abrir os 4 grupos e o mata-mata <ArrowUpRight className="h-3.5 w-3.5" />
                 </Link>
               )}
             </div>
