@@ -175,6 +175,23 @@ export function buildLabTournamentKnockout(id: string) {
   return post<TournamentMatch[]>(`/tournaments/${id}/lab/knockout`)
 }
 
+export interface LabEaScoreAuditItem {
+  matchId: string
+  label: string | null
+  homeTeamName: string
+  awayTeamName: string
+  officialHomeScore: number
+  officialAwayScore: number
+  inferredHomeScore: number
+  inferredAwayScore: number
+  eaMatchId: string | null
+  reason: string
+}
+
+export function getLabEaScoreAudit(id: string) {
+  return request<LabEaScoreAuditItem[]>(`/tournaments/${id}/lab/score-audit`)
+}
+
 export function scheduleMatch(id: string, matchId: string, scheduledAt: string) {
   return patch(`/tournaments/${id}/matches/${matchId}/schedule`, { scheduledAt })
 }

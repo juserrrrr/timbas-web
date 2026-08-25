@@ -16,6 +16,7 @@ import {
   Swords,
   Table2,
   Trophy,
+  TriangleAlert,
   Users,
   UserPlus,
 } from "lucide-react"
@@ -30,7 +31,7 @@ import {
   formatDateTime,
 } from "@/components/competitions/shared"
 import { ReportResultDialog } from "@/components/competitions/report-result-dialog"
-import { buildLabTournamentKnockout, correctLabTournamentResult, declareWalkover, getTournament, reportResult, startTournament, updateTournament } from "@/lib/services/tournaments"
+import { buildLabTournamentKnockout, correctLabTournamentResult, declareWalkover, getLabEaScoreAudit, getTournament, reportResult, startTournament, updateTournament, type LabEaScoreAuditItem } from "@/lib/services/tournaments"
 import {
   FORMAT_LABELS,
   GAME_LABELS,
@@ -72,6 +73,8 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const [photoMatch, setPhotoMatch] = useState<TournamentMatch | null>(null)
   const [starting, setStarting] = useState(false)
   const [publishingKnockout, setPublishingKnockout] = useState(false)
+  const [scoreAudit, setScoreAudit] = useState<LabEaScoreAuditItem[]>([])
+  const [fixingAuditMatchId, setFixingAuditMatchId] = useState("")
   const [notice, setNotice] = useState("")
   const [now, setNow] = useState(() => Date.now())
   const [startWhen, setStartWhen] = useState("")
@@ -81,6 +84,15 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     try {
       const next = await getTournament(tournamentId)
       setTournament(next)
+      if (next.labMode && next.access.canModerate) {
+        try {
+          setScoreAudit(await getLabEaScoreAudit(tournamentId))
+        } catch {
+          setScoreAudit([])
+        }
+      } else {
+        setScoreAudit([])
+      }
       if (!initialTabChosen.current && !requestedMatchId && next.status === "FINISHED" && next.game === "EA_FC") {
         setTab("ea-stats")
       }
@@ -287,6 +299,34 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
           <span><span className="block text-base font-black text-white">Inscreva seu time neste campeonato</span><span className="mt-1 block text-xs text-amber-100/60">Valide seu clube da EA e garanta sua vaga. Cada usuário pode representar somente um time.</span></span>
           <span className="flex flex-shrink-0 items-center rounded-lg bg-amber-500 px-4 py-2 text-xs font-black text-black"><UserPlus className="mr-1.5 h-4 w-4" />Inscrever meu time</span>
         </button>
+      )}
+
+      {scoreAudit.length > 0 && (
+        <div className="space-y-3 rounded-2xl border border-red-500/30 bg-red-500/[0.055] p-4">
+          <div className="flex items-start gap-2">
+            <TriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-300" />
+            <div><p className="text-sm font-black text-red-200">Auditoria encontrou {scoreAudit.length} placar(es) 3 × 0 inconsistente(s)</p><p className="mt-1 text-[11px] text-gray-400">A sugestão usa o maior <code>goalsconceded</code> dos atletas de cada clube. Confira cada confronto antes de aplicar.</p></div>
+          </div>
+          <div className="grid gap-2 lg:grid-cols-2">
+            {scoreAudit.map((item) => (
+              <div key={item.matchId} className="rounded-xl border border-white/[0.07] bg-black/25 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{item.label ?? "Fase de grupos"}</p>
+                <p className="mt-1 text-xs font-bold text-white">{item.homeTeamName} × {item.awayTeamName}</p>
+                <div className="mt-2 flex items-center justify-between gap-3 text-[11px]"><span className="text-red-300">EA: <b>{item.officialHomeScore} × {item.officialAwayScore}</b></span><span className="text-emerald-300">Atletas indicam: <b>{item.inferredHomeScore} × {item.inferredAwayScore}</b></span></div>
+                <p className="mt-1 font-mono text-[9px] text-gray-600">EA #{item.eaMatchId ?? "sem ID"}</p>
+                <Button size="sm" disabled={fixingAuditMatchId !== ""} onClick={() => {
+                  setFixingAuditMatchId(item.matchId)
+                  void correctLabTournamentResult(tournament.id, item.matchId, item.inferredHomeScore, item.inferredAwayScore)
+                    .then(async () => { await load(); setNotice(`Resultado corrigido para ${item.inferredHomeScore} × ${item.inferredAwayScore} e classificação recalculada.`) })
+                    .catch((err) => setNotice(err instanceof Error ? err.message : "Não foi possível corrigir o resultado."))
+                    .finally(() => setFixingAuditMatchId(""))
+                }} className="mt-3 w-full bg-emerald-500 text-[10px] font-bold text-black hover:bg-emerald-400">
+                  {fixingAuditMatchId === item.matchId ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}Aplicar {item.inferredHomeScore} × {item.inferredAwayScore}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className={`rounded-2xl border p-4 ${untilStart !== null && untilStart > 0 ? "border-blue-500/30 bg-blue-500/[0.06]" : "border-emerald-500/25 bg-emerald-500/[0.05]"}`}>
