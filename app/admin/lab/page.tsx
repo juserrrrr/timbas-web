@@ -31,6 +31,7 @@ import {
   findDemoEaClub,
   searchDemoEaClubs,
   getDemoEaHistory,
+  getDemoEaMatchRaw,
   listDemoData,
   prepareDemoEaMatch,
   type DemoEaMatch,
@@ -161,6 +162,8 @@ export default function DemoLabPage() {
   const [eaHistory, setEaHistory] = useState<{ count: number; latest: DemoEaMatch | null; matches: DemoEaMatch[] } | null>(null)
   const [selectedEaMatchId, setSelectedEaMatchId] = useState("")
   const [rawEaMatch, setRawEaMatch] = useState<DemoEaMatch | null>(null)
+  const [rawLookupClubId, setRawLookupClubId] = useState("")
+  const [rawLookupMatchId, setRawLookupMatchId] = useState("")
   const [eaTournamentId, setEaTournamentId] = useState("")
   const [eaMatchId, setEaMatchId] = useState("")
   const [eaSide, setEaSide] = useState<"HOME" | "AWAY">("HOME")
@@ -351,6 +354,7 @@ export default function DemoLabPage() {
             <Button disabled={busy !== "" || eaClubName.trim().length < 2} onClick={() => void run("ea-club", "Clube encontrado", async () => {
               const club = await findDemoEaClub(eaClubName.trim())
               setEaClub(club)
+              setRawLookupClubId(club.externalClubId)
               setEaHistory(null)
               setSelectedEaMatchId("")
               return { message: `Clube confirmado: ${club.name} (${club.externalClubId})` }
@@ -371,6 +375,20 @@ export default function DemoLabPage() {
             })} className="w-full bg-cyan-500 text-black hover:bg-cyan-400">
               {busy === "ea-history" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-1.5 h-4 w-4" />} Buscar partidas
             </Button>
+            <div className="space-y-2 rounded-lg border border-cyan-500/15 bg-cyan-500/[0.035] p-2.5">
+              <p className="text-[10px] font-black uppercase tracking-wider text-cyan-300">Consulta direta por EA Match ID</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input value={rawLookupClubId} onChange={(event) => setRawLookupClubId(event.target.value)} placeholder="Club ID (ex.: 23482)" className="h-8 rounded-md border border-white/10 bg-black/30 px-2 font-mono text-[10px] text-white outline-none focus:border-cyan-500/50" />
+                <input value={rawLookupMatchId} onChange={(event) => setRawLookupMatchId(event.target.value)} placeholder="EA Match ID" className="h-8 rounded-md border border-white/10 bg-black/30 px-2 font-mono text-[10px] text-white outline-none focus:border-cyan-500/50" />
+              </div>
+              <Button disabled={busy !== "" || !rawLookupClubId.trim() || !rawLookupMatchId.trim()} onClick={() => void run("ea-raw-match", "JSON da partida carregado", async () => {
+                const match = await getDemoEaMatchRaw(rawLookupClubId.trim(), rawLookupMatchId.trim())
+                setRawEaMatch(match)
+                return { message: `${match.homeClubName} ${match.homeScore} x ${match.awayScore} ${match.awayClubName}` }
+              })} variant="outline" className="h-8 w-full border-cyan-500/25 text-[10px] text-cyan-300 hover:bg-cyan-500/10">
+                {busy === "ea-raw-match" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Code2 className="mr-1.5 h-3.5 w-3.5" />}Buscar JSON exato
+              </Button>
+            </div>
             {eaHistory && eaHistory.matches.length > 0 && (
               <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
                 {eaHistory.matches.map((match, index) => {

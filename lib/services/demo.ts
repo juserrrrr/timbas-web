@@ -103,6 +103,10 @@ export function getDemoEaHistory(clubId: string): Promise<{ count: number; lates
   return post("/admin/demo/ea/history", { clubId })
 }
 
+export function getDemoEaMatchRaw(clubId: string, externalMatchId: string): Promise<DemoEaMatch> {
+  return post("/admin/demo/ea/match/raw", { clubId, externalMatchId })
+}
+
 export function buildRealEaTournament(input: {
   clubName: string
   teamCount: number
