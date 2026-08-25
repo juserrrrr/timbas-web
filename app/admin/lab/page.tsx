@@ -42,6 +42,7 @@ import {
 } from "@/lib/services/demo"
 import { RESULT_MODE_HINTS, RESULT_MODE_LABELS, type DraftResultMode } from "@/lib/services/draft.types"
 import { FORMAT_LABELS, type TournamentFormat } from "@/lib/services/tournaments.types"
+import { brasiliaInputValue, brasiliaLocalToIso } from "@/lib/date-time"
 
 const FORMATS = Object.keys(FORMAT_LABELS) as TournamentFormat[]
 const TEAM_COUNTS = [4, 5, 8, 12, 16]
@@ -178,6 +179,7 @@ export default function DemoLabPage() {
   const [fourGroupAnchorId, setFourGroupAnchorId] = useState("")
   const [fourGroupTournamentUrl, setFourGroupTournamentUrl] = useState("")
   const [liveName, setLiveName] = useState("Corujão")
+  const [liveStartsAt, setLiveStartsAt] = useState(() => brasiliaInputValue(new Date(Date.now() + 15 * 60_000)))
   const [liveClubNames, setLiveClubNames] = useState("")
   const [liveClubQuery, setLiveClubQuery] = useState("")
   const [liveClubSuggestions, setLiveClubSuggestions] = useState<DemoEaClubCandidate[]>([])
@@ -611,6 +613,7 @@ export default function DemoLabPage() {
           <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr]">
             <div className="space-y-3 rounded-xl border border-white/[0.07] bg-black/15 p-3">
               <div className="space-y-1.5"><Label>Nome do evento</Label><input value={liveName} onChange={(event) => setLiveName(event.target.value)} className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-xs text-white outline-none focus:border-cyan-400/50" /></div>
+              <div className="space-y-1.5"><Label>Horário de início · Brasília</Label><input type="datetime-local" value={liveStartsAt} onChange={(event) => setLiveStartsAt(event.target.value)} className="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-xs text-white outline-none focus:border-cyan-400/50" /><p className="text-[10px] text-gray-600">A operação fica pronta agora e libera os confrontos neste horário.</p></div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5"><Label>Quantidade de grupos</Label><Chips options={[2, 4]} value={liveGroupCount} onChange={setLiveGroupCount} /></div>
                 <div className="space-y-1.5"><Label>Classificados por grupo</Label><Chips options={[1, 2, 3, 4]} value={liveAdvancePerGroup} onChange={setLiveAdvancePerGroup} /></div>
@@ -665,7 +668,7 @@ export default function DemoLabPage() {
                 )}
               </div>
               <textarea value={liveClubNames} onChange={(event) => setLiveClubNames(event.target.value)} rows={7} placeholder={"Bote Seu Pix\nTimbas EC\nTerreiros Club\nOutro clube"} className="w-full resize-y rounded-lg border border-white/10 bg-black/20 px-3 py-2 font-mono text-xs leading-relaxed text-white outline-none focus:border-cyan-400/50" />
-              <Button disabled={busy !== "" || liveName.trim().length < 3 || liveClubList.length < 4} onClick={() => void run("live-create", "Operação ao vivo criada", async () => { const workspace = await createLiveEaTournament({ name: liveName.trim(), clubNames: liveClubList, groupCount: liveGroupCount, advancePerGroup: liveAdvancePerGroup }); adoptLiveWorkspace(workspace); return { message: `${workspace.teams.length} clubes validados pela EA. Agora distribua os grupos.` } })} className="w-full bg-cyan-500 font-bold text-black hover:bg-cyan-400">{busy === "live-create" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-1.5 h-4 w-4" />}Validar clubes e criar</Button>
+              <Button disabled={busy !== "" || liveName.trim().length < 3 || !liveStartsAt || liveClubList.length < 4} onClick={() => void run("live-create", "Operação ao vivo criada", async () => { const workspace = await createLiveEaTournament({ name: liveName.trim(), startsAt: brasiliaLocalToIso(liveStartsAt), clubNames: liveClubList, groupCount: liveGroupCount, advancePerGroup: liveAdvancePerGroup }); adoptLiveWorkspace(workspace); return { message: `${workspace.teams.length} clubes validados pela EA. Agora distribua os grupos.` } })} className="w-full bg-cyan-500 font-bold text-black hover:bg-cyan-400">{busy === "live-create" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-1.5 h-4 w-4" />}Validar clubes e criar</Button>
               {error && <p className="whitespace-pre-line rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-red-300">{error}</p>}
             </div>
           </div>

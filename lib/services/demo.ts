@@ -139,6 +139,7 @@ export interface LiveEaWorkspace {
 
 export function createLiveEaTournament(input: {
   name: string
+  startsAt: string
   clubNames: string[]
   groupCount: number
   advancePerGroup: number
