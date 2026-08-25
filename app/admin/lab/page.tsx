@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowUpRight, Bug, DatabaseZap, FlaskConical, GitBranch, Loader2, Play, Radio, RefreshCw, Search, Trash2, Trophy, Users } from "lucide-react"
+import { ArrowUpRight, Bug, Code2, Copy, DatabaseZap, FlaskConical, GitBranch, Loader2, Play, Radio, RefreshCw, Search, Trash2, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { AwardCardStudio } from "@/components/admin/award-card-studio"
@@ -159,6 +160,7 @@ export default function DemoLabPage() {
   const [eaClub, setEaClub] = useState<{ externalClubId: string; name: string; platform: string } | null>(null)
   const [eaHistory, setEaHistory] = useState<{ count: number; latest: DemoEaMatch | null; matches: DemoEaMatch[] } | null>(null)
   const [selectedEaMatchId, setSelectedEaMatchId] = useState("")
+  const [rawEaMatch, setRawEaMatch] = useState<DemoEaMatch | null>(null)
   const [eaTournamentId, setEaTournamentId] = useState("")
   const [eaMatchId, setEaMatchId] = useState("")
   const [eaSide, setEaSide] = useState<"HOME" | "AWAY">("HOME")
@@ -375,19 +377,22 @@ export default function DemoLabPage() {
                   const selected = selectedEaMatchId === match.externalMatchId
                   const playerCount = Object.values(match.playersByClub ?? {}).reduce((total, players) => total + players.length, 0)
                   return (
-                    <button
+                    <div
                       key={match.externalMatchId}
-                      type="button"
-                      onClick={() => setSelectedEaMatchId(match.externalMatchId)}
-                      className={`w-full rounded-lg border p-2 text-left text-[11px] transition ${selected ? "border-cyan-400/50 bg-cyan-500/10" : "border-white/[0.06] bg-white/[0.03] hover:border-white/15"}`}
+                      className={`rounded-lg border text-[11px] transition ${selected ? "border-cyan-400/50 bg-cyan-500/10" : "border-white/[0.06] bg-white/[0.03] hover:border-white/15"}`}
                     >
-                      <span className="flex items-center justify-between gap-2">
-                        <b className="text-white">{match.homeClubName} {match.homeScore} x {match.awayScore} {match.awayClubName}</b>
-                        <span className={selected ? "font-bold text-cyan-300" : "text-gray-600"}>#{index + 1}</span>
-                      </span>
-                      <span className="mt-1 block text-gray-500">{formatDateTime(match.playedAt)} · {playerCount} jogadores</span>
-                      <span className="mt-0.5 block font-mono text-gray-400">EA Match ID: {match.externalMatchId}</span>
-                    </button>
+                      <button type="button" onClick={() => setSelectedEaMatchId(match.externalMatchId)} className="w-full p-2 text-left">
+                        <span className="flex items-center justify-between gap-2">
+                          <b className="text-white">{match.homeClubName} {match.homeScore} x {match.awayScore} {match.awayClubName}</b>
+                          <span className={selected ? "font-bold text-cyan-300" : "text-gray-600"}>#{index + 1}</span>
+                        </span>
+                        <span className="mt-1 block text-gray-500">{formatDateTime(match.playedAt)} · {playerCount} jogadores</span>
+                        <span className="mt-0.5 block font-mono text-gray-400">EA Match ID: {match.externalMatchId}</span>
+                      </button>
+                      <button type="button" onClick={() => { setSelectedEaMatchId(match.externalMatchId); setRawEaMatch(match) }} className="flex w-full items-center justify-center border-t border-white/[0.06] px-2 py-1.5 text-[10px] font-bold text-cyan-300 transition hover:bg-cyan-500/10">
+                        <Code2 className="mr-1.5 h-3.5 w-3.5" />Ver JSON bruto da EA
+                      </button>
+                    </div>
                   )
                 })}
               </div>
@@ -1018,6 +1023,25 @@ export default function DemoLabPage() {
           </div>
         </Card>
       )}
+
+      <Dialog open={rawEaMatch !== null} onOpenChange={(open) => !open && setRawEaMatch(null)}>
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden border-cyan-500/20 bg-[#090b10]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white"><Code2 className="h-4 w-4 text-cyan-300" />JSON bruto retornado pela EA</DialogTitle>
+            <DialogDescription>Sem transformação do Timbas · EA Match ID {rawEaMatch?.externalMatchId}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button type="button" size="sm" variant="outline" onClick={() => {
+              if (!rawEaMatch) return
+              void navigator.clipboard.writeText(JSON.stringify(rawEaMatch.rawData ?? rawEaMatch, null, 2))
+              setNotice("JSON bruto copiado.")
+            }} className="h-8 border-white/10 px-3 text-[10px]"><Copy className="mr-1.5 h-3.5 w-3.5" />Copiar JSON</Button>
+          </div>
+          <pre className="max-h-[68vh] overflow-auto rounded-xl border border-white/[0.07] bg-black/40 p-4 font-mono text-[10px] leading-relaxed text-emerald-200">
+            {rawEaMatch ? JSON.stringify(rawEaMatch.rawData ?? rawEaMatch, null, 2) : ""}
+          </pre>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
