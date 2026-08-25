@@ -304,8 +304,8 @@ export function MatchRoomDialog({
           {!closed && eaChoices.length > 0 && (mySide || room?.canModerate) && (
             <div className="space-y-2 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.045] p-3">
               <div>
-                <p className="text-[11px] font-bold text-cyan-200">Escolha qual amistoso pertence a este confronto</p>
-                <p className="mt-0.5 text-[10px] text-gray-500">Admin e capitão podem escolher. As opções estão da mais antiga para a mais recente e cada partida só pode ser usada uma vez.</p>
+                <p className="text-[11px] font-bold text-cyan-200">Confirme qual amistoso pertence a este confronto</p>
+                <p className="mt-0.5 text-[10px] text-gray-500">Confira data e placar antes de confirmar. Se o resultado correto ainda não apareceu, não escolha uma opção e tente novamente em alguns minutos.</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {eaChoices.map((candidate, index) => (
@@ -320,6 +320,7 @@ export function MatchRoomDialog({
                     <span className="min-w-0">
                       <span className="block text-[10px] font-bold text-cyan-300">{index === 0 ? "Mais antiga" : `Opção ${index + 1}`}</span>
                       <span className="block text-[10px] text-gray-500">{formatDateTime(candidate.playedAt)}</span>
+                      <span className="block font-mono text-[9px] text-gray-600">EA #{candidate.eaMatchId}</span>
                     </span>
                     <span className="ml-3 text-sm font-black text-white">{candidate.homeScore} × {candidate.awayScore}</span>
                   </Button>
