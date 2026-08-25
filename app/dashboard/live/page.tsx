@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Lock, MonitorPlay, MonitorUp, Radio, Server, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Spinner } from "@/components/ui/spinner"
+import { RouteLoadingSignal } from "@/lib/navigation-context"
 import { PlayerAvatar } from "@/components/player-avatar"
 import { getToken } from "@/lib/auth"
 import { createStream, getStreamPermission, listStreams, type StreamSummary } from "@/lib/services/streaming"
@@ -75,7 +75,7 @@ export default function LivePage() {
   }
 
   if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center"><Spinner /></div>
+    return <RouteLoadingSignal />
   }
 
   if (!featureEnabled) {
@@ -91,7 +91,7 @@ export default function LivePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="dashboard-view space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/20">

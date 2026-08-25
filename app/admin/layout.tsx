@@ -1,16 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { ShieldAlert } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
 import { Toaster, toast } from "sonner"
 import { AdminSidebar } from "@/components/admin-sidebar"
 import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
 import { getMyPermissions } from "@/lib/services/access"
 import { NavigationProvider } from "@/lib/navigation-context"
+import { LoadingState } from "@/components/ui/loading-state"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [user, setUser] = useState<TokenPayload | null>(null)
   const [permissions, setPermissions] = useState<string[]>([])
   const [checked, setChecked] = useState(false)
@@ -62,13 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   if (!checked) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-[#050508]">
-        <div className="flex h-12 w-12 animate-pulse items-center justify-center rounded-xl bg-orange-500/20">
-          <ShieldAlert className="h-6 w-6 text-orange-400" />
-        </div>
-      </div>
-    )
+    return <div className="min-h-[100dvh] bg-[#050508]"><LoadingState className="m-0 min-h-[100dvh]" /></div>
   }
 
   return (
@@ -104,7 +99,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <AdminSidebar permissions={permissions} userName={user?.name ?? ""} onLogout={handleLogout} />
 
       <main className="ml-[65px] min-h-[100dvh]">
-        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8"><div key={pathname} className="dashboard-view">{children}</div></div>
       </main>
     </div>
     </NavigationProvider>

@@ -16,6 +16,7 @@ import { awardCardByTitle, type AwardCardLayoutSettings } from "@/lib/award-card
 import { renderAwardCard } from "@/lib/award-card-render"
 import { getAwardCardSettings } from "@/lib/services/award-cards"
 import { publicTournamentUrl } from "@/lib/public-site-url"
+import { RouteLoadingSignal } from "@/lib/navigation-context"
 
 const TAGS: Record<string, string> = {
   MVP: "MVP",
@@ -133,7 +134,7 @@ const AWARD_PRESENTATION: Record<TournamentEaAward["key"], Pick<TournamentAward,
   MURALHA: { icon: Hand, tone: "from-rose-500/20 to-red-500/[0.03] border-rose-500/25 text-rose-300" },
 }
 
-function AwardCardPreview({ award, tournamentId, settings, index }: { award: TournamentAward; tournamentId: string; settings: AwardCardLayoutSettings; index: number }) {
+function AwardCardPreview({ award, tournamentId, settings, index, reveal, onRendered }: { award: TournamentAward; tournamentId: string; settings: AwardCardLayoutSettings; index: number; reveal: boolean; onRendered: (key: TournamentEaAward["key"]) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [rendering, setRendering] = useState(true)
   const [renderError, setRenderError] = useState(false)
@@ -147,26 +148,33 @@ function AwardCardPreview({ award, tournamentId, settings, index }: { award: Tou
     if (!template || !canvas) {
       setRendering(false)
       setRenderError(true)
+      onRendered(award.key)
       return
     }
     let active = true
     setRendering(true)
     setRenderError(false)
     void renderAwardCard(canvas, template, playerName, achievement, publicTournamentUrl(tournamentId))
-      .then(() => active && setRendering(false))
+      .then(() => {
+        if (active) {
+          setRendering(false)
+          onRendered(award.key)
+        }
+      })
       .catch(() => {
         if (active) {
           setRendering(false)
           setRenderError(true)
+          onRendered(award.key)
         }
       })
     return () => { active = false }
-  }, [achievement, awardTitle, playerName, settings, tournamentId])
+  }, [achievement, award.key, awardTitle, onRendered, playerName, settings, tournamentId])
 
   return (
     <article
       style={{ animationDelay: `${Math.min(index, 5) * 60}ms` }}
-      className="award-card-enter group relative overflow-hidden rounded-[26px] bg-black shadow-[0_18px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 transition duration-300 hover:-translate-y-1 hover:ring-amber-400/30"
+      className={`${reveal ? "award-card-enter" : "opacity-0"} group relative overflow-hidden rounded-[26px] bg-black shadow-[0_18px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 transition duration-300 hover:-translate-y-1 hover:ring-amber-400/30`}
     >
       <canvas ref={canvasRef} className={`block aspect-[4/5] w-full object-cover transition-opacity duration-500 ${rendering || renderError ? "opacity-20" : "opacity-100"}`} aria-label={`${award.title}: ${award.player.playerName}`} />
       {rendering && <span className="absolute inset-0 flex items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-amber-300" /></span>}
@@ -188,9 +196,11 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [awardSettings, setAwardSettings] = useState<AwardCardLayoutSettings>({})
+  const [readyAwardKeys, setReadyAwardKeys] = useState<Set<TournamentEaAward["key"]>>(new Set())
 
   const load = useCallback(async () => {
     setLoading(true)
+    setReadyAwardKeys(new Set())
     try {
       const [awardResult, settings] = await Promise.all([
         getTournamentEaAwards(tournamentId),
@@ -209,7 +219,11 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
 
   useEffect(() => { void load() }, [load])
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-amber-400" /></div>
+  const markAwardRendered = useCallback((key: TournamentEaAward["key"]) => {
+    setReadyAwardKeys((current) => current.has(key) ? current : new Set(current).add(key))
+  }, [])
+
+  if (loading) return <RouteLoadingSignal />
   if (error) return <p className="rounded-lg border border-red-500/20 bg-red-500/[0.06] p-3 text-xs text-red-300">{error}</p>
   if (!players.length) {
     return <EmptyState icon={BarChart3} title="Nenhuma estatística sincronizada" description="Depois que alguém checar uma partida na EA, gols, assistências, notas e destaques aparecem aqui." />
@@ -218,10 +232,12 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
   const awards: TournamentAward[] = finished
     ? officialAwards.map((award) => ({ ...award, ...AWARD_PRESENTATION[award.key] }))
     : []
+  const awardsReady = awards.every((award) => readyAwardKeys.has(award.key))
 
   return (
-    <div className="space-y-4">
-      {awards.length > 0 && <section className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">Premiação oficial</p><h3 className="mt-1 text-xl font-black text-white">Seleção do campeonato</h3><p className="mt-1 text-[11px] text-gray-400">Cada carta usa todas as partidas e estatísticas sincronizadas durante o campeonato inteiro, não somente a final.</p></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{awards.map((award, index) => <AwardCardPreview key={award.title} award={award} tournamentId={tournamentId} settings={awardSettings} index={index} />)}</div></section>}
+    <div className={`${awardsReady ? "content-enter" : ""} space-y-4`}>
+      {!awardsReady && <RouteLoadingSignal />}
+      {awards.length > 0 && <section className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">Premiação oficial</p><h3 className="mt-1 text-xl font-black text-white">Seleção do campeonato</h3><p className="mt-1 text-[11px] text-gray-400">Cada carta usa todas as partidas e estatísticas sincronizadas durante o campeonato inteiro, não somente a final.</p></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{awards.map((award, index) => <AwardCardPreview key={award.title} award={award} tournamentId={tournamentId} settings={awardSettings} index={index} reveal={awardsReady} onRendered={markAwardRendered} />)}</div></section>}
     <Card className="overflow-hidden border-white/[0.07] bg-white/[0.025]">
       <div className="border-b border-white/[0.06] p-4">
         <h3 className="flex items-center gap-2 text-sm font-black text-white"><Medal className="h-4 w-4 text-amber-400" />Estatísticas do campeonato</h3>

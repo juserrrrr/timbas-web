@@ -4,7 +4,7 @@ import type { ReactNode } from "react"
 import { AlertCircle, Coins, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { RouteLoadingSignal } from "@/lib/navigation-context"
 import { BRASILIA_TIME_ZONE } from "@/lib/date-time"
 
 export function formatDateTime(value?: string | null) {
@@ -123,18 +123,7 @@ export function ErrorState({ message, retry }: { message: string; retry?: () => 
 }
 
 export function PageLoading() {
-  return (
-    <div className="space-y-5" aria-label="Carregando">
-      <Skeleton className="h-20 w-full bg-white/5" />
-      <div className="grid gap-4 sm:grid-cols-4">
-        <Skeleton className="h-24 bg-white/5" />
-        <Skeleton className="h-24 bg-white/5" />
-        <Skeleton className="h-24 bg-white/5" />
-        <Skeleton className="h-24 bg-white/5" />
-      </div>
-      <Skeleton className="h-72 w-full bg-white/5" />
-    </div>
-  )
+  return <RouteLoadingSignal />
 }
 
 const STATUS_TONES: Record<string, string> = {

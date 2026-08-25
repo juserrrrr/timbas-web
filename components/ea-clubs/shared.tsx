@@ -3,7 +3,7 @@
 import { AlertCircle, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { RouteLoadingSignal } from "@/lib/navigation-context"
 
 export function formatDate(value?: string | null, withTime = false) {
   if (!value) return "Nunca"
@@ -22,7 +22,7 @@ export function formatExternalName(value: string) {
 }
 
 export function PageLoading() {
-  return <div className="space-y-5" aria-label="Carregando"><Skeleton className="h-20 w-full bg-white/5" /><div className="grid gap-4 sm:grid-cols-3"><Skeleton className="h-28 bg-white/5" /><Skeleton className="h-28 bg-white/5" /><Skeleton className="h-28 bg-white/5" /></div><Skeleton className="h-64 w-full bg-white/5" /></div>
+  return <RouteLoadingSignal />
 }
 
 export function ErrorState({ message, retry }: { message: string; retry?: () => void }) {

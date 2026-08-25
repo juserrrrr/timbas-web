@@ -23,8 +23,12 @@ const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffec
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [pending, startTransition] = useTransition()
-  const [routeLoading, setRouteLoading] = useState(false)
+  const [routeLoadingCount, setRouteLoadingCount] = useState(0)
   const router = useRouter()
+
+  const setRouteLoading = useCallback((active: boolean) => {
+    setRouteLoadingCount((count) => Math.max(0, count + (active ? 1 : -1)))
+  }, [])
 
   const navigate = useCallback((href: string) => {
     startTransition(() => {
@@ -32,10 +36,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     })
   }, [router])
 
-  const value = useMemo(() => ({ navigate, setRouteLoading }), [navigate])
+  const value = useMemo(() => ({ navigate, setRouteLoading }), [navigate, setRouteLoading])
 
   // pending: client transition via navigate(), routeLoading: route segment suspended (loading.tsx)
-  const visible = pending || routeLoading
+  const visible = pending || routeLoadingCount > 0
 
   return (
     <NavigationContext.Provider value={value}>
