@@ -103,6 +103,8 @@ export interface EaMatchChoice {
   playedAt: string
   homeScore: number
   awayScore: number
+  suspiciousScore?: boolean
+  warning?: string
 }
 
 export type CheckTournamentEaResultResponse =

@@ -323,21 +323,23 @@ export function MatchRoomDialog({
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {eaChoices.map((candidate, index) => (
-                  <Button
-                    key={candidate.eaMatchId}
-                    type="button"
-                    variant="outline"
-                    disabled={busy !== ""}
-                    onClick={() => void checkEa(candidate.eaMatchId)}
-                    className="h-auto justify-between border-cyan-500/20 px-3 py-2 text-left hover:bg-cyan-500/10"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-[10px] font-bold text-cyan-300">{index === 0 ? "Mais antiga" : `Opção ${index + 1}`}</span>
-                      <span className="block text-[10px] text-gray-500">{formatDateTime(candidate.playedAt)}</span>
-                      <span className="block font-mono text-[9px] text-gray-600">EA #{candidate.eaMatchId}</span>
-                    </span>
-                    <span className="ml-3 text-sm font-black text-white">{candidate.homeScore} × {candidate.awayScore}</span>
-                  </Button>
+                  <div key={candidate.eaMatchId} className={`rounded-lg border ${candidate.suspiciousScore ? "border-red-500/30 bg-red-500/[0.06]" : "border-cyan-500/20"}`}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={busy !== "" || Boolean(candidate.suspiciousScore && !room?.canModerate)}
+                      onClick={() => void checkEa(candidate.eaMatchId)}
+                      className="h-auto w-full justify-between px-3 py-2 text-left hover:bg-cyan-500/10"
+                    >
+                      <span className="min-w-0">
+                        <span className={`block text-[10px] font-bold ${candidate.suspiciousScore ? "text-red-300" : "text-cyan-300"}`}>{candidate.suspiciousScore ? "Revisão obrigatória" : index === 0 ? "Mais antiga" : `Opção ${index + 1}`}</span>
+                        <span className="block text-[10px] text-gray-500">{formatDateTime(candidate.playedAt)}</span>
+                        <span className="block font-mono text-[9px] text-gray-600">EA #{candidate.eaMatchId}</span>
+                      </span>
+                      <span className="ml-3 text-sm font-black text-white">{candidate.homeScore} × {candidate.awayScore}</span>
+                    </Button>
+                    {candidate.warning && <p className="border-t border-red-500/15 px-3 py-2 text-[9px] leading-relaxed text-red-300">{candidate.warning} {room?.canModerate ? "Confirme apenas se deseja aceitar o placar oficial da EA." : "Peça revisão da organização ou envie a imagem final."}</p>}
+                  </div>
                 ))}
               </div>
             </div>
