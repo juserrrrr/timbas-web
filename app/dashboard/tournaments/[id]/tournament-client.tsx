@@ -30,7 +30,7 @@ import {
   formatDateTime,
 } from "@/components/competitions/shared"
 import { ReportResultDialog } from "@/components/competitions/report-result-dialog"
-import { declareWalkover, getTournament, reportResult, startTournament, updateTournament } from "@/lib/services/tournaments"
+import { correctLabTournamentResult, declareWalkover, getTournament, reportResult, startTournament, updateTournament } from "@/lib/services/tournaments"
 import {
   FORMAT_LABELS,
   GAME_LABELS,
@@ -159,13 +159,21 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     (tournament.access.canModerate ||
       tournament.access.teamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId))
 
+  const correctingLabResult =
+    photoMatch !== null &&
+    tournament.labMode &&
+    tournament.access.canModerate &&
+    photoMatch.phase === "GROUP" &&
+    (photoMatch.status === "FINISHED" || photoMatch.status === "WALKOVER")
   const canReport =
     photoMatch !== null &&
     Boolean(photoMatch.homeTeamId && photoMatch.awayTeamId) &&
-    photoMatch.status !== "FINISHED" &&
-    photoMatch.status !== "WALKOVER" &&
-    (tournament.access.canModerate ||
-      tournament.access.teamIds.some((id) => id === photoMatch.homeTeamId || id === photoMatch.awayTeamId))
+    (correctingLabResult || (
+      photoMatch.status !== "FINISHED" &&
+      photoMatch.status !== "WALKOVER" &&
+      (tournament.access.canModerate ||
+        tournament.access.teamIds.some((id) => id === photoMatch.homeTeamId || id === photoMatch.awayTeamId))
+    ))
 
   const finishedMatches = tournament.matches.filter(
     (match) => match.status === "FINISHED" || match.status === "WALKOVER",
@@ -357,9 +365,18 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
           awayName={photoMatch.awayTeam?.name ?? "Visitante"}
           homeLogo={photoMatch.homeTeam?.logoUrl}
           awayLogo={photoMatch.awayTeam?.logoUrl}
-          requireProof={tournament.requireProof}
+          requireProof={correctingLabResult ? false : tournament.requireProof}
           canModerate={tournament.access.canModerate}
+          initialHomeScore={correctingLabResult ? photoMatch.homeScore : null}
+          initialAwayScore={correctingLabResult ? photoMatch.awayScore : null}
+          title={correctingLabResult ? "Corrigir resultado" : "Lançar resultado"}
           onSubmit={async (input) => {
+            if (correctingLabResult) {
+              await correctLabTournamentResult(tournament.id, photoMatch.id, input.homeScore, input.awayScore)
+              await load()
+              setNotice("Resultado corrigido e classificação recalculada.")
+              return { autoApproved: true }
+            }
             const result = await reportResult(tournament.id, photoMatch.id, input)
             await load()
             setNotice(
@@ -372,7 +389,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
             return { autoApproved: result.autoApproved }
           }}
           onWalkover={
-            tournament.access.canModerate
+            tournament.access.canModerate && !correctingLabResult
               ? async ({ winner, reason }) => {
                   const winnerTeamId = winner === "HOME" ? photoMatch.homeTeamId : photoMatch.awayTeamId
                   if (!winnerTeamId) return

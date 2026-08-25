@@ -98,8 +98,19 @@ export function validateTournamentEaClub(id: string, name: string) {
   })
 }
 
-export function checkTournamentEaResult(id: string, matchId: string) {
-  return post<TournamentMatch>(`/tournaments/${id}/matches/${matchId}/check-ea`)
+export interface EaMatchChoice {
+  eaMatchId: string
+  playedAt: string
+  homeScore: number
+  awayScore: number
+}
+
+export type CheckTournamentEaResultResponse =
+  | TournamentMatch
+  | { selectionRequired: true; candidates: EaMatchChoice[] }
+
+export function checkTournamentEaResult(id: string, matchId: string, eaMatchId?: string) {
+  return post<CheckTournamentEaResultResponse>(`/tournaments/${id}/matches/${matchId}/check-ea`, { eaMatchId })
 }
 
 export function requestTournamentMatchReview(id: string, matchId: string, reason: string) {
@@ -152,6 +163,10 @@ export function reportResult(
   input: { homeScore: number; awayScore: number; imageBase64?: string; mimeType?: string },
 ): Promise<ReportResultResponse> {
   return post(`/tournaments/${id}/matches/${matchId}/report`, input)
+}
+
+export function correctLabTournamentResult(id: string, matchId: string, homeScore: number, awayScore: number) {
+  return patch<TournamentMatch>(`/tournaments/${id}/matches/${matchId}/correct-result`, { homeScore, awayScore })
 }
 
 export function scheduleMatch(id: string, matchId: string, scheduledAt: string) {

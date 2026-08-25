@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { CalendarClock, Camera, Check, Clock, DatabaseZap, Loader2, Send, TriangleAlert, UserX, X } from "lucide-react"
+import { CalendarClock, Camera, Check, Clock, DatabaseZap, Loader2, RefreshCw, Send, TriangleAlert, UserX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -17,6 +17,7 @@ import {
   requestTournamentMatchReview,
   requestMatchGrace,
   setTournamentMatchReady,
+  type EaMatchChoice,
   type MatchRoom,
 } from "@/lib/services/tournaments"
 import type { TournamentDetail, TournamentMatch } from "@/lib/services/tournaments.types"
@@ -59,6 +60,7 @@ export function MatchRoomDialog({
   const [reviewReason, setReviewReason] = useState("")
   const [busy, setBusy] = useState("")
   const [error, setError] = useState("")
+  const [eaChoices, setEaChoices] = useState<EaMatchChoice[]>([])
 
   const load = useCallback(async () => {
     try {
@@ -84,6 +86,25 @@ export function MatchRoomDialog({
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível concluir a ação.")
+    } finally {
+      setBusy("")
+    }
+  }
+
+  const checkEa = async (eaMatchId?: string) => {
+    setBusy("ea")
+    setError("")
+    try {
+      const result = await checkTournamentEaResult(tournament.id, match.id, eaMatchId)
+      if ("selectionRequired" in result) {
+        setEaChoices(result.candidates)
+        return
+      }
+      setEaChoices([])
+      await load()
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível consultar a EA.")
     } finally {
       setBusy("")
     }
@@ -271,11 +292,51 @@ export function MatchRoomDialog({
               <Button
                 size="sm"
                 disabled={busy !== "" || (quickMode ? !bothReady : !match.scheduledAt)}
-                onClick={() => void run("ea", () => checkTournamentEaResult(tournament.id, match.id))}
+                onClick={() => void checkEa()}
                 className="h-8 bg-blue-500 px-3 text-[11px] text-white hover:bg-blue-400"
               >
                 {busy === "ea" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="mr-1.5 h-3.5 w-3.5" />}
                 Checar na EA
+              </Button>
+            </div>
+          )}
+
+          {!closed && eaChoices.length > 0 && room?.canModerate && (
+            <div className="space-y-2 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.045] p-3">
+              <div>
+                <p className="text-[11px] font-bold text-cyan-200">Escolha qual amistoso pertence a este confronto</p>
+                <p className="mt-0.5 text-[10px] text-gray-500">As opções estão da mais antiga para a mais recente. Uma partida só pode ser usada uma vez.</p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {eaChoices.map((candidate, index) => (
+                  <Button
+                    key={candidate.eaMatchId}
+                    type="button"
+                    variant="outline"
+                    disabled={busy !== ""}
+                    onClick={() => void checkEa(candidate.eaMatchId)}
+                    className="h-auto justify-between border-cyan-500/20 px-3 py-2 text-left hover:bg-cyan-500/10"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-[10px] font-bold text-cyan-300">{index === 0 ? "Mais antiga" : `Opção ${index + 1}`}</span>
+                      <span className="block text-[10px] text-gray-500">{formatDateTime(candidate.playedAt)}</span>
+                    </span>
+                    <span className="ml-3 text-sm font-black text-white">{candidate.homeScore} × {candidate.awayScore}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {closed && tournament.labMode && match.phase === "GROUP" && room?.canModerate && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.045] p-2.5">
+              <div>
+                <p className="text-[11px] font-bold text-amber-200">O placar foi lançado errado?</p>
+                <p className="mt-0.5 text-[10px] text-gray-600">Você pode corrigir enquanto o mata-mata ainda não foi publicado.</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={onOpenPhoto} className="h-8 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                Corrigir resultado
               </Button>
             </div>
           )}

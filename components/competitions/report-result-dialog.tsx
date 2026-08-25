@@ -23,6 +23,9 @@ export function ReportResultDialog({
   onSubmit,
   squads,
   onWalkover,
+  initialHomeScore,
+  initialAwayScore,
+  title = "Lançar resultado",
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -46,6 +49,9 @@ export function ReportResultDialog({
     away: { name: string; players: Array<{ id: string; name: string; position: string }> }
   }
   onWalkover?: (input: { winner: "HOME" | "AWAY"; reason?: string }) => Promise<void>
+  initialHomeScore?: number | null
+  initialAwayScore?: number | null
+  title?: string
 }) {
   const [homeScore, setHomeScore] = useState("")
   const [awayScore, setAwayScore] = useState("")
@@ -59,7 +65,11 @@ export function ReportResultDialog({
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (open) return
+    if (open) {
+      setHomeScore(initialHomeScore === null || initialHomeScore === undefined ? "" : String(initialHomeScore))
+      setAwayScore(initialAwayScore === null || initialAwayScore === undefined ? "" : String(initialAwayScore))
+      return
+    }
     setHomeScore("")
     setAwayScore("")
     setError("")
@@ -71,7 +81,7 @@ export function ReportResultDialog({
       if (current) URL.revokeObjectURL(current.previewUrl)
       return null
     })
-  }, [open])
+  }, [initialAwayScore, initialHomeScore, open])
 
   const pickImage = async (file: File | undefined) => {
     if (!file) return
@@ -100,9 +110,11 @@ export function ReportResultDialog({
         awayScore: Number(awayScore),
         imageBase64: image?.base64,
         mimeType: image?.mimeType,
-        scorers: Object.entries(scorers)
-          .filter(([, tally]) => tally.goals > 0 || tally.assists > 0)
-          .map(([playerId, tally]) => ({ playerId, ...tally })),
+        ...(squads ? {
+          scorers: Object.entries(scorers)
+            .filter(([, tally]) => tally.goals > 0 || tally.assists > 0)
+            .map(([playerId, tally]) => ({ playerId, ...tally })),
+        } : {}),
       })
       onOpenChange(false)
     } catch (err) {
@@ -130,7 +142,7 @@ export function ReportResultDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg border-white/10 bg-[#0b0b12]">
         <DialogHeader>
-          <DialogTitle className="text-white">Lançar resultado</DialogTitle>
+          <DialogTitle className="text-white">{title}</DialogTitle>
           <DialogDescription>
             {proofNeeded
               ? "Informe o placar e envie a foto da tela final. A leitura automática confere os números antes de contabilizar."
