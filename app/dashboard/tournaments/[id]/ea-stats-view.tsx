@@ -16,7 +16,7 @@ import { awardCardByTitle, type AwardCardLayoutSettings } from "@/lib/award-card
 import { renderAwardCard } from "@/lib/award-card-render"
 import { getAwardCardSettings } from "@/lib/services/award-cards"
 import { publicTournamentUrl } from "@/lib/public-site-url"
-import { RouteLoadingSignal } from "@/lib/navigation-context"
+import { LoadingState } from "@/components/ui/loading-state"
 
 const TAGS: Record<string, string> = {
   MVP: "MVP",
@@ -223,7 +223,7 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
     setReadyAwardKeys((current) => current.has(key) ? current : new Set(current).add(key))
   }, [])
 
-  if (loading) return <RouteLoadingSignal />
+  if (loading) return <LoadingState className="mx-0 my-0 min-h-[320px]" message="Carregando estatísticas" />
   if (error) return <p className="rounded-lg border border-red-500/20 bg-red-500/[0.06] p-3 text-xs text-red-300">{error}</p>
   if (!players.length) {
     return <EmptyState icon={BarChart3} title="Nenhuma estatística sincronizada" description="Depois que alguém checar uma partida na EA, gols, assistências, notas e destaques aparecem aqui." />
@@ -235,8 +235,13 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
   const awardsReady = awards.every((award) => readyAwardKeys.has(award.key))
 
   return (
-    <div className={`${awardsReady ? "content-enter" : ""} space-y-4`}>
-      {!awardsReady && <RouteLoadingSignal />}
+    <div className="relative">
+      {!awardsReady && (
+        <div className="absolute inset-x-0 top-0 z-10 flex min-h-[360px] items-center justify-center rounded-2xl bg-[#050508]">
+          <LoadingState className="mx-0 my-0 min-h-0" message="Preparando as artes" />
+        </div>
+      )}
+      <div className={`${awardsReady ? "content-enter" : "pointer-events-none opacity-0"} space-y-4`} aria-hidden={!awardsReady}>
       {awards.length > 0 && <section className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">Premiação oficial</p><h3 className="mt-1 text-xl font-black text-white">Seleção do campeonato</h3><p className="mt-1 text-[11px] text-gray-400">Cada carta usa todas as partidas e estatísticas sincronizadas durante o campeonato inteiro, não somente a final.</p></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{awards.map((award, index) => <AwardCardPreview key={award.title} award={award} tournamentId={tournamentId} settings={awardSettings} index={index} reveal={awardsReady} onRendered={markAwardRendered} />)}</div></section>}
     <Card className="overflow-hidden border-white/[0.07] bg-white/[0.025]">
       <div className="border-b border-white/[0.06] p-4">
@@ -260,5 +265,6 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
         </table>
       </div>
     </Card></div>
+    </div>
   )
 }

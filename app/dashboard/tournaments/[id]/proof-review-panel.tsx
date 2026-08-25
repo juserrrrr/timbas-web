@@ -5,6 +5,7 @@ import { Check, Loader2, ScanLine, ShieldCheck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { EmptyState, StatusPill, TeamCrest, formatDateTime } from "@/components/competitions/shared"
+import { LoadingState } from "@/components/ui/loading-state"
 import { fetchProofImage, listPendingMatchReviews, listPendingProofs, resolveTournamentMatchReview, reviewProof } from "@/lib/services/tournaments"
 import type { PendingProof, TournamentMatch } from "@/lib/services/tournaments.types"
 
@@ -100,11 +101,7 @@ export function ProofReviewPanel({ tournamentId, onReviewed }: { tournamentId: s
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-10">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-600" />
-      </div>
-    )
+    return <LoadingState className="mx-0 my-0 min-h-[320px]" message="Carregando aprovações" />
   }
 
   if (proofs.length === 0 && reviews.length === 0) {
