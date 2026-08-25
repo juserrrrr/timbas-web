@@ -27,6 +27,7 @@ import {
   getLiveEaTournament,
   clearDemoData,
   findDemoEaClub,
+  searchDemoEaClubs,
   getDemoEaHistory,
   listDemoData,
   prepareDemoEaMatch,
@@ -35,6 +36,7 @@ import {
   type DemoDraftStage,
   type DemoInventory,
   type LiveEaWorkspace,
+  type DemoEaClubCandidate,
   type DemoTournamentStage,
 } from "@/lib/services/demo"
 import { RESULT_MODE_HINTS, RESULT_MODE_LABELS, type DraftResultMode } from "@/lib/services/draft.types"
@@ -164,6 +166,8 @@ export default function DemoLabPage() {
   const [realEaTournamentUrl, setRealEaTournamentUrl] = useState("")
   const [liveName, setLiveName] = useState("Corujão")
   const [liveClubNames, setLiveClubNames] = useState("")
+  const [liveClubQuery, setLiveClubQuery] = useState("")
+  const [liveClubSuggestions, setLiveClubSuggestions] = useState<DemoEaClubCandidate[]>([])
   const [liveGroupCount, setLiveGroupCount] = useState(2)
   const [liveAdvancePerGroup, setLiveAdvancePerGroup] = useState(2)
   const [liveTournamentId, setLiveTournamentId] = useState("")
@@ -285,7 +289,7 @@ export default function DemoLabPage() {
       </p>
 
       {notice && <p className="rounded-lg bg-white/[0.03] px-3 py-2 text-[12px] text-gray-300">{notice}</p>}
-      {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[12px] text-red-300">{error}</p>}
+      {error && <p className="whitespace-pre-line rounded-lg bg-red-500/10 px-3 py-2 text-[12px] text-red-300">{error}</p>}
 
       <Card className="border-blue-500/20 bg-blue-500/[0.035] p-4">
         <div className="mb-4 flex items-center gap-2">
@@ -440,8 +444,55 @@ export default function DemoLabPage() {
             </div>
             <div className="space-y-2 rounded-xl border border-white/[0.07] bg-black/15 p-3">
               <Label>Clubes da EA · um nome exato por linha</Label>
+              <div className="rounded-lg border border-blue-500/15 bg-blue-500/[0.04] p-2.5">
+                <Label className="text-[10px] text-blue-200">Localizar nome aproximado</Label>
+                <div className="mt-1.5 flex gap-2">
+                  <input
+                    value={liveClubQuery}
+                    onChange={(event) => setLiveClubQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") event.preventDefault()
+                    }}
+                    placeholder="Digite parte do nome"
+                    className="h-9 min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 text-xs text-white outline-none focus:border-blue-400/50"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy !== "" || liveClubQuery.trim().length < 2}
+                    onClick={() => void run("live-club-search", "Clubes parecidos", async () => {
+                      const clubs = await searchDemoEaClubs(liveClubQuery.trim())
+                      setLiveClubSuggestions(clubs)
+                      return { message: clubs.length > 0 ? `${clubs.length} nome(s) encontrado(s) na EA.` : "A EA não retornou nomes parecidos." }
+                    })}
+                    className="h-9 border-blue-400/25 text-blue-300"
+                  >
+                    {busy === "live-club-search" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {liveClubSuggestions.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {liveClubSuggestions.map((club) => {
+                      const alreadyAdded = liveClubList.some((name) => name.localeCompare(club.name, "pt-BR", { sensitivity: "accent" }) === 0)
+                      return (
+                        <button
+                          key={club.externalClubId}
+                          type="button"
+                          disabled={alreadyAdded}
+                          onClick={() => setLiveClubNames((current) => `${current.trim()}${current.trim() ? "\n" : ""}${club.name}`)}
+                          className="flex w-full items-center justify-between gap-3 rounded-md border border-white/[0.07] bg-black/20 px-2.5 py-2 text-left transition hover:border-blue-400/30 disabled:cursor-default disabled:opacity-50"
+                        >
+                          <span className="truncate text-xs font-bold text-white">{club.name}</span>
+                          <span className="flex-shrink-0 text-[9px] font-black uppercase tracking-wider text-blue-300">{alreadyAdded ? "Já adicionado" : "Adicionar"}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
               <textarea value={liveClubNames} onChange={(event) => setLiveClubNames(event.target.value)} rows={7} placeholder={"Bote Seu Pix\nTimbas EC\nTerreiros Club\nOutro clube"} className="w-full resize-y rounded-lg border border-white/10 bg-black/20 px-3 py-2 font-mono text-xs leading-relaxed text-white outline-none focus:border-cyan-400/50" />
               <Button disabled={busy !== "" || liveName.trim().length < 3 || liveClubList.length < 4} onClick={() => void run("live-create", "Operação ao vivo criada", async () => { const workspace = await createLiveEaTournament({ name: liveName.trim(), clubNames: liveClubList, groupCount: liveGroupCount, advancePerGroup: liveAdvancePerGroup }); adoptLiveWorkspace(workspace); return { message: `${workspace.teams.length} clubes validados pela EA. Agora distribua os grupos.` } })} className="w-full bg-cyan-500 font-bold text-black hover:bg-cyan-400">{busy === "live-create" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-1.5 h-4 w-4" />}Validar clubes e criar</Button>
+              {error && <p className="whitespace-pre-line rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-red-300">{error}</p>}
             </div>
           </div>
         )}

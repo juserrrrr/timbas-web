@@ -88,6 +88,16 @@ export function findDemoEaClub(name: string): Promise<{ externalClubId: string; 
   return post("/admin/demo/ea/club", { name })
 }
 
+export interface DemoEaClubCandidate {
+  externalClubId: string
+  name: string
+  platform: string
+}
+
+export function searchDemoEaClubs(name: string): Promise<DemoEaClubCandidate[]> {
+  return post("/admin/demo/ea/clubs/search", { name })
+}
+
 export function getDemoEaHistory(clubId: string): Promise<{ count: number; latest: DemoEaMatch | null; matches: DemoEaMatch[] }> {
   return post("/admin/demo/ea/history", { clubId })
 }
