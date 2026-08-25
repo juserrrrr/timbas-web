@@ -103,6 +103,8 @@ export interface EaMatchChoice {
   playedAt: string
   homeScore: number
   awayScore: number
+  officialHomeScore?: number
+  officialAwayScore?: number
   suspiciousScore?: boolean
   warning?: string
 }
@@ -113,6 +115,22 @@ export type CheckTournamentEaResultResponse =
 
 export function checkTournamentEaResult(id: string, matchId: string, eaMatchId?: string) {
   return post<CheckTournamentEaResultResponse>(`/tournaments/${id}/matches/${matchId}/check-ea`, { eaMatchId })
+}
+
+export interface LabEaRescanResult {
+  eaMatchId: string
+  kind: "CONSISTENT" | "SCORE_MISMATCH" | "INTERRUPTED"
+  officialHomeScore: number
+  officialAwayScore: number
+  inferredHomeScore: number
+  inferredAwayScore: number
+  durationSeconds: number
+  nonZeroUserResults: number
+  playerCount: number
+}
+
+export function rescanClosedLabEaResult(id: string, matchId: string) {
+  return post<LabEaRescanResult>(`/tournaments/${id}/matches/${matchId}/lab/rescan-ea`)
 }
 
 export function requestTournamentMatchReview(id: string, matchId: string, reason: string) {
@@ -185,11 +203,19 @@ export interface LabEaScoreAuditItem {
   inferredHomeScore: number
   inferredAwayScore: number
   eaMatchId: string | null
+  kind: "SCORE_MISMATCH" | "INTERRUPTED"
+  durationSeconds: number
+  nonZeroUserResults: number
+  playerCount: number
   reason: string
 }
 
 export function getLabEaScoreAudit(id: string) {
   return request<LabEaScoreAuditItem[]>(`/tournaments/${id}/lab/score-audit`)
+}
+
+export function discardInterruptedLabEaResult(id: string, matchId: string) {
+  return post<TournamentMatch>(`/tournaments/${id}/matches/${matchId}/lab/discard-ea-result`)
 }
 
 export function scheduleMatch(id: string, matchId: string, scheduledAt: string) {

@@ -9,6 +9,8 @@ import { StatusPill, TeamCrest, formatDateTime } from "@/components/competitions
 import {
   claimMatchResult,
   checkTournamentEaResult,
+  correctLabTournamentResult,
+  discardInterruptedLabEaResult,
   getMatchRoom,
   postMatchMessage,
   proposeMatchSchedule,
@@ -16,8 +18,10 @@ import {
   respondMatchSchedule,
   requestTournamentMatchReview,
   requestMatchGrace,
+  rescanClosedLabEaResult,
   setTournamentMatchReady,
   type EaMatchChoice,
+  type LabEaRescanResult,
   type MatchRoom,
 } from "@/lib/services/tournaments"
 import type { TournamentDetail, TournamentMatch } from "@/lib/services/tournaments.types"
@@ -61,6 +65,7 @@ export function MatchRoomDialog({
   const [busy, setBusy] = useState("")
   const [error, setError] = useState("")
   const [eaChoices, setEaChoices] = useState<EaMatchChoice[]>([])
+  const [eaRescan, setEaRescan] = useState<LabEaRescanResult | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -109,6 +114,30 @@ export function MatchRoomDialog({
     } finally {
       setBusy("")
     }
+  }
+
+  const rescanClosedEa = async () => {
+    setBusy("ea-rescan")
+    setError("")
+    try {
+      setEaRescan(await rescanClosedLabEaResult(tournament.id, match.id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível reanalisar a partida na EA.")
+    } finally {
+      setBusy("")
+    }
+  }
+
+  const applyEaRescan = async () => {
+    if (!eaRescan || eaRescan.kind === "CONSISTENT") return
+    await run("ea-rescan-apply", async () => {
+      if (eaRescan.kind === "INTERRUPTED") {
+        await discardInterruptedLabEaResult(tournament.id, match.id)
+      } else {
+        await correctLabTournamentResult(tournament.id, match.id, eaRescan.inferredHomeScore, eaRescan.inferredAwayScore)
+      }
+      setEaRescan(null)
+    })
   }
 
   const home = match.homeTeam?.name ?? "Mandante"
@@ -336,9 +365,15 @@ export function MatchRoomDialog({
                         <span className="block text-[10px] text-gray-500">{formatDateTime(candidate.playedAt)}</span>
                         <span className="block font-mono text-[9px] text-gray-600">EA #{candidate.eaMatchId}</span>
                       </span>
-                      <span className="ml-3 text-sm font-black text-white">{candidate.homeScore} × {candidate.awayScore}</span>
+                      <span className="ml-3 text-right">
+                        <span className="block text-sm font-black text-white">{candidate.homeScore} × {candidate.awayScore}</span>
+                        {candidate.suspiciousScore && candidate.officialHomeScore !== undefined && candidate.officialAwayScore !== undefined &&
+                          (candidate.homeScore !== candidate.officialHomeScore || candidate.awayScore !== candidate.officialAwayScore) && (
+                            <span className="block text-[9px] text-gray-500 line-through">EA {candidate.officialHomeScore} × {candidate.officialAwayScore}</span>
+                          )}
+                      </span>
                     </Button>
-                    {candidate.warning && <p className="border-t border-red-500/15 px-3 py-2 text-[9px] leading-relaxed text-red-300">{candidate.warning} {room?.canModerate ? "Confirme apenas se deseja aceitar o placar oficial da EA." : "Peça revisão da organização ou envie a imagem final."}</p>}
+                    {candidate.warning && <p className="border-t border-red-500/15 px-3 py-2 text-[9px] leading-relaxed text-red-300">{candidate.warning} {room?.canModerate ? "Confira e confirme para usar o SCORE dos atletas." : "Peça revisão da organização ou envie a imagem final."}</p>}
                   </div>
                 ))}
               </div>
@@ -346,15 +381,35 @@ export function MatchRoomDialog({
           )}
 
           {closed && tournament.labMode && match.phase === "GROUP" && room?.canModerate && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.045] p-2.5">
-              <div>
-                <p className="text-[11px] font-bold text-amber-200">O placar foi lançado errado?</p>
-                <p className="mt-0.5 text-[10px] text-gray-600">Você pode corrigir enquanto o mata-mata ainda não foi publicado.</p>
+            <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.045] p-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-[11px] font-bold text-amber-200">O placar foi lançado errado?</p>
+                  <p className="mt-0.5 text-[10px] text-gray-600">Corrija manualmente ou consulte novamente o mesmo EA Match ID.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" disabled={busy !== ""} onClick={() => void rescanClosedEa()} className="h-8 border-cyan-500/25 px-3 text-[11px] text-cyan-300 hover:bg-cyan-500/10">
+                    {busy === "ea-rescan" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="mr-1.5 h-3.5 w-3.5" />}
+                    Reanalisar na EA
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={onOpenPhoto} className="h-8 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    Corrigir resultado
+                  </Button>
+                </div>
               </div>
-              <Button size="sm" variant="outline" onClick={onOpenPhoto} className="h-8 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
-                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                Corrigir resultado
-              </Button>
+              {eaRescan && (
+                <div className={`rounded-md border p-2 text-[10px] ${eaRescan.kind === "CONSISTENT" ? "border-emerald-500/20 bg-emerald-500/[0.05] text-emerald-300" : "border-red-500/20 bg-red-500/[0.05] text-red-300"}`}>
+                  <p className="font-bold">EA: {eaRescan.officialHomeScore} × {eaRescan.officialAwayScore} · SCORE: {eaRescan.inferredHomeScore} × {eaRescan.inferredAwayScore}</p>
+                  <p className="mt-1 text-gray-500">Duração detectada: {eaRescan.durationSeconds}s · userResult anormal: {eaRescan.nonZeroUserResults}/{eaRescan.playerCount}</p>
+                  {eaRescan.kind === "CONSISTENT" ? <p className="mt-1">O cabeçalho e o SCORE dos atletas estão consistentes.</p> : (
+                    <Button size="sm" disabled={busy !== ""} onClick={() => void applyEaRescan()} className="mt-2 h-7 bg-emerald-500 px-2 text-[10px] font-bold text-black hover:bg-emerald-400">
+                      {busy === "ea-rescan-apply" ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                      {eaRescan.kind === "INTERRUPTED" ? "Descartar e reabrir" : `Aplicar SCORE ${eaRescan.inferredHomeScore} × ${eaRescan.inferredAwayScore}`}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -466,6 +521,10 @@ export function MatchRoomDialog({
                 {([match.homeTeamId, match.awayTeamId] as const).map((teamId) => {
                   const team = teamId === match.homeTeamId ? match.homeTeam : match.awayTeam
                   const players = eaPlayerStats.filter((player) => player.teamId === teamId)
+                  const teamScore = teamId === match.homeTeamId
+                    ? room?.match.homeScore ?? match.homeScore ?? 0
+                    : room?.match.awayScore ?? match.awayScore ?? 0
+                  const goalsWithoutAuthor = Math.max(0, teamScore - players.reduce((total, player) => total + player.goals, 0))
                   return (
                     <div key={teamId} className="overflow-hidden rounded-lg border border-white/[0.06] bg-black/20">
                       <p className="border-b border-white/[0.05] px-2.5 py-2 text-[11px] font-bold text-white">{team?.name ?? "Time"}</p>
@@ -479,6 +538,11 @@ export function MatchRoomDialog({
                           <span className="w-7 text-right font-bold text-white">{player.rating?.toFixed(1) ?? "-"}</span>
                         </div>
                       ))}
+                      {goalsWithoutAuthor > 0 && (
+                        <p className="border-t border-amber-500/10 bg-amber-500/[0.04] px-2.5 py-2 text-[9px] leading-relaxed text-amber-300">
+                          {goalsWithoutAuthor} {goalsWithoutAuthor === 1 ? "gol sem autoria individual" : "gols sem autoria individual"} no retorno da EA. Pode ser IA, gol contra ou falha na sincronização dos atletas.
+                        </p>
+                      )}
                     </div>
                   )
                 })}
