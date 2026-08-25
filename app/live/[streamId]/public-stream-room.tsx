@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Radio } from "lucide-react"
-import { Spinner } from "@/components/ui/spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 import { getToken } from "@/lib/auth"
 import { getLiveClientId, joinPublicStream, joinStream, type StreamSummary } from "@/lib/services/streaming"
 import { ViewerStage } from "@/app/dashboard/live/[streamId]/viewer-stage"
@@ -59,7 +59,11 @@ export function PublicStreamRoom({ streamId }: { streamId: string }) {
   }
 
   if (!session) {
-    return <div className="flex min-h-[100dvh] items-center justify-center bg-[#050508]"><Spinner className="size-5 text-red-400" /></div>
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[#050508]">
+        <LoadingState className="mx-0 my-0 min-h-0" message="Abrindo transmissão" />
+      </div>
+    )
   }
 
   // O link público leva o dono para a página de espectador da própria live, e

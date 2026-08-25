@@ -8,6 +8,7 @@ import {
   Clock, ChevronRight, ShieldAlert, Link2, Unlink, ShieldCheck
 } from "lucide-react"
 import { BetaBadge } from "@/components/ui/beta-badge"
+import { LoadingState } from "@/components/ui/loading-state"
 import {
   getVerifyStatus, startVerification, confirmVerification, unlinkAccount
 } from "@/lib/services/clash"
@@ -149,12 +150,7 @@ export default function VerifyClient({ token }: { token: string }) {
   }
 
   if (loading && step === "status") {
-    return (
-      <div className="mx-auto max-w-lg space-y-4 animate-pulse">
-        <div className="h-8 rounded-xl bg-white/[0.04] w-56" />
-        <div className="h-48 rounded-2xl bg-white/[0.04]" />
-      </div>
-    )
+    return <LoadingState className="mx-auto my-0 min-h-[320px] max-w-lg" message="Carregando verificação" />
   }
 
   return (

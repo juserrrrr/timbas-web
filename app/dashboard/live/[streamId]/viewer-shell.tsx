@@ -120,7 +120,6 @@ export function ViewerShell({
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#07070c] px-6 text-center">
               {status === "connecting" || status === "waiting" ? (
                 <>
-                  {status === "connecting" && <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-blue-500" />}
                   <p className="text-sm font-bold text-white">{status === "waiting" ? "A live continua aberta" : "Conectando na transmissão"}</p>
                   <p className="text-xs text-gray-500">
                     {status === "waiting" ? "O host pode voltar ou escolher outra tela em até 90 segundos." : "Buscando o caminho mais rápido até quem está transmitindo."}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trophy, Medal, ChevronLeft, ChevronRight } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingState } from "@/components/ui/loading-state"
 import { TIMBAS_SERVER_ID, TIMBAS_SERVER_NAME } from "@/lib/servers"
 import { PlayerAvatar } from "@/components/player-avatar"
 import { apiFetch, authHeaders } from "@/lib/api"
@@ -137,14 +137,7 @@ export function RankingSection({ initialPlayers = [] }: Props) {
       </div>
 
       {isLoading && players.length === 0 && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <Skeleton className="h-64 rounded-xl bg-white/[0.04] md:mt-4" />
-            <Skeleton className="h-72 rounded-xl bg-white/[0.04]" />
-            <Skeleton className="h-64 rounded-xl bg-white/[0.04] md:mt-4" />
-          </div>
-          <Skeleton className="h-80 rounded-xl bg-white/[0.04]" />
-        </div>
+        <LoadingState className="mx-0 my-0 min-h-[320px]" message="Carregando ranking" />
       )}
 
       {!isLoading && players.length === 0 ? (

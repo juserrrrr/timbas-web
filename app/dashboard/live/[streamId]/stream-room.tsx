@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Radio } from "lucide-react"
-import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"
 import { getLiveClientId, joinStream, type JoinStreamResult } from "@/lib/services/streaming"
+import { RouteLoadingSignal } from "@/lib/navigation-context"
 import { HostStage } from "./host-stage"
 import { ViewerStage } from "./viewer-stage"
 
@@ -50,11 +50,7 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
   }
 
   if (!session) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner />
-      </div>
-    )
+    return <RouteLoadingSignal />
   }
 
   if (session.role !== expectedRole) {
