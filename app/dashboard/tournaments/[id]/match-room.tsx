@@ -120,7 +120,10 @@ export function MatchRoomDialog({
     setBusy("ea-rescan")
     setError("")
     try {
-      setEaRescan(await rescanClosedLabEaResult(tournament.id, match.id))
+      const result = await rescanClosedLabEaResult(tournament.id, match.id)
+      setEaRescan(result)
+      await load()
+      onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível reanalisar a partida na EA.")
     } finally {
@@ -401,7 +404,7 @@ export function MatchRoomDialog({
               {eaRescan && (
                 <div className={`rounded-md border p-2 text-[10px] ${eaRescan.kind === "CONSISTENT" ? "border-emerald-500/20 bg-emerald-500/[0.05] text-emerald-300" : "border-red-500/20 bg-red-500/[0.05] text-red-300"}`}>
                   <p className="font-bold">EA: {eaRescan.officialHomeScore} × {eaRescan.officialAwayScore} · SCORE: {eaRescan.inferredHomeScore} × {eaRescan.inferredAwayScore}</p>
-                  <p className="mt-1 text-gray-500">Duração detectada: {eaRescan.durationSeconds}s · userResult anormal: {eaRescan.nonZeroUserResults}/{eaRescan.playerCount}</p>
+                  <p className="mt-1 text-gray-500">Duração detectada: {eaRescan.durationSeconds}s · userResult anormal: {eaRescan.nonZeroUserResults}/{eaRescan.playerCount} · {eaRescan.restoredPlayerStats} estatísticas restauradas</p>
                   {eaRescan.kind === "CONSISTENT" ? <p className="mt-1">O cabeçalho e o SCORE dos atletas estão consistentes.</p> : (
                     <Button size="sm" disabled={busy !== ""} onClick={() => void applyEaRescan()} className="mt-2 h-7 bg-emerald-500 px-2 text-[10px] font-bold text-black hover:bg-emerald-400">
                       {busy === "ea-rescan-apply" ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}

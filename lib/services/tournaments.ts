@@ -127,6 +127,7 @@ export interface LabEaRescanResult {
   durationSeconds: number
   nonZeroUserResults: number
   playerCount: number
+  restoredPlayerStats: number
 }
 
 export function rescanClosedLabEaResult(id: string, matchId: string) {
