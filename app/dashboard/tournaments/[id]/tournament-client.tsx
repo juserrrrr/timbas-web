@@ -12,6 +12,7 @@ import {
   Link2,
   Loader2,
   Play,
+  RotateCcw,
   ShieldCheck,
   Swords,
   Table2,
@@ -31,7 +32,7 @@ import {
   formatDateTime,
 } from "@/components/competitions/shared"
 import { ReportResultDialog } from "@/components/competitions/report-result-dialog"
-import { buildLabTournamentKnockout, correctLabTournamentResult, declareWalkover, discardInterruptedLabEaResult, getLabEaScoreAudit, getTournament, reportResult, startTournament, updateTournament, type LabEaScoreAuditItem } from "@/lib/services/tournaments"
+import { buildLabTournamentKnockout, correctLabTournamentResult, declareWalkover, discardInterruptedLabEaResult, getLabEaScoreAudit, getTournament, rebuildLabTournamentKnockout, reportResult, startTournament, updateTournament, type LabEaScoreAuditItem } from "@/lib/services/tournaments"
 import {
   FORMAT_LABELS,
   GAME_LABELS,
@@ -195,6 +196,10 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const groupsComplete = groupMatches.length > 0 && groupMatches.every((match) => match.status === "FINISHED" || match.status === "WALKOVER")
   const knockoutPublished = tournament.matches.some((match) => match.phase !== "GROUP" && Boolean(match.homeTeamId || match.awayTeamId))
   const canPublishLabKnockout = tournament.labMode && tournament.access.canModerate && groupsComplete && !knockoutPublished
+  const knockoutHasActivity = tournament.matches.some((match) =>
+    match.phase !== "GROUP" && ["AWAITING_PROOF", "DISPUTED", "FINISHED", "WALKOVER"].includes(match.status),
+  )
+  const canRebuildLabKnockout = tournament.labMode && tournament.access.canModerate && groupsComplete && knockoutPublished && !knockoutHasActivity
   const myMatches = tournament.matches.filter((match) => tournament.access.teamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId))
   const nextMatch = myMatches.find((match) => match.status === "READY" || match.status === "AWAITING_PROOF" || match.status === "DISPUTED") ?? null
   const nextMatchTiming = nextMatch ? matchTiming(nextMatch, tournament, now) : null
@@ -237,6 +242,22 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     }
   }
 
+  const rebuildLabKnockout = async () => {
+    if (!window.confirm("Refazer os confrontos do mata-mata com a classificaÃ§Ã£o atual dos grupos?")) return
+    setPublishingKnockout(true)
+    setNotice("")
+    try {
+      await rebuildLabTournamentKnockout(tournament.id)
+      await load()
+      setTab("bracket")
+      setNotice("Mata-mata refeito com o cruzamento correto dos grupos.")
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "NÃ£o foi possÃ­vel refazer o mata-mata.")
+    } finally {
+      setPublishingKnockout(false)
+    }
+  }
+
   return (
     <div className="dashboard-view space-y-6">
       <button
@@ -259,6 +280,12 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
               <Button disabled={publishingKnockout} onClick={() => void publishLabKnockout()} className="bg-violet-500 text-white hover:bg-violet-400">
                 {publishingKnockout ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <GitBranch className="mr-1.5 h-4 w-4" />}
                 Gerar mata-mata
+              </Button>
+            )}
+            {canRebuildLabKnockout && (
+              <Button disabled={publishingKnockout} variant="outline" onClick={() => void rebuildLabKnockout()}>
+                {publishingKnockout ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-1.5 h-4 w-4" />}
+                Refazer mata-mata
               </Button>
             )}
             {tournament.access.canManage && tournament.inviteCode && (

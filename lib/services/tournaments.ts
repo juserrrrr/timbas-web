@@ -194,6 +194,10 @@ export function buildLabTournamentKnockout(id: string) {
   return post<TournamentMatch[]>(`/tournaments/${id}/lab/knockout`)
 }
 
+export function rebuildLabTournamentKnockout(id: string) {
+  return post<TournamentMatch[]>(`/tournaments/${id}/lab/knockout/rebuild`)
+}
+
 export interface LabEaScoreAuditItem {
   matchId: string
   label: string | null
