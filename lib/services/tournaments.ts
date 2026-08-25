@@ -169,6 +169,10 @@ export function correctLabTournamentResult(id: string, matchId: string, homeScor
   return patch<TournamentMatch>(`/tournaments/${id}/matches/${matchId}/correct-result`, { homeScore, awayScore })
 }
 
+export function buildLabTournamentKnockout(id: string) {
+  return post<TournamentMatch[]>(`/tournaments/${id}/lab/knockout`)
+}
+
 export function scheduleMatch(id: string, matchId: string, scheduledAt: string) {
   return patch(`/tournaments/${id}/matches/${matchId}/schedule`, { scheduledAt })
 }

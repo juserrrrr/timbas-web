@@ -30,7 +30,7 @@ import {
   formatDateTime,
 } from "@/components/competitions/shared"
 import { ReportResultDialog } from "@/components/competitions/report-result-dialog"
-import { correctLabTournamentResult, declareWalkover, getTournament, reportResult, startTournament, updateTournament } from "@/lib/services/tournaments"
+import { buildLabTournamentKnockout, correctLabTournamentResult, declareWalkover, getTournament, reportResult, startTournament, updateTournament } from "@/lib/services/tournaments"
 import {
   FORMAT_LABELS,
   GAME_LABELS,
@@ -71,6 +71,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(null)
   const [photoMatch, setPhotoMatch] = useState<TournamentMatch | null>(null)
   const [starting, setStarting] = useState(false)
+  const [publishingKnockout, setPublishingKnockout] = useState(false)
   const [notice, setNotice] = useState("")
   const [now, setNow] = useState(() => Date.now())
   const [startWhen, setStartWhen] = useState("")
@@ -178,6 +179,10 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const finishedMatches = tournament.matches.filter(
     (match) => match.status === "FINISHED" || match.status === "WALKOVER",
   ).length
+  const groupMatches = tournament.matches.filter((match) => match.phase === "GROUP")
+  const groupsComplete = groupMatches.length > 0 && groupMatches.every((match) => match.status === "FINISHED" || match.status === "WALKOVER")
+  const knockoutPublished = tournament.matches.some((match) => match.phase !== "GROUP" && Boolean(match.homeTeamId || match.awayTeamId))
+  const canPublishLabKnockout = tournament.labMode && tournament.access.canModerate && groupsComplete && !knockoutPublished
   const myMatches = tournament.matches.filter((match) => tournament.access.teamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId))
   const nextMatch = myMatches.find((match) => match.status === "READY" || match.status === "AWAITING_PROOF" || match.status === "DISPUTED") ?? null
   const nextMatchTiming = nextMatch ? matchTiming(nextMatch, tournament, now) : null
@@ -205,6 +210,21 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     }
   }
 
+  const publishLabKnockout = async () => {
+    setPublishingKnockout(true)
+    setNotice("")
+    try {
+      await buildLabTournamentKnockout(tournament.id)
+      await load()
+      setTab("bracket")
+      setNotice("Mata-mata publicado com os classificados dos grupos.")
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "Não foi possível publicar o mata-mata.")
+    } finally {
+      setPublishingKnockout(false)
+    }
+  }
+
   return (
     <div className="dashboard-view space-y-6">
       <button
@@ -223,6 +243,12 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         actions={
           <>
             <StatusPill tone={STATUS_TONES[tournament.status]} className="h-9 rounded-md px-3 py-0">{STATUS_LABELS[tournament.status]}</StatusPill>
+            {canPublishLabKnockout && (
+              <Button disabled={publishingKnockout} onClick={() => void publishLabKnockout()} className="bg-violet-500 text-white hover:bg-violet-400">
+                {publishingKnockout ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <GitBranch className="mr-1.5 h-4 w-4" />}
+                Gerar mata-mata
+              </Button>
+            )}
             {tournament.access.canManage && tournament.inviteCode && (
               <Button
                 variant="outline"
@@ -389,13 +415,13 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
             return { autoApproved: result.autoApproved }
           }}
           onWalkover={
-            tournament.access.canModerate && !correctingLabResult
+            tournament.access.canModerate
               ? async ({ winner, reason }) => {
                   const winnerTeamId = winner === "HOME" ? photoMatch.homeTeamId : photoMatch.awayTeamId
                   if (!winnerTeamId) return
                   await declareWalkover(tournament.id, photoMatch.id, winnerTeamId, reason)
                   await load()
-                  setNotice("W.O. registrado. A vaga seguiu para a fase seguinte.")
+                  setNotice(correctingLabResult ? "Resultado corrigido para W.O. e classificação recalculada." : "W.O. registrado. A vaga seguiu para a fase seguinte.")
                 }
               : undefined
           }

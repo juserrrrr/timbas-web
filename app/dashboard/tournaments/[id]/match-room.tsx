@@ -301,11 +301,11 @@ export function MatchRoomDialog({
             </div>
           )}
 
-          {!closed && eaChoices.length > 0 && room?.canModerate && (
+          {!closed && eaChoices.length > 0 && (mySide || room?.canModerate) && (
             <div className="space-y-2 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.045] p-3">
               <div>
                 <p className="text-[11px] font-bold text-cyan-200">Escolha qual amistoso pertence a este confronto</p>
-                <p className="mt-0.5 text-[10px] text-gray-500">As opções estão da mais antiga para a mais recente. Uma partida só pode ser usada uma vez.</p>
+                <p className="mt-0.5 text-[10px] text-gray-500">Admin e capitão podem escolher. As opções estão da mais antiga para a mais recente e cada partida só pode ser usada uma vez.</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {eaChoices.map((candidate, index) => (
