@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Swords,
   Table2,
+  Ticket,
   Trophy,
   Users,
   UserPlus,
@@ -48,6 +49,7 @@ import { StaffPanel } from "./staff-panel"
 import { StandingsView } from "./standings-view"
 import { TeamsPanel } from "./teams-panel"
 import { EaStatsView } from "./ea-stats-view"
+import { InvitesPanel } from "./invites-panel"
 import { matchTiming } from "@/lib/tournament-match-timing"
 import { brasiliaLocalToIso } from "@/lib/date-time"
 
@@ -59,7 +61,7 @@ const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done
   CANCELLED: "danger",
 }
 
-type TabId = "bracket" | "standings" | "my-matches" | "matches" | "teams" | "ea-stats" | "proofs" | "staff"
+type TabId = "bracket" | "standings" | "my-matches" | "matches" | "teams" | "ea-stats" | "proofs" | "invites" | "staff"
 
 export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const router = useRouter()
@@ -174,6 +176,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         icon: Camera,
         badge: pendingProofs + scoreAudit.length || undefined,
       },
+      tournament.access.canManage && tournament.accessMode === "INVITE_ONLY" && { id: "invites" as const, label: "Convites", icon: Ticket },
       { id: "staff" as const, label: "Organização", icon: ShieldCheck },
     ].filter(Boolean) as Array<{ id: TabId; label: string; icon: typeof GitBranch; badge?: number }>
   }, [scoreAudit.length, tournament])
@@ -452,6 +455,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
       {tab === "teams" && <TeamsPanel tournament={tournament} onChanged={() => void load()} />}
       {tab === "ea-stats" && <EaStatsView tournamentId={tournament.id} finished={tournament.status === "FINISHED"} />}
       {tab === "proofs" && <ProofReviewPanel tournamentId={tournament.id} scoreAudit={scoreAudit} onReviewed={() => void load()} onNotice={setNotice} />}
+      {tab === "invites" && <InvitesPanel tournamentId={tournament.id} registrationOpen={tournament.status === "REGISTRATION"} />}
       {tab === "staff" && <StaffPanel tournament={tournament} onChanged={() => void load()} />}
 
       {selectedMatch && canOpenRoom(selectedMatch) && (

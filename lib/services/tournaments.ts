@@ -11,6 +11,7 @@ import type {
   TournamentTeam,
   TournamentEaPlayerStats,
   TournamentEaAwardsResponse,
+  TournamentRegistrationInvite,
 } from "./tournaments.types"
 
 export interface CreateTournamentInput {
@@ -74,6 +75,14 @@ export function joinTournamentByInvite(code: string): Promise<{ tournamentId: st
 
 export function createTournamentRegistrationInvite(id: string): Promise<{ tournamentId: string; code: string }> {
   return post(`/tournaments/${id}/invites`)
+}
+
+export function listTournamentRegistrationInvites(id: string): Promise<TournamentRegistrationInvite[]> {
+  return request(`/tournaments/${id}/invites`)
+}
+
+export function revokeTournamentRegistrationInvite(id: string, inviteId: string) {
+  return remove<{ revoked: boolean }>(`/tournaments/${id}/invites/${inviteId}`)
 }
 
 export function updateTournament(id: string, input: Partial<CreateTournamentInput> & { status?: string }) {

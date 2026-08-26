@@ -213,6 +213,16 @@ export interface ReportResultResponse {
   processing: boolean
 }
 
+export interface TournamentRegistrationInvite {
+  id: string
+  code: string
+  createdAt: string
+  usedAt: string | null
+  revokedAt: string | null
+  createdBy: UserRef | null
+  claimedBy: UserRef | null
+}
+
 export interface TournamentEaPlayerStats {
   playerName: string
   externalPlayerId: string | null
