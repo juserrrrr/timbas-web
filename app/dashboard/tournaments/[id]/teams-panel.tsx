@@ -4,6 +4,7 @@ import { useState } from "react"
 import { BadgeCheck, Loader2, Plus, RefreshCw, Search, Trash2, UserPlus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { EmptyState, StatusPill, TeamCrest } from "@/components/competitions/shared"
@@ -20,9 +21,22 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
   const [replacementTeam, setReplacementTeam] = useState<TournamentTeam | null>(null)
   const [replacementName, setReplacementName] = useState("")
   const [replacing, setReplacing] = useState(false)
+  const [resetConfirmed, setResetConfirmed] = useState(false)
   const [error, setError] = useState("")
 
   const { access, status } = tournament
+  // A troca zera o histórico da vaga, então o aviso precisa dizer quantas
+  // partidas voltam a valer antes de a organização confirmar.
+  const matchesToReset = replacementTeam
+    ? tournament.matches.filter(
+        (match) =>
+          (match.homeTeamId === replacementTeam.id || match.awayTeamId === replacementTeam.id) &&
+          (match.status === "FINISHED" ||
+            match.status === "WALKOVER" ||
+            match.claimedHomeScore != null ||
+            match.reviewRequestedAt != null),
+      ).length
+    : 0
   const registrationOpen = status === "REGISTRATION" || status === "DRAFT"
   const alreadyIn = access.teamIds.length > 0
   const isFull = tournament.teams.length >= tournament.maxTeams
@@ -79,14 +93,19 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
     }
   }
 
+  const closeReplaceDialog = () => {
+    setReplacementTeam(null)
+    setReplacementName("")
+    setResetConfirmed(false)
+  }
+
   const replaceClub = async () => {
     if (!replacementTeam) return
     setReplacing(true)
     setError("")
     try {
       await replaceTournamentTeamEaClub(tournament.id, replacementTeam.id, replacementName.trim())
-      setReplacementTeam(null)
-      setReplacementName("")
+      closeReplaceDialog()
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível substituir o clube.")
@@ -204,6 +223,7 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
                       onClick={() => {
                         setReplacementTeam(team)
                         setReplacementName("")
+                        setResetConfirmed(false)
                         setError("")
                       }}
                       disabled={busy}
@@ -229,7 +249,7 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
         </div>
       )}
 
-      <Dialog open={replacementTeam !== null} onOpenChange={(open) => !open && setReplacementTeam(null)}>
+      <Dialog open={replacementTeam !== null} onOpenChange={(open) => !open && closeReplaceDialog()}>
         <DialogContent className="border-white/10 bg-[#0b0b12] text-white">
           <DialogHeader>
             <DialogTitle>Substituir clube inscrito</DialogTitle>
@@ -245,15 +265,40 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
               disabled={replacing}
               className="border-white/10 bg-white/[0.03]"
             />
-            <p className="text-[11px] text-amber-300/80">
-              A troca é bloqueada se esse time já tiver resultado, W.O. ou aprovação pendente. O capitão atual permanece responsável pela vaga.
-            </p>
+            {matchesToReset > 0 ? (
+              <div className="space-y-2 rounded-lg border border-red-500/25 bg-red-500/[0.07] p-3">
+                <p className="text-[11px] leading-relaxed text-red-300">
+                  {matchesToReset === 1
+                    ? "1 partida deste time já tem resultado e será zerada."
+                    : `${matchesToReset} partidas deste time já têm resultado e serão zeradas.`}{" "}
+                  O placar, o W.O., o registro da EA e as provas somem, os pontos saem da tabela do time e dos
+                  adversários, e o mata-mata publicado volta a ser montado quando a fase de pontos terminar de novo.
+                </p>
+                <label className="flex cursor-pointer items-start gap-2 text-[11px] leading-relaxed text-red-200">
+                  <Checkbox
+                    checked={resetConfirmed}
+                    onCheckedChange={(value) => setResetConfirmed(value === true)}
+                    disabled={replacing}
+                    className="mt-0.5 cursor-pointer border-red-400/50 data-[state=checked]:border-red-500 data-[state=checked]:bg-red-500"
+                  />
+                  <span>Entendi que as partidas já jogadas por {replacementTeam?.name} voltam a valer do zero.</span>
+                </label>
+              </div>
+            ) : (
+              <p className="text-[11px] text-amber-300/80">
+                As partidas desta vaga voltam a ficar em aberto e o capitão atual permanece responsável por ela.
+              </p>
+            )}
             {error && <p className="text-[11px] text-red-400">{error}</p>}
             <div className="flex justify-end gap-2">
-              <Button variant="outline" disabled={replacing} onClick={() => setReplacementTeam(null)}>Cancelar</Button>
-              <Button disabled={replacing || replacementName.trim().length < 2} onClick={() => void replaceClub()} className="bg-blue-500 text-white hover:bg-blue-400">
+              <Button variant="outline" disabled={replacing} onClick={closeReplaceDialog}>Cancelar</Button>
+              <Button
+                disabled={replacing || replacementName.trim().length < 2 || (matchesToReset > 0 && !resetConfirmed)}
+                onClick={() => void replaceClub()}
+                className="bg-blue-500 text-white hover:bg-blue-400"
+              >
                 {replacing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
-                Substituir clube
+                {matchesToReset > 0 ? "Substituir e zerar partidas" : "Substituir clube"}
               </Button>
             </div>
           </div>
