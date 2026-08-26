@@ -13,6 +13,11 @@ export interface BroadcastStats {
   height: number
   rttMs: number
   relayed: boolean
+  /// Por que o codificador está segurando a imagem, direto do WebRTC. É o que
+  /// diz se a culpa é da máquina ou da rede quando a live cai de qualidade.
+  limitedBy: "none" | "cpu" | "bandwidth" | "other"
+  /// Altura que o perfil escolhido promete entregar.
+  targetHeight: number
 }
 
 export interface StartOptions {
@@ -44,6 +49,7 @@ export interface HostBroadcast {
   error: string | null
   handleEvent: (event: SignalEvent) => Promise<void>
   start: (options: StartOptions) => Promise<boolean>
+  applyProfile: (profile: VideoProfile) => Promise<void>
   switchScreen: () => Promise<void>
   toggleMic: () => Promise<void>
   connectGameAudio: (deviceId?: string) => Promise<void>

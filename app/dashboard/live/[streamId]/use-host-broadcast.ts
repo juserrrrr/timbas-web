@@ -10,7 +10,13 @@ import {
   Track,
 } from "livekit-client"
 import { getToken } from "@/lib/auth"
-import { AUDIO_BITRATE_BPS, sfuVideoOptions, type VideoProfile } from "@/lib/live/tuning"
+import {
+  AUDIO_BITRATE_BPS,
+  displayVideoConstraints,
+  expectedHeightFor,
+  sfuVideoOptions,
+  type VideoProfile,
+} from "@/lib/live/tuning"
 import {
   endStream,
   getRtcCredentials,
@@ -25,6 +31,9 @@ import { useLiveMedia } from "./use-live-media"
 import type { BroadcastStats, HostBroadcast, StartOptions } from "./broadcast-types"
 
 const VIEWER_SYNC_MS = 4000
+/// Espaço mínimo entre duas tentativas de recuperar a resolução. Insistir a cada
+/// leitura só faria o codificador reiniciar sem parar.
+const RESOLUTION_RETRY_MS = 20_000
 
 /**
  * Publica a live: o host manda uma cópia para o servidor e ele distribui, então
@@ -46,6 +55,8 @@ export function useHostBroadcast(
   const peerIdRef = useRef(peerId)
   const profileRef = useRef<VideoProfile>({ quality: "1080p", frameRate: 60 })
   const statsSampleRef = useRef({ bytes: 0, at: 0 })
+  const captureHeightRef = useRef(0)
+  const lastResolutionFixRef = useRef(0)
 
   const [viewers, setViewers] = useState<StreamPeer[]>(initialViewers)
   const [hasStarted, setHasStarted] = useState(live)
@@ -99,6 +110,43 @@ export function useHostBroadcast(
     })()
   }, [])
 
+  /**
+   * Reimpõe o alvo do perfil no codificador e na captura. O codificador encolhe
+   * a imagem sozinho quando falta CPU ou banda, mas não volta a crescer por
+   * conta própria: sem isto a live nasce em 1080p e morre em 180p.
+   */
+  const reapplyEncoding = useCallback(async () => {
+    const track = videoPubRef.current?.track as LocalVideoTrack | undefined
+    const options = sfuVideoOptions(profileRef.current)
+    const sender = track?.sender
+
+    if (sender) {
+      const params = sender.getParameters()
+      if (params.encodings?.length) {
+        params.degradationPreference = options.degradationPreference
+        for (const encoding of params.encodings) {
+          encoding.active = true
+          encoding.scaleResolutionDownBy = 1
+          encoding.maxBitrate = options.screenShareEncoding.maxBitrate
+          encoding.maxFramerate = options.screenShareEncoding.maxFramerate
+        }
+        await sender.setParameters(params).catch(() => {})
+      }
+    }
+
+    await track?.mediaStreamTrack
+      .applyConstraints(displayVideoConstraints(profileRef.current))
+      .catch(() => {})
+  }, [])
+
+  /// Troca o alvo da live sem cortar nada: serve para o host subir a qualidade
+  /// no meio da transmissão e para o admin forçar um alvo ao depurar.
+  const applyProfile = useCallback(async (profile: VideoProfile) => {
+    profileRef.current = profile
+    lastResolutionFixRef.current = Date.now()
+    await reapplyEncoding()
+  }, [reapplyEncoding])
+
   const media = useLiveMedia(hasStarted, publishVideoTrack)
   const { beginCapture, ensureMixer, switchCapture, stopMedia, videoTrackRef } = media
 
@@ -141,11 +189,20 @@ export function useHostBroadcast(
       setError("A conexão com o servidor de transmissão caiu. Recarregue a página para voltar ao ar.")
     })
     room.on(RoomEvent.Connected, () => setError(null))
+    // Oscilação de rede não é queda: o cliente reconecta sozinho e a live
+    // continua. Só avisa, sem mandar ninguém recarregar a página.
+    room.on(RoomEvent.Reconnecting, () => setError("Reconectando ao servidor de transmissão..."))
+    room.on(RoomEvent.Reconnected, () => {
+      setError(null)
+      // A sessão nova começa com o encoder no padrão dele, então o alvo do
+      // perfil precisa ser reimposto para a imagem não voltar encolhida.
+      void reapplyEncoding()
+    })
 
     await room.connect(credentials.url, credentials.token)
     roomRef.current = room
     return room
-  }, [streamId])
+  }, [reapplyEncoding, streamId])
 
   // ─── LIFECYCLE ─────────────────────────────────────────────────────────────
 
@@ -245,8 +302,23 @@ export function useHostBroadcast(
     if (event.type === "viewer_left") {
       viewersRef.current.delete(from)
       setViewers([...viewersRef.current.values()])
+      return
     }
-  }, [])
+
+    // A organização pode empurrar um alvo de qualidade para depurar uma live
+    // ruim sem precisar pedir para o host reiniciar a transmissão.
+    if (event.type === "quality_request") {
+      const payload = event.payload as { quality?: VideoProfile["quality"]; frameRate?: VideoProfile["frameRate"] } | undefined
+      const next: VideoProfile = {
+        quality: payload?.quality ?? profileRef.current.quality,
+        frameRate: payload?.frameRate ?? profileRef.current.frameRate,
+      }
+      await applyProfile(next)
+      toast.info("Qualidade ajustada pela organização", {
+        description: `Alvo agora é ${next.quality} a ${next.frameRate} FPS.`,
+      })
+    }
+  }, [applyProfile])
 
   const resetPeers = useCallback((nextViewers: StreamPeer[]) => {
     viewersRef.current = new Map(nextViewers.map((viewer) => [viewer.peerId, viewer]))
@@ -285,6 +357,7 @@ export function useHostBroadcast(
       let width = 0
       let height = 0
       let rttMs = 0
+      let limitedBy: BroadcastStats["limitedBy"] = "none"
 
       report.forEach((entry) => {
         if (entry.type === "outbound-rtp" && entry.kind === "video") {
@@ -293,6 +366,8 @@ export function useHostBroadcast(
           fps = Math.max(fps, Math.round(entry.framesPerSecond ?? 0))
           width = Math.max(width, entry.frameWidth ?? 0)
           height = Math.max(height, entry.frameHeight ?? 0)
+          const reason = entry.qualityLimitationReason
+          if (reason === "cpu" || reason === "bandwidth" || reason === "other") limitedBy = reason
         }
         if (entry.type === "candidate-pair" && entry.state === "succeeded" && entry.nominated) {
           rttMs = Math.max(rttMs, Math.round((entry.currentRoundTripTime ?? 0) * 1000))
@@ -304,6 +379,19 @@ export function useHostBroadcast(
       statsSampleRef.current = { bytes, at: now }
       if (!previous.at || now <= previous.at) return
 
+      const captureHeight = track?.mediaStreamTrack.getSettings().height ?? captureHeightRef.current
+      if (captureHeight) captureHeightRef.current = captureHeight
+      const targetHeight = expectedHeightFor(profileRef.current, captureHeightRef.current)
+
+      // O codificador encolhe sozinho e não volta: quando a imagem está bem
+      // abaixo do alvo e o aperto passou, o alvo é reimposto. Com aperto de CPU
+      // ou banda ainda ativo, insistir só piora, então espera passar.
+      const shrunk = height > 0 && targetHeight > 0 && height < targetHeight * 0.9
+      if (shrunk && limitedBy === "none" && now - lastResolutionFixRef.current > RESOLUTION_RETRY_MS) {
+        lastResolutionFixRef.current = now
+        void reapplyEncoding()
+      }
+
       setStats({
         kbps: Math.max(0, Math.round(((bytes - previous.bytes) * 8) / (now - previous.at))),
         fps,
@@ -311,13 +399,15 @@ export function useHostBroadcast(
         height,
         rttMs,
         relayed: false,
+        limitedBy,
+        targetHeight,
       })
     }
 
     void collect()
     const interval = window.setInterval(() => { void collect() }, 2000)
     return () => window.clearInterval(interval)
-  }, [media.sharing])
+  }, [media.sharing, reapplyEncoding])
 
   useEffect(() => () => {
     stopEverything()
@@ -346,6 +436,7 @@ export function useHostBroadcast(
     error,
     handleEvent,
     start,
+    applyProfile,
     switchScreen,
     toggleMic: media.toggleMic,
     connectGameAudio: media.connectGameAudio,

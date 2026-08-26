@@ -29,17 +29,30 @@ function targetVideoBitrate({ quality, frameRate }: VideoProfile) {
 }
 
 /**
- * 60 FPS é escolhido por causa de movimento, então o codificador protege a taxa
- * de quadros. 30 FPS é escolhido por causa de leitura, então ele protege os
- * pixels, mas fica em "balanced" porque proteger resolução a todo custo
- * transforma internet fraca em slideshow.
+ * 60 FPS é escolhido por causa de movimento, 30 FPS por causa de leitura. O
+ * hint muda o que o codificador prioriza dentro do bitrate disponível.
  */
 export function contentHintFor(profile: VideoProfile): "motion" | "detail" {
   return profile.frameRate === 60 ? "motion" : "detail"
 }
 
-function degradationFor(profile: VideoProfile): RTCDegradationPreference {
-  return profile.frameRate === 60 ? "maintain-framerate" : "balanced"
+/**
+ * Transmissão de jogo é sempre resolução em primeiro lugar. Com
+ * "maintain-framerate" o codificador segurava os quadros e ia cortando pixels,
+ * e era assim que uma live começava em 1080p e terminava em 180p com 58 FPS:
+ * quem assiste não consegue ler nada da tela. Perder quadros numa hora ruim de
+ * rede é bem menos pior do que perder a imagem.
+ */
+function degradationFor(_profile: VideoProfile): RTCDegradationPreference {
+  return "maintain-resolution"
+}
+
+/// Altura que o perfil promete entregar. Serve para o vigia saber que o
+/// codificador encolheu a imagem e que dá para tentar voltar.
+export function expectedHeightFor(profile: VideoProfile, captureHeight: number): number {
+  if (profile.quality === "720p") return Math.min(720, captureHeight || 720)
+  if (profile.quality === "1080p") return Math.min(1080, captureHeight || 1080)
+  return captureHeight || 1080
 }
 
 export interface SfuVideoOptions {

@@ -1,10 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState, type RefObject } from "react"
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import Link from "next/link"
 import { ArrowLeft, Maximize, Minimize, MonitorUp, Pause, Radio, Users, Volume2, VolumeX, Zap } from "lucide-react"
 import { PlayerAvatar } from "@/components/player-avatar"
 import type { StreamSummary } from "@/lib/services/streaming"
+
+/// Tempo parado antes de a interface da live sumir de cima da imagem.
+const OVERLAY_IDLE_MS = 2600
 
 export type ViewerStatus = "connecting" | "live" | "paused" | "waiting" | "unavailable" | "ended"
 
@@ -54,8 +57,29 @@ export function ViewerShell({
   onVolumeChange,
 }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
+  const hideTimerRef = useRef<number | null>(null)
+  const holdingRef = useRef(false)
   const [fullscreen, setFullscreen] = useState(false)
+  const [overlayVisible, setOverlayVisible] = useState(true)
   const showingPicture = status === "live" || status === "paused"
+
+  // A informação da live some sozinha depois de um tempo parado e volta ao
+  // primeiro movimento, como em qualquer player. Enquanto o ponteiro estiver em
+  // cima dos controles nada some, senão o volume fugiria da mão.
+  const revealOverlay = useCallback(() => {
+    setOverlayVisible(true)
+    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
+    hideTimerRef.current = window.setTimeout(() => {
+      if (!holdingRef.current) setOverlayVisible(false)
+    }, OVERLAY_IDLE_MS)
+  }, [])
+
+  useEffect(() => {
+    revealOverlay()
+    return () => {
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
+    }
+  }, [revealOverlay])
 
   useEffect(() => {
     const syncFullscreen = () => setFullscreen(document.fullscreenElement === stageRef.current)
@@ -104,7 +128,20 @@ export function ViewerShell({
         </div>
       </div>
 
-      <div ref={stageRef} className="overflow-hidden rounded-2xl border border-white/[0.07] bg-black fullscreen:flex fullscreen:items-center fullscreen:rounded-none fullscreen:border-0">
+      <div
+        ref={stageRef}
+        onMouseMove={revealOverlay}
+        onMouseEnter={revealOverlay}
+        onMouseLeave={() => {
+          holdingRef.current = false
+          if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
+          setOverlayVisible(false)
+        }}
+        onTouchStart={revealOverlay}
+        className={`overflow-hidden rounded-2xl border border-white/[0.07] bg-black fullscreen:flex fullscreen:items-center fullscreen:rounded-none fullscreen:border-0 ${
+          showingPicture && !overlayVisible ? "cursor-none" : ""
+        }`}
+      >
         <div className="relative aspect-video w-full">
           <video
             ref={videoRef}
@@ -158,7 +195,9 @@ export function ViewerShell({
           )}
 
           {showingPicture && (
-            <>
+            <div
+              className={`transition-opacity duration-300 ${overlayVisible ? "opacity-100" : "pointer-events-none opacity-0"}`}
+            >
               <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-red-600/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />Ao vivo
               </span>
@@ -170,7 +209,17 @@ export function ViewerShell({
                 </span>
               )}
 
-              <div className="absolute bottom-3 right-3 flex items-center gap-2">
+              <div
+                onMouseEnter={() => {
+                  holdingRef.current = true
+                  setOverlayVisible(true)
+                }}
+                onMouseLeave={() => {
+                  holdingRef.current = false
+                  revealOverlay()
+                }}
+                className="absolute bottom-3 right-3 flex items-center gap-2"
+              >
                 <div className="flex items-center gap-2 rounded-xl bg-black/70 px-3 py-2 ring-1 ring-white/10 backdrop-blur">
                   <button
                     onClick={onToggleSound}
@@ -200,7 +249,7 @@ export function ViewerShell({
                   {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>

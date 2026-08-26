@@ -66,6 +66,21 @@ export function HostLiveControls({
           </span>
           <span>{(stats.kbps / 1000).toFixed(1)} Mbps de subida</span>
           <span>{stats.rttMs ? `${stats.rttMs} ms de ida e volta` : "latência medindo"}</span>
+          {/* Diz de quem é a culpa quando a imagem encolhe, em vez de deixar o
+              host adivinhando se é a máquina ou a internet. */}
+          {stats.limitedBy !== "none" && (
+            <span className="inline-flex items-center gap-1.5 text-amber-300">
+              <Activity className="h-3.5 w-3.5" />
+              {stats.limitedBy === "cpu"
+                ? "Segurando a imagem por CPU"
+                : stats.limitedBy === "bandwidth"
+                  ? "Segurando a imagem por internet"
+                  : "Segurando a imagem"}
+            </span>
+          )}
+          {stats.limitedBy === "none" && stats.targetHeight > 0 && stats.height > 0 && stats.height < stats.targetHeight * 0.9 && (
+            <span className="text-amber-300">Recuperando a resolução...</span>
+          )}
           <span className="inline-flex items-center gap-1.5 text-emerald-300">
             <Zap className="h-3.5 w-3.5" />
             Servidor de transmissão

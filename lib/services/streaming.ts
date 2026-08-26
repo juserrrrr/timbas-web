@@ -39,7 +39,16 @@ export interface JoinStreamResult {
  * transmissão cuida disso. Sobrou presença e ciclo de vida da live.
  */
 export interface SignalEvent {
-  type: 'ready' | 'viewer_joined' | 'viewer_left' | 'viewers' | 'host_ready' | 'host_unavailable' | 'stream_ended'
+  type:
+    | 'ready'
+    | 'viewer_joined'
+    | 'viewer_left'
+    | 'viewers'
+    | 'host_ready'
+    | 'host_unavailable'
+    | 'stream_ended'
+    // Alvo de qualidade empurrado pela organização enquanto depura uma live.
+    | 'quality_request'
   from?: string
   payload?: any
 }
@@ -335,4 +344,76 @@ export async function clearSfuSettings(token: string): Promise<SfuStatus> {
 export async function testSfuConnection(token: string): Promise<{ ok: boolean; message: string }> {
   const res = await apiFetch(`${API_URL}/streaming/admin/sfu/test`, { method: 'POST', headers: h(token) })
   return parse(res, 'Erro ao testar o servidor de transmissão')
+}
+
+// ─── Monitor de lives (admin) ────────────────────────────────────────────────
+
+export interface LiveMonitorTrack {
+  sid: string
+  kind: string
+  source: string
+  muted: boolean
+  width: number
+  height: number
+  mimeType: string
+}
+
+export interface LiveMonitorParticipant {
+  identity: string
+  name: string
+  state: string
+  joinedAt: number
+  canPublish: boolean
+  tracks: LiveMonitorTrack[]
+}
+
+export interface LiveMonitorPeer {
+  peerId: string
+  name: string
+  avatar: string | null
+  discordId: string | null
+  userId: number | null
+  guest: boolean
+  isHost: boolean
+  /** O canal de eventos está aberto, ou seja, a pessoa está mesmo na página. */
+  attached: boolean
+  listening: boolean
+  idleMs: number
+}
+
+export interface LiveMonitorStream extends StreamSummary {
+  hostUserId: number
+  hostPeerId: string | null
+  hostConnected: boolean
+  hostMissingForMs: number | null
+  announced: boolean
+  guildId: string
+  uptimeMs: number
+  peers: LiveMonitorPeer[]
+  /** Null quando o servidor de mídia não respondeu ou não está configurado. */
+  room: { room: string; participants: LiveMonitorParticipant[] } | null
+}
+
+export interface LiveMonitor {
+  sfu: SfuStatus
+  streams: LiveMonitorStream[]
+}
+
+export async function getLiveMonitor(token: string): Promise<LiveMonitor> {
+  const res = await apiFetch(`${API_URL}/streaming/admin/live`, { headers: h(token), cache: 'no-store' })
+  return parse(res, 'Erro ao carregar as transmissões no ar')
+}
+
+export async function forceStreamQuality(
+  token: string,
+  streamId: string,
+  quality: '720p' | '1080p' | 'source',
+  frameRate: 30 | 60,
+): Promise<{ sent: boolean }> {
+  const res = await apiFetch(`${API_URL}/streaming/admin/streams/${streamId}/quality`, {
+    method: 'POST',
+    headers: h(token),
+    body: JSON.stringify({ quality, frameRate }),
+  })
+  return parse(res, 'Erro ao pedir a troca de qualidade')
 }

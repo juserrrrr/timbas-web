@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"
 import { TIMBAS_SERVER_ID } from "@/lib/servers"
 import { getAnnouncementGuilds, setAnnouncementChannel, type AnnouncementGuild } from "@/lib/services/streaming"
+import { LiveMonitorPanel } from "./live-monitor-panel"
 import { SfuPanel } from "./sfu-panel"
 
 export default function LiveAdminPage() {
@@ -55,6 +56,8 @@ export default function LiveAdminPage() {
       </div>
 
       <SfuPanel />
+
+      <LiveMonitorPanel />
 
       <div>
         <h2 className="text-sm font-black uppercase tracking-wider text-gray-500">Anúncio no Discord</h2>
