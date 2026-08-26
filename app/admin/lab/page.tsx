@@ -341,8 +341,8 @@ export default function DemoLabPage() {
       {notice && <p className="rounded-lg bg-white/[0.03] px-3 py-2 text-[12px] text-gray-300">{notice}</p>}
       {error && <p className="whitespace-pre-line rounded-lg bg-red-500/10 px-3 py-2 text-[12px] text-red-300">{error}</p>}
 
-      <Card className="overflow-hidden border-amber-500/20 bg-amber-500/[0.035] p-4 sm:p-5">
-        <div className="mb-5 flex items-start gap-3"><span className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-2.5"><Megaphone className="h-5 w-5 text-amber-300" /></span><div><h3 className="text-sm font-black text-white">Novidades da plataforma</h3><p className="mt-1 text-[11px] leading-relaxed text-gray-500">Publique um único comunicado global. A nova publicação substitui a anterior e aparece uma vez por navegador, com ou sem login.</p></div></div>
+      <Card className="overflow-hidden border-blue-500/20 bg-gradient-to-br from-blue-500/[0.045] via-transparent to-red-500/[0.025] p-4 sm:p-5">
+        <div className="mb-5 flex items-start gap-3"><span className="rounded-xl border border-blue-400/20 bg-blue-500/10 p-2.5"><Megaphone className="h-5 w-5 text-blue-300" /></span><div><h3 className="text-sm font-black text-white">Novidades da plataforma</h3><p className="mt-1 text-[11px] leading-relaxed text-gray-500">Publique um único comunicado global. A nova publicação substitui a anterior e aparece uma vez por navegador, com ou sem login.</p></div></div>
         <AnnouncementStudio />
       </Card>
 
