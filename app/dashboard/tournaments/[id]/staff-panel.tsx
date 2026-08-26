@@ -141,7 +141,7 @@ export function StaffPanel({ tournament, onChanged }: { tournament: TournamentDe
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-gray-600" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] border-white/10 bg-[#0b0b11] p-0 text-white">
+                <PopoverContent side="bottom" sideOffset={8} align="start" avoidCollisions={false} className="w-[var(--radix-popover-trigger-width)] border-white/10 bg-[#0b0b11] p-0 text-white shadow-2xl shadow-black/50">
                   <Command shouldFilter={false} className="bg-transparent">
                     <CommandInput value={search} onValueChange={setSearch} placeholder="Buscar pelo nome..." />
                     <CommandList>

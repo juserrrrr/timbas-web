@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   GitBranch,
   ListOrdered,
   Link2,
+  LockKeyhole,
   Loader2,
   Play,
   RotateCcw,
@@ -24,10 +25,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  CompetitionHeader,
   ErrorState,
   PageLoading,
-  StatTile,
   StatusPill,
   formatDateTime,
 } from "@/components/competitions/shared"
@@ -59,6 +58,15 @@ const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done
   RUNNING: "live",
   FINISHED: "done",
   CANCELLED: "danger",
+}
+
+function TournamentMetric({ label, value, icon, tone }: { label: string; value: string; icon: ReactNode; tone: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 bg-[#0b0c11] px-4 py-3">
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.035] ${tone}`}>{icon}</span>
+      <span className="min-w-0"><span className="block text-[8px] font-black uppercase tracking-[0.15em] text-gray-600">{label}</span><strong className="mt-0.5 block truncate text-xs font-black text-gray-200">{value}</strong></span>
+    </div>
+  )
 }
 
 type TabId = "bracket" | "standings" | "my-matches" | "matches" | "teams" | "ea-stats" | "proofs" | "invites" | "staff"
@@ -238,7 +246,8 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const myMatches = tournament.matches.filter((match) => tournament.access.teamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId))
   const nextMatch = myMatches.find((match) => match.status === "READY" || match.status === "AWAITING_PROOF" || match.status === "DISPUTED") ?? null
   const nextMatchTiming = nextMatch ? matchTiming(nextMatch, tournament, now) : null
-  const canRegister = (tournament.status === "REGISTRATION" || tournament.status === "DRAFT") && tournament.access.canView && tournament.access.teamIds.length === 0 && tournament.teams.length < tournament.maxTeams
+  const hasRegistrationAccess = tournament.accessMode === "PUBLIC" || tournament.access.isInvited || tournament.access.canModerate
+  const canRegister = (tournament.status === "REGISTRATION" || tournament.status === "DRAFT") && hasRegistrationAccess && tournament.access.teamIds.length === 0 && tournament.teams.length < tournament.maxTeams
   const startsAtMs = tournament.startsAt ? new Date(tournament.startsAt).getTime() : null
   const untilStart = startsAtMs === null ? null : Math.max(0, startsAtMs - now)
   const countdown = untilStart === null ? null : {
@@ -309,23 +318,24 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     }
   }
 
-  return (
-    <div className="dashboard-view space-y-6">
-      <button
-        onClick={() => router.push("/dashboard/tournaments")}
-        className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-gray-500 transition hover:text-white"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Todos os campeonatos
-      </button>
+  const activeTab = tabs.find((item) => item.id === tab)
 
-      <CompetitionHeader
-        eyebrow={tournament.gameLabel || GAME_LABELS[tournament.game]}
-        title={tournament.name}
-        subtitle={tournament.description || FORMAT_LABELS[tournament.format]}
-        icon={Trophy}
-        actions={
-          <>
+  return (
+    <div className="dashboard-view space-y-4 pb-8">
+      <section className="relative overflow-hidden rounded-[26px] border border-white/[0.08] bg-[#08090d] shadow-2xl shadow-black/30">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(37,99,235,0.18),transparent_36%),radial-gradient(circle_at_92%_0%,rgba(220,38,38,0.12),transparent_38%)]" />
+        <div className="relative p-5 sm:p-6">
+          <button onClick={() => router.push("/dashboard/tournaments")} className="mb-4 flex cursor-pointer items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-gray-500 transition hover:text-white"><ArrowLeft className="h-3.5 w-3.5" />Campeonatos</button>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10 text-blue-300"><Trophy className="h-5 w-5" /></span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2"><span className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">{tournament.gameLabel || GAME_LABELS[tournament.game]}</span>{tournament.accessMode === "INVITE_ONLY" && <span className="inline-flex items-center gap-1 rounded-full border border-blue-400/20 bg-blue-400/[0.08] px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-blue-200"><LockKeyhole className="h-2.5 w-2.5" />Somente por convite</span>}</div>
+                <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white sm:text-3xl">{tournament.name}</h1>
+                <p className="mt-1 truncate text-xs text-gray-500">{tournament.description || FORMAT_LABELS[tournament.format]}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <StatusPill tone={STATUS_TONES[tournament.status]} className="h-9 rounded-md px-3 py-0">{STATUS_LABELS[tournament.status]}</StatusPill>
             {canPublishLabKnockout && (
               <Button disabled={publishingKnockout} onClick={() => void publishLabKnockout()} className="bg-violet-500 text-white hover:bg-violet-400">
@@ -360,24 +370,30 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
                   Iniciar campeonato
                 </Button>
               )}
-          </>
-        }
-      />
+            </div>
+          </div>
+          <div className="mt-5 grid gap-px overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.07] sm:grid-cols-3">
+            <TournamentMetric label="Formato" value={FORMAT_LABELS[tournament.format]} icon={<GitBranch className="h-4 w-4" />} tone="text-blue-300" />
+            <TournamentMetric label="Times" value={`${tournament.teams.length}/${tournament.maxTeams}`} icon={<Users className="h-4 w-4" />} tone="text-emerald-300" />
+            <TournamentMetric label="Partidas" value={`${finishedMatches}/${tournament.matches.length} encerradas`} icon={<ListOrdered className="h-4 w-4" />} tone="text-red-300" />
+          </div>
+        </div>
+      </section>
 
       {notice && (
-        <p className="rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2 text-[12px] text-gray-300">
+        <p role="status" className="rounded-xl border border-blue-400/15 bg-blue-400/[0.06] px-4 py-3 text-xs font-semibold text-blue-100">
           {notice}
         </p>
       )}
 
       {canRegister && (
-        <button onClick={() => setTab("teams")} className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border border-amber-400/35 bg-gradient-to-r from-amber-500/15 to-orange-500/[0.06] p-4 text-left transition hover:border-amber-400/60">
+        <button onClick={() => setTab("teams")} className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border border-blue-400/20 bg-gradient-to-r from-blue-500/[0.09] to-red-500/[0.04] px-4 py-3 text-left transition hover:border-blue-400/40">
           <span><span className="block text-base font-black text-white">Inscreva seu time neste campeonato</span><span className="mt-1 block text-xs text-amber-100/60">Valide seu clube da EA e garanta sua vaga. Cada usuário pode representar somente um time.</span></span>
-          <span className="flex flex-shrink-0 items-center rounded-lg bg-amber-500 px-4 py-2 text-xs font-black text-black"><UserPlus className="mr-1.5 h-4 w-4" />Inscrever meu time</span>
+          <span className="flex flex-shrink-0 items-center rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white"><UserPlus className="mr-1.5 h-4 w-4" />Inscrever meu time</span>
         </button>
       )}
 
-      <div className={`rounded-2xl border p-4 ${untilStart !== null && untilStart > 0 ? "border-blue-500/30 bg-blue-500/[0.06]" : "border-emerald-500/25 bg-emerald-500/[0.05]"}`}>
+      <div className={`rounded-2xl border px-4 py-3 ${untilStart !== null && untilStart > 0 ? "border-blue-500/20 bg-blue-500/[0.045]" : "border-emerald-500/20 bg-emerald-500/[0.04]"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${untilStart !== null && untilStart > 0 ? "bg-blue-500/15 text-blue-300" : "bg-emerald-500/15 text-emerald-300"}`}><CalendarClock className="h-5 w-5" /></span>
@@ -412,52 +428,36 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         </button>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatTile label="Formato" value={FORMAT_LABELS[tournament.format]} icon={GitBranch} accent="text-amber-400" />
-        <StatTile
-          label="Times"
-          value={`${tournament.teams.length}/${tournament.maxTeams}`}
-          icon={Users}
-          accent="text-emerald-400"
-        />
-        <StatTile
-          label="Partidas"
-          value={`${finishedMatches}/${tournament.matches.length}`}
-          hint="encerradas"
-          icon={ListOrdered}
-          accent="text-blue-400"
-        />
-      </div>
+      <section className="overflow-hidden rounded-[26px] border border-white/[0.08] bg-[#08090d] shadow-xl shadow-black/20">
+        <div className="border-b border-white/[0.07] bg-white/[0.012] p-2.5">
+          <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {tabs.map((item) => (
+              <button key={item.id} onClick={() => setTab(item.id)} className={`flex h-10 flex-shrink-0 cursor-pointer items-center gap-2 rounded-xl border px-3.5 text-xs font-bold transition ${tab === item.id ? "border-blue-400/20 bg-blue-500/10 text-blue-200" : "border-transparent text-gray-500 hover:bg-white/[0.035] hover:text-gray-200"}`}>
+                <item.icon className="h-3.5 w-3.5" />
+                {item.label}
+                {item.badge ? <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500/15 px-1.5 text-[9px] font-black text-red-300">{item.badge}</span> : null}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="flex gap-1.5 overflow-x-auto border-b border-white/[0.06] pb-px">
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setTab(item.id)}
-            className={`flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2 text-xs font-bold transition ${
-              tab === item.id
-                ? "border-amber-400 text-amber-400"
-                : "border-transparent text-gray-500 hover:text-white"
-            }`}
-          >
-            <item.icon className="h-3.5 w-3.5" />
-            {item.label}
-            {item.badge ? (
-              <span className="rounded-full bg-amber-500/20 px-1.5 text-[10px] text-amber-400">{item.badge}</span>
-            ) : null}
-          </button>
-        ))}
-      </div>
+        <div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-3.5 sm:px-6">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-300">{activeTab && <activeTab.icon className="h-4 w-4" />}</span>
+          <div><h2 className="text-sm font-black text-white">{activeTab?.label}</h2><p className="mt-0.5 text-[10px] text-gray-600">Gerencie e acompanhe esta etapa do campeonato.</p></div>
+        </div>
 
-      {tab === "bracket" && <BracketView tournament={tournament} onSelectMatch={setSelectedMatch} />}
-      {tab === "standings" && <StandingsView tournament={tournament} />}
-      {tab === "my-matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} onlyMine />}
-      {tab === "matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} />}
-      {tab === "teams" && <TeamsPanel tournament={tournament} onChanged={() => void load()} />}
-      {tab === "ea-stats" && <EaStatsView tournamentId={tournament.id} finished={tournament.status === "FINISHED"} />}
-      {tab === "proofs" && <ProofReviewPanel tournamentId={tournament.id} scoreAudit={scoreAudit} onReviewed={() => void load()} onNotice={setNotice} />}
-      {tab === "invites" && <InvitesPanel tournamentId={tournament.id} registrationOpen={tournament.status === "REGISTRATION"} />}
-      {tab === "staff" && <StaffPanel tournament={tournament} onChanged={() => void load()} />}
+        <div className="min-h-[320px] p-4 sm:p-6">
+          {tab === "bracket" && <BracketView tournament={tournament} onSelectMatch={setSelectedMatch} />}
+          {tab === "standings" && <StandingsView tournament={tournament} />}
+          {tab === "my-matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} onlyMine />}
+          {tab === "matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} />}
+          {tab === "teams" && <TeamsPanel tournament={tournament} onChanged={() => void load()} />}
+          {tab === "ea-stats" && <EaStatsView tournamentId={tournament.id} finished={tournament.status === "FINISHED"} />}
+          {tab === "proofs" && <ProofReviewPanel tournamentId={tournament.id} scoreAudit={scoreAudit} onReviewed={() => void load()} onNotice={setNotice} />}
+          {tab === "invites" && <InvitesPanel tournamentId={tournament.id} registrationOpen={tournament.status === "REGISTRATION"} />}
+          {tab === "staff" && <StaffPanel tournament={tournament} onChanged={() => void load()} />}
+        </div>
+      </section>
 
       {selectedMatch && canOpenRoom(selectedMatch) && (
         <MatchRoomDialog

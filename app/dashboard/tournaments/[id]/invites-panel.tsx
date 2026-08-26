@@ -136,7 +136,7 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
                 const available = !used && !revoked
                 const accent = available ? "border-blue-400/15 hover:border-blue-400/30" : used ? "border-emerald-400/15" : "border-red-400/15 opacity-75"
                 return (
-                  <article key={invite.id} className={`group relative overflow-hidden rounded-2xl border bg-white/[0.02] p-4 transition ${accent}`}>
+                  <article key={invite.id} className={`group relative flex min-h-[154px] flex-col overflow-hidden rounded-2xl border bg-white/[0.02] p-4 transition ${accent}`}>
                     <span className={`absolute inset-y-0 left-0 w-0.5 ${available ? "bg-blue-500" : used ? "bg-emerald-500" : "bg-red-500"}`} />
                     <div className="flex items-start gap-3">
                       <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${available ? "border-blue-400/15 bg-blue-500/10 text-blue-300" : used ? "border-emerald-400/15 bg-emerald-500/10 text-emerald-300" : "border-red-400/15 bg-red-500/10 text-red-300"}`}>
@@ -156,7 +156,7 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
                     </div>
 
                     {available && (
-                      <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
                         <Button variant="outline" size="sm" onClick={() => void copy(invite)} className="border-blue-400/15 bg-blue-400/[0.04] text-blue-100 hover:bg-blue-500/10"><Copy className="mr-1.5 h-3.5 w-3.5" />Copiar link</Button>
                         <Button variant="outline" size="sm" disabled={busy === invite.id} onClick={() => setRevokeTarget(invite)} className="border-red-400/15 bg-red-400/[0.03] text-red-300 hover:bg-red-500/10"><Ban className="mr-1.5 h-3.5 w-3.5" />Cancelar</Button>
                       </div>
