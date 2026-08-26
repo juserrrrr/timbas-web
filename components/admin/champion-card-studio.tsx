@@ -42,7 +42,6 @@ function playersInVisualOrder(players: string[], columns: number) {
 }
 
 function rosterDividerPositions(columns: number) {
-  if (columns === 2) return []
   return Array.from({ length: columns - 1 }, (_, index) => index + 1)
     .filter((divider) => !(columns === 4 && divider === 2))
     .map((divider) => divider / columns)
@@ -195,7 +194,6 @@ export function ChampionCardStudio() {
           <button type="button" onPointerDown={(event) => beginDrag(event, "tournament")} className={`absolute flex cursor-move items-center justify-center border border-dashed px-1 text-center uppercase leading-none ${selectionFrames && selected === "tournament" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.tournamentX * 100}%`, top: `${layout.tournamentY * 100}%`, width: `${layout.tournamentWidth * 100}%`, transform: "translate(-50%,-50%)" }}><span className="truncate whitespace-nowrap" style={{ color: "#c9a85d", fontFamily: family, fontWeight: weight, fontSize: `${layout.tournamentSize * 100}cqw` }}>{tournamentName || "Campeonato"}</span></button>
           <span className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap border border-[#c9a85d]/50 bg-[#050508]/95 px-[1.2cqw] py-[0.15cqw] font-teko text-[1.7cqw] font-semibold text-[#d9bc78]" style={{ left: `${(layout.rosterX + layout.rosterWidth / 2) * 100}%`, top: `${(layout.rosterY - 0.022) * 100}%` }}>{players.length ? "ELENCO CAMPEÃO" : "TÍTULO CONQUISTADO"}</span>
           <button type="button" onPointerDown={(event) => beginDrag(event, "roster")} className={`absolute cursor-move border border-dashed ${selectionFrames && selected === "roster" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.rosterX * 100}%`, top: `${layout.rosterY * 100}%`, width: `${layout.rosterWidth * 100}%`, height: `${layout.rosterHeight * 100}%` }}>
-            {layout.rosterColumns !== 2 && <span className="pointer-events-none absolute inset-y-0 left-1/2 z-0 w-[0.28cqw] -translate-x-1/2 bg-[#050508]" />}
             {rosterDividerPositions(layout.rosterColumns).map((position) => <span key={position} className="pointer-events-none absolute inset-y-0 z-0 w-px bg-[#c9a85d]/35" style={{ left: `${position * 100}%` }} />)}
             <span className="relative z-[1] grid h-full content-between items-center uppercase leading-none text-[#f4f1e8]" style={{ gridTemplateColumns: `repeat(${layout.rosterColumns}, minmax(0, 1fr))`, fontFamily: family, fontWeight: weight, fontSize: `${rosterFontSize}cqw` }}>{playersInVisualOrder(players, layout.rosterColumns).map((name, index) => <span key={`${name}-${index}`} className="truncate px-[0.3cqw] text-center">{name}</span>)}</span>
           </button>

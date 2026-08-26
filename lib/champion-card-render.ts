@@ -37,7 +37,6 @@ function fitRosterText(ctx: CanvasRenderingContext2D, text: string, family: stri
 }
 
 function rosterDividerPositions(columns: number) {
-  if (columns === 2) return []
   return Array.from({ length: columns - 1 }, (_, index) => index + 1)
     .filter((divider) => !(columns === 4 && divider === 2))
     .map((divider) => divider / columns)
@@ -100,10 +99,6 @@ export async function renderChampionCard(canvas: HTMLCanvasElement, data: Champi
     const endY = height * (layout.rosterY + layout.rosterHeight)
     const rowHeight = (endY - startY) / rows
     const fontSize = Math.max(width * 0.007, Math.min(width * layout.rosterSize, rowHeight * 0.64))
-    if (columns !== 2) {
-      ctx.fillStyle = "#050508"
-      ctx.fillRect(left + usableWidth / 2 - width * 0.0014, startY, width * 0.0028, endY - startY)
-    }
     ctx.strokeStyle = "rgba(201, 168, 93, 0.35)"
     ctx.lineWidth = Math.max(1, width * 0.0007)
     for (const position of rosterDividerPositions(columns)) {
