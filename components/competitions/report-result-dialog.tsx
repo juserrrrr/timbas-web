@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Camera, Loader2, ScanLine, ShieldCheck, Trash2, TriangleAlert, UserX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Switch } from "@/components/ui/switch"
 import { prepareScoreboardImage, type PreparedImage } from "@/lib/image-upload"
 import { TeamCrest } from "./shared"
 
@@ -25,6 +26,7 @@ export function ReportResultDialog({
   onWalkover,
   initialHomeScore,
   initialAwayScore,
+  initialWalkover = false,
   title = "Lançar resultado",
 }: {
   open: boolean
@@ -51,6 +53,9 @@ export function ReportResultDialog({
   onWalkover?: (input: { winner: "HOME" | "AWAY"; reason?: string; homeScore: number; awayScore: number }) => Promise<void>
   initialHomeScore?: number | null
   initialAwayScore?: number | null
+  /// Abre o diálogo já no modo W.O., para quem entrou pelo atalho de aplicar
+  /// W.O. manual na sala da partida.
+  initialWalkover?: boolean
   title?: string
 }) {
   const [homeScore, setHomeScore] = useState("")
@@ -58,16 +63,19 @@ export function ReportResultDialog({
   const [image, setImage] = useState<PreparedImage | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
-  const [walkoverOpen, setWalkoverOpen] = useState(false)
-  const [walkoverWinner, setWalkoverWinner] = useState<"HOME" | "AWAY">("HOME")
+  const [isWalkover, setIsWalkover] = useState(false)
   const [walkoverReason, setWalkoverReason] = useState("")
-  const [walkoverHomeScore, setWalkoverHomeScore] = useState("3")
-  const [walkoverAwayScore, setWalkoverAwayScore] = useState("0")
   const [scorers, setScorers] = useState<Record<string, { goals: number; assists: number }>>({})
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) {
+      setIsWalkover(initialWalkover)
+      if (initialWalkover) {
+        setHomeScore("3")
+        setAwayScore("0")
+        return
+      }
       setHomeScore(initialHomeScore === null || initialHomeScore === undefined ? "" : String(initialHomeScore))
       setAwayScore(initialAwayScore === null || initialAwayScore === undefined ? "" : String(initialAwayScore))
       return
@@ -75,17 +83,14 @@ export function ReportResultDialog({
     setHomeScore("")
     setAwayScore("")
     setError("")
-    setWalkoverOpen(false)
-    setWalkoverWinner("HOME")
+    setIsWalkover(false)
     setWalkoverReason("")
-    setWalkoverHomeScore("3")
-    setWalkoverAwayScore("0")
     setScorers({})
     setImage((current) => {
       if (current) URL.revokeObjectURL(current.previewUrl)
       return null
     })
-  }, [initialAwayScore, initialHomeScore, open])
+  }, [initialAwayScore, initialHomeScore, initialWalkover, open])
 
   const pickImage = async (file: File | undefined) => {
     if (!file) return
@@ -101,9 +106,21 @@ export function ReportResultDialog({
     }
   }
 
-  const proofNeeded = requireProof && !canModerate
+  // A flag só vale quando a tela realmente pode declarar W.O.: sem isso, abrir o
+  // diálogo pelo atalho sem permissão deixaria o botão sem ação nenhuma.
+  const walkoverMode = Boolean(onWalkover) && isWalkover
+  const proofNeeded = requireProof && !canModerate && !walkoverMode
   const scoresFilled = homeScore !== "" && awayScore !== ""
-  const canSubmit = scoresFilled && (!proofNeeded || Boolean(image)) && !busy
+  // No W.O. o vencedor sai do próprio placar administrativo: assim não existe
+  // como escolher um vencedor que perdeu o jogo no formulário.
+  const walkoverWinner: "HOME" | "AWAY" | null = !scoresFilled || Number(homeScore) === Number(awayScore)
+    ? null
+    : Number(homeScore) > Number(awayScore)
+      ? "HOME"
+      : "AWAY"
+  const canSubmit = walkoverMode
+    ? Boolean(walkoverWinner) && !busy
+    : scoresFilled && (!proofNeeded || Boolean(image)) && !busy
 
   const submit = async () => {
     setBusy(true)
@@ -129,15 +146,15 @@ export function ReportResultDialog({
   }
 
   const declareWalkover = async () => {
-    if (!onWalkover) return
+    if (!onWalkover || !walkoverWinner) return
     setBusy(true)
     setError("")
     try {
       await onWalkover({
         winner: walkoverWinner,
         reason: walkoverReason.trim() || undefined,
-        homeScore: Number(walkoverHomeScore),
-        awayScore: Number(walkoverAwayScore),
+        homeScore: Number(homeScore),
+        awayScore: Number(awayScore),
       })
       onOpenChange(false)
     } catch (err) {
@@ -153,9 +170,11 @@ export function ReportResultDialog({
         <DialogHeader>
           <DialogTitle className="text-white">{title}</DialogTitle>
           <DialogDescription>
-            {proofNeeded
-              ? "Informe o placar e envie a foto da tela final. A leitura automática confere os números antes de contabilizar."
-              : "Informe o placar final. A foto é opcional, mas ajuda a resolver contestações."}
+            {walkoverMode
+              ? "Informe o placar administrativo. Quem terminar na frente fica com a vitória por W.O."
+              : proofNeeded
+                ? "Informe o placar e envie a foto da tela final. A leitura automática confere os números antes de contabilizar."
+                : "Informe o placar final. A foto é opcional, mas ajuda a resolver contestações."}
           </DialogDescription>
         </DialogHeader>
 
@@ -190,6 +209,7 @@ export function ReportResultDialog({
             </div>
           </div>
 
+          {!walkoverMode && (
           <div>
             <input
               ref={fileInput}
@@ -234,8 +254,9 @@ export function ReportResultDialog({
               </button>
             )}
           </div>
+          )}
 
-          {squads && (
+          {squads && !walkoverMode && (
             <div className="space-y-2 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
               <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
                 Quem marcou (opcional)
@@ -294,7 +315,7 @@ export function ReportResultDialog({
             </div>
           )}
 
-          {canModerate && (
+          {canModerate && !walkoverMode && (
             <p className="flex items-start gap-2 rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-2 text-[11px] text-blue-300">
               <ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
               Como você é da organização, o resultado é contabilizado direto, com ou sem foto.
@@ -302,18 +323,41 @@ export function ReportResultDialog({
           )}
 
           {onWalkover && (
-            <div className="rounded-xl border border-red-500/25 bg-red-500/[0.055] p-3">
-              {walkoverOpen ? (
-                <div className="space-y-3">
-                  <div><p className="text-sm font-black text-red-100">Registrar W.O.</p><p className="mt-1 text-[11px] text-gray-400">Escolha o vencedor e informe o placar administrativo. O resultado continuará marcado como W.O.</p></div>
+            <div className="space-y-3 rounded-xl border border-red-500/25 bg-red-500/[0.055] p-3">
+              <label className="flex cursor-pointer items-center justify-between gap-3">
+                <span className="flex items-center gap-2">
+                  <UserX className="h-4 w-4 flex-shrink-0 text-red-300" />
+                  <span>
+                    <span className="block text-[12px] font-black text-red-100">Registrar como W.O.</span>
+                    <span className="mt-0.5 block text-[10px] text-gray-500">
+                      O placar acima vira resultado administrativo e a partida fica marcada como W.O.
+                    </span>
+                  </span>
+                </span>
+                <Switch
+                  checked={isWalkover}
+                  disabled={busy}
+                  onCheckedChange={(checked) => {
+                    setIsWalkover(checked)
+                    setError("")
+                    if (checked && (homeScore === "" || awayScore === "" || homeScore === awayScore)) {
+                      setHomeScore("3")
+                      setAwayScore("0")
+                    }
+                  }}
+                  className="cursor-pointer data-[state=checked]:bg-red-500"
+                />
+              </label>
+
+              {walkoverMode && (
+                <div className="space-y-2 border-t border-red-500/20 pt-3">
                   <div className="grid grid-cols-2 gap-2">
                     {(["HOME", "AWAY"] as const).map((side) => (
                       <button
                         key={side}
                         onClick={() => {
-                          setWalkoverWinner(side)
-                          setWalkoverHomeScore(side === "HOME" ? "3" : "0")
-                          setWalkoverAwayScore(side === "AWAY" ? "3" : "0")
+                          setHomeScore(side === "HOME" ? "3" : "0")
+                          setAwayScore(side === "AWAY" ? "3" : "0")
                         }}
                         className={`cursor-pointer truncate rounded-lg border px-3 py-2 text-xs font-bold transition ${
                           walkoverWinner === side
@@ -325,39 +369,18 @@ export function ReportResultDialog({
                       </button>
                     ))}
                   </div>
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3 rounded-lg border border-white/[0.07] bg-black/20 p-3">
-                    <label className="text-center text-[10px] font-bold text-gray-500">{homeName}<input inputMode="numeric" value={walkoverHomeScore} onChange={(event) => setWalkoverHomeScore(event.target.value.replace(/\D/g, "").slice(0, 2))} className="mt-1 h-11 w-full rounded-lg border border-white/10 bg-black/40 text-center text-xl font-black text-white" aria-label="Placar de W.O. do mandante" /></label>
-                    <span className="pb-3 text-gray-600">×</span>
-                    <label className="text-center text-[10px] font-bold text-gray-500">{awayName}<input inputMode="numeric" value={walkoverAwayScore} onChange={(event) => setWalkoverAwayScore(event.target.value.replace(/\D/g, "").slice(0, 2))} className="mt-1 h-11 w-full rounded-lg border border-white/10 bg-black/40 text-center text-xl font-black text-white" aria-label="Placar de W.O. do visitante" /></label>
-                  </div>
                   <input
                     value={walkoverReason}
                     onChange={(event) => setWalkoverReason(event.target.value.slice(0, 240))}
                     placeholder="Motivo, por exemplo: adversário não apareceu"
                     className="h-9 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-[12px] text-white outline-none placeholder:text-gray-600 focus:border-amber-500/50"
                   />
-                  <div className="flex justify-end gap-2">
-                    <Button variant="ghost" onClick={() => setWalkoverOpen(false)} disabled={busy}>
-                      Voltar
-                    </Button>
-                    <Button
-                      onClick={() => void declareWalkover()}
-                      disabled={busy || walkoverHomeScore === "" || walkoverAwayScore === "" || walkoverHomeScore === walkoverAwayScore || (walkoverWinner === "HOME" ? Number(walkoverHomeScore) <= Number(walkoverAwayScore) : Number(walkoverAwayScore) <= Number(walkoverHomeScore))}
-                      className="bg-red-500 text-white hover:bg-red-400"
-                    >
-                      {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Confirmar W.O.
-                    </Button>
-                  </div>
+                  <p className="text-[10px] text-gray-500">
+                    {walkoverWinner
+                      ? `Vitória por W.O. para ${walkoverWinner === "HOME" ? homeName : awayName}.`
+                      : "Escolha o vencedor ou ajuste o placar acima: um W.O. não pode terminar empatado."}
+                  </p>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setWalkoverOpen(true)}
-                  className="flex w-full cursor-pointer items-center justify-between gap-3 text-left transition"
-                >
-                  <span className="flex items-center gap-2"><UserX className="h-4 w-4 flex-shrink-0 text-red-300" /><span><span className="block text-[12px] font-black text-red-100">Registrar W.O.</span><span className="mt-0.5 block text-[10px] text-gray-500">Defina vencedor, placar e motivo administrativo.</span></span></span>
-                  <span className="rounded-md bg-red-500 px-3 py-1.5 text-[10px] font-black text-white">Abrir</span>
-                </button>
               )}
             </div>
           )}
@@ -373,9 +396,13 @@ export function ReportResultDialog({
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
               Cancelar
             </Button>
-            <Button onClick={() => void submit()} disabled={!canSubmit} className="bg-amber-500 text-black hover:bg-amber-400">
+            <Button
+              onClick={() => void (walkoverMode ? declareWalkover() : submit())}
+              disabled={!canSubmit}
+              className={walkoverMode ? "bg-red-500 text-white hover:bg-red-400" : "bg-amber-500 text-black hover:bg-amber-400"}
+            >
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Enviar resultado
+              {walkoverMode ? "Confirmar W.O." : "Enviar resultado"}
             </Button>
           </div>
         </div>

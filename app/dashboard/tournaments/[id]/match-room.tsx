@@ -27,7 +27,10 @@ import {
 import type { TournamentDetail, TournamentMatch } from "@/lib/services/tournaments.types"
 import { brasiliaInputValue, brasiliaLocalToIso } from "@/lib/date-time"
 
-const POLL_MS = 8000
+// A sala acompanha a partida em tempo quase real enquanto ela está aberta e
+// desacelera quando o resultado já saiu, que é quando nada mais muda sozinho.
+const LIVE_POLL_MS = 4000
+const CLOSED_POLL_MS = 20000
 
 /// Conta o tempo que falta para o prazo de W.O. estourar.
 function remainingLabel(deadlineAt: string | null): string | null {
@@ -55,7 +58,7 @@ export function MatchRoomDialog({
   match: TournamentMatch
   onOpenChange: (open: boolean) => void
   onChanged: () => void
-  onOpenPhoto: () => void
+  onOpenPhoto: (options?: { walkover?: boolean }) => void
   onCancelWalkover: () => void
 }) {
   const [room, setRoom] = useState<MatchRoom | null>(null)
@@ -78,11 +81,23 @@ export function MatchRoomDialog({
     }
   }, [tournament.id, match.id])
 
+  const roomClosed = room?.match.status === "FINISHED" || room?.match.status === "WALKOVER"
+
   useEffect(() => {
     void load()
-    const timer = setInterval(() => void load(), POLL_MS)
-    return () => clearInterval(timer)
-  }, [load])
+    const pollMs = roomClosed ? CLOSED_POLL_MS : LIVE_POLL_MS
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void load()
+    }, pollMs)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
+  }, [roomClosed, load])
 
   const run = async (key: string, action: () => Promise<unknown>) => {
     setBusy(key)
@@ -399,7 +414,7 @@ export function MatchRoomDialog({
                     {busy === "ea-rescan" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="mr-1.5 h-3.5 w-3.5" />}
                     Reanalisar na EA
                   </Button>}
-                  {tournament.labMode && match.phase === "GROUP" && <Button size="sm" variant="outline" onClick={onOpenPhoto} className="h-8 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
+                  {tournament.labMode && match.phase === "GROUP" && <Button size="sm" variant="outline" onClick={() => onOpenPhoto()} className="h-8 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
                     <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                     {match.status === "WALKOVER" ? "Corrigir placar do W.O." : "Corrigir resultado"}
                   </Button>}
@@ -432,7 +447,7 @@ export function MatchRoomDialog({
                 <p className="text-[11px] font-bold text-red-200">Um dos clubes não disputou a partida?</p>
                 <p className="mt-0.5 text-[10px] text-gray-600">O W.O. é aplicado somente pelo admin, sem prazo automático.</p>
               </div>
-              <Button size="sm" variant="outline" onClick={onOpenPhoto} className="h-8 border-red-500/25 px-3 text-[11px] text-red-300 hover:bg-red-500/10">
+              <Button size="sm" variant="outline" onClick={() => onOpenPhoto({ walkover: true })} className="h-8 border-red-500/25 px-3 text-[11px] text-red-300 hover:bg-red-500/10">
                 <UserX className="mr-1.5 h-3.5 w-3.5" />
                 Aplicar W.O. manual
               </Button>
@@ -442,7 +457,7 @@ export function MatchRoomDialog({
           {!closed && mySide && room?.resultMode === "AI_IMAGE" && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-500/15 bg-violet-500/[0.04] p-3">
               <div><h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-violet-300">Resultado por IA</h3><p className="mt-1 text-[11px] text-gray-500">Envie a tela final da partida. O placar será lido e validado pela IA.</p></div>
-              <Button size="sm" variant="outline" onClick={onOpenPhoto} className="h-9 border-violet-500/25 px-3 text-[12px] text-violet-300 hover:bg-violet-500/10"><Camera className="mr-1.5 h-3.5 w-3.5" />Enviar imagem</Button>
+              <Button size="sm" variant="outline" onClick={() => onOpenPhoto()} className="h-9 border-violet-500/25 px-3 text-[12px] text-violet-300 hover:bg-violet-500/10"><Camera className="mr-1.5 h-3.5 w-3.5" />Enviar imagem</Button>
             </div>
           )}
 

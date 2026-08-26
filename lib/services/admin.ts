@@ -1,3 +1,5 @@
+import { apiFetch } from '@/lib/api'
+
 const API = () => {
   const url = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
   if (!url) throw new Error('NEXT_PUBLIC_API_URL not defined')
@@ -34,13 +36,18 @@ export interface AdminUser {
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 
+// Todas as chamadas passam pelo apiFetch: o login por Discord guarda o token num
+// cookie httpOnly e o navegador só o envia com credentials. Sem isso o header
+// Authorization vai com a dica de sessão, que não é um JWT, e a API devolve 401
+// até para quem é admin.
+
 export async function adminGetUsers(token: string): Promise<AdminUser[]> {
-  const res = await fetch(`${API()}/users`, { headers: headers(token) })
+  const res = await apiFetch(`${API()}/users`, { headers: headers(token), cache: 'no-store' })
   return handle<AdminUser[]>(res)
 }
 
 export async function adminUpdateRole(token: string, id: number, role: Role): Promise<AdminUser> {
-  const res = await fetch(`${API()}/users/${id}`, {
+  const res = await apiFetch(`${API()}/users/${id}`, {
     method: 'PATCH',
     headers: headers(token),
     body: JSON.stringify({ role }),
@@ -49,7 +56,7 @@ export async function adminUpdateRole(token: string, id: number, role: Role): Pr
 }
 
 export async function adminDeleteUser(token: string, id: number): Promise<void> {
-  const res = await fetch(`${API()}/users/${id}`, {
+  const res = await apiFetch(`${API()}/users/${id}`, {
     method: 'DELETE',
     headers: headers(token),
   })
@@ -60,6 +67,6 @@ export async function adminDeleteUser(token: string, id: number): Promise<void> 
 }
 
 export async function adminImpersonateUser(token: string, id: number): Promise<{ token: string; user: { id: number; name: string }; expiresInSeconds: number }> {
-  const res = await fetch(`${API()}/admin/access/users/${id}/impersonate`, { method: 'POST', headers: headers(token) })
+  const res = await apiFetch(`${API()}/admin/access/users/${id}/impersonate`, { method: 'POST', headers: headers(token) })
   return handle(res)
 }

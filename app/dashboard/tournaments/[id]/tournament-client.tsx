@@ -72,6 +72,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(null)
   const [photoMatch, setPhotoMatch] = useState<TournamentMatch | null>(null)
   const [cancelingWalkover, setCancelingWalkover] = useState(false)
+  const [openingWalkover, setOpeningWalkover] = useState(false)
   const [starting, setStarting] = useState(false)
   const [publishingKnockout, setPublishingKnockout] = useState(false)
   const [scoreAudit, setScoreAudit] = useState<LabEaScoreAuditItem[]>([])
@@ -115,12 +116,34 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     void load()
   }, [load])
 
+  // Ritmo de atualização conforme o campeonato: rápido enquanto existe partida
+  // valendo, devagar quando não há nada para mudar. Os pisos evitam martelar a
+  // API à toa, e a aba em segundo plano não busca nada.
+  const pollMs = useMemo(() => {
+    if (!tournament || tournament.status !== "RUNNING") return 30_000
+    const live = tournament.matches.some(
+      (match) => match.status === "READY" || match.status === "AWAITING_PROOF" || match.status === "DISPUTED",
+    )
+    return live ? 4_000 : 15_000
+  }, [tournament])
+
+  // A tela também volta a buscar na hora em que a aba é reaberta: quem estava em
+  // outra janela quando o placar saiu via a chave parada até o próximo tique.
   useEffect(() => {
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void load()
-    }, 10_000)
-    return () => window.clearInterval(timer)
-  }, [load])
+    }, pollMs)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("focus", onVisible)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", onVisible)
+    }
+  }, [load, pollMs])
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
@@ -423,13 +446,15 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
           match={selectedMatch}
           onOpenChange={(open) => !open && setSelectedMatch(null)}
           onChanged={() => void load()}
-          onOpenPhoto={() => {
+          onOpenPhoto={(options) => {
             setCancelingWalkover(false)
+            setOpeningWalkover(options?.walkover ?? false)
             setPhotoMatch(selectedMatch)
             setSelectedMatch(null)
           }}
           onCancelWalkover={() => {
             setCancelingWalkover(true)
+            setOpeningWalkover(false)
             setPhotoMatch(selectedMatch)
             setSelectedMatch(null)
           }}
@@ -443,6 +468,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
             if (!open) {
               setPhotoMatch(null)
               setCancelingWalkover(false)
+              setOpeningWalkover(false)
             }
           }}
           homeName={photoMatch.homeTeam?.name ?? "Mandante"}
@@ -453,6 +479,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
           canModerate={tournament.access.canModerate}
           initialHomeScore={correctingLabResult ? photoMatch.homeScore : null}
           initialAwayScore={correctingLabResult ? photoMatch.awayScore : null}
+          initialWalkover={openingWalkover}
           title={cancelingWalkover ? "Cancelar W.O. e definir placar" : correctingLabResult ? "Corrigir resultado" : "Lançar resultado"}
           onSubmit={async (input) => {
             if (cancelingWalkover) {
