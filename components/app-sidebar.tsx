@@ -52,12 +52,16 @@ function NavLink({
         <span className={`absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full ${accent.bar}`} />
       )}
 
-      <span className="relative flex h-11 w-[41px] flex-shrink-0 items-center justify-center">
-        <item.icon className={`h-[18px] w-[18px] ${item.locked ? "opacity-50" : ""}`} />
-        {item.locked && (
-          <Lock className="absolute bottom-1.5 right-1 h-2.5 w-2.5 text-amber-300/80" strokeWidth={3} />
-        )}
-        {item.beta && !item.locked && !expanded && <BetaMark className="absolute right-0.5 top-1" />}
+      <span className="flex h-11 w-[41px] flex-shrink-0 items-center justify-center">
+        <span className="relative flex items-center justify-center">
+          <item.icon className={`h-[18px] w-[18px] ${item.locked ? "opacity-50" : ""}`} />
+          {item.locked && (
+            <Lock className="absolute -bottom-1 -right-1 h-2.5 w-2.5 text-amber-300/80" strokeWidth={3} />
+          )}
+          {item.beta && !item.locked && !expanded && (
+            <BetaMark className="absolute -right-1.5 -top-1" />
+          )}
+        </span>
       </span>
 
       <span

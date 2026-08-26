@@ -14,13 +14,14 @@ export function BetaBadge({ className }: { className?: string }) {
 }
 
 /// Versão para o menu recolhido: um "b" dentro de um círculo, que se lê como
-/// marca de beta em vez de bolinha de notificação.
+/// marca de beta em vez de bolinha de notificação. Fica colado no ícone, não no
+/// canto do item: o canto é arredondado e cortava a bolinha.
 export function BetaMark({ className }: { className?: string }) {
   return (
     <span
       aria-hidden
       className={cn(
-        "inline-flex h-[13px] w-[13px] items-center justify-center rounded-full border border-amber-500/50 bg-[#07070c] text-[8px] font-black leading-none text-amber-400",
+        "pointer-events-none inline-flex h-3 w-3 items-center justify-center rounded-full bg-amber-500 text-[7px] font-black leading-none text-black ring-2 ring-[#07070c]",
         className,
       )}
     >
