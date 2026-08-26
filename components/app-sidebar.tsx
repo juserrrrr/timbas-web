@@ -76,7 +76,7 @@ function NavLink({
           {item.beta && !item.locked && <BetaBadge />}
         </span>
         <span className={`truncate text-[11px] leading-tight ${item.locked ? "text-amber-300/60" : isActive ? "text-white/45" : "text-gray-600"}`}>
-          {item.locked ? "Recurso desativado pelo admin" : item.description}
+          {item.locked ? (item.lockedReason === "permission" ? "Sem acesso nesta conta" : "Recurso desativado pelo admin") : item.description}
         </span>
       </span>
     </Link>
@@ -98,7 +98,7 @@ function NavLink({
           {item.locked && <Lock className="h-3 w-3 text-amber-300/80" />}
         </span>
         <span className="mt-0.5 block text-[11px] leading-snug text-gray-400">{item.description}</span>
-        {item.locked && <span className="mt-1 block text-[11px] font-semibold text-amber-300/80">Desativado pelo admin</span>}
+        {item.locked && <span className="mt-1 block text-[11px] font-semibold text-amber-300/80">{item.lockedReason === "permission" ? "Não incluído no seu acesso" : "Desativado pelo admin"}</span>}
       </TooltipContent>
     </Tooltip>
   )

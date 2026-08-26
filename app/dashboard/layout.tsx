@@ -4,6 +4,7 @@ import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { UserMenu } from "@/components/user-menu"
 import { NavigationProvider } from "@/lib/navigation-context"
 import { ImpersonationBanner } from "@/components/impersonation-banner"
+import { DashboardAccessGate } from "@/components/dashboard-access-gate"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -27,7 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         <main className="min-h-[100dvh] pb-20 pt-14 md:ml-[65px] md:pb-0">
-          <div className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-5 sm:py-6 md:px-7 md:py-8 xl:px-10">{children}</div>
+          <div className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-5 sm:py-6 md:px-7 md:py-8 xl:px-10"><DashboardAccessGate>{children}</DashboardAccessGate></div>
         </main>
 
         {/* Bottom nav, mobile only */}

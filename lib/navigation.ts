@@ -15,7 +15,23 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react"
-import { FEATURE_SCREEN_SHARE } from "@/lib/services/feature-flags"
+import {
+  FEATURE_DASHBOARD_CLASH,
+  FEATURE_DASHBOARD_DRAFT,
+  FEATURE_DASHBOARD_EA,
+  FEATURE_DASHBOARD_HOME,
+  FEATURE_DASHBOARD_LOL_PROFILE,
+  FEATURE_DASHBOARD_LOL_VERIFY,
+  FEATURE_DASHBOARD_MATCHES_HISTORY,
+  FEATURE_DASHBOARD_MATCHES_LIVE,
+  FEATURE_DASHBOARD_MATCHES_RANKING,
+  FEATURE_DASHBOARD_MATCHES_STATS,
+  FEATURE_DASHBOARD_MATCHES_TEAMS,
+  FEATURE_DASHBOARD_MATCHES_VERSUS,
+  FEATURE_DASHBOARD_SETTINGS,
+  FEATURE_DASHBOARD_TOURNAMENTS,
+  FEATURE_SCREEN_SHARE,
+} from "@/lib/services/feature-flags"
 
 export type NavItem = {
   icon: LucideIcon
@@ -27,8 +43,10 @@ export type NavItem = {
   /// Recurso controlado por feature flag. Com a flag desligada o item continua
   /// na lista, marcado como bloqueado, em vez de sumir do menu.
   flag?: string
+  permission?: string
   /// Preenchido em runtime por navGroupsFor: a flag do item está desligada.
   locked?: boolean
+  lockedReason?: "feature" | "permission"
 }
 
 export type NavGroup = {
@@ -62,6 +80,8 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/dashboard/tournaments",
         accent: "amber",
         beta: true,
+        flag: FEATURE_DASHBOARD_TOURNAMENTS,
+        permission: "dashboard.tournaments",
       },
       {
         icon: ClipboardList,
@@ -70,6 +90,8 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/dashboard/draft",
         accent: "emerald",
         beta: true,
+        flag: FEATURE_DASHBOARD_DRAFT,
+        permission: "dashboard.draft",
       },
     ],
   },
@@ -77,7 +99,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "geral",
     title: "Geral",
     items: [
-      { icon: Home, label: "Início", description: "Resumo do Timbas e atalhos rápidos", href: "/dashboard", accent: "blue" },
+      { icon: Home, label: "Início", description: "Resumo do Timbas e atalhos rápidos", href: "/dashboard", accent: "blue", flag: FEATURE_DASHBOARD_HOME, permission: "dashboard.home" },
       {
         icon: MonitorPlay,
         label: "Transmissões",
@@ -86,6 +108,7 @@ export const NAV_GROUPS: NavGroup[] = [
         accent: "rose",
         beta: true,
         flag: FEATURE_SCREEN_SHARE,
+        permission: "dashboard.live",
       },
     ],
   },
@@ -93,12 +116,12 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "partida-customizada",
     title: "Partida Customizada",
     items: [
-      { icon: Radio, label: "Ao Vivo", description: "Partidas acontecendo agora", href: "/dashboard/active", accent: "emerald" },
-      { icon: Trophy, label: "Ranking", description: "Classificação geral de vitórias", href: "/dashboard/ranking", accent: "amber" },
-      { icon: History, label: "Histórico", description: "Todas as partidas já disputadas", href: "/dashboard/history", accent: "violet" },
-      { icon: Users, label: "Duplas", description: "Quem joga melhor junto", href: "/dashboard/teams", accent: "emerald" },
-      { icon: BarChart3, label: "Estatísticas", description: "Números detalhados das partidas", href: "/dashboard/stats", accent: "rose" },
-      { icon: Swords, label: "Comparação", description: "Confronto direto entre jogadores", href: "/dashboard/versus", accent: "orange" },
+      { icon: Radio, label: "Ao Vivo", description: "Partidas acontecendo agora", href: "/dashboard/active", accent: "emerald", flag: FEATURE_DASHBOARD_MATCHES_LIVE, permission: "dashboard.matches.live" },
+      { icon: Trophy, label: "Ranking", description: "Classificação geral de vitórias", href: "/dashboard/ranking", accent: "amber", flag: FEATURE_DASHBOARD_MATCHES_RANKING, permission: "dashboard.matches.ranking" },
+      { icon: History, label: "Histórico", description: "Todas as partidas já disputadas", href: "/dashboard/history", accent: "violet", flag: FEATURE_DASHBOARD_MATCHES_HISTORY, permission: "dashboard.matches.history" },
+      { icon: Users, label: "Duplas", description: "Quem joga melhor junto", href: "/dashboard/teams", accent: "emerald", flag: FEATURE_DASHBOARD_MATCHES_TEAMS, permission: "dashboard.matches.teams" },
+      { icon: BarChart3, label: "Estatísticas", description: "Números detalhados das partidas", href: "/dashboard/stats", accent: "rose", flag: FEATURE_DASHBOARD_MATCHES_STATS, permission: "dashboard.matches.stats" },
+      { icon: Swords, label: "Comparação", description: "Confronto direto entre jogadores", href: "/dashboard/versus", accent: "orange", flag: FEATURE_DASHBOARD_MATCHES_VERSUS, permission: "dashboard.matches.versus" },
     ],
   },
   {
@@ -111,6 +134,8 @@ export const NAV_GROUPS: NavGroup[] = [
         description: "Estatísticas sincronizadas dos seus clubes",
         href: "/dashboard/ea-clubs",
         accent: "blue",
+        flag: FEATURE_DASHBOARD_EA,
+        permission: "dashboard.ea",
       },
     ],
   },
@@ -118,15 +143,15 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "lol",
     title: "League of Legends",
     items: [
-      { icon: ShieldAlert, label: "Clash Scout", description: "Análise do time adversário no Clash", href: "/dashboard/clash", accent: "amber", beta: true },
-      { icon: ShieldCheck, label: "Verificar LoL", description: "Vincule sua conta da Riot", href: "/dashboard/verify", accent: "emerald", beta: true },
-      { icon: UserSearch, label: "Perfil LoL", description: "Leitura do seu estilo de jogo", href: "/dashboard/lol-profile", accent: "sky", beta: true },
+      { icon: ShieldAlert, label: "Clash Scout", description: "Análise do time adversário no Clash", href: "/dashboard/clash", accent: "amber", beta: true, flag: FEATURE_DASHBOARD_CLASH, permission: "dashboard.clash" },
+      { icon: ShieldCheck, label: "Verificar LoL", description: "Vincule sua conta da Riot", href: "/dashboard/verify", accent: "emerald", beta: true, flag: FEATURE_DASHBOARD_LOL_VERIFY, permission: "dashboard.lol.verify" },
+      { icon: UserSearch, label: "Perfil LoL", description: "Leitura do seu estilo de jogo", href: "/dashboard/lol-profile", accent: "sky", beta: true, flag: FEATURE_DASHBOARD_LOL_PROFILE, permission: "dashboard.lol.profile" },
     ],
   },
 ]
 
 export const FOOTER_ITEMS: NavItem[] = [
-  { icon: Settings, label: "Configurações", description: "Preferências da sua conta", href: "/dashboard/settings", accent: "slate" },
+  { icon: Settings, label: "Configurações", description: "Preferências da sua conta", href: "/dashboard/settings", accent: "slate", flag: FEATURE_DASHBOARD_SETTINGS, permission: "dashboard.settings" },
 ]
 
 export const ALL_NAV_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((group) => group.items), ...FOOTER_ITEMS]
@@ -137,14 +162,25 @@ export const ALL_NAV_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((group) => group.
 /// ele fica sempre visível, com cadeado, e a própria página explica o motivo.
 /// `flags` em null significa que a resposta da API ainda não chegou, e nesse
 /// caso nada é marcado: um cadeado que aparece e some é pior do que esperar.
-export function navGroupsFor(flags: string[] | null): NavGroup[] {
+function navItemForAccess(item: NavItem, flags: string[] | null, permissions: string[] | null): NavItem {
+  const featureLocked = Boolean(flags) && Boolean(item.flag) && !flags!.includes(item.flag!)
+  const permissionLocked = Boolean(permissions) && Boolean(item.permission) && !permissions!.includes(item.permission!)
+  return {
+    ...item,
+    locked: featureLocked || permissionLocked,
+    lockedReason: featureLocked ? "feature" : permissionLocked ? "permission" : undefined,
+  }
+}
+
+export function navGroupsFor(flags: string[] | null, permissions: string[] | null = null): NavGroup[] {
   return NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.map((item) => ({
-      ...item,
-      locked: Boolean(flags) && Boolean(item.flag) && !flags!.includes(item.flag!),
-    })),
+    items: group.items.map((item) => navItemForAccess(item, flags, permissions)),
   }))
+}
+
+export function footerItemsFor(flags: string[] | null, permissions: string[] | null): NavItem[] {
+  return FOOTER_ITEMS.map((item) => navItemForAccess(item, flags, permissions))
 }
 
 export function isNavItemActive(pathname: string, href: string): boolean {

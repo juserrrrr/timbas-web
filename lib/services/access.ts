@@ -32,6 +32,7 @@ export interface AccessUser {
 export interface PlatformSettings {
   requireApproval: boolean
   approvalMessage: string | null
+  defaultPermissions: string[]
   updatedAt: string
 }
 
@@ -61,7 +62,7 @@ export function getPlatformSettings(): Promise<PlatformSettings> {
   return request("/admin/access/settings")
 }
 
-export function updatePlatformSettings(input: { requireApproval?: boolean; approvalMessage?: string }) {
+export function updatePlatformSettings(input: { requireApproval?: boolean; approvalMessage?: string; defaultPermissions?: string[] }) {
   return patch<PlatformSettings>("/admin/access/settings", input)
 }
 

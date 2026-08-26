@@ -6,8 +6,9 @@ import { usePathname } from "next/navigation"
 import { ClipboardList, Home, Lock, MoreHorizontal, Radio, Trophy, X } from "lucide-react"
 import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge } from "@/components/ui/beta-badge"
-import { ACCENTS, FOOTER_ITEMS, isNavItemActive, navGroupsFor, type NavItem } from "@/lib/navigation"
+import { ACCENTS, footerItemsFor, isNavItemActive, navGroupsFor, type NavItem } from "@/lib/navigation"
 import { useEnabledFeatures } from "@/hooks/use-enabled-features"
+import { useMyPermissions } from "@/hooks/use-my-permissions"
 
 const QUICK_HREFS = ["/dashboard", "/dashboard/active", "/dashboard/tournaments", "/dashboard/draft"]
 
@@ -46,13 +47,15 @@ export function MobileBottomNav() {
   const pathname = usePathname()
   const { navigate } = useNavigation()
   const flags = useEnabledFeatures()
+  const permissions = useMyPermissions()
 
   useEffect(() => {
     setOpen(false)
   }, [pathname])
 
-  const groups = navGroupsFor(flags)
-  const allItems = [...groups.flatMap((group) => group.items), ...FOOTER_ITEMS]
+  const groups = navGroupsFor(flags, permissions)
+  const footerItems = footerItemsFor(flags, permissions)
+  const allItems = [...groups.flatMap((group) => group.items), ...footerItems]
   const quickItems = QUICK_HREFS.map((href) => allItems.find((item) => item.href === href)).filter(
     (item): item is NavItem => Boolean(item),
   )
@@ -62,7 +65,7 @@ export function MobileBottomNav() {
       ...group,
       items: group.items.filter((item) => !QUICK_HREFS.includes(item.href)),
     })).filter((group) => group.items.length > 0),
-    { id: "conta", title: "Conta", items: FOOTER_ITEMS },
+    { id: "conta", title: "Conta", items: footerItems },
   ]
 
   return (
@@ -113,7 +116,7 @@ export function MobileBottomNav() {
                           {item.locked && <Lock className="h-3 w-3 text-amber-300/80" />}
                         </span>
                         <span className={`block truncate text-[11px] leading-tight ${item.locked ? "text-amber-300/60" : "text-gray-600"}`}>
-                          {item.locked ? "Recurso desativado pelo admin" : item.description}
+                          {item.locked ? (item.lockedReason === "permission" ? "Sem acesso nesta conta" : "Recurso desativado pelo admin") : item.description}
                         </span>
                       </span>
                     </Link>
