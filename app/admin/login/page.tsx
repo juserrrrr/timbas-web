@@ -13,6 +13,8 @@ const DISCORD_SVG = (
   </svg>
 )
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "")
+
 export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const searchParams = useSearchParams()
@@ -37,7 +39,7 @@ export default function AdminLoginPage() {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("adminPending", "1")
     }
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/discord`
+    window.location.href = `${API_URL}/auth/discord`
   }
 
   return (

@@ -10,6 +10,8 @@ const DISCORD_SVG = (
   </svg>
 )
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "")
+
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
 
@@ -17,7 +19,7 @@ export function LoginForm() {
     setIsLoading(true)
     const urlParams = new URLSearchParams(window.location.search)
     const redirect = urlParams.get('redirect')
-    let authUrl = `${process.env.NEXT_PUBLIC_API_URL}/auth/discord`
+    let authUrl = `${API_URL}/auth/discord`
     if (redirect) authUrl += `?redirect=${encodeURIComponent(redirect)}`
     window.location.href = authUrl
   }

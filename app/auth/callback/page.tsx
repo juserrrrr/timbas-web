@@ -6,6 +6,7 @@ import { setSessionHint, type TokenPayload } from "@/lib/auth"
 import { Bot } from "lucide-react"
 
 const ADMIN_ROLES = ["ADMIN", "admin", "Admin"]
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "")
 
 export default function AuthCallbackPage() {
   const router = useRouter()
@@ -16,7 +17,7 @@ export default function AuthCallbackPage() {
     const isAdminPending =
       typeof window !== "undefined" && sessionStorage.getItem("adminPending") === "1"
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/validate-token`, { credentials: "include" })
+    fetch(`${API_URL}/auth/validate-token`, { method: "POST", credentials: "include" })
       .then(async (response) => {
         if (!response.ok) throw new Error("invalid session")
         const result = await response.json() as { data: TokenPayload }

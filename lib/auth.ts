@@ -2,6 +2,7 @@ const TOKEN_KEY = 'timbas_token'
 const REFRESH_TOKEN_KEY = 'timbas_refresh_token'
 const IMPERSONATOR_TOKEN_KEY = 'timbas_impersonator_token'
 const SESSION_HINT_KEY = 'timbas_session_hint'
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 function getCookie(key: string): string | null {
   if (typeof window === 'undefined') return null
@@ -33,7 +34,7 @@ export function setToken(token: string) {
 
 export function clearToken() {
   if (typeof window !== 'undefined') {
-    void fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+    void fetch(`${API_URL}/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     })
