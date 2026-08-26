@@ -12,6 +12,7 @@ import type {
   TournamentEaPlayerStats,
   TournamentEaAwardsResponse,
   TournamentRegistrationInvite,
+  TournamentStaffCandidate,
 } from "./tournaments.types"
 
 export interface CreateTournamentInput {
@@ -83,6 +84,11 @@ export function listTournamentRegistrationInvites(id: string): Promise<Tournamen
 
 export function revokeTournamentRegistrationInvite(id: string, inviteId: string) {
   return remove<{ revoked: boolean }>(`/tournaments/${id}/invites/${inviteId}`)
+}
+
+export function searchTournamentStaffCandidates(id: string, search = ""): Promise<TournamentStaffCandidate[]> {
+  const query = new URLSearchParams({ search })
+  return request(`/tournaments/${id}/staff-candidates?${query}`)
 }
 
 export function updateTournament(id: string, input: Partial<CreateTournamentInput> & { status?: string }) {

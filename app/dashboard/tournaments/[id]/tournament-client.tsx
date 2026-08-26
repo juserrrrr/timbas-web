@@ -301,6 +301,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
       const link = `${window.location.origin}/dashboard/tournaments?invite=${invite.code}`
       await navigator.clipboard.writeText(link)
       setNotice("Convite individual copiado. O link funciona uma \u00fanica vez.")
+      setTab("invites")
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "N\u00e3o foi poss\u00edvel gerar o convite.")
     } finally {

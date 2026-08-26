@@ -223,6 +223,13 @@ export interface TournamentRegistrationInvite {
   claimedBy: UserRef | null
 }
 
+export interface TournamentStaffCandidate {
+  id: number
+  name: string
+  discordId: string
+  avatar: string | null
+}
+
 export interface TournamentEaPlayerStats {
   playerName: string
   externalPlayerId: string | null

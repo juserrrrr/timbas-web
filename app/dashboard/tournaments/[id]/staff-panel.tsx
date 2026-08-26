@@ -1,19 +1,37 @@
 "use client"
 
-import { useState } from "react"
-import { Crown, Loader2, ShieldCheck, Trash2, UserCog } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Check, ChevronsUpDown, Crown, Loader2, ShieldCheck, Trash2, UserCog, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { StatusPill } from "@/components/competitions/shared"
-import { removeStaff, setStaff, transferOwnership } from "@/lib/services/tournaments"
-import type { TournamentDetail } from "@/lib/services/tournaments.types"
+import { PlayerAvatar } from "@/components/player-avatar"
+import { removeStaff, searchTournamentStaffCandidates, setStaff, transferOwnership } from "@/lib/services/tournaments"
+import type { TournamentDetail, TournamentStaffCandidate } from "@/lib/services/tournaments.types"
 
 export function StaffPanel({ tournament, onChanged }: { tournament: TournamentDetail; onChanged: () => void }) {
-  const [userId, setUserId] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [search, setSearch] = useState("")
+  const [searching, setSearching] = useState(false)
+  const [candidates, setCandidates] = useState<TournamentStaffCandidate[]>([])
+  const [selected, setSelected] = useState<TournamentStaffCandidate | null>(null)
+
+  useEffect(() => {
+    if (!pickerOpen || !tournament.access.canManage) return
+    let active = true
+    const timer = window.setTimeout(() => {
+      setSearching(true)
+      void searchTournamentStaffCandidates(tournament.id, search)
+        .then((items) => { if (active) setCandidates(items) })
+        .catch((err) => { if (active) setError(err instanceof Error ? err.message : "N\u00e3o foi poss\u00edvel buscar pessoas.") })
+        .finally(() => { if (active) setSearching(false) })
+    }, 220)
+    return () => { active = false; window.clearTimeout(timer) }
+  }, [pickerOpen, search, tournament.access.canManage, tournament.id])
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true)
@@ -21,11 +39,22 @@ export function StaffPanel({ tournament, onChanged }: { tournament: TournamentDe
     try {
       await action()
       onChanged()
+      return true
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível concluir a ação.")
+      return false
     } finally {
       setBusy(false)
     }
+  }
+
+  const addModerator = async () => {
+    if (!selected) return
+    const added = await run(() => setStaff(tournament.id, selected.id, "MODERATOR"))
+    if (!added) return
+    setSelected(null)
+    setSearch("")
+    setCandidates([])
   }
 
   const owner = tournament.staff.find((member) => member.role === "OWNER")
@@ -96,23 +125,46 @@ export function StaffPanel({ tournament, onChanged }: { tournament: TournamentDe
 
         {tournament.access.canManage && (
           <div className="mt-4 border-t border-white/[0.06] pt-4">
-            <Label htmlFor="staff-user-id" className="text-[11px]">
-              Adicionar moderador pelo ID do usuário
-            </Label>
-            <div className="mt-1.5 flex gap-2">
-              <Input
-                id="staff-user-id"
-                value={userId}
-                onChange={(event) => setUserId(event.target.value.replace(/\D/g, ""))}
-                placeholder="Ex: 12"
-                className="border-white/10 bg-white/[0.03]"
-              />
-              <Button
-                onClick={() => void run(() => setStaff(tournament.id, Number(userId), "MODERATOR")).then(() => setUserId(""))}
-                disabled={busy || !userId}
-                variant="outline"
-              >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
+            <div className="mb-3 flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300 ring-1 ring-blue-500/20"><UserPlus className="h-4 w-4" /></span>
+              <div><p className="text-sm font-black text-white">Adicionar moderador</p><p className="mt-0.5 text-[11px] text-gray-500">Procure pelo nome da pessoa. Ela poder\u00e1 cuidar de partidas, resultados e aprova\u00e7\u00f5es.</p></div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={pickerOpen} className="h-12 min-w-0 flex-1 justify-between border-white/10 bg-black/20 px-3 hover:bg-white/[0.05]">
+                    {selected ? (
+                      <span className="flex min-w-0 items-center gap-2.5"><PlayerAvatar name={selected.name} discordId={selected.discordId} avatar={selected.avatar} size={64} className="h-8 w-8" /><span className="truncate text-sm font-bold text-white">{selected.name}</span></span>
+                    ) : (
+                      <span className="flex items-center gap-2 text-sm text-gray-500"><UserCog className="h-4 w-4" />Selecionar uma pessoa</span>
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-gray-600" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] border-white/10 bg-[#0b0b11] p-0 text-white">
+                  <Command shouldFilter={false} className="bg-transparent">
+                    <CommandInput value={search} onValueChange={setSearch} placeholder="Buscar pelo nome..." />
+                    <CommandList>
+                      {searching ? <div className="flex items-center justify-center gap-2 px-3 py-8 text-xs text-gray-500"><Loader2 className="h-4 w-4 animate-spin" />Buscando pessoas...</div> : (
+                        <>
+                          <CommandEmpty>Nenhuma pessoa encontrada.</CommandEmpty>
+                          <CommandGroup>
+                            {candidates.map((candidate) => (
+                              <CommandItem key={candidate.id} value={String(candidate.id)} onSelect={() => { setSelected(candidate); setPickerOpen(false) }} className="cursor-pointer gap-3 py-2.5 data-[selected=true]:bg-white/[0.07]">
+                                <PlayerAvatar name={candidate.name} discordId={candidate.discordId} avatar={candidate.avatar} size={64} className="h-9 w-9" />
+                                <span className="min-w-0 flex-1 truncate font-bold text-white">{candidate.name}</span>
+                                {selected?.id === candidate.id && <Check className="h-4 w-4 text-blue-400" />}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <Button onClick={() => void addModerator()} disabled={busy || !selected} className="h-12 bg-blue-600 px-5 text-white hover:bg-blue-500">
+                {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <UserPlus className="mr-1.5 h-4 w-4" />}Adicionar
               </Button>
             </div>
           </div>
