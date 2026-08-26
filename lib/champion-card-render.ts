@@ -38,7 +38,6 @@ function fitRosterText(ctx: CanvasRenderingContext2D, text: string, family: stri
 
 function rosterDividerPositions(columns: number) {
   return Array.from({ length: columns - 1 }, (_, index) => index + 1)
-    .filter((divider) => !(columns === 4 && divider === 2))
     .map((divider) => divider / columns)
 }
 
@@ -80,14 +79,8 @@ export async function renderChampionCard(canvas: HTMLCanvasElement, data: Champi
   const rosterTitleX = width * layout.rosterTitleX
   const rosterTitleY = height * layout.rosterTitleY
   const rosterTitleWidth = width * layout.rosterTitleWidth
-  const rosterTitleHeight = height * Math.max(0.022, layout.rosterTitleSize * 1.4)
-  ctx.fillStyle = "rgba(5, 5, 8, 0.95)"
-  ctx.fillRect(rosterTitleX - rosterTitleWidth / 2, rosterTitleY - rosterTitleHeight / 2, rosterTitleWidth, rosterTitleHeight)
-  ctx.strokeStyle = "rgba(201, 168, 93, 0.55)"
-  ctx.lineWidth = Math.max(2, width * 0.001)
-  ctx.strokeRect(rosterTitleX - rosterTitleWidth / 2, rosterTitleY - rosterTitleHeight / 2, rosterTitleWidth, rosterTitleHeight)
   ctx.fillStyle = "#d9bc78"
-  ctx.font = `600 ${width * layout.rosterTitleSize}px "Teko", sans-serif`
+  fitText(ctx, names.length ? "ELENCO CAMPEÃO" : "TÍTULO CONQUISTADO", "Teko", 600, rosterTitleWidth, width * layout.rosterTitleSize, width * 0.008)
   ctx.fillText(
     names.length ? "ELENCO CAMPEÃO" : "TÍTULO CONQUISTADO",
     rosterTitleX,
