@@ -43,7 +43,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [origin, setOrigin] = useState("")
   const [copied, setCopied] = useState(false)
   const [limit720p30fps, setLimit720p30fps] = useState(false)
-  const [previewVisible, setPreviewVisible] = useState(true)
+  const [previewVisible, setPreviewVisible] = useState(false)
 
   const connected = useSignalChannel(streamId, peerId, broadcast.handleEvent, true, undefined, onReconnect)
   const liveUrl = origin ? `${origin}/live/${stream.slug}` : ""
