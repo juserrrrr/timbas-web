@@ -1,9 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { CalendarClock, LockKeyhole, Plus, Timer, Trophy, Users } from "lucide-react"
+import { ArrowRight, CalendarClock, LockKeyhole, Plus, Swords, Timer, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { joinTournamentByInvite, listTournaments } from "@/lib/services/tournaments"
@@ -16,7 +16,6 @@ import {
   type TournamentSummary,
 } from "@/lib/services/tournaments.types"
 import {
-  CompetitionHeader,
   EmptyState,
   ErrorState,
   PageLoading,
@@ -54,6 +53,14 @@ function countdownLabel(target: string | null, now: number): string | null {
     : hours > 0
       ? `${hours}h ${minutes}m ${seconds}s`
       : `${minutes}m ${String(seconds).padStart(2, "0")}s`
+}
+
+function CardMetric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return <span className="flex min-w-0 flex-col items-center border-r border-white/[0.05] px-2 py-3 text-center last:border-0"><span className="text-blue-300">{icon}</span><span className="mt-1 text-[7px] font-black uppercase tracking-[0.12em] text-gray-700">{label}</span><strong className="mt-0.5 w-full truncate text-[10px] font-black text-gray-300">{value}</strong></span>
+}
+
+function TimelineRow({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return <div className="flex items-center justify-between gap-3 text-[10px]"><span className="flex items-center gap-1.5 text-gray-600"><CalendarClock className={`h-3.5 w-3.5 ${tone}`} />{label}</span><strong className="text-right font-bold text-gray-400">{value}</strong></div>
 }
 
 export default function TournamentsPage() {
@@ -113,35 +120,23 @@ export default function TournamentsPage() {
   if (error) return <ErrorState message={error} retry={() => void load()} />
 
   return (
-    <div className="dashboard-view space-y-6">
-      <CompetitionHeader
-        eyebrow="Competições"
-        title="Campeonatos"
-        subtitle="Monte chaves de qualquer jogo e valide os resultados com segurança."
-        icon={Trophy}
-        actions={canCreate ?
-          <Button onClick={() => setCreating(true)} className="bg-amber-500 text-black hover:bg-amber-400">
-            <Plus className="mr-1.5 h-4 w-4" />
-            Criar campeonato
-          </Button> : null
-        }
-      />
-
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setFilter(item.id)}
-            className={`cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
-              filter === item.id
-                ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-                : "border-white/[0.07] bg-white/[0.02] text-gray-500 hover:text-white"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+    <div className="dashboard-view space-y-5 pb-8">
+      <section className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#08090d] shadow-2xl shadow-black/30">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(37,99,235,0.18),transparent_38%),radial-gradient(circle_at_92%_0%,rgba(220,38,38,0.13),transparent_38%)]" />
+        <div className="relative flex flex-col gap-5 px-6 pb-6 pt-7 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10 text-blue-300 shadow-lg shadow-blue-950/30"><Trophy className="h-6 w-6" /></span>
+            <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Competições</p><h1 className="mt-1 text-3xl font-black tracking-tight text-white">Campeonatos</h1><p className="mt-1 text-sm text-gray-500">Chaves, grupos, partidas e resultados em um só lugar.</p></div>
+          </div>
+          {canCreate && <Button onClick={() => setCreating(true)} className="h-11 rounded-xl bg-blue-600 px-5 font-black text-white shadow-lg shadow-blue-950/30 hover:bg-blue-500"><Plus className="mr-1.5 h-4 w-4" />Criar campeonato</Button>}
+        </div>
+        <div className="relative flex gap-2 overflow-x-auto border-t border-white/[0.07] bg-black/10 px-6 py-3 [scrollbar-width:none] sm:px-8 [&::-webkit-scrollbar]:hidden">
+          {FILTERS.map((item) => {
+            const count = item.status ? tournaments.filter((tournament) => tournament.status === item.status).length : tournaments.length
+            return <button key={item.id} onClick={() => setFilter(item.id)} className={`flex h-9 flex-shrink-0 cursor-pointer items-center gap-2 rounded-xl border px-3.5 text-xs font-bold transition ${filter === item.id ? "border-blue-400/20 bg-blue-500/10 text-blue-200" : "border-transparent text-gray-500 hover:bg-white/[0.035] hover:text-white"}`}>{item.label}<span className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[9px] font-black ${filter === item.id ? "bg-blue-400/15 text-blue-200" : "bg-white/[0.04] text-gray-600"}`}>{count}</span></button>
+          })}
+        </div>
+      </section>
 
       {visible.length === 0 ? (
         <EmptyState
@@ -156,7 +151,7 @@ export default function TournamentsPage() {
           }
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {visible.map((tournament) => {
             const registrationCountdown = tournament.status === "REGISTRATION"
               ? countdownLabel(tournament.registrationEndsAt, now)
@@ -176,55 +171,37 @@ export default function TournamentsPage() {
               prefetch={false}
               className="text-left"
             >
-              <Card className="h-full border-white/[0.07] bg-white/[0.025] p-5 transition hover:border-amber-500/30 hover:bg-amber-500/[0.04]">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
-                      {tournament.gameLabel || GAME_LABELS[tournament.game]}
-                    </p>
-                    <h2 className="truncate text-lg font-black text-white">{tournament.name}</h2>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <Card className="group relative flex h-full min-h-[390px] flex-col overflow-hidden rounded-[24px] border-white/[0.08] bg-[#090a0e] p-0 transition duration-300 hover:-translate-y-1 hover:border-blue-400/25 hover:shadow-2xl hover:shadow-blue-950/20">
+                <div className={`h-1 w-full ${tournament.status === "RUNNING" ? "bg-emerald-500" : tournament.status === "REGISTRATION" ? "bg-gradient-to-r from-blue-500 to-red-500" : tournament.status === "FINISHED" ? "bg-blue-500" : tournament.status === "CANCELLED" ? "bg-red-500" : "bg-gray-700"}`} />
+                <div className="flex flex-1 flex-col p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-400/15 bg-blue-500/[0.08] text-blue-300"><Trophy className="h-4 w-4" /></span>
+                      <div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-blue-300">{tournament.gameLabel || GAME_LABELS[tournament.game]}</p><h2 className="mt-1 truncate text-lg font-black text-white">{tournament.name}</h2></div>
+                    </div>
                     <StatusPill tone={STATUS_TONES[tournament.status]}>{STATUS_LABELS[tournament.status]}</StatusPill>
-                    {tournament.accessMode === "INVITE_ONLY" && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-blue-400/25 bg-blue-400/10 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-blue-300">
-                        <LockKeyhole className="h-3 w-3" />
-                        Somente por convite
-                      </span>
-                    )}
                   </div>
-                </div>
 
-                {tournament.description && (
-                  <p className="mt-2 line-clamp-2 text-sm text-gray-500">{tournament.description}</p>
-                )}
+                  <p className="mt-4 min-h-10 line-clamp-2 text-xs leading-relaxed text-gray-500">{tournament.description || "Competição organizada pelo Timbas."}</p>
 
-                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-500">
-                  <span className="font-semibold text-gray-400">{FORMAT_LABELS[tournament.format]}</span>
-                  <span className="flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    {tournament.teamCount}/{tournament.maxTeams} times
-                  </span>
-                  <span>{tournament.matchCount} partidas</span>
-                </div>
+                  {tournament.accessMode === "INVITE_ONLY" && <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-blue-400/20 bg-blue-400/[0.08] px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-blue-200"><LockKeyhole className="h-3 w-3" />Entrada somente por convite</span>}
 
-                <div className="mt-4 space-y-2 rounded-xl border border-white/[0.06] bg-black/20 p-3">
-                  <div className="flex items-center justify-between gap-3 text-[11px]">
-                    <span className="flex items-center gap-1.5 text-gray-500"><CalendarClock className="h-3.5 w-3.5 text-amber-400" />Fim das inscrições</span>
-                    <span className="font-semibold text-gray-300">{tournament.registrationEndsAt ? formatDateTime(tournament.registrationEndsAt) : "Não definido"}</span>
+                  <div className="mt-4 grid grid-cols-3 overflow-hidden rounded-xl border border-white/[0.06] bg-black/20">
+                    <CardMetric icon={<Swords className="h-3.5 w-3.5" />} label="Formato" value={FORMAT_LABELS[tournament.format]} />
+                    <CardMetric icon={<Users className="h-3.5 w-3.5" />} label="Times" value={`${tournament.teamCount}/${tournament.maxTeams}`} />
+                    <CardMetric icon={<Trophy className="h-3.5 w-3.5" />} label="Partidas" value={String(tournament.matchCount)} />
                   </div>
-                  <div className="flex items-center justify-between gap-3 text-[11px]">
-                    <span className="flex items-center gap-1.5 text-gray-500"><CalendarClock className="h-3.5 w-3.5 text-blue-400" />Início</span>
-                    <span className="font-semibold text-gray-300">{tournament.startsAt ? formatDateTime(tournament.startsAt) : "Não definido"}</span>
-                  </div>
-                  {nextLabel && <div className={`flex items-center gap-1.5 border-t border-white/[0.06] pt-2 text-[11px] font-black ${registrationCountdown ? "text-amber-300" : startCountdown ? "text-blue-300" : "text-emerald-300"}`}><Timer className="h-3.5 w-3.5" />{nextLabel}</div>}
-                </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-white/[0.05] pt-3">
-                  <span className="truncate text-[11px] text-gray-600">
-                    {tournament.owner ? `Organizado por ${tournament.owner.name}` : "Sem organizador"}
-                  </span>
-                  <span className="text-[11px] text-gray-600">Criado em {formatDateTime(tournament.createdAt)}</span>
+                  <div className="mt-4 space-y-2.5 rounded-xl border border-white/[0.06] bg-white/[0.018] p-3">
+                    <TimelineRow label="Fim das inscrições" value={tournament.registrationEndsAt ? formatDateTime(tournament.registrationEndsAt) : "Não definido"} tone="text-red-300" />
+                    <TimelineRow label="Início" value={tournament.startsAt ? formatDateTime(tournament.startsAt) : "Não definido"} tone="text-blue-300" />
+                    {nextLabel && <div className={`flex items-center gap-1.5 border-t border-white/[0.06] pt-2.5 text-[10px] font-black ${registrationCountdown ? "text-red-300" : startCountdown ? "text-blue-300" : "text-emerald-300"}`}><Timer className="h-3.5 w-3.5" />{nextLabel}</div>}
+                  </div>
+
+                  <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+                    <span className="min-w-0 truncate text-[10px] text-gray-600">{tournament.owner ? `Por ${tournament.owner.name}` : "Sem organizador"}</span>
+                    <span className="flex shrink-0 items-center gap-1 text-[10px] font-black text-gray-500 transition group-hover:text-blue-300">Abrir campeonato<ArrowRight className="h-3.5 w-3.5" /></span>
+                  </div>
                 </div>
               </Card>
             </Link>
