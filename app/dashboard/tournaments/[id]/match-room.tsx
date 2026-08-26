@@ -5,7 +5,7 @@ import { CalendarClock, Camera, Check, Clock, DatabaseZap, Loader2, RefreshCw, S
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { StatusPill, TeamCrest, formatDateTime } from "@/components/competitions/shared"
+import { StatusPill, TeamCrest, formatDateTime, formatDurationSeconds } from "@/components/competitions/shared"
 import {
   claimMatchResult,
   checkTournamentEaResult,
@@ -49,12 +49,14 @@ export function MatchRoomDialog({
   onOpenChange,
   onChanged,
   onOpenPhoto,
+  onCancelWalkover,
 }: {
   tournament: TournamentDetail
   match: TournamentMatch
   onOpenChange: (open: boolean) => void
   onChanged: () => void
   onOpenPhoto: () => void
+  onCancelWalkover: () => void
 }) {
   const [room, setRoom] = useState<MatchRoom | null>(null)
   const [body, setBody] = useState("")
@@ -367,7 +369,7 @@ export function MatchRoomDialog({
                       <span className="min-w-0">
                         <span className={`block text-[10px] font-bold ${candidate.suspiciousScore ? "text-red-300" : "text-cyan-300"}`}>{candidate.suspiciousScore ? "Revisão obrigatória" : index === 0 ? "Recomendada, 89+ min" : `Opção ${index + 1}`}</span>
                         <span className="block text-[10px] text-gray-500">{formatDateTime(candidate.playedAt)}</span>
-                        {candidate.durationSeconds !== undefined && <span className="block text-[9px] text-gray-600">Duração detectada: {Math.floor(candidate.durationSeconds / 60)} min</span>}
+                        {candidate.durationSeconds !== undefined && <span className="block text-[9px] text-gray-600">Duração detectada: {formatDurationSeconds(candidate.durationSeconds)}</span>}
                         <span className="block font-mono text-[9px] text-gray-600">EA #{candidate.eaMatchId}</span>
                       </span>
                       <span className="ml-3 text-right">
@@ -385,28 +387,34 @@ export function MatchRoomDialog({
             </div>
           )}
 
-          {closed && tournament.labMode && match.phase === "GROUP" && room?.canModerate && (
+          {closed && room?.canModerate && ((tournament.labMode && match.phase === "GROUP") || (match.status === "WALKOVER" && (match.phase === "GROUP" || match.phase === "LEAGUE"))) && (
             <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.045] p-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-[11px] font-bold text-amber-200">O placar foi lançado errado?</p>
-                  <p className="mt-0.5 text-[10px] text-gray-600">Corrija manualmente ou consulte novamente o mesmo EA Match ID.</p>
+                  <p className="text-[11px] font-bold text-amber-200">{match.status === "WALKOVER" ? "O W.O. foi lançado errado?" : "O placar foi lançado errado?"}</p>
+                  <p className="mt-0.5 text-[10px] text-gray-600">{match.status === "WALKOVER" ? "Corrija o placar mantendo o W.O. ou cancele o W.O. e registre um resultado normal." : "Corrija manualmente ou consulte novamente o mesmo EA Match ID."}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" disabled={busy !== ""} onClick={() => void rescanClosedEa()} className="h-8 border-cyan-500/25 px-3 text-[11px] text-cyan-300 hover:bg-cyan-500/10">
+                  {tournament.labMode && match.phase === "GROUP" && <Button size="sm" variant="outline" disabled={busy !== ""} onClick={() => void rescanClosedEa()} className="h-8 border-cyan-500/25 px-3 text-[11px] text-cyan-300 hover:bg-cyan-500/10">
                     {busy === "ea-rescan" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="mr-1.5 h-3.5 w-3.5" />}
                     Reanalisar na EA
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={onOpenPhoto} className="h-8 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
+                  </Button>}
+                  {tournament.labMode && match.phase === "GROUP" && <Button size="sm" variant="outline" onClick={onOpenPhoto} className="h-8 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
                     <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Corrigir resultado
-                  </Button>
+                    {match.status === "WALKOVER" ? "Corrigir placar do W.O." : "Corrigir resultado"}
+                  </Button>}
+                  {match.status === "WALKOVER" && (
+                    <Button size="sm" onClick={onCancelWalkover} className="h-8 bg-emerald-500 px-3 text-[11px] text-black hover:bg-emerald-400">
+                      <Check className="mr-1.5 h-3.5 w-3.5" />
+                      Cancelar W.O. e definir placar
+                    </Button>
+                  )}
                 </div>
               </div>
-              {eaRescan && (
+              {tournament.labMode && match.phase === "GROUP" && eaRescan && (
                 <div className={`rounded-md border p-2 text-[10px] ${eaRescan.kind === "CONSISTENT" ? "border-emerald-500/20 bg-emerald-500/[0.05] text-emerald-300" : "border-red-500/20 bg-red-500/[0.05] text-red-300"}`}>
                   <p className="font-bold">EA: {eaRescan.officialHomeScore} × {eaRescan.officialAwayScore} · SCORE: {eaRescan.inferredHomeScore} × {eaRescan.inferredAwayScore}</p>
-                  <p className="mt-1 text-gray-500">Duração detectada: {eaRescan.durationSeconds}s · userResult anormal: {eaRescan.nonZeroUserResults}/{eaRescan.playerCount} · {eaRescan.restoredPlayerStats} estatísticas restauradas</p>
+                  <p className="mt-1 text-gray-500">Duração detectada: {formatDurationSeconds(eaRescan.durationSeconds)} · userResult anormal: {eaRescan.nonZeroUserResults}/{eaRescan.playerCount} · {eaRescan.restoredPlayerStats} estatísticas restauradas</p>
                   {eaRescan.kind === "CONSISTENT" ? <p className="mt-1">O cabeçalho e o SCORE dos atletas estão consistentes.</p> : (
                     <Button size="sm" disabled={busy !== ""} onClick={() => void applyEaRescan()} className="mt-2 h-7 bg-emerald-500 px-2 text-[10px] font-bold text-black hover:bg-emerald-400">
                       {busy === "ea-rescan-apply" ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}

@@ -163,6 +163,13 @@ export function updateTeam(id: string, teamId: string, input: Record<string, unk
   return patch<TournamentTeam>(`/tournaments/${id}/teams/${teamId}`, input)
 }
 
+export function replaceTournamentTeamEaClub(id: string, teamId: string, name: string) {
+  return patch<TournamentTeam>(`/tournaments/${id}/teams/${teamId}/ea-club`, {
+    name,
+    platform: "common-gen5",
+  })
+}
+
 export function removeTeam(id: string, teamId: string) {
   return remove<{ deleted: boolean }>(`/tournaments/${id}/teams/${teamId}`)
 }
@@ -226,6 +233,10 @@ export function getLabEaScoreAudit(id: string) {
 
 export function discardInterruptedLabEaResult(id: string, matchId: string) {
   return post<TournamentMatch>(`/tournaments/${id}/matches/${matchId}/lab/discard-ea-result`)
+}
+
+export function cancelTournamentWalkover(id: string, matchId: string, homeScore: number, awayScore: number) {
+  return post<TournamentMatch>(`/tournaments/${id}/matches/${matchId}/cancel-walkover`, { homeScore, awayScore })
 }
 
 export function scheduleMatch(id: string, matchId: string, scheduledAt: string) {

@@ -18,6 +18,10 @@ export function formatCoins(value: number) {
   return value.toLocaleString("pt-BR")
 }
 
+export function formatDurationSeconds(seconds: number) {
+  return `${Math.floor(seconds / 60)} min ${seconds % 60} s (${seconds} segundos)`
+}
+
 export function CompetitionHeader({
   eyebrow,
   title,

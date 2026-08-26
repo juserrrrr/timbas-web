@@ -17,7 +17,6 @@ import {
   Swords,
   Table2,
   Trophy,
-  TriangleAlert,
   Users,
   UserPlus,
 } from "lucide-react"
@@ -32,7 +31,7 @@ import {
   formatDateTime,
 } from "@/components/competitions/shared"
 import { ReportResultDialog } from "@/components/competitions/report-result-dialog"
-import { buildLabTournamentKnockout, correctLabTournamentResult, declareWalkover, discardInterruptedLabEaResult, getLabEaScoreAudit, getTournament, rebuildLabTournamentKnockout, reportResult, startTournament, updateTournament, type LabEaScoreAuditItem } from "@/lib/services/tournaments"
+import { buildLabTournamentKnockout, cancelTournamentWalkover, correctLabTournamentResult, declareWalkover, getLabEaScoreAudit, getTournament, rebuildLabTournamentKnockout, reportResult, startTournament, updateTournament, type LabEaScoreAuditItem } from "@/lib/services/tournaments"
 import {
   FORMAT_LABELS,
   GAME_LABELS,
@@ -72,10 +71,10 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const [tab, setTab] = useState<TabId>("bracket")
   const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(null)
   const [photoMatch, setPhotoMatch] = useState<TournamentMatch | null>(null)
+  const [cancelingWalkover, setCancelingWalkover] = useState(false)
   const [starting, setStarting] = useState(false)
   const [publishingKnockout, setPublishingKnockout] = useState(false)
   const [scoreAudit, setScoreAudit] = useState<LabEaScoreAuditItem[]>([])
-  const [fixingAuditMatchId, setFixingAuditMatchId] = useState("")
   const [notice, setNotice] = useState("")
   const [now, setNow] = useState(() => Date.now())
   const [startWhen, setStartWhen] = useState("")
@@ -191,7 +190,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const canReport =
     photoMatch !== null &&
     Boolean(photoMatch.homeTeamId && photoMatch.awayTeamId) &&
-    (correctingLabResult || (
+    (cancelingWalkover || correctingLabResult || (
       photoMatch.status !== "FINISHED" &&
       photoMatch.status !== "WALKOVER" &&
       (tournament.access.canModerate ||
@@ -337,38 +336,6 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         </button>
       )}
 
-      {tab === "proofs" && scoreAudit.length > 0 && (
-        <div className="space-y-3 rounded-2xl border border-red-500/30 bg-red-500/[0.055] p-4">
-          <div className="flex items-start gap-2">
-            <TriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-300" />
-            <div><p className="text-sm font-black text-red-200">Auditoria encontrou {scoreAudit.length} registro(s) inconsistente(s) da EA</p><p className="mt-1 text-[11px] text-gray-400">Partidas completas usam o <code>SCORE</code> predominante dos atletas. Tentativas curtas devem ser descartadas e jogadas novamente.</p></div>
-          </div>
-          <div className="grid gap-2 lg:grid-cols-2">
-            {scoreAudit.map((item) => (
-              <div key={item.matchId} className="rounded-xl border border-white/[0.07] bg-black/25 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{item.label ?? "Fase de grupos"}</p>
-                <p className="mt-1 text-xs font-bold text-white">{item.homeTeamName} × {item.awayTeamName}</p>
-                <div className="mt-2 flex items-center justify-between gap-3 text-[11px]"><span className="text-red-300">EA: <b>{item.officialHomeScore} × {item.officialAwayScore}</b></span>{item.kind === "SCORE_MISMATCH" ? <span className="text-emerald-300">SCORE: <b>{item.inferredHomeScore} × {item.inferredAwayScore}</b></span> : <span className="text-amber-300">Interrompida em {item.durationSeconds}s</span>}</div>
-                <p className="mt-1 text-[9px] leading-relaxed text-gray-500">{item.reason}</p>
-                <p className="mt-1 font-mono text-[9px] text-gray-600">EA #{item.eaMatchId ?? "sem ID"}</p>
-                <Button size="sm" disabled={fixingAuditMatchId !== ""} onClick={() => {
-                  setFixingAuditMatchId(item.matchId)
-                  const action = item.kind === "INTERRUPTED"
-                    ? discardInterruptedLabEaResult(tournament.id, item.matchId)
-                    : correctLabTournamentResult(tournament.id, item.matchId, item.inferredHomeScore, item.inferredAwayScore)
-                  void action
-                    .then(async () => { await load(); setNotice(item.kind === "INTERRUPTED" ? "Registro interrompido descartado. A partida foi reaberta." : `Resultado corrigido para ${item.inferredHomeScore} × ${item.inferredAwayScore} e classificação recalculada.`) })
-                    .catch((err) => setNotice(err instanceof Error ? err.message : "Não foi possível corrigir o resultado."))
-                    .finally(() => setFixingAuditMatchId(""))
-                }} className="mt-3 w-full bg-emerald-500 text-[10px] font-bold text-black hover:bg-emerald-400">
-                  {fixingAuditMatchId === item.matchId ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}{item.kind === "INTERRUPTED" ? "Descartar e reabrir" : `Aplicar ${item.inferredHomeScore} × ${item.inferredAwayScore}`}
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className={`rounded-2xl border p-4 ${untilStart !== null && untilStart > 0 ? "border-blue-500/30 bg-blue-500/[0.06]" : "border-emerald-500/25 bg-emerald-500/[0.05]"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -447,7 +414,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
       {tab === "matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} />}
       {tab === "teams" && <TeamsPanel tournament={tournament} onChanged={() => void load()} />}
       {tab === "ea-stats" && <EaStatsView tournamentId={tournament.id} finished={tournament.status === "FINISHED"} />}
-      {tab === "proofs" && <ProofReviewPanel tournamentId={tournament.id} onReviewed={() => void load()} />}
+      {tab === "proofs" && <ProofReviewPanel tournamentId={tournament.id} scoreAudit={scoreAudit} onReviewed={() => void load()} onNotice={setNotice} />}
       {tab === "staff" && <StaffPanel tournament={tournament} onChanged={() => void load()} />}
 
       {selectedMatch && canOpenRoom(selectedMatch) && (
@@ -457,6 +424,12 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
           onOpenChange={(open) => !open && setSelectedMatch(null)}
           onChanged={() => void load()}
           onOpenPhoto={() => {
+            setCancelingWalkover(false)
+            setPhotoMatch(selectedMatch)
+            setSelectedMatch(null)
+          }}
+          onCancelWalkover={() => {
+            setCancelingWalkover(true)
             setPhotoMatch(selectedMatch)
             setSelectedMatch(null)
           }}
@@ -466,7 +439,12 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
       {photoMatch && (
         <ReportResultDialog
           open={canReport}
-          onOpenChange={(open) => !open && setPhotoMatch(null)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPhotoMatch(null)
+              setCancelingWalkover(false)
+            }
+          }}
           homeName={photoMatch.homeTeam?.name ?? "Mandante"}
           awayName={photoMatch.awayTeam?.name ?? "Visitante"}
           homeLogo={photoMatch.homeTeam?.logoUrl}
@@ -475,8 +453,14 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
           canModerate={tournament.access.canModerate}
           initialHomeScore={correctingLabResult ? photoMatch.homeScore : null}
           initialAwayScore={correctingLabResult ? photoMatch.awayScore : null}
-          title={correctingLabResult ? "Corrigir resultado" : "Lançar resultado"}
+          title={cancelingWalkover ? "Cancelar W.O. e definir placar" : correctingLabResult ? "Corrigir resultado" : "Lançar resultado"}
           onSubmit={async (input) => {
+            if (cancelingWalkover) {
+              await cancelTournamentWalkover(tournament.id, photoMatch.id, input.homeScore, input.awayScore)
+              await load()
+              setNotice(`W.O. cancelado. Resultado normal definido como ${input.homeScore} × ${input.awayScore}.`)
+              return { autoApproved: true }
+            }
             if (correctingLabResult) {
               await correctLabTournamentResult(tournament.id, photoMatch.id, input.homeScore, input.awayScore)
               await load()
@@ -495,7 +479,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
             return { autoApproved: result.autoApproved }
           }}
           onWalkover={
-            tournament.access.canModerate
+            tournament.access.canModerate && !cancelingWalkover
               ? async ({ winner, reason, homeScore, awayScore }) => {
                   const winnerTeamId = winner === "HOME" ? photoMatch.homeTeamId : photoMatch.awayTeamId
                   if (!winnerTeamId) return

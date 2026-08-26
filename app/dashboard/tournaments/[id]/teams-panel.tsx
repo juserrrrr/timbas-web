@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { BadgeCheck, Loader2, Plus, Search, Trash2, UserPlus, Users } from "lucide-react"
+import { BadgeCheck, Loader2, Plus, RefreshCw, Search, Trash2, UserPlus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { EmptyState, StatusPill, TeamCrest } from "@/components/competitions/shared"
-import { addTeam, removeTeam, validateTournamentEaClub } from "@/lib/services/tournaments"
-import type { TournamentDetail } from "@/lib/services/tournaments.types"
+import { addTeam, removeTeam, replaceTournamentTeamEaClub, validateTournamentEaClub } from "@/lib/services/tournaments"
+import type { TournamentDetail, TournamentTeam } from "@/lib/services/tournaments.types"
 
 export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDetail; onChanged: () => void }) {
   const [name, setName] = useState("")
@@ -16,6 +17,9 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
   const [busy, setBusy] = useState(false)
   const [validating, setValidating] = useState(false)
   const [eaClub, setEaClub] = useState<{ externalClubId: string; name: string; platform: string } | null>(null)
+  const [replacementTeam, setReplacementTeam] = useState<TournamentTeam | null>(null)
+  const [replacementName, setReplacementName] = useState("")
+  const [replacing, setReplacing] = useState(false)
   const [error, setError] = useState("")
 
   const { access, status } = tournament
@@ -72,6 +76,22 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
       setError(err instanceof Error ? err.message : "Não foi possível remover o time.")
     } finally {
       setBusy(false)
+    }
+  }
+
+  const replaceClub = async () => {
+    if (!replacementTeam) return
+    setReplacing(true)
+    setError("")
+    try {
+      await replaceTournamentTeamEaClub(tournament.id, replacementTeam.id, replacementName.trim())
+      setReplacementTeam(null)
+      setReplacementName("")
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível substituir o clube.")
+    } finally {
+      setReplacing(false)
     }
   }
 
@@ -179,6 +199,20 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
                   </div>
                   {isMine && <StatusPill tone="warn">Seu time</StatusPill>}
                   {team.eliminated && <StatusPill tone="danger">Eliminado</StatusPill>}
+                  {access.canModerate && tournament.game === "EA_FC" && (
+                    <button
+                      onClick={() => {
+                        setReplacementTeam(team)
+                        setReplacementName("")
+                        setError("")
+                      }}
+                      disabled={busy}
+                      aria-label={`Substituir ${team.name}`}
+                      className="flex-shrink-0 cursor-pointer rounded-lg p-1.5 text-gray-600 transition hover:bg-blue-500/10 hover:text-blue-400"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                  )}
                   {canRemove && (
                     <button
                       onClick={() => void drop(team.id)}
@@ -194,6 +228,37 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
             })}
         </div>
       )}
+
+      <Dialog open={replacementTeam !== null} onOpenChange={(open) => !open && setReplacementTeam(null)}>
+        <DialogContent className="border-white/10 bg-[#0b0b12] text-white">
+          <DialogHeader>
+            <DialogTitle>Substituir clube inscrito</DialogTitle>
+            <DialogDescription>
+              A vaga de {replacementTeam?.name} será mantida, incluindo grupo, rodada e confrontos. Informe o nome exato do novo clube na EA.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={replacementName}
+              onChange={(event) => setReplacementName(event.target.value)}
+              placeholder="Nome exato do novo clube na EA"
+              disabled={replacing}
+              className="border-white/10 bg-white/[0.03]"
+            />
+            <p className="text-[11px] text-amber-300/80">
+              A troca é bloqueada se esse time já tiver resultado, W.O. ou aprovação pendente. O capitão atual permanece responsável pela vaga.
+            </p>
+            {error && <p className="text-[11px] text-red-400">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" disabled={replacing} onClick={() => setReplacementTeam(null)}>Cancelar</Button>
+              <Button disabled={replacing || replacementName.trim().length < 2} onClick={() => void replaceClub()} className="bg-blue-500 text-white hover:bg-blue-400">
+                {replacing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
+                Substituir clube
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
