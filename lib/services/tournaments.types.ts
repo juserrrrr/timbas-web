@@ -223,6 +223,7 @@ export interface TournamentEaPlayerStats {
   goals: number
   assists: number
   goalContributions: number
+  craqueScore?: number | null
   averageRating: number | null
   mvps: number
   passesAttempted: number

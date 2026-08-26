@@ -305,13 +305,14 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
     {players.length > 0 && <Card className="overflow-hidden border-white/[0.07] bg-white/[0.025]">
       <div className="border-b border-white/[0.06] p-4">
         <h3 className="flex items-center gap-2 text-sm font-black text-white"><Medal className="h-4 w-4 text-amber-400" />Estatísticas do campeonato</h3>
-        <p className="mt-1 text-[11px] text-gray-500">Dados sincronizados dos amistosos no EA Sports FC Clubs. A ordem é por participação em gols; as demais colunas são as mesmas que entram no índice do craque.</p>
+        <p className="mt-1 text-[11px] text-gray-500">Dados sincronizados dos amistosos no EA Sports FC Clubs. A ordem segue o índice ponderado do craque; jogadores sem o mínimo de partidas aparecem depois dos elegíveis.</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1040px] text-left text-xs">
           <thead className="bg-white/[0.025] text-[10px] uppercase tracking-wider text-gray-600">
             <tr>
               <th className="px-4 py-3">Jogador</th>
+              <th className="px-3 py-3" title="Índice ponderado do craque">Índice</th>
               <th className="px-3 py-3" title="Partidas">J</th>
               <th className="px-3 py-3" title="Gols">G</th>
               <th className="px-3 py-3" title="Assistências">A</th>
@@ -330,6 +331,7 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
             {players.map((player, index) => (
               <tr key={`${player.team?.id}:${player.externalPlayerId ?? player.playerName}`} className="text-gray-300">
                 <td className="px-4 py-3"><div className="flex items-center gap-2"><span className="w-5 text-center font-black text-gray-600">{index + 1}</span><TeamCrest name={player.team?.name} logoUrl={player.team?.logoUrl} size={28} /><div><p className="font-bold text-white">{player.playerName}</p><p className="text-[10px] text-gray-600">{player.team?.name ?? "-"}</p></div></div></td>
+                <td className="px-3 py-3 font-black text-violet-300">{player.craqueScore == null ? <span className="text-[10px] font-medium text-gray-600">Inelegível</span> : player.craqueScore.toFixed(2).replace(".", ",")}</td>
                 <td className="px-3 py-3">{player.appearances}</td>
                 <td className="px-3 py-3 font-black text-emerald-300">{player.goals}</td>
                 <td className="px-3 py-3 text-blue-300">{player.assists}</td>
