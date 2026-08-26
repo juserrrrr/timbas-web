@@ -1,20 +1,27 @@
 "use client"
 
-import { useState } from "react"
-import { BadgeCheck, Loader2, Plus, RefreshCw, Search, Trash2, UserPlus, Users } from "lucide-react"
+import { useEffect, useState } from "react"
+import { BadgeCheck, Check, ChevronsUpDown, Loader2, Plus, RefreshCw, Search, Trash2, UserPlus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EmptyState, StatusPill, TeamCrest } from "@/components/competitions/shared"
-import { addTeam, removeTeam, replaceTournamentTeamEaClub, validateTournamentEaClub } from "@/lib/services/tournaments"
-import type { TournamentDetail, TournamentTeam } from "@/lib/services/tournaments.types"
+import { PlayerAvatar } from "@/components/player-avatar"
+import { addTeam, removeTeam, replaceTournamentTeamEaClub, searchTournamentTeamCandidates, validateTournamentEaClub } from "@/lib/services/tournaments"
+import type { TournamentDetail, TournamentStaffCandidate, TournamentTeam } from "@/lib/services/tournaments.types"
 
 export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDetail; onChanged: () => void }) {
   const [name, setName] = useState("")
   const [tag, setTag] = useState("")
-  const [captainUsername, setCaptainUsername] = useState("")
+  const [captain, setCaptain] = useState<TournamentStaffCandidate | null>(null)
+  const [captainPickerOpen, setCaptainPickerOpen] = useState(false)
+  const [captainSearch, setCaptainSearch] = useState("")
+  const [captainCandidates, setCaptainCandidates] = useState<TournamentStaffCandidate[]>([])
+  const [searchingCaptain, setSearchingCaptain] = useState(false)
   const [busy, setBusy] = useState(false)
   const [validating, setValidating] = useState(false)
   const [eaClub, setEaClub] = useState<{ externalClubId: string; name: string; platform: string } | null>(null)
@@ -42,6 +49,19 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
   const isFull = tournament.teams.length >= tournament.maxTeams
   const canAdd = registrationOpen && !isFull && (access.canModerate || !alreadyIn)
 
+  useEffect(() => {
+    if (!captainPickerOpen || !access.canModerate) return
+    let active = true
+    const timer = window.setTimeout(() => {
+      setSearchingCaptain(true)
+      void searchTournamentTeamCandidates(tournament.id, captainSearch)
+        .then((items) => { if (active) setCaptainCandidates(items) })
+        .catch((err) => { if (active) setError(err instanceof Error ? err.message : "N\u00e3o foi poss\u00edvel buscar pessoas.") })
+        .finally(() => { if (active) setSearchingCaptain(false) })
+    }, 220)
+    return () => { active = false; window.clearTimeout(timer) }
+  }, [access.canModerate, captainPickerOpen, captainSearch, tournament.id])
+
   const submit = async () => {
     setBusy(true)
     setError("")
@@ -51,11 +71,13 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
         tag: tag.trim() || undefined,
         eaClubId: eaClub?.externalClubId,
         eaPlatform: eaClub?.platform,
-        captainUsername: access.canModerate ? captainUsername.trim() : undefined,
+        captainUserId: access.canModerate ? captain?.id : undefined,
       })
       setName("")
       setTag("")
-      setCaptainUsername("")
+      setCaptain(null)
+      setCaptainSearch("")
+      setCaptainCandidates([])
       setEaClub(null)
       onChanged()
     } catch (err) {
@@ -148,7 +170,41 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
             )}
             </div>
             <div className={`grid items-center gap-2 ${access.canModerate ? "sm:grid-cols-[minmax(0,1fr)_7rem_auto]" : "sm:grid-cols-[minmax(0,1fr)_auto]"}`}>
-            {access.canModerate && <Input value={captainUsername} onChange={(event) => setCaptainUsername(event.target.value)} placeholder="Nome exato do usuário responsável" className="h-10 min-w-0 border-white/10 bg-white/[0.03]" />}
+            {access.canModerate && (
+              <Popover open={captainPickerOpen} onOpenChange={setCaptainPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={captainPickerOpen} className="h-10 min-w-0 justify-between border-white/10 bg-white/[0.03] px-2.5 hover:bg-white/[0.06]">
+                    {captain ? (
+                      <span className="flex min-w-0 items-center gap-2"><PlayerAvatar name={captain.name} discordId={captain.discordId} avatar={captain.avatar} size={64} className="h-7 w-7" /><span className="truncate text-xs font-bold text-white">{captain.name}</span></span>
+                    ) : (
+                      <span className="truncate text-xs text-gray-500">Selecionar responsável</span>
+                    )}
+                    <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 text-gray-600" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] border-white/10 bg-[#0b0b11] p-0 text-white">
+                  <Command shouldFilter={false} className="bg-transparent">
+                    <CommandInput value={captainSearch} onValueChange={setCaptainSearch} placeholder="Buscar pelo nome..." />
+                    <CommandList>
+                      {searchingCaptain ? <div className="flex items-center justify-center gap-2 px-3 py-8 text-xs text-gray-500"><Loader2 className="h-4 w-4 animate-spin" />Buscando pessoas...</div> : (
+                        <>
+                          <CommandEmpty>Nenhuma pessoa encontrada.</CommandEmpty>
+                          <CommandGroup>
+                            {captainCandidates.map((candidate) => (
+                              <CommandItem key={candidate.id} value={String(candidate.id)} onSelect={() => { setCaptain(candidate); setCaptainPickerOpen(false) }} className="cursor-pointer gap-3 py-2.5 data-[selected=true]:bg-white/[0.07]">
+                                <PlayerAvatar name={candidate.name} discordId={candidate.discordId} avatar={candidate.avatar} size={64} className="h-9 w-9" />
+                                <span className="min-w-0 flex-1 truncate font-bold text-white">{candidate.name}</span>
+                                {captain?.id === candidate.id && <Check className="h-4 w-4 text-amber-400" />}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            )}
             <Input
               value={tag}
               onChange={(event) => setTag(event.target.value.toUpperCase().slice(0, 6))}
@@ -157,7 +213,7 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
             />
             <Button
               onClick={() => void submit()}
-              disabled={busy || name.trim().length < 2 || (access.canModerate && captainUsername.trim().length < 2) || (tournament.game === "EA_FC" && !eaClub)}
+              disabled={busy || name.trim().length < 2 || (access.canModerate && !captain) || (tournament.game === "EA_FC" && !eaClub)}
               className="h-10 rounded-md bg-amber-500 px-4 text-black hover:bg-amber-400"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}

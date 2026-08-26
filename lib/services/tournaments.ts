@@ -91,6 +91,11 @@ export function searchTournamentStaffCandidates(id: string, search = ""): Promis
   return request(`/tournaments/${id}/staff-candidates?${query}`)
 }
 
+export function searchTournamentTeamCandidates(id: string, search = ""): Promise<TournamentStaffCandidate[]> {
+  const query = new URLSearchParams({ search })
+  return request(`/tournaments/${id}/team-candidates?${query}`)
+}
+
 export function updateTournament(id: string, input: Partial<CreateTournamentInput> & { status?: string }) {
   return patch<TournamentSummary>(`/tournaments/${id}`, input)
 }
@@ -105,7 +110,7 @@ export function startTournament(id: string) {
 
 export function addTeam(
   id: string,
-  input: { name: string; tag?: string; logoUrl?: string; eaClubId?: string; eaPlatform?: string; memberIds?: number[]; captainUsername?: string },
+  input: { name: string; tag?: string; logoUrl?: string; eaClubId?: string; eaPlatform?: string; memberIds?: number[]; captainUsername?: string; captainUserId?: number },
 ) {
   return post<TournamentTeam>(`/tournaments/${id}/teams`, input)
 }
