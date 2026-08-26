@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { CalendarClock, Plus, Timer, Trophy, Users } from "lucide-react"
+import { CalendarClock, LockKeyhole, Plus, Timer, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { joinTournamentByInvite, listTournaments } from "@/lib/services/tournaments"
@@ -184,7 +184,15 @@ export default function TournamentsPage() {
                     </p>
                     <h2 className="truncate text-lg font-black text-white">{tournament.name}</h2>
                   </div>
-                  <StatusPill tone={STATUS_TONES[tournament.status]}>{STATUS_LABELS[tournament.status]}</StatusPill>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <StatusPill tone={STATUS_TONES[tournament.status]}>{STATUS_LABELS[tournament.status]}</StatusPill>
+                    {tournament.accessMode === "INVITE_ONLY" && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-blue-400/25 bg-blue-400/10 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-blue-300">
+                        <LockKeyhole className="h-3 w-3" />
+                        Somente por convite
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {tournament.description && (
