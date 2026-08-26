@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { CompetitionHeader, ErrorState, PageLoading, formatDateTime } from "@/components/competitions/shared"
+import { PlayerAvatar } from "@/components/player-avatar"
 import { beginImpersonation, decodeToken, getToken } from "@/lib/auth"
 import { adminDeleteUser, adminGetUsers, adminImpersonateUser, adminUpdateRole, type AdminUser, type Role } from "@/lib/services/admin"
 import {
@@ -42,8 +43,7 @@ const ROLE_META: Record<Role, { label: string; className: string; icon: typeof U
 }
 
 function Avatar({ user }: { user: AccessUser }) {
-  if (user.avatar) return <img src={user.avatar} alt="" className="h-10 w-10 rounded-xl object-cover ring-1 ring-white/10" />
-  return <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/30 to-blue-500/20 text-xs font-black text-white ring-1 ring-white/10">{user.name.slice(0, 2).toUpperCase()}</span>
+  return <PlayerAvatar name={user.name} discordId={user.discordId} avatar={user.avatar} size={64} className="h-10 w-10 rounded-xl ring-1 ring-white/10" />
 }
 
 function RolePill({ role }: { role: string }) {

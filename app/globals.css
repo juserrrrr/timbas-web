@@ -154,6 +154,30 @@
     scrollbar-width: thin;
     scrollbar-color: #3b82f6 rgba(0, 0, 0, 0.3);
   }
+
+  .live-modal-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, 0.72) transparent;
+  }
+
+  .live-modal-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .live-modal-scrollbar::-webkit-scrollbar-track {
+    margin-block: 12px;
+    background: transparent;
+  }
+
+  .live-modal-scrollbar::-webkit-scrollbar-thumb {
+    min-height: 48px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.85), rgba(239, 68, 68, 0.78));
+  }
+
+  .live-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #60a5fa, #f87171);
+  }
 }
 
 

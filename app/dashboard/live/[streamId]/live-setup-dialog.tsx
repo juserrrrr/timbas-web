@@ -57,8 +57,8 @@ export function LiveSetupDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!starting) onOpenChange(next) }}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto border-white/[0.09] bg-[#101014] p-0 text-white sm:max-w-xl">
-        <div className="border-b border-white/[0.07] bg-gradient-to-br from-blue-500/10 via-transparent to-red-500/10 px-6 py-5">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden border-white/[0.09] bg-[#101014] p-0 text-white sm:max-w-xl">
+        <div className="shrink-0 border-b border-white/[0.07] bg-gradient-to-br from-blue-500/10 via-transparent to-red-500/10 px-6 py-5">
           <DialogHeader>
             <DialogTitle className="text-xl text-white">Preparar transmissão</DialogTitle>
             <DialogDescription className="text-gray-400">Ajuste imagem e som antes de escolher a tela.</DialogDescription>
@@ -79,7 +79,7 @@ export function LiveSetupDialog({
           </div>
         </div>
 
-        <div className="min-w-0 space-y-5 px-4 pb-2 sm:px-6">
+        <div className="live-modal-scrollbar min-h-0 min-w-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-4 pb-5 sm:px-6">
           <section className="min-w-0">
             <SectionTitle icon={<Link2 className="h-3.5 w-3.5" />}>Link da live</SectionTitle>
             <div className="flex gap-2">
@@ -240,7 +240,7 @@ export function LiveSetupDialog({
           </section>
         </div>
 
-        <DialogFooter className="border-t border-white/[0.07] px-6 py-4">
+        <DialogFooter className="relative z-10 shrink-0 border-t border-white/[0.08] bg-[#101014]/95 px-4 py-4 shadow-[0_-14px_32px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:px-6">
           <button
             type="button"
             onClick={onStart}
