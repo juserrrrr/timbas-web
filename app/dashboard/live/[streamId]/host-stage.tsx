@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, Copy, Globe2, Link2, Lock, MonitorUp, Radio, Users } from "lucide-react"
+import { Check, Copy, Eye, EyeOff, Globe2, Link2, Lock, MonitorUp, Radio, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getDiscordAvatarUrl, getToken } from "@/lib/auth"
@@ -43,6 +43,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const [origin, setOrigin] = useState("")
   const [copied, setCopied] = useState(false)
   const [limit720p30fps, setLimit720p30fps] = useState(false)
+  const [previewVisible, setPreviewVisible] = useState(true)
 
   const connected = useSignalChannel(streamId, peerId, broadcast.handleEvent, true, undefined, onReconnect)
   const liveUrl = origin ? `${origin}/live/${stream.slug}` : ""
@@ -59,6 +60,16 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       })
     }
   }, [])
+
+  // Pausar apenas o player local evita que o navegador continue desenhando a
+  // mesma live que jÃ¡ estÃ¡ codificando. A track publicada no servidor nÃ£o Ã©
+  // afetada: espectadores continuam recebendo imagem e som normalmente.
+  useEffect(() => {
+    const preview = broadcast.previewRef.current
+    if (!preview) return
+    if (previewVisible) void preview.play().catch(() => {})
+    else preview.pause()
+  }, [broadcast.previewRef, broadcast.sharing, previewVisible])
 
   // A dropped signaling session comes back with a new peer id, so the old
   // connections belong to an identity that no longer exists.
@@ -167,8 +178,8 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-black">
-        <div className="relative aspect-video w-full">
-          <video ref={broadcast.previewRef} autoPlay playsInline muted className="h-full w-full object-contain" />
+        <div className={`relative w-full ${previewVisible ? "aspect-video" : "min-h-28"}`}>
+          <video ref={broadcast.previewRef} autoPlay playsInline muted className={previewVisible ? "h-full w-full object-contain" : "hidden"} />
 
           {!broadcast.sharing && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#07070c] px-6 text-center">
@@ -194,13 +205,47 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
             </div>
           )}
 
-          {broadcast.sharing && (
+          {broadcast.sharing && previewVisible && (
             <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-xl bg-black/70 px-3 py-2 text-xs font-bold text-white ring-1 ring-white/10 backdrop-blur">
               <span className={`h-2 w-2 rounded-full ${broadcast.micOn ? "bg-emerald-400" : "bg-red-400"}`} />
               {broadcast.micOn ? "Microfone ligado" : "Microfone desligado"}
               <span className="text-white/30">|</span>
               <span className={`h-2 w-2 rounded-full ${broadcast.gameAudioState === "live" ? "bg-emerald-400" : broadcast.gameAudioState === "silent" ? "bg-amber-400" : "bg-red-400"}`} />
               {broadcast.gameAudioState === "live" ? "Som do jogo" : broadcast.gameAudioState === "silent" ? "Som mudo" : "Sem som do jogo"}
+            </div>
+          )}
+
+          {broadcast.sharing && previewVisible && (
+            <button
+              type="button"
+              onClick={() => setPreviewVisible(false)}
+              className="absolute right-3 top-3 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-black/75 px-3 py-2 text-xs font-bold text-white ring-1 ring-white/10 backdrop-blur transition-colors hover:bg-black/90"
+            >
+              <EyeOff className="h-4 w-4" />
+              Ocultar prÃ©via
+            </button>
+          )}
+
+          {broadcast.sharing && !previewVisible && (
+            <div className="absolute inset-0 flex items-center justify-between gap-4 bg-gradient-to-r from-[#08080d] to-[#0d1018] px-5 sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 ring-1 ring-blue-500/20">
+                  <EyeOff className="h-5 w-5 text-blue-300" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white">PrÃ©via oculta</p>
+                  <p className="truncate text-xs text-gray-500">A transmissÃ£o continua normalmente com menos trabalho visual no navegador.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewVisible(true)}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-white/[0.06] px-3 py-2 text-xs font-bold text-white ring-1 ring-white/10 transition-colors hover:bg-white/[0.1]"
+              >
+                <Eye className="h-4 w-4" />
+                <span className="hidden sm:inline">Mostrar prÃ©via</span>
+                <span className="sm:hidden">Mostrar</span>
+              </button>
             </div>
           )}
         </div>

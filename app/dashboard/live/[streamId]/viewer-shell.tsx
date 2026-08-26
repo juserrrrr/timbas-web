@@ -156,7 +156,7 @@ export function ViewerShell({
           showingPicture && !overlayVisible ? "cursor-none" : ""
         }`}
       >
-        <div className="relative aspect-video w-full">
+        <div className="relative aspect-video max-h-[calc(100dvh-11rem)] w-full fullscreen:h-full fullscreen:max-h-none fullscreen:aspect-auto">
           <video
             ref={videoRef}
             autoPlay
