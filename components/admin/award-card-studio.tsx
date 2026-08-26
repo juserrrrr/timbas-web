@@ -191,7 +191,7 @@ export function AwardCardStudio() {
       <Button type="button" onClick={() => void download()} className="w-full gap-2 bg-amber-500 text-black hover:bg-amber-400"><Download className="h-4 w-4" />Baixar PNG desta prévia</Button>
       {notice && <p className="rounded-lg border border-white/[0.07] bg-white/[0.025] p-2 text-[10px] leading-relaxed text-gray-400">{notice}</p>}
     </div>
-    <div className="min-w-0"><div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.16em] text-gray-500"><span>Setas 0,01 · Shift 0,1 · Ctrl 1,0</span><span>1122 × 1402</span></div>
+    <div className="min-w-0"><div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.16em] text-gray-500"><span>Setas 0,01 · Shift 0,1 · Ctrl 1,0</span><span>PNG em 2×</span></div>
       <div ref={previewRef} tabIndex={0} onKeyDown={nudgeSelected} onPointerMove={move} onPointerUp={() => { dragging.current = null }} onPointerCancel={() => { dragging.current = null }} className="relative mx-auto aspect-[4/5] w-full max-w-[620px] touch-none overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-emerald-400/60" style={{ containerType: "inline-size" }}>
         <img src={award.image} alt={`Template ${award.title}`} className="pointer-events-none absolute inset-0 h-full w-full object-contain" />
         {guides && <><span className="pointer-events-none absolute inset-y-0 w-px bg-emerald-300/55" style={{ left: `${selectedX * 100}%` }} /><span className="pointer-events-none absolute inset-x-0 h-px bg-emerald-300/55" style={{ top: `${selectedY * 100}%` }} /></>}

@@ -250,6 +250,11 @@ export interface TournamentEaAwardsResponse {
   source: "EA_API"
   finalized: boolean
   players: TournamentEaPlayerStats[]
+  championCard: {
+    tournamentName: string
+    team: { id: string; name: string; logoUrl: string | null }
+    players: Array<{ playerName: string; appearances: number }>
+  } | null
   criteria: {
     craqueMinimumAppearances: number
     craqueMinimumShare: number

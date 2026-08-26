@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowUpRight, Bug, Code2, Copy, DatabaseZap, FlaskConical, GitBranch, Loader2, Play, Radio, RefreshCw, Search, Trash2, Trophy, Users } from "lucide-react"
+import { ArrowUpRight, Bug, Code2, Copy, DatabaseZap, FlaskConical, GitBranch, Loader2, Megaphone, Play, Radio, RefreshCw, Search, Trash2, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { AwardCardStudio } from "@/components/admin/award-card-studio"
+import { ChampionCardStudio } from "@/components/admin/champion-card-studio"
+import { AnnouncementStudio } from "@/components/admin/announcement-studio"
 import {
   CompetitionHeader,
   ErrorState,
@@ -338,6 +340,11 @@ export default function DemoLabPage() {
 
       {notice && <p className="rounded-lg bg-white/[0.03] px-3 py-2 text-[12px] text-gray-300">{notice}</p>}
       {error && <p className="whitespace-pre-line rounded-lg bg-red-500/10 px-3 py-2 text-[12px] text-red-300">{error}</p>}
+
+      <Card className="overflow-hidden border-amber-500/20 bg-amber-500/[0.035] p-4 sm:p-5">
+        <div className="mb-5 flex items-start gap-3"><span className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-2.5"><Megaphone className="h-5 w-5 text-amber-300" /></span><div><h3 className="text-sm font-black text-white">Novidades da plataforma</h3><p className="mt-1 text-[11px] leading-relaxed text-gray-500">Publique um único comunicado global. A nova publicação substitui a anterior e aparece uma vez por navegador, com ou sem login.</p></div></div>
+        <AnnouncementStudio />
+      </Card>
 
       <Card className="border-blue-500/20 bg-blue-500/[0.035] p-4">
         <div className="mb-4 flex items-center gap-2">
@@ -755,10 +762,11 @@ export default function DemoLabPage() {
         <div>
           <div className="max-w-3xl">
             <h3 className="text-sm font-black text-white">Exemplo do banner de premiação</h3>
-            <p className="mt-1 text-[11px] leading-relaxed text-gray-500">Cada categoria possui arte e título fixos. Somente nick, feito estatístico e QR Code do campeonato são aplicados dinamicamente.</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-gray-500">As cartas individuais permitem ajustar jogador, feito e QR. A carta especial do campeão permite ajustar time, campeonato, elenco completo e QR.</p>
             <p className="mt-3 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-[11px] text-emerald-300">Abra um campeonato encerrado → Estatísticas EA → botão de download no card.</p>
           </div>
           <AwardCardStudio />
+          <ChampionCardStudio />
         </div>
       </Card>
 

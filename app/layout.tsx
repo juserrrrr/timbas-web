@@ -7,6 +7,7 @@ import { Suspense } from "react"
 import "./globals.css"
 
 import { ThemeProvider } from "@/components/theme-provider"
+import { AnnouncementModal } from "@/components/announcement-modal"
 
 export const metadata: Metadata = {
   title: "Timbas",
@@ -28,6 +29,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Suspense fallback={null}>{children}</Suspense>
+          <AnnouncementModal />
           <Analytics />
         </ThemeProvider>
       </body>

@@ -20,10 +20,6 @@ function loadImage(src: string) {
   })
 }
 
-function optimizedTemplateUrl(src: string) {
-  return `/_next/image?url=${encodeURIComponent(src)}&w=1200&q=75`
-}
-
 function fitText(ctx: CanvasRenderingContext2D, text: string, family: string, weight: number, maxWidth: number, initialSize: number, enabled: boolean) {
   if (!enabled) {
     ctx.font = `${weight} ${initialSize}px "${family}", Impact, sans-serif`
@@ -48,12 +44,12 @@ export async function renderAwardCard(
   const family = AWARD_FONT_FAMILY[award.font]
   const weight = AWARD_FONT_WEIGHT[award.font]
   await document.fonts.load(`${weight} 100px "${family}"`)
-  const background = await loadImage(optimizedTemplateUrl(award.image)).catch(() => loadImage(award.image))
-  canvas.width = background.naturalWidth
-  canvas.height = background.naturalHeight
+  const background = await loadImage(award.image)
+  canvas.width = background.naturalWidth * 2
+  canvas.height = background.naturalHeight * 2
   const ctx = canvas.getContext("2d")
   if (!ctx) return
-  ctx.drawImage(background, 0, 0)
+  ctx.drawImage(background, 0, 0, canvas.width, canvas.height)
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
 
@@ -67,7 +63,7 @@ export async function renderAwardCard(
   ctx.fillText(value, canvas.width * award.statX, canvas.height * award.statY)
 
   if (qrUrl.trim()) {
-    const qr = await loadImage(await createCenteredAwardQr(qrUrl.trim(), award.color))
+    const qr = await loadImage(await createCenteredAwardQr(qrUrl.trim(), award.color, 768))
     const size = canvas.width * award.qrSize
     ctx.drawImage(qr, canvas.width * award.qrX, canvas.height * award.qrY, size, size)
   }

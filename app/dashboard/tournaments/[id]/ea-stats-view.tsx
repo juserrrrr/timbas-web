@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { BarChart3, Crosshair, Download, Goal, Hand, Loader2, Medal, Shield, Sparkles } from "lucide-react"
+import { BarChart3, Crosshair, Download, Goal, Hand, Loader2, Medal, Shield, Sparkles, Trophy } from "lucide-react"
 import "@fontsource/anton"
 import "@fontsource/tourney/600.css"
 import "@fontsource/cinzel-decorative/700.css"
@@ -17,6 +17,8 @@ import { renderAwardCard } from "@/lib/award-card-render"
 import { getAwardCardSettings } from "@/lib/services/award-cards"
 import { publicTournamentUrl } from "@/lib/public-site-url"
 import { LoadingState } from "@/components/ui/loading-state"
+import { renderChampionCard, type ChampionCardData } from "@/lib/champion-card-render"
+import { DEFAULT_CHAMPION_CARD_LAYOUT, type ChampionCardLayout } from "@/lib/champion-card-config"
 
 const TAGS: Record<string, string> = {
   MVP: "MVP",
@@ -120,6 +122,15 @@ async function downloadAwardPng(title: string, subtitle: string, player: Tournam
   link.click()
 }
 
+async function downloadChampionPng(champion: ChampionCardData, tournamentId: string, layout: ChampionCardLayout) {
+  const output = document.createElement("canvas")
+  await renderChampionCard(output, champion, publicTournamentUrl(tournamentId), layout)
+  const download = document.createElement("a")
+  download.download = `campeao-${champion.team.name}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase() + ".png"
+  download.href = output.toDataURL("image/png", 1)
+  download.click()
+}
+
 type TournamentAward = TournamentEaAward & {
   icon: typeof Goal
   tone: string
@@ -190,25 +201,72 @@ function AwardCardPreview({ award, tournamentId, settings, index, reveal, onRend
   )
 }
 
+function ChampionCardPreview({ champion, tournamentId, layout, reveal, onRendered }: { champion: ChampionCardData; tournamentId: string; layout: ChampionCardLayout; reveal: boolean; onRendered: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [rendering, setRendering] = useState(true)
+  const [renderError, setRenderError] = useState(false)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    let active = true
+    setRendering(true)
+    setRenderError(false)
+    void renderChampionCard(canvas, champion, publicTournamentUrl(tournamentId), layout)
+      .then(() => {
+        if (active) {
+          setRendering(false)
+          onRendered()
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setRendering(false)
+          setRenderError(true)
+          onRendered()
+        }
+      })
+    return () => { active = false }
+  }, [champion, layout, onRendered, tournamentId])
+
+  return (
+    <article className={`${reveal ? "award-card-enter" : "opacity-0"} group relative mx-auto w-full max-w-md overflow-hidden rounded-[28px] bg-black shadow-[0_24px_70px_rgba(245,185,60,0.16)] ring-1 ring-amber-300/25 transition duration-300 hover:-translate-y-1 hover:ring-amber-300/55`}>
+      <canvas ref={canvasRef} className={`block aspect-[4/5] w-full object-cover transition-opacity duration-500 ${rendering || renderError ? "opacity-20" : "opacity-100"}`} aria-label={`Campeão: ${champion.team.name}`} />
+      {rendering && <span className="absolute inset-0 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-amber-300" /></span>}
+      {renderError && <span className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs font-bold text-red-300">Não foi possível carregar a arte do campeão.</span>}
+      <button type="button" onClick={() => void downloadChampionPng(champion, tournamentId, layout)} className="absolute bottom-3 right-3 flex cursor-pointer items-center gap-1.5 rounded-lg border border-amber-300/25 bg-black/85 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white shadow-lg backdrop-blur transition hover:border-amber-300/70 hover:text-amber-200">
+        <Download className="h-3.5 w-3.5" /> Baixar PNG
+      </button>
+    </article>
+  )
+}
+
 export function EaStatsView({ tournamentId, finished = false }: { tournamentId: string; finished?: boolean }) {
   const [players, setPlayers] = useState<TournamentEaPlayerStats[]>([])
   const [officialAwards, setOfficialAwards] = useState<TournamentEaAward[]>([])
+  const [championCard, setChampionCard] = useState<ChampionCardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [awardSettings, setAwardSettings] = useState<AwardCardLayoutSettings>({})
+  const [championLayout, setChampionLayout] = useState<ChampionCardLayout>(DEFAULT_CHAMPION_CARD_LAYOUT)
   const [readyAwardKeys, setReadyAwardKeys] = useState<Set<TournamentEaAward["key"]>>(new Set())
+  const [championReady, setChampionReady] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     setReadyAwardKeys(new Set())
+    setChampionReady(false)
     try {
       const [awardResult, settings] = await Promise.all([
         getTournamentEaAwards(tournamentId),
-        getAwardCardSettings().catch(() => ({})),
+        getAwardCardSettings().catch(() => ({ campeao: undefined })),
       ])
       setPlayers(Array.isArray(awardResult.players) ? awardResult.players : [])
       setOfficialAwards(awardResult.awards)
-      setAwardSettings(settings)
+      setChampionCard(awardResult.championCard)
+      const { campeao, ...individualSettings } = settings
+      setAwardSettings(individualSettings)
+      setChampionLayout({ ...DEFAULT_CHAMPION_CARD_LAYOUT, ...campeao })
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar as estatísticas da EA.")
@@ -222,17 +280,18 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
   const markAwardRendered = useCallback((key: TournamentEaAward["key"]) => {
     setReadyAwardKeys((current) => current.has(key) ? current : new Set(current).add(key))
   }, [])
+  const markChampionRendered = useCallback(() => setChampionReady(true), [])
 
   if (loading) return <LoadingState className="mx-0 my-0 min-h-[320px]" message="Carregando estatísticas" />
   if (error) return <p className="rounded-lg border border-red-500/20 bg-red-500/[0.06] p-3 text-xs text-red-300">{error}</p>
-  if (!players.length) {
+  if (!players.length && !championCard) {
     return <EmptyState icon={BarChart3} title="Nenhuma estatística sincronizada" description="Depois que alguém checar uma partida na EA, gols, assistências, notas e destaques aparecem aqui." />
   }
 
   const awards: TournamentAward[] = finished
     ? officialAwards.map((award) => ({ ...award, ...AWARD_PRESENTATION[award.key] }))
     : []
-  const awardsReady = awards.every((award) => readyAwardKeys.has(award.key))
+  const awardsReady = awards.every((award) => readyAwardKeys.has(award.key)) && (!championCard || championReady)
 
   return (
     <div className="relative">
@@ -242,8 +301,8 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
         </div>
       )}
       <div className={`${awardsReady ? "content-enter" : "pointer-events-none opacity-0"} space-y-4`} aria-hidden={!awardsReady}>
-      {awards.length > 0 && <section className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">Premiação oficial</p><h3 className="mt-1 text-xl font-black text-white">Seleção do campeonato</h3><p className="mt-1 text-[11px] text-gray-400">Cada carta usa todas as partidas e estatísticas sincronizadas durante o campeonato inteiro, não somente a final.</p></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{awards.map((award, index) => <AwardCardPreview key={award.title} award={award} tournamentId={tournamentId} settings={awardSettings} index={index} reveal={awardsReady} onRendered={markAwardRendered} />)}</div></section>}
-    <Card className="overflow-hidden border-white/[0.07] bg-white/[0.025]">
+      {(championCard || awards.length > 0) && <section className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-4"><div className="mb-5"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">Premiação oficial</p><h3 className="mt-1 text-xl font-black text-white">Seleção do campeonato</h3><p className="mt-1 text-[11px] text-gray-400">A carta central celebra o campeão e todo jogador registrado pelo clube durante a campanha. As demais usam as estatísticas do campeonato inteiro, não somente da final.</p></div>{championCard && <div className="mb-8 border-b border-amber-400/15 pb-8"><div className="mb-3 flex items-center justify-center gap-2 text-amber-300"><Trophy className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-[0.22em]">Carta única do campeão</span></div><ChampionCardPreview champion={championCard} tournamentId={tournamentId} layout={championLayout} reveal={awardsReady} onRendered={markChampionRendered} /></div>}{awards.length > 0 && <div><p className="mb-4 text-center text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Destaques individuais</p><div className="grid gap-4 md:grid-cols-3">{awards.map((award, index) => <AwardCardPreview key={award.title} award={award} tournamentId={tournamentId} settings={awardSettings} index={index} reveal={awardsReady} onRendered={markAwardRendered} />)}</div></div>}</section>}
+    {players.length > 0 && <Card className="overflow-hidden border-white/[0.07] bg-white/[0.025]">
       <div className="border-b border-white/[0.06] p-4">
         <h3 className="flex items-center gap-2 text-sm font-black text-white"><Medal className="h-4 w-4 text-amber-400" />Estatísticas do campeonato</h3>
         <p className="mt-1 text-[11px] text-gray-500">Dados sincronizados dos amistosos no EA Sports FC Clubs. A ordem é por participação em gols; as demais colunas são as mesmas que entram no índice do craque.</p>
@@ -310,7 +369,7 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
           </tbody>
         </table>
       </div>
-    </Card></div>
+    </Card>}</div>
     </div>
   )
 }
