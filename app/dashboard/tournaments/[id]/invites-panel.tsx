@@ -88,7 +88,7 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
       <Card className="relative overflow-hidden border-white/[0.08] bg-[#08090d] shadow-2xl shadow-black/25">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_15%_0%,rgba(37,99,235,0.18),transparent_48%),radial-gradient(circle_at_90%_0%,rgba(220,38,38,0.12),transparent_42%)]" />
 
-        <div className="relative flex flex-col gap-5 border-b border-white/[0.07] px-5 py-6 sm:px-7 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative flex flex-col gap-5 px-6 pb-5 pt-7 sm:px-8 sm:pt-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-start gap-4">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10 text-blue-300 shadow-lg shadow-blue-950/30">
               <ShieldCheck className="h-5 w-5" />
@@ -107,13 +107,13 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
           </Button>
         </div>
 
-        <div className="relative grid gap-3 border-b border-white/[0.07] p-4 sm:grid-cols-3 sm:p-6">
+        <div className="relative grid gap-4 px-6 pb-7 pt-2 sm:grid-cols-3 sm:px-8 sm:pb-8">
           <InviteCount active={filter === "available"} onClick={() => setFilter(filter === "available" ? "all" : "available")} label="Disponíveis" value={counts.available} detail="Prontos para enviar" tone="blue" icon={<Link2 className="h-4 w-4" />} />
           <InviteCount active={filter === "used"} onClick={() => setFilter(filter === "used" ? "all" : "used")} label="Utilizados" value={counts.used} detail="Entradas confirmadas" tone="green" icon={<TicketCheck className="h-4 w-4" />} />
           <InviteCount active={filter === "revoked"} onClick={() => setFilter(filter === "revoked" ? "all" : "revoked")} label="Cancelados" value={counts.revoked} detail="Links desativados" tone="red" icon={<TicketX className="h-4 w-4" />} />
         </div>
 
-        <div className="relative p-4 sm:p-6">
+        <div className="relative border-t border-white/[0.07] px-6 py-7 sm:px-8 sm:py-8">
           <div className="mb-4 flex items-end justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-gray-300">Histórico de convites</p>
@@ -129,14 +129,14 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
           ) : filteredInvites.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center text-xs text-gray-500">Nenhum convite encontrado neste filtro.</div>
           ) : (
-            <div className="grid gap-3 xl:grid-cols-2">
+            <div className="grid gap-5 xl:grid-cols-2">
               {filteredInvites.map((invite) => {
                 const used = Boolean(invite.usedAt)
                 const revoked = Boolean(invite.revokedAt)
                 const available = !used && !revoked
                 const accent = available ? "border-blue-400/15 hover:border-blue-400/30" : used ? "border-emerald-400/15" : "border-red-400/15 opacity-75"
                 return (
-                  <article key={invite.id} className={`group relative flex min-h-[154px] flex-col overflow-hidden rounded-2xl border bg-white/[0.02] p-4 transition ${accent}`}>
+                  <article key={invite.id} className={`group relative flex min-h-[166px] flex-col overflow-hidden rounded-2xl border bg-white/[0.02] p-5 transition ${accent}`}>
                     <span className={`absolute inset-y-0 left-0 w-0.5 ${available ? "bg-blue-500" : used ? "bg-emerald-500" : "bg-red-500"}`} />
                     <div className="flex items-start gap-3">
                       <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${available ? "border-blue-400/15 bg-blue-500/10 text-blue-300" : used ? "border-emerald-400/15 bg-emerald-500/10 text-emerald-300" : "border-red-400/15 bg-red-500/10 text-red-300"}`}>
@@ -185,5 +185,5 @@ function InviteStatus({ available, used }: { available: boolean; used: boolean }
 
 function InviteCount({ label, value, detail, tone, icon, active, onClick }: { label: string; value: number; detail: string; tone: "blue" | "green" | "red"; icon: ReactNode; active: boolean; onClick: () => void }) {
   const colors = tone === "blue" ? "border-blue-400/20 bg-blue-500/[0.07] text-blue-300" : tone === "green" ? "border-emerald-400/20 bg-emerald-500/[0.06] text-emerald-300" : "border-red-400/20 bg-red-500/[0.06] text-red-300"
-  return <button type="button" onClick={onClick} aria-pressed={active} className={`group flex cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:bg-white/[0.04] ${active ? colors : "border-white/[0.07] bg-white/[0.02] text-gray-400"}`}><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${colors}`}>{icon}</span><span className="min-w-0 flex-1"><span className="block text-[10px] font-black uppercase tracking-[0.12em] text-gray-500">{label}</span><span className="mt-0.5 block truncate text-[10px] text-gray-600">{detail}</span></span><strong className={`text-2xl font-black tabular-nums ${active ? "text-current" : tone === "blue" ? "text-blue-300" : tone === "green" ? "text-emerald-300" : "text-red-300"}`}>{value}</strong></button>
+  return <button type="button" onClick={onClick} aria-pressed={active} className={`group flex cursor-pointer items-center gap-3 rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:bg-white/[0.04] ${active ? colors : "border-white/[0.07] bg-white/[0.02] text-gray-400"}`}><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${colors}`}>{icon}</span><span className="min-w-0 flex-1"><span className="block text-[10px] font-black uppercase tracking-[0.12em] text-gray-500">{label}</span><span className="mt-0.5 block truncate text-[10px] text-gray-600">{detail}</span></span><strong className={`text-2xl font-black tabular-nums ${active ? "text-current" : tone === "blue" ? "text-blue-300" : tone === "green" ? "text-emerald-300" : "text-red-300"}`}>{value}</strong></button>
 }
