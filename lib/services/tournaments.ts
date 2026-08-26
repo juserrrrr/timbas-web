@@ -72,6 +72,10 @@ export function joinTournamentByInvite(code: string): Promise<{ tournamentId: st
   return post("/tournaments/join-by-invite", { code })
 }
 
+export function createTournamentRegistrationInvite(id: string): Promise<{ tournamentId: string; code: string }> {
+  return post(`/tournaments/${id}/invites`)
+}
+
 export function updateTournament(id: string, input: Partial<CreateTournamentInput> & { status?: string }) {
   return patch<TournamentSummary>(`/tournaments/${id}`, input)
 }

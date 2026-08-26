@@ -31,7 +31,7 @@ import {
   formatDateTime,
 } from "@/components/competitions/shared"
 import { ReportResultDialog } from "@/components/competitions/report-result-dialog"
-import { buildLabTournamentKnockout, cancelTournamentWalkover, correctLabTournamentResult, declareWalkover, getLabEaScoreAudit, getTournament, rebuildLabTournamentKnockout, reportResult, startTournament, updateTournament, type LabEaScoreAuditItem } from "@/lib/services/tournaments"
+import { buildLabTournamentKnockout, cancelTournamentWalkover, correctLabTournamentResult, createTournamentRegistrationInvite, declareWalkover, getLabEaScoreAudit, getTournament, rebuildLabTournamentKnockout, reportResult, startTournament, updateTournament, type LabEaScoreAuditItem } from "@/lib/services/tournaments"
 import {
   FORMAT_LABELS,
   GAME_LABELS,
@@ -74,6 +74,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const [cancelingWalkover, setCancelingWalkover] = useState(false)
   const [openingWalkover, setOpeningWalkover] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [creatingInvite, setCreatingInvite] = useState(false)
   const [publishingKnockout, setPublishingKnockout] = useState(false)
   const [scoreAudit, setScoreAudit] = useState<LabEaScoreAuditItem[]>([])
   const [notice, setNotice] = useState("")
@@ -289,6 +290,21 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
     }
   }
 
+  const copySingleUseInvite = async () => {
+    setCreatingInvite(true)
+    setNotice("")
+    try {
+      const invite = await createTournamentRegistrationInvite(tournament.id)
+      const link = `${window.location.origin}/dashboard/tournaments?invite=${invite.code}`
+      await navigator.clipboard.writeText(link)
+      setNotice("Convite individual copiado. O link funciona uma \u00fanica vez.")
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "N\u00e3o foi poss\u00edvel gerar o convite.")
+    } finally {
+      setCreatingInvite(false)
+    }
+  }
+
   return (
     <div className="dashboard-view space-y-6">
       <button
@@ -319,16 +335,14 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
                 Refazer mata-mata
               </Button>
             )}
-            {tournament.access.canManage && tournament.inviteCode && (
+            {tournament.access.canManage && tournament.accessMode === "INVITE_ONLY" && tournament.status === "REGISTRATION" && (
               <Button
                 variant="outline"
-                onClick={() => {
-                  const link = `${window.location.origin}/dashboard/tournaments?invite=${tournament.inviteCode}`
-                  void navigator.clipboard.writeText(link).then(() => setNotice("Link de convite copiado."))
-                }}
+                disabled={creatingInvite}
+                onClick={() => void copySingleUseInvite()}
               >
-                <Link2 className="mr-1.5 h-4 w-4" />
-                Copiar convite
+                {creatingInvite ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Link2 className="mr-1.5 h-4 w-4" />}
+                Gerar convite individual
               </Button>
             )}
             {tournament.access.canManage &&
