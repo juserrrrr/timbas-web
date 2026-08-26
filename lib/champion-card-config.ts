@@ -5,6 +5,7 @@ export interface ChampionCardLayout {
   championTitleX: number
   championTitleY: number
   championTitleSize: number
+  championTitleWidth: number
   teamX: number
   teamY: number
   teamSize: number
@@ -33,6 +34,7 @@ export const DEFAULT_CHAMPION_CARD_LAYOUT: ChampionCardLayout = {
   championTitleX: 0.5,
   championTitleY: 0.612,
   championTitleSize: 0.026,
+  championTitleWidth: 0.18,
   teamX: 0.5,
   teamY: 0.65,
   teamSize: 0.058,

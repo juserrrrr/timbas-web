@@ -60,7 +60,7 @@ export async function renderChampionCard(canvas: HTMLCanvasElement, data: Champi
   ctx.textBaseline = "middle"
 
   ctx.fillStyle = "#f3cc72"
-  ctx.font = `600 ${width * layout.championTitleSize}px "Teko", sans-serif`
+  fitText(ctx, "CAMPEÃO", "Teko", 600, width * layout.championTitleWidth, width * layout.championTitleSize, width * 0.008)
   ctx.fillText("CAMPEÃO", width * layout.championTitleX, height * layout.championTitleY)
 
   const teamName = (data.team.name.trim() || "Time campeão").toUpperCase()
