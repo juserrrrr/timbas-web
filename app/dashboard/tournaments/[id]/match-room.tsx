@@ -318,19 +318,20 @@ export function MatchRoomDialog({
           )}
 
           {!closed && room?.resultMode === "EA_API" && (mySide || room?.canModerate) && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-500/15 bg-blue-500/[0.05] p-2.5">
-              <p className="text-[11px] text-blue-200">
-                Terminou o amistoso? Busque placar e estatísticas dos jogadores direto na EA.
-              </p>
-              <Button
-                size="sm"
-                disabled={busy !== "" || (quickMode ? !bothReady : !match.scheduledAt)}
-                onClick={() => void checkEa()}
-                className="h-8 bg-blue-500 px-3 text-[11px] text-white hover:bg-blue-400"
-              >
-                {busy === "ea" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="mr-1.5 h-3.5 w-3.5" />}
-                Checar na EA
-              </Button>
+            <div className="space-y-2 rounded-lg border border-blue-500/15 bg-blue-500/[0.05] p-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div><p className="text-[11px] font-bold text-blue-100">Auditoria automática da EA ativa</p><p className="mt-0.5 text-[10px] text-blue-200/60">A busca acontece em segundo plano por ordem de rodada. O botão continua disponível para uma checagem imediata.</p></div>
+                <Button
+                  size="sm"
+                  disabled={busy !== "" || (quickMode ? !bothReady : !match.scheduledAt)}
+                  onClick={() => void checkEa()}
+                  className="h-8 bg-blue-500 px-3 text-[11px] text-white hover:bg-blue-400"
+                >
+                  {busy === "ea" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="mr-1.5 h-3.5 w-3.5" />}
+                  Checar agora
+                </Button>
+              </div>
+              {(room.match.eaLastCheckedAt || room.match.eaCheckMessage) && <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-blue-500/10 pt-2 text-[9px] text-gray-500"><span>Última checagem: <b className="text-gray-300">{room.match.eaLastCheckedAt ? formatDateTime(room.match.eaLastCheckedAt) : "aguardando"}</b></span>{room.match.eaNextCheckAt && <span>Próxima: <b className="text-gray-300">{formatDateTime(room.match.eaNextCheckAt)}</b></span>}<span className="basis-full text-blue-200/55">{room.match.eaCheckMessage}</span></div>}
             </div>
           )}
 
@@ -364,8 +365,9 @@ export function MatchRoomDialog({
                       className="h-auto w-full justify-between px-3 py-2 text-left hover:bg-cyan-500/10"
                     >
                       <span className="min-w-0">
-                        <span className={`block text-[10px] font-bold ${candidate.suspiciousScore ? "text-red-300" : "text-cyan-300"}`}>{candidate.suspiciousScore ? "Revisão obrigatória" : index === 0 ? "Mais antiga" : `Opção ${index + 1}`}</span>
+                        <span className={`block text-[10px] font-bold ${candidate.suspiciousScore ? "text-red-300" : "text-cyan-300"}`}>{candidate.suspiciousScore ? "Revisão obrigatória" : index === 0 ? "Recomendada, 89+ min" : `Opção ${index + 1}`}</span>
                         <span className="block text-[10px] text-gray-500">{formatDateTime(candidate.playedAt)}</span>
+                        {candidate.durationSeconds !== undefined && <span className="block text-[9px] text-gray-600">Duração detectada: {Math.floor(candidate.durationSeconds / 60)} min</span>}
                         <span className="block font-mono text-[9px] text-gray-600">EA #{candidate.eaMatchId}</span>
                       </span>
                       <span className="ml-3 text-right">

@@ -48,7 +48,7 @@ export function ReportResultDialog({
     home: { name: string; players: Array<{ id: string; name: string; position: string }> }
     away: { name: string; players: Array<{ id: string; name: string; position: string }> }
   }
-  onWalkover?: (input: { winner: "HOME" | "AWAY"; reason?: string }) => Promise<void>
+  onWalkover?: (input: { winner: "HOME" | "AWAY"; reason?: string; homeScore: number; awayScore: number }) => Promise<void>
   initialHomeScore?: number | null
   initialAwayScore?: number | null
   title?: string
@@ -61,6 +61,8 @@ export function ReportResultDialog({
   const [walkoverOpen, setWalkoverOpen] = useState(false)
   const [walkoverWinner, setWalkoverWinner] = useState<"HOME" | "AWAY">("HOME")
   const [walkoverReason, setWalkoverReason] = useState("")
+  const [walkoverHomeScore, setWalkoverHomeScore] = useState("3")
+  const [walkoverAwayScore, setWalkoverAwayScore] = useState("0")
   const [scorers, setScorers] = useState<Record<string, { goals: number; assists: number }>>({})
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -76,6 +78,8 @@ export function ReportResultDialog({
     setWalkoverOpen(false)
     setWalkoverWinner("HOME")
     setWalkoverReason("")
+    setWalkoverHomeScore("3")
+    setWalkoverAwayScore("0")
     setScorers({})
     setImage((current) => {
       if (current) URL.revokeObjectURL(current.previewUrl)
@@ -129,7 +133,12 @@ export function ReportResultDialog({
     setBusy(true)
     setError("")
     try {
-      await onWalkover({ winner: walkoverWinner, reason: walkoverReason.trim() || undefined })
+      await onWalkover({
+        winner: walkoverWinner,
+        reason: walkoverReason.trim() || undefined,
+        homeScore: Number(walkoverHomeScore),
+        awayScore: Number(walkoverAwayScore),
+      })
       onOpenChange(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível declarar o W.O.")
@@ -293,15 +302,19 @@ export function ReportResultDialog({
           )}
 
           {onWalkover && (
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+            <div className="rounded-xl border border-red-500/25 bg-red-500/[0.055] p-3">
               {walkoverOpen ? (
                 <div className="space-y-3">
-                  <p className="text-[12px] font-bold text-white">Quem levou a vaga no W.O.?</p>
+                  <div><p className="text-sm font-black text-red-100">Registrar W.O.</p><p className="mt-1 text-[11px] text-gray-400">Escolha o vencedor e informe o placar administrativo. O resultado continuará marcado como W.O.</p></div>
                   <div className="grid grid-cols-2 gap-2">
                     {(["HOME", "AWAY"] as const).map((side) => (
                       <button
                         key={side}
-                        onClick={() => setWalkoverWinner(side)}
+                        onClick={() => {
+                          setWalkoverWinner(side)
+                          setWalkoverHomeScore(side === "HOME" ? "3" : "0")
+                          setWalkoverAwayScore(side === "AWAY" ? "3" : "0")
+                        }}
                         className={`cursor-pointer truncate rounded-lg border px-3 py-2 text-xs font-bold transition ${
                           walkoverWinner === side
                             ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
@@ -311,6 +324,11 @@ export function ReportResultDialog({
                         {side === "HOME" ? homeName : awayName}
                       </button>
                     ))}
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3 rounded-lg border border-white/[0.07] bg-black/20 p-3">
+                    <label className="text-center text-[10px] font-bold text-gray-500">{homeName}<input inputMode="numeric" value={walkoverHomeScore} onChange={(event) => setWalkoverHomeScore(event.target.value.replace(/\D/g, "").slice(0, 2))} className="mt-1 h-11 w-full rounded-lg border border-white/10 bg-black/40 text-center text-xl font-black text-white" aria-label="Placar de W.O. do mandante" /></label>
+                    <span className="pb-3 text-gray-600">×</span>
+                    <label className="text-center text-[10px] font-bold text-gray-500">{awayName}<input inputMode="numeric" value={walkoverAwayScore} onChange={(event) => setWalkoverAwayScore(event.target.value.replace(/\D/g, "").slice(0, 2))} className="mt-1 h-11 w-full rounded-lg border border-white/10 bg-black/40 text-center text-xl font-black text-white" aria-label="Placar de W.O. do visitante" /></label>
                   </div>
                   <input
                     value={walkoverReason}
@@ -324,7 +342,7 @@ export function ReportResultDialog({
                     </Button>
                     <Button
                       onClick={() => void declareWalkover()}
-                      disabled={busy}
+                      disabled={busy || walkoverHomeScore === "" || walkoverAwayScore === "" || walkoverHomeScore === walkoverAwayScore || (walkoverWinner === "HOME" ? Number(walkoverHomeScore) <= Number(walkoverAwayScore) : Number(walkoverAwayScore) <= Number(walkoverHomeScore))}
                       className="bg-red-500 text-white hover:bg-red-400"
                     >
                       {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -335,10 +353,10 @@ export function ReportResultDialog({
               ) : (
                 <button
                   onClick={() => setWalkoverOpen(true)}
-                  className="flex w-full cursor-pointer items-center gap-2 text-left text-[11px] text-gray-500 transition hover:text-white"
+                  className="flex w-full cursor-pointer items-center justify-between gap-3 text-left transition"
                 >
-                  <UserX className="h-3.5 w-3.5 flex-shrink-0" />
-                  Um dos times não jogou? Declarar W.O. e passar a vaga adiante.
+                  <span className="flex items-center gap-2"><UserX className="h-4 w-4 flex-shrink-0 text-red-300" /><span><span className="block text-[12px] font-black text-red-100">Registrar W.O.</span><span className="mt-0.5 block text-[10px] text-gray-500">Defina vencedor, placar e motivo administrativo.</span></span></span>
+                  <span className="rounded-md bg-red-500 px-3 py-1.5 text-[10px] font-black text-white">Abrir</span>
                 </button>
               )}
             </div>

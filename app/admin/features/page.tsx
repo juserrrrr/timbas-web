@@ -1,13 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ToggleRight } from "lucide-react"
+import { Save, TimerReset, ToggleRight } from "lucide-react"
 import { toast } from "sonner"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { getToken } from "@/lib/auth"
-import { getFeatureFlags, updateFeatureFlag, type FeatureFlag } from "@/lib/services/feature-flags"
+import { getFeatureFlags, getTournamentEaAutomationSettings, updateFeatureFlag, updateTournamentEaAutomationSettings, type FeatureFlag, type TournamentEaAutomationSettings } from "@/lib/services/feature-flags"
 
 function formatUpdatedAt(value: string | null) {
   if (!value) return "nunca alterada"
@@ -26,12 +28,14 @@ export default function FeaturesPage() {
   const [flags, setFlags] = useState<FeatureFlag[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+  const [eaAutomation, setEaAutomation] = useState<TournamentEaAutomationSettings | null>(null)
+  const [savingEaAutomation, setSavingEaAutomation] = useState(false)
 
   useEffect(() => {
     const token = getToken()
     if (!token) return
-    getFeatureFlags(token)
-      .then(setFlags)
+    Promise.all([getFeatureFlags(token), getTournamentEaAutomationSettings(token)])
+      .then(([nextFlags, settings]) => { setFlags(nextFlags); setEaAutomation(settings) })
       .catch((e: unknown) =>
         toast.error("Erro ao carregar as flags", { description: e instanceof Error ? e.message : undefined }),
       )
@@ -49,6 +53,23 @@ export default function FeaturesPage() {
       toast.error("Erro ao salvar", { description: e instanceof Error ? e.message : undefined })
     } finally {
       setSaving(null)
+    }
+  }
+
+  const saveEaAutomation = async () => {
+    if (!eaAutomation) return
+    setSavingEaAutomation(true)
+    try {
+      const updated = await updateTournamentEaAutomationSettings(getToken()!, {
+        checkIntervalSeconds: eaAutomation.checkIntervalSeconds,
+        checksPerMinute: eaAutomation.checksPerMinute,
+      })
+      setEaAutomation(updated)
+      toast.success("Configuração da busca automática salva")
+    } catch (e: unknown) {
+      toast.error("Erro ao salvar", { description: e instanceof Error ? e.message : undefined })
+    } finally {
+      setSavingEaAutomation(false)
     }
   }
 
@@ -95,6 +116,20 @@ export default function FeaturesPage() {
           </div>
         )}
       </Card>
+
+      {eaAutomation && (
+        <Card className="border-cyan-500/15 bg-cyan-500/[0.025] p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 ring-1 ring-cyan-500/20"><TimerReset className="h-4 w-4 text-cyan-300" /></div>
+            <div><h2 className="font-bold text-white">Frequência da busca automática na EA</h2><p className="mt-1 text-xs text-gray-500">Estas opções só são usadas quando a flag <code className="text-cyan-300">tournament_ea_auto_sync</code> está ativa.</p></div>
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <label className="text-xs font-semibold text-gray-300">Intervalo para consultar novamente a mesma partida, em segundos<Input type="number" min={30} max={3600} value={eaAutomation.checkIntervalSeconds} onChange={(event) => setEaAutomation({ ...eaAutomation, checkIntervalSeconds: Number(event.target.value) })} className="mt-2 border-white/10 bg-black/20" /></label>
+            <label className="text-xs font-semibold text-gray-300">Máximo de confrontos consultados por minuto<Input type="number" min={1} max={10} value={eaAutomation.checksPerMinute} onChange={(event) => setEaAutomation({ ...eaAutomation, checksPerMinute: Number(event.target.value) })} className="mt-2 border-white/10 bg-black/20" /></label>
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-3"><p className="text-[11px] text-gray-600">Valores permitidos: intervalo de 30 a 3600 segundos e limite de 1 a 10 confrontos por minuto.</p><Button disabled={savingEaAutomation || eaAutomation.checkIntervalSeconds < 30 || eaAutomation.checkIntervalSeconds > 3600 || eaAutomation.checksPerMinute < 1 || eaAutomation.checksPerMinute > 10} onClick={() => void saveEaAutomation()} className="bg-cyan-500 text-black hover:bg-cyan-400">{savingEaAutomation ? <Spinner className="mr-2 size-4" /> : <Save className="mr-2 h-4 w-4" />}Salvar frequência</Button></div>
+        </Card>
+      )}
     </div>
   )
 }

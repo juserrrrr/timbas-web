@@ -108,8 +108,15 @@ export interface TournamentMatch {
   eaMatchId: string | null
   eaVerifiedAt: string | null
   eaTags: string[]
+  eaLastCheckedAt: string | null
+  eaNextCheckAt: string | null
+  eaCheckMessage: string | null
+  claimedHomeScore?: number | null
+  claimedAwayScore?: number | null
   reviewRequestedAt?: string | null
   reviewReason?: string | null
+  reviewSource?: "HUMAN" | "AUDIT"
+  reviewCanReject?: boolean
   eaPlayerStats?: Array<{
     id: string
     teamId: string

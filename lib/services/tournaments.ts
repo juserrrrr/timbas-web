@@ -107,6 +107,7 @@ export interface EaMatchChoice {
   officialAwayScore?: number
   suspiciousScore?: boolean
   warning?: string
+  durationSeconds?: number
 }
 
 export type CheckTournamentEaResultResponse =
@@ -144,6 +145,10 @@ export function listPendingMatchReviews(id: string): Promise<TournamentMatch[]> 
 
 export function resolveTournamentMatchReview(id: string, matchId: string, homeScore: number, awayScore: number) {
   return post(`/tournaments/${id}/matches/${matchId}/resolve-review`, { homeScore, awayScore })
+}
+
+export function rejectTournamentEaAudit(id: string, matchId: string) {
+  return post(`/tournaments/${id}/matches/${matchId}/reject-ea-audit`)
 }
 
 export function getTournamentEaStats(id: string) {
@@ -227,8 +232,15 @@ export function scheduleMatch(id: string, matchId: string, scheduledAt: string) 
   return patch(`/tournaments/${id}/matches/${matchId}/schedule`, { scheduledAt })
 }
 
-export function declareWalkover(id: string, matchId: string, winnerTeamId: string, reason?: string) {
-  return post(`/tournaments/${id}/matches/${matchId}/walkover`, { winnerTeamId, reason })
+export function declareWalkover(
+  id: string,
+  matchId: string,
+  winnerTeamId: string,
+  reason: string | undefined,
+  homeScore: number,
+  awayScore: number,
+) {
+  return post(`/tournaments/${id}/matches/${matchId}/walkover`, { winnerTeamId, reason, homeScore, awayScore })
 }
 
 export interface MatchMessage {

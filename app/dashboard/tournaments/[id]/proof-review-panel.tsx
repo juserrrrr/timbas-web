@@ -1,12 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Check, Loader2, ScanLine, ShieldCheck, X } from "lucide-react"
+import { Bot, Check, Loader2, ScanLine, ShieldCheck, UserRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { EmptyState, StatusPill, TeamCrest, formatDateTime } from "@/components/competitions/shared"
 import { LoadingState } from "@/components/ui/loading-state"
-import { fetchProofImage, listPendingMatchReviews, listPendingProofs, resolveTournamentMatchReview, reviewProof } from "@/lib/services/tournaments"
+import { fetchProofImage, listPendingMatchReviews, listPendingProofs, rejectTournamentEaAudit, resolveTournamentMatchReview, reviewProof } from "@/lib/services/tournaments"
 import type { PendingProof, TournamentMatch } from "@/lib/services/tournaments.types"
 
 function ProofImage({ tournamentId, proofId }: { tournamentId: string; proofId: string }) {
@@ -61,6 +61,15 @@ export function ProofReviewPanel({ tournamentId, onReviewed }: { tournamentId: s
       const [nextProofs, nextReviews] = await Promise.all([listPendingProofs(tournamentId), listPendingMatchReviews(tournamentId)])
       setProofs(nextProofs)
       setReviews(nextReviews)
+      setScores((current) => {
+        const next = { ...current }
+        for (const match of nextReviews) {
+          if (!next[match.id] && match.claimedHomeScore !== null && match.claimedHomeScore !== undefined && match.claimedAwayScore !== null && match.claimedAwayScore !== undefined) {
+            next[match.id] = { home: String(match.claimedHomeScore), away: String(match.claimedAwayScore) }
+          }
+        }
+        return next
+      })
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar as provas pendentes")
@@ -71,6 +80,10 @@ export function ProofReviewPanel({ tournamentId, onReviewed }: { tournamentId: s
 
   useEffect(() => {
     void load()
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load()
+    }, 10_000)
+    return () => window.clearInterval(timer)
   }, [load])
 
   const review = async (proofId: string, approve: boolean) => {
@@ -100,6 +113,17 @@ export function ProofReviewPanel({ tournamentId, onReviewed }: { tournamentId: s
     } finally { setBusyId("") }
   }
 
+  const rejectAudit = async (matchId: string) => {
+    setBusyId(matchId)
+    try {
+      await rejectTournamentEaAudit(tournamentId, matchId)
+      await load()
+      onReviewed()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível recusar o registro da EA.")
+    } finally { setBusyId("") }
+  }
+
   if (loading) {
     return <LoadingState className="mx-0 my-0 min-h-[320px]" message="Carregando aprovações" />
   }
@@ -118,11 +142,14 @@ export function ProofReviewPanel({ tournamentId, onReviewed }: { tournamentId: s
     <div className="space-y-3">
       {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-300">{error}</p>}
 
+      {reviews.length > 0 && <div className="flex items-center gap-2 pt-1"><Bot className="h-4 w-4 text-cyan-300" /><h3 className="text-xs font-black uppercase tracking-wider text-cyan-200">Pendências de partidas</h3></div>}
       {reviews.map((match) => {
         const score = scores[match.id] ?? { home: "", away: "" }
-        return <Card key={match.id} className="border-red-500/20 bg-red-500/[0.035] p-4"><div className="flex flex-wrap items-center gap-3"><div className="min-w-52 flex-1"><p className="text-sm font-black text-white">{match.homeTeam?.name} × {match.awayTeam?.name}</p><p className="mt-1 text-xs text-red-200">{match.reviewReason ?? "Análise solicitada pelos jogadores."}</p></div><input aria-label="Placar mandante" value={score.home} onChange={(event) => setScores((old) => ({ ...old, [match.id]: { ...score, home: event.target.value.replace(/\D/g, "").slice(0, 2) } }))} className="h-9 w-14 rounded-lg border border-white/10 bg-black/30 text-center text-sm text-white" /><span className="text-gray-600">×</span><input aria-label="Placar visitante" value={score.away} onChange={(event) => setScores((old) => ({ ...old, [match.id]: { ...score, away: event.target.value.replace(/\D/g, "").slice(0, 2) } }))} className="h-9 w-14 rounded-lg border border-white/10 bg-black/30 text-center text-sm text-white" /><Button disabled={busyId === match.id || score.home === "" || score.away === ""} onClick={() => void resolveRequest(match.id)} className="bg-emerald-500 text-black hover:bg-emerald-400">Resolver partida</Button></div></Card>
+        const audit = match.reviewSource === "AUDIT"
+        return <Card key={match.id} className={`p-4 ${audit ? "border-cyan-500/25 bg-cyan-500/[0.04]" : "border-amber-500/20 bg-amber-500/[0.035]"}`}><div className="mb-3 flex items-center gap-2">{audit ? <Bot className="h-4 w-4 text-cyan-300" /> : <UserRound className="h-4 w-4 text-amber-300" />}<span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${audit ? "bg-cyan-500/15 text-cyan-200" : "bg-amber-500/15 text-amber-200"}`}>{audit ? "Auditoria EA" : "Solicitação humana"}</span>{audit && match.reviewCanReject === false && <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-300">Após 7 min, resultado obrigatório</span>}</div><div className="flex flex-wrap items-center gap-3"><div className="min-w-52 flex-1"><p className="text-sm font-black text-white">{match.homeTeam?.name} × {match.awayTeam?.name}</p><p className="mt-1 text-xs text-gray-300">{match.reviewReason ?? "Análise solicitada pelos jogadores."}</p>{audit && match.eaMatchId && <p className="mt-1 font-mono text-[9px] text-gray-600">EA #{match.eaMatchId}</p>}</div><input aria-label="Placar mandante" value={score.home} onChange={(event) => setScores((old) => ({ ...old, [match.id]: { ...score, home: event.target.value.replace(/\D/g, "").slice(0, 2) } }))} className="h-9 w-14 rounded-lg border border-white/10 bg-black/30 text-center text-sm text-white" /><span className="text-gray-600">×</span><input aria-label="Placar visitante" value={score.away} onChange={(event) => setScores((old) => ({ ...old, [match.id]: { ...score, away: event.target.value.replace(/\D/g, "").slice(0, 2) } }))} className="h-9 w-14 rounded-lg border border-white/10 bg-black/30 text-center text-sm text-white" /><Button disabled={busyId === match.id || score.home === "" || score.away === ""} onClick={() => void resolveRequest(match.id)} className="bg-emerald-500 text-black hover:bg-emerald-400">{audit ? "Aprovar resultado" : "Resolver partida"}</Button>{audit && match.reviewCanReject !== false && <Button disabled={busyId === match.id} variant="outline" onClick={() => void rejectAudit(match.id)} className="border-red-500/25 text-red-300 hover:bg-red-500/10"><X className="mr-1.5 h-4 w-4" />Recusar registro</Button>}</div></Card>
       })}
 
+      {proofs.length > 0 && <div className="flex items-center gap-2 pt-3"><ScanLine className="h-4 w-4 text-violet-300" /><h3 className="text-xs font-black uppercase tracking-wider text-violet-200">Provas enviadas por pessoas</h3></div>}
       {proofs.map((proof) => {
         const aiRead = proof.aiConfidence !== null && proof.aiHomeScore !== null
 

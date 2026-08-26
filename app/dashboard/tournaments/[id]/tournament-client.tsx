@@ -117,6 +117,13 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   }, [load])
 
   useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load()
+    }, 10_000)
+    return () => window.clearInterval(timer)
+  }, [load])
+
+  useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [])
@@ -127,7 +134,9 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
       ["WINNERS", "LOSERS", "GRAND_FINAL", "THIRD_PLACE"].includes(match.phase),
     )
     const hasTable = tournament.matches.some((match) => ["GROUP", "LEAGUE"].includes(match.phase))
-    const pendingProofs = tournament.matches.filter((match) => match.status === "AWAITING_PROOF").length
+    const pendingProofs = tournament.matches.filter((match) =>
+      match.status === "AWAITING_PROOF" || (match.status === "DISPUTED" && Boolean(match.reviewRequestedAt)),
+    ).length
 
     return [
       hasBracket && { id: "bracket" as const, label: "Chave", icon: GitBranch },
@@ -140,11 +149,11 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         id: "proofs" as const,
         label: "Aprovações",
         icon: Camera,
-        badge: pendingProofs || undefined,
+        badge: pendingProofs + scoreAudit.length || undefined,
       },
       { id: "staff" as const, label: "Organização", icon: ShieldCheck },
     ].filter(Boolean) as Array<{ id: TabId; label: string; icon: typeof GitBranch; badge?: number }>
-  }, [tournament])
+  }, [scoreAudit.length, tournament])
 
   useEffect(() => {
     if (tabs.length > 0 && !tabs.some((item) => item.id === tab)) setTab(tabs[0].id)
@@ -328,7 +337,7 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
         </button>
       )}
 
-      {scoreAudit.length > 0 && (
+      {tab === "proofs" && scoreAudit.length > 0 && (
         <div className="space-y-3 rounded-2xl border border-red-500/30 bg-red-500/[0.055] p-4">
           <div className="flex items-start gap-2">
             <TriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-300" />
@@ -487,10 +496,10 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
           }}
           onWalkover={
             tournament.access.canModerate
-              ? async ({ winner, reason }) => {
+              ? async ({ winner, reason, homeScore, awayScore }) => {
                   const winnerTeamId = winner === "HOME" ? photoMatch.homeTeamId : photoMatch.awayTeamId
                   if (!winnerTeamId) return
-                  await declareWalkover(tournament.id, photoMatch.id, winnerTeamId, reason)
+                  await declareWalkover(tournament.id, photoMatch.id, winnerTeamId, reason, homeScore, awayScore)
                   await load()
                   setNotice(correctingLabResult ? "Resultado corrigido para W.O. e classificação recalculada." : "W.O. registrado. A vaga seguiu para a fase seguinte.")
                 }

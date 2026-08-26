@@ -4,6 +4,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 export const FEATURE_SCREEN_SHARE = 'screen_share'
 export const FEATURE_TOURNAMENT_EA_RESULTS = 'tournament_ea_results'
+export const FEATURE_TOURNAMENT_EA_AUTO_SYNC = 'tournament_ea_auto_sync'
 export const FEATURE_TOURNAMENT_AI_RESULTS = 'tournament_ai_results'
 export const FEATURE_LIVE_LIMIT_720P_30FPS = 'live_limit_720p_30fps'
 
@@ -11,6 +12,14 @@ export interface FeatureFlag {
   key: string
   enabled: boolean
   description: string | null
+  updatedAt: string | null
+}
+
+export interface TournamentEaAutomationSettings {
+  id: number
+  checkIntervalSeconds: number
+  checksPerMinute: number
+  updatedByDiscordId: string | null
   updatedAt: string | null
 }
 
@@ -44,5 +53,27 @@ export async function updateFeatureFlag(token: string, key: string, enabled: boo
   })
   if (!res.ok) throw new Error('Erro ao atualizar a feature flag')
   flagsCache = null
+  return res.json()
+}
+
+export async function getTournamentEaAutomationSettings(token: string): Promise<TournamentEaAutomationSettings> {
+  const res = await apiFetch(`${API_URL}/feature-flags/tournament-ea/automation`, {
+    headers: h(token),
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error('Erro ao carregar a configuração da busca automática')
+  return res.json()
+}
+
+export async function updateTournamentEaAutomationSettings(
+  token: string,
+  input: Pick<TournamentEaAutomationSettings, 'checkIntervalSeconds' | 'checksPerMinute'>,
+): Promise<TournamentEaAutomationSettings> {
+  const res = await apiFetch(`${API_URL}/feature-flags/tournament-ea/automation`, {
+    method: 'PATCH',
+    headers: h(token),
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) throw new Error('Erro ao salvar a configuração da busca automática')
   return res.json()
 }
