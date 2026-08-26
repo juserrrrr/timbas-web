@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Copy, Gauge, Globe2, Info, Link2, Lock, Mic, MicOff, MonitorUp, Volume2, VolumeX } from "lucide-react"
+import { Bell, BellOff, Check, Copy, Gauge, Globe2, Info, Link2, Lock, Mic, MicOff, MonitorUp, Volume2, VolumeX } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { VideoFrameRate, VideoQuality } from "@/lib/live/tuning"
@@ -14,6 +14,9 @@ export interface LiveSetupValues {
   frameRate: VideoFrameRate
   withMic: boolean
   withGameAudio: boolean
+  /// Avisar o servidor no Discord. Começa desligado de propósito: o anúncio
+  /// marca todo mundo e não tem como voltar atrás depois de enviado.
+  announce: boolean
 }
 
 interface Props {
@@ -195,6 +198,27 @@ export function LiveSetupDialog({
           </section>
 
           <section>
+            <SectionTitle>Avisar no Discord</SectionTitle>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <ChoiceCard
+                active={!values.announce}
+                onClick={() => onChange({ announce: false })}
+                icon={<BellOff className={`h-4 w-4 ${!values.announce ? "text-gray-300" : "text-gray-500"}`} />}
+                title="Subir em silêncio"
+                detail="Ninguém é marcado. Você manda o link para quem quiser."
+              />
+              <ChoiceCard
+                active={values.announce}
+                onClick={() => onChange({ announce: true })}
+                icon={<Bell className={`h-4 w-4 ${values.announce ? "text-amber-300" : "text-gray-500"}`} />}
+                title="Anunciar no canal"
+                detail="O bot avisa no canal configurado. Só sai uma vez."
+                tone="amber"
+              />
+            </div>
+          </section>
+
+          <section>
             <SectionTitle>Quem pode assistir</SectionTitle>
             <div className="grid gap-2 sm:grid-cols-2">
               <ChoiceCard
@@ -254,13 +278,14 @@ function ChoiceCard({
   icon: React.ReactNode
   title: string
   detail: string
-  tone?: "blue" | "emerald" | "red" | "neutral"
+  tone?: "blue" | "emerald" | "red" | "amber" | "neutral"
 }) {
   const activeRing =
     tone === "emerald" ? "border-emerald-500/60 bg-emerald-500/10"
       : tone === "red" ? "border-red-500/50 bg-red-500/10"
-        : tone === "neutral" ? "border-white/25 bg-white/[0.06]"
-          : "border-blue-500/60 bg-blue-500/10"
+        : tone === "amber" ? "border-amber-500/60 bg-amber-500/10"
+          : tone === "neutral" ? "border-white/25 bg-white/[0.06]"
+            : "border-blue-500/60 bg-blue-500/10"
 
   return (
     <button

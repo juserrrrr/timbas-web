@@ -35,6 +35,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     frameRate: 60,
     withMic: true,
     withGameAudio: true,
+    announce: false,
   })
   const [visibility, setVisibility] = useState<Visibility>(stream.visibility)
   const [privacyOpen, setPrivacyOpen] = useState(false)
@@ -81,6 +82,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       visibility: setup.visibility,
       withMic: setup.withMic,
       withGameAudio: setup.withGameAudio,
+      announce: setup.announce,
     })
     if (!started) return
     setVisibility(setup.visibility)

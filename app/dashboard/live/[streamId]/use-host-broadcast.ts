@@ -22,6 +22,7 @@ import {
   getRtcCredentials,
   getStreamViewers,
   leaveStream,
+  reportHostTelemetry,
   startStream,
   updateStreamVisibility,
   type SignalEvent,
@@ -34,6 +35,8 @@ const VIEWER_SYNC_MS = 4000
 /// Espaço mínimo entre duas tentativas de recuperar a resolução. Insistir a cada
 /// leitura só faria o codificador reiniciar sem parar.
 const RESOLUTION_RETRY_MS = 20_000
+/// Espaço entre as leituras que o host manda para o painel da organização.
+const TELEMETRY_MS = 5000
 
 /**
  * Publica a live: o host manda uma cópia para o servidor e ele distribui, então
@@ -57,6 +60,7 @@ export function useHostBroadcast(
   const statsSampleRef = useRef({ bytes: 0, at: 0 })
   const captureHeightRef = useRef(0)
   const lastResolutionFixRef = useRef(0)
+  const telemetrySentRef = useRef(0)
 
   const [viewers, setViewers] = useState<StreamPeer[]>(initialViewers)
   const [hasStarted, setHasStarted] = useState(live)
@@ -175,9 +179,11 @@ export function useHostBroadcast(
 
     const room = new Room({
       adaptiveStream: false,
-      // Lets the server tell the publisher to stop encoding layers that nobody
-      // is watching, which keeps CPU off the game.
-      dynacast: true,
+      // dynacast desliga camadas que ninguém está pedindo, e quem pede é o
+      // player do espectador. Na prática isso derrubava a resolução do
+      // publisher inteiro por causa do tamanho do vídeo na tela de quem
+      // assiste. Economia de CPU não vale entregar a live em 180p.
+      dynacast: false,
       disconnectOnPageLeave: true,
     })
 
@@ -206,7 +212,7 @@ export function useHostBroadcast(
 
   // ─── LIFECYCLE ─────────────────────────────────────────────────────────────
 
-  const start = useCallback(async ({ profile, visibility, withMic, withGameAudio }: StartOptions) => {
+  const start = useCallback(async ({ profile, visibility, withMic, withGameAudio, announce }: StartOptions) => {
     setError(null)
     if (!navigator.mediaDevices?.getDisplayMedia) {
       setError("Seu navegador não suporta compartilhamento de tela.")
@@ -229,7 +235,7 @@ export function useHostBroadcast(
       await publishVideoTrack(videoTrackRef.current)
 
       await updateStreamVisibility(token, streamId, visibility).catch(() => null)
-      await startStream(token, streamId)
+      await startStream(token, streamId, announce)
       setHasStarted(true)
       return true
     } catch (caught: unknown) {
@@ -289,6 +295,26 @@ export function useHostBroadcast(
   // ─── VIEWERS ───────────────────────────────────────────────────────────────
 
   const handleEvent = useCallback(async (event: SignalEvent) => {
+    // A organização pode empurrar um alvo de qualidade para depurar uma live
+    // ruim sem precisar pedir para o host reiniciar a transmissão. Vem antes do
+    // corte por remetente: o pedido é da organização, não de um espectador.
+    if (event.type === "quality_request") {
+      const payload = event.payload as {
+        quality?: VideoProfile["quality"]
+        frameRate?: VideoProfile["frameRate"]
+        by?: string
+      } | undefined
+      const next: VideoProfile = {
+        quality: payload?.quality ?? profileRef.current.quality,
+        frameRate: payload?.frameRate ?? profileRef.current.frameRate,
+      }
+      await applyProfile(next)
+      toast.info("Qualidade ajustada pela organização", {
+        description: `Alvo agora é ${next.quality} a ${next.frameRate} FPS${payload?.by ? `, pedido por ${payload.by}` : ""}.`,
+      })
+      return
+    }
+
     const from = event.from
     if (!from) return
 
@@ -302,21 +328,6 @@ export function useHostBroadcast(
     if (event.type === "viewer_left") {
       viewersRef.current.delete(from)
       setViewers([...viewersRef.current.values()])
-      return
-    }
-
-    // A organização pode empurrar um alvo de qualidade para depurar uma live
-    // ruim sem precisar pedir para o host reiniciar a transmissão.
-    if (event.type === "quality_request") {
-      const payload = event.payload as { quality?: VideoProfile["quality"]; frameRate?: VideoProfile["frameRate"] } | undefined
-      const next: VideoProfile = {
-        quality: payload?.quality ?? profileRef.current.quality,
-        frameRate: payload?.frameRate ?? profileRef.current.frameRate,
-      }
-      await applyProfile(next)
-      toast.info("Qualidade ajustada pela organização", {
-        description: `Alvo agora é ${next.quality} a ${next.frameRate} FPS.`,
-      })
     }
   }, [applyProfile])
 
@@ -392,7 +403,7 @@ export function useHostBroadcast(
         void reapplyEncoding()
       }
 
-      setStats({
+      const sample: BroadcastStats = {
         kbps: Math.max(0, Math.round(((bytes - previous.bytes) * 8) / (now - previous.at))),
         fps,
         width,
@@ -401,13 +412,33 @@ export function useHostBroadcast(
         relayed: false,
         limitedBy,
         targetHeight,
-      })
+      }
+      setStats(sample)
+
+      // A organização enxerga a live pelo painel, e o servidor de mídia só sabe
+      // o tamanho declarado na publicação. Sem esta leitura o painel mostrava
+      // 1080p enquanto a imagem saía em 180p.
+      if (now - telemetrySentRef.current >= TELEMETRY_MS) {
+        telemetrySentRef.current = now
+        const token = getToken()
+        if (token) {
+          void reportHostTelemetry(token, streamId, peerIdRef.current, {
+            width: sample.width,
+            height: sample.height,
+            fps: sample.fps,
+            kbps: sample.kbps,
+            rttMs: sample.rttMs,
+            targetHeight: sample.targetHeight,
+            limitedBy: sample.limitedBy,
+          })
+        }
+      }
     }
 
     void collect()
     const interval = window.setInterval(() => { void collect() }, 2000)
     return () => window.clearInterval(interval)
-  }, [media.sharing, reapplyEncoding])
+  }, [media.sharing, reapplyEncoding, streamId])
 
   useEffect(() => () => {
     stopEverything()

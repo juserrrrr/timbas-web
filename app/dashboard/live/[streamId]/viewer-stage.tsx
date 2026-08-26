@@ -7,6 +7,7 @@ import {
   Room,
   RoomEvent,
   Track,
+  VideoQuality,
 } from "livekit-client"
 import { getToken } from "@/lib/auth"
 import {
@@ -70,6 +71,9 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
 
     if (track.kind === Track.Kind.Video) {
       videoTrackRef.current = track
+      // Pede a camada cheia de propósito: sem isso o servidor entrega a que
+      // ele achar melhor e a imagem chega menor do que foi transmitida.
+      publication.setVideoQuality(VideoQuality.HIGH)
       if (videoRef.current) track.attach(videoRef.current)
       setStatus(publication.isMuted ? "paused" : "live")
       return
@@ -101,10 +105,14 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
       }
 
       room = new Room({
-        // Lets the server drop this viewer to a smaller layer when the
-        // connection cannot keep up, instead of freezing the picture.
-        adaptiveStream: true,
-        dynacast: true,
+        // adaptiveStream escolhe a camada pelo tamanho do elemento de vídeo, e
+        // com dynacast ligado no host esse pedido volta para o publisher: um
+        // player pequeno ou ainda sem layout fazia a live inteira cair para a
+        // camada mínima, e era assim que o host mandava 1080p e a tela do
+        // espectador mostrava 180p. Transmissão de jogo é para ser vista no
+        // tamanho que foi capturada.
+        adaptiveStream: false,
+        dynacast: false,
         disconnectOnPageLeave: true,
       })
 

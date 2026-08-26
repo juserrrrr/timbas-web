@@ -98,10 +98,15 @@ export async function getStreamViewers(token: string, streamId: string): Promise
   return parse(res, 'Could not load stream viewers')
 }
 
-export async function startStream(token: string, streamId: string): Promise<StreamSummary> {
+export async function startStream(
+  token: string,
+  streamId: string,
+  announce = false,
+): Promise<StreamSummary> {
   const res = await apiFetch(`${API_URL}/streaming/streams/${streamId}/start`, {
     method: 'POST',
     headers: h(token),
+    body: JSON.stringify({ announce }),
   })
   return parse(res, 'Erro ao iniciar a transmissÃ£o')
 }
@@ -381,6 +386,19 @@ export interface LiveMonitorPeer {
   idleMs: number
 }
 
+export interface LiveHostTelemetry {
+  width: number
+  height: number
+  fps: number
+  kbps: number
+  rttMs: number
+  targetHeight: number
+  limitedBy: 'none' | 'cpu' | 'bandwidth' | 'other'
+  at: number
+  /** Há quanto tempo o host mandou esta leitura. */
+  ageMs: number
+}
+
 export interface LiveMonitorStream extends StreamSummary {
   hostUserId: number
   hostPeerId: string | null
@@ -389,6 +407,8 @@ export interface LiveMonitorStream extends StreamSummary {
   announced: boolean
   guildId: string
   uptimeMs: number
+  /** O que o host está codificando de verdade, null enquanto ele não reporta. */
+  telemetry: LiveHostTelemetry | null
   peers: LiveMonitorPeer[]
   /** Null quando o servidor de mídia não respondeu ou não está configurado. */
   room: { room: string; participants: LiveMonitorParticipant[] } | null
@@ -416,4 +436,28 @@ export async function forceStreamQuality(
     body: JSON.stringify({ quality, frameRate }),
   })
   return parse(res, 'Erro ao pedir a troca de qualidade')
+}
+
+/// O host avisa o que está codificando de verdade. O servidor de mídia só
+/// conhece o tamanho declarado na publicação, então é esta leitura que mostra
+/// uma live que encolheu.
+export async function reportHostTelemetry(
+  token: string,
+  streamId: string,
+  peerId: string,
+  telemetry: {
+    width: number
+    height: number
+    fps: number
+    kbps: number
+    rttMs: number
+    targetHeight: number
+    limitedBy: 'none' | 'cpu' | 'bandwidth' | 'other'
+  },
+): Promise<void> {
+  await apiFetch(`${API_URL}/streaming/streams/${streamId}/telemetry`, {
+    method: 'POST',
+    headers: h(token),
+    body: JSON.stringify({ peerId, ...telemetry }),
+  }).catch(() => undefined)
 }

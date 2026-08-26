@@ -25,6 +25,9 @@ export interface StartOptions {
   visibility: Visibility
   withMic: boolean
   withGameAudio: boolean
+  /// Avisar no Discord ao subir. Padrão desligado: o anúncio marca o servidor
+  /// inteiro e não tem como cancelar depois.
+  announce: boolean
 }
 
 /** O que a tela do estúdio precisa da camada que publica a live. */
