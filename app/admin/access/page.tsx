@@ -1,21 +1,21 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { Check, Loader2, Plus, ShieldCheck, Trash2, UserCog, X } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Bot, Check, ChevronLeft, ChevronRight, Clock, Crown, KeyRound, LogIn, Plus, RefreshCw, Search, ShieldCheck, Trash2, UserCheck, Users, Wifi } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import {
-  CompetitionHeader,
-  ErrorState,
-  PageLoading,
-  StatusPill,
-  formatDateTime,
-} from "@/components/competitions/shared"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { CompetitionHeader, ErrorState, PageLoading, formatDateTime } from "@/components/competitions/shared"
+import { beginImpersonation, decodeToken, getToken } from "@/lib/auth"
+import { adminDeleteUser, adminGetUsers, adminImpersonateUser, adminUpdateRole, type AdminUser, type Role } from "@/lib/services/admin"
 import {
   createPermissionGroup,
+  getMyPermissions,
   getPermissionCatalog,
   getPlatformSettings,
   listAccessUsers,
@@ -33,99 +33,46 @@ import {
   type UserStatus,
 } from "@/lib/services/access"
 
-const STATUS_TONES: Record<UserStatus, "neutral" | "live" | "warn" | "done" | "danger"> = {
-  PENDING: "warn",
-  APPROVED: "done",
-  BLOCKED: "danger",
+const PAGE_SIZE = 12
+const ROLE_META: Record<Role, { label: string; className: string; icon: typeof Users }> = {
+  ADMIN: { label: "Admin", className: "border-orange-400/25 bg-orange-400/10 text-orange-300", icon: Crown },
+  BOT: { label: "Bot", className: "border-purple-400/25 bg-purple-400/10 text-purple-300", icon: Bot },
+  USER: { label: "Usuário", className: "border-blue-400/25 bg-blue-400/10 text-blue-300", icon: UserCheck },
+  PLAYER: { label: "Jogador", className: "border-white/10 bg-white/[0.04] text-gray-400", icon: Users },
 }
 
-function GroupCard({
-  group,
-  catalog,
-  busy,
-  onSave,
-  onRemove,
-}: {
-  group: PermissionGroup
-  catalog: PermissionCategory[]
-  busy: string
-  onSave: (permissions: string[]) => void
-  onRemove: () => void
-}) {
-  const [selected, setSelected] = useState<string[]>(group.permissions)
-  const dirty =
-    selected.length !== group.permissions.length || selected.some((key) => !group.permissions.includes(key))
+function Avatar({ user }: { user: AccessUser }) {
+  if (user.avatar) return <img src={user.avatar} alt="" className="h-10 w-10 rounded-xl object-cover ring-1 ring-white/10" />
+  return <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/30 to-blue-500/20 text-xs font-black text-white ring-1 ring-white/10">{user.name.slice(0, 2).toUpperCase()}</span>
+}
 
-  const toggle = (key: string) =>
-    setSelected((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]))
+function RolePill({ role }: { role: string }) {
+  const meta = ROLE_META[(role in ROLE_META ? role : "PLAYER") as Role]
+  const Icon = meta.icon
+  return <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold ${meta.className}`}><Icon className="h-3 w-3" />{meta.label}</span>
+}
 
-  return (
-    <Card className="border-white/[0.07] bg-white/[0.025] p-4">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-black text-white">{group.name}</h3>
-          <p className="text-[11px] text-gray-500">
-            {group.description || "Sem descrição"} · {group._count.members} pessoa(s)
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {dirty && (
-            <Button
-              size="sm"
-              disabled={busy !== ""}
-              onClick={() => onSave(selected)}
-              className="h-7 bg-violet-500 px-2 text-[11px] text-white hover:bg-violet-400"
-            >
-              Salvar
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy !== ""}
-            onClick={onRemove}
-            className="h-7 border-red-500/25 px-2 text-[11px] text-red-400 hover:bg-red-500/10"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
+function StatusPill({ status }: { status: UserStatus }) {
+  const tone = status === "APPROVED" ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-300" : status === "PENDING" ? "border-amber-400/25 bg-amber-400/10 text-amber-300" : "border-red-400/25 bg-red-400/10 text-red-300"
+  return <span className={`rounded-full border px-2 py-1 text-[10px] font-black ${tone}`}>{USER_STATUS_LABELS[status]}</span>
+}
 
-      <div className="space-y-3">
-        {catalog.map((category) => (
-          <div key={category.id}>
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-600">{category.title}</p>
-            <div className="grid gap-1.5 sm:grid-cols-2">
-              {category.permissions.map((permission) => {
-                const active = selected.includes(permission.key)
-                return (
-                  <button
-                    key={permission.key}
-                    onClick={() => toggle(permission.key)}
-                    className={`cursor-pointer rounded-lg border px-2.5 py-2 text-left transition ${
-                      active
-                        ? "border-violet-500/40 bg-violet-500/[0.08]"
-                        : "border-white/[0.06] bg-white/[0.02] hover:border-white/15"
-                    }`}
-                  >
-                    <span
-                      className={`flex items-center gap-1.5 text-[12px] font-bold ${
-                        active ? "text-violet-300" : "text-gray-300"
-                      }`}
-                    >
-                      {active && <Check className="h-3 w-3 flex-shrink-0" />}
-                      {permission.label}
-                    </span>
-                    <span className="mt-0.5 block text-[10px] leading-snug text-gray-600">{permission.hint}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
+function GroupEditor({ group, catalog, busy, onSave, onRemove }: { group: PermissionGroup; catalog: PermissionCategory[]; busy: boolean; onSave: (permissions: string[]) => void; onRemove: () => void }) {
+  const [selected, setSelected] = useState(group.permissions)
+  useEffect(() => setSelected(group.permissions), [group.permissions])
+  const dirty = selected.length !== group.permissions.length || selected.some((key) => !group.permissions.includes(key))
+  const toggle = (key: string) => setSelected((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])
+  return <details className="group rounded-2xl border border-white/[0.07] bg-white/[0.025] open:border-violet-400/20">
+    <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5">
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-300"><KeyRound className="h-4 w-4" /></span>
+      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-black text-white">{group.name}</span><span className="block text-[11px] text-gray-600">{group._count.members} pessoa(s) · {group.permissions.length} permissões</span></span>
+      <span className="text-[10px] font-bold text-gray-600 group-open:hidden">Editar</span>
+    </summary>
+    <div className="border-t border-white/[0.06] p-4">
+      <div className="space-y-4">{catalog.map((category) => <div key={category.id}><p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">{category.title}</p><div className="grid gap-2 sm:grid-cols-2">{category.permissions.map((permission) => { const active = selected.includes(permission.key); return <button type="button" key={permission.key} onClick={() => toggle(permission.key)} className={`rounded-xl border p-3 text-left transition ${active ? "border-violet-400/30 bg-violet-400/[0.08]" : "border-white/[0.06] bg-black/15 hover:border-white/15"}`}><span className={`flex items-center gap-1.5 text-xs font-bold ${active ? "text-violet-200" : "text-gray-300"}`}>{active && <Check className="h-3 w-3" />}{permission.label}</span><span className="mt-1 block text-[10px] leading-snug text-gray-600">{permission.hint}</span></button>})}</div></div>)}</div>
+      <div className="mt-4 flex justify-between gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onRemove} className="border-red-500/20 text-red-400 hover:bg-red-500/10"><Trash2 className="mr-1.5 h-3.5 w-3.5" />Excluir</Button><Button type="button" disabled={!dirty || busy} onClick={() => onSave(selected)} className="bg-violet-600 text-white hover:bg-violet-500">Salvar permissões</Button></div>
+    </div>
+  </details>
 }
 
 export default function AdminAccessPage() {
@@ -133,297 +80,142 @@ export default function AdminAccessPage() {
   const [catalog, setCatalog] = useState<PermissionCategory[]>([])
   const [groups, setGroups] = useState<PermissionGroup[]>([])
   const [users, setUsers] = useState<AccessUser[]>([])
+  const [details, setDetails] = useState<AdminUser[]>([])
+  const [permissions, setPermissions] = useState<string[]>([])
+  const [selfId, setSelfId] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
+  const [search, setSearch] = useState("")
+  const [status, setStatus] = useState<UserStatus | "ALL">("ALL")
+  const [groupFilter, setGroupFilter] = useState("ALL")
+  const [page, setPage] = useState(1)
   const [newGroup, setNewGroup] = useState("")
+  const [groupSearch, setGroupSearch] = useState("")
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState("")
   const [error, setError] = useState("")
-  const [notice, setNotice] = useState("")
 
-  const load = useCallback(async () => {
+  const canApprove = permissions.includes("users.approve")
+  const canManageUsers = permissions.includes("users.manage")
+  const canManageGroups = permissions.includes("groups.manage")
+  const isAdmin = details.length > 0
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
-      const [settingsData, catalogData, groupsData, usersData] = await Promise.all([
-        getPlatformSettings(),
-        getPermissionCatalog().catch(() => []),
-        listPermissionGroups().catch(() => []),
+      const access = await getMyPermissions()
+      setPermissions(access.permissions)
+      const [usersData, settingsData, groupsData, catalogData, adminData] = await Promise.all([
         listAccessUsers(),
+        access.permissions.includes("users.approve") ? getPlatformSettings() : Promise.resolve(null),
+        access.permissions.includes("groups.manage") || access.permissions.includes("users.manage") ? listPermissionGroups().catch(() => []) : Promise.resolve([]),
+        access.permissions.includes("groups.manage") ? getPermissionCatalog().catch(() => []) : Promise.resolve([]),
+        access.role === "ADMIN" && getToken() ? adminGetUsers(getToken()!).catch(() => []) : Promise.resolve([]),
       ])
-      setSettings(settingsData)
-      setCatalog(catalogData)
-      setGroups(groupsData)
       setUsers(usersData)
+      setSettings(settingsData)
+      setGroups(groupsData)
+      setCatalog(catalogData)
+      setDetails(adminData)
+      const payload = getToken() ? decodeToken(getToken()!) : null
+      setSelfId(payload ? Number(payload.sub) : null)
       setError("")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar os acessos")
-    } finally {
-      setLoading(false)
-    }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível carregar pessoas e acessos.")
+    } finally { setLoading(false) }
   }, [])
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  useEffect(() => { void load() }, [load])
+  useEffect(() => setPage(1), [search, status, groupFilter])
 
-  if (loading) return <PageLoading />
-  if (error && !settings) return <ErrorState message={error} retry={() => void load()} />
+  const detailById = useMemo(() => new Map(details.map((user) => [user.id, user])), [details])
+  const people = useMemo(() => {
+    const accessIds = new Set(users.map((user) => user.id))
+    const technicalAccounts: AccessUser[] = details
+      .filter((user) => !accessIds.has(user.id))
+      .map((user) => ({
+        id: user.id,
+        name: user.name,
+        discordId: user.discordId,
+        avatar: null,
+        role: user.role,
+        status: "APPROVED",
+        statusNote: null,
+        lastLoginAt: user.lastLoginAt,
+        dateCreated: "",
+        groups: [],
+      }))
+    return [...users, ...technicalAccounts]
+  }, [details, users])
+  const filtered = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase("pt-BR")
+    return people.filter((user) => {
+      const detail = detailById.get(user.id)
+      const matchesTerm = !term || [user.name, user.discordId, detail?.email ?? "", detail?.lastLoginIp ?? ""].some((value) => value.toLocaleLowerCase("pt-BR").includes(term))
+      const matchesStatus = status === "ALL" || user.status === status
+      const matchesGroup = groupFilter === "ALL" || (groupFilter === "NONE" ? user.groups.length === 0 : user.groups.some((membership) => membership.group.id === groupFilter))
+      return matchesTerm && matchesStatus && matchesGroup
+    })
+  }, [detailById, groupFilter, people, search, status])
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  useEffect(() => setPage((current) => Math.min(current, totalPages)), [totalPages])
+  const visibleUsers = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const selected = people.find((user) => user.id === selectedId) ?? null
+  const selectedDetail = selected ? detailById.get(selected.id) : undefined
+  const pending = people.filter((user) => user.status === "PENDING").length
+  const approved = people.filter((user) => user.status === "APPROVED").length
+  const filteredGroups = groups.filter((group) => group.name.toLocaleLowerCase("pt-BR").includes(groupSearch.toLocaleLowerCase("pt-BR")))
 
-  const run = async (key: string, action: () => Promise<unknown>, message: string) => {
+  async function run(key: string, action: () => Promise<unknown>, message: string) {
     setBusy(key)
-    setError("")
-    try {
-      await action()
-      setNotice(message)
-      await load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível concluir a ação.")
-    } finally {
-      setBusy("")
-    }
+    try { await action(); toast.success(message); await load(true) }
+    catch (caught) { toast.error(caught instanceof Error ? caught.message : "Não foi possível concluir a ação.") }
+    finally { setBusy("") }
   }
 
-  const pending = users.filter((user) => user.status === "PENDING")
+  async function changeRole(user: AdminUser, role: Role) {
+    if (user.id === selfId) return toast.warning("Você não pode alterar seu próprio cargo.")
+    await run(`role-${user.id}`, () => adminUpdateRole(getToken()!, user.id, role), `Cargo de ${user.name} atualizado.`)
+  }
 
-  return (
-    <div className="space-y-6">
-      <CompetitionHeader
-        eyebrow="Plataforma"
-        title="Acessos"
-        subtitle="Quem entra no Timbas, e o que cada um pode fazer no painel."
-        icon={ShieldCheck}
-        accent="text-violet-400"
-        accentBg="bg-violet-500/10 border-violet-500/20"
-      />
+  async function impersonate(user: AdminUser) {
+    setBusy(`impersonate-${user.id}`)
+    try { const result = await adminImpersonateUser(getToken()!, user.id); beginImpersonation(result.token); window.location.assign("/dashboard") }
+    catch (caught) { toast.error(caught instanceof Error ? caught.message : "Não foi possível entrar como usuário."); setBusy("") }
+  }
 
-      {notice && <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-300">{notice}</p>}
-      {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[12px] text-red-300">{error}</p>}
+  if (loading) return <PageLoading />
+  if (error && users.length === 0) return <ErrorState message={error} retry={() => void load()} />
 
-      <Card className="border-white/[0.07] bg-white/[0.025] p-4">
-        <label className="flex cursor-pointer items-center justify-between gap-4">
-          <span className="min-w-0">
-            <span className="block text-sm font-bold text-white">Exigir aprovação para entrar</span>
-            <span className="block text-[11px] leading-snug text-gray-500">
-              Ligado, quem entra pelo Discord fica na fila e não recebe acesso até alguém liberar. Quem já entrou
-              continua entrando.
-            </span>
-          </span>
-          <Switch
-            checked={settings?.requireApproval ?? false}
-            onCheckedChange={(checked) =>
-              void run(
-                "settings",
-                () => updatePlatformSettings({ requireApproval: checked }),
-                checked ? "Agora a entrada precisa de aprovação." : "Entrada liberada para qualquer login do Discord.",
-              )
-            }
-          />
-        </label>
-      </Card>
+  return <div className="space-y-6">
+    <CompetitionHeader eyebrow="Plataforma" title="Pessoas e acessos" subtitle="Contas, entrada, grupos e permissões em uma única central." icon={Users} accent="text-violet-400" accentBg="bg-violet-500/10 border-violet-500/20" />
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[
+      { label: "Pessoas", value: people.length, icon: Users, tone: "text-blue-300 bg-blue-500/10" },
+      { label: "Liberadas", value: approved, icon: UserCheck, tone: "text-emerald-300 bg-emerald-500/10" },
+      { label: "Aguardando", value: pending, icon: Clock, tone: "text-amber-300 bg-amber-500/10" },
+      { label: "Grupos", value: groups.length, icon: KeyRound, tone: "text-violet-300 bg-violet-500/10" },
+    ].map((item) => <Card key={item.label} className="flex items-center gap-3 border-white/[0.07] bg-white/[0.025] p-4"><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${item.tone}`}><item.icon className="h-4 w-4" /></span><span><span className="block text-2xl font-black text-white">{item.value}</span><span className="text-[11px] text-gray-500">{item.label}</span></span></Card>)}</div>
 
-      {pending.length > 0 && (
-        <Card className="border-amber-500/25 bg-amber-500/[0.05] p-4">
-          <h3 className="mb-3 text-sm font-black text-white">Esperando liberação ({pending.length})</h3>
-          <div className="space-y-2">
-            {pending.map((user) => (
-              <div
-                key={user.id}
-                className="flex flex-wrap items-center gap-3 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-white">{user.name}</p>
-                  <p className="truncate font-mono text-[10px] text-gray-600">
-                    {user.discordId} · entrou em {formatDateTime(user.dateCreated)}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  disabled={busy !== ""}
-                  onClick={() =>
-                    void run(
-                      `user-${user.id}`,
-                      () => reviewAccessUser(user.id, { status: "APPROVED" }),
-                      `${user.name} liberado.`,
-                    )
-                  }
-                  className="h-7 bg-emerald-500 px-2 text-[11px] text-black hover:bg-emerald-400"
-                >
-                  <Check className="mr-1 h-3 w-3" />
-                  Liberar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy !== ""}
-                  onClick={() =>
-                    void run(
-                      `user-${user.id}`,
-                      () => reviewAccessUser(user.id, { status: "BLOCKED" }),
-                      `${user.name} bloqueado.`,
-                    )
-                  }
-                  className="h-7 border-red-500/25 px-2 text-[11px] text-red-400 hover:bg-red-500/10"
-                >
-                  <X className="mr-1 h-3 w-3" />
-                  Recusar
-                </Button>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+    <Tabs defaultValue="people" className="gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3"><TabsList className="h-11 border border-white/[0.07] bg-white/[0.025] p-1"><TabsTrigger value="people" className="px-4 data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-200"><Users />Pessoas</TabsTrigger>{canManageGroups && <TabsTrigger value="groups" className="px-4 data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-200"><KeyRound />Grupos</TabsTrigger>}{canApprove && <TabsTrigger value="entry" className="px-4 data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-200"><ShieldCheck />Entrada</TabsTrigger>}</TabsList><Button type="button" variant="outline" onClick={() => void load(true)} disabled={busy !== ""} className="border-white/10 text-gray-300"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Atualizar</Button></div>
 
-      <div>
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-black uppercase tracking-wider text-white">Grupos e permissões</h2>
-            <p className="text-[11px] text-gray-500">
-              O admin da plataforma é fixo e tem tudo. Todo outro cargo é um grupo que você monta aqui.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Input
-              value={newGroup}
-              onChange={(event) => setNewGroup(event.target.value)}
-              placeholder="Moderador do Timbas"
-              className="h-9 w-56 border-white/10 bg-white/[0.03]"
-            />
-            <Button
-              disabled={busy !== "" || newGroup.trim().length < 2}
-              onClick={() =>
-                void run("new-group", () => createPermissionGroup({ name: newGroup.trim() }), `Grupo criado.`).then(() =>
-                  setNewGroup(""),
-                )
-              }
-              className="bg-violet-500 text-white hover:bg-violet-400"
-            >
-              {busy === "new-group" ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="mr-1.5 h-4 w-4" />
-              )}
-              Criar grupo
-            </Button>
-          </div>
-        </div>
+      <TabsContent value="people" className="space-y-4">
+        <Card className="border-white/[0.07] bg-white/[0.025] p-3"><div className="grid gap-2 lg:grid-cols-[minmax(240px,1fr)_auto_auto]"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome, Discord, e-mail ou IP" className="h-10 border-white/10 bg-black/25 pl-9" /></div><div className="flex flex-wrap gap-1.5">{(["ALL", "APPROVED", "PENDING", "BLOCKED"] as const).map((value) => <button type="button" key={value} onClick={() => setStatus(value)} className={`rounded-lg border px-3 py-2 text-[10px] font-black ${status === value ? "border-violet-400/30 bg-violet-400/10 text-violet-200" : "border-white/[0.07] text-gray-500"}`}>{value === "ALL" ? "Todos" : USER_STATUS_LABELS[value]}</button>)}</div><select value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)} className="h-10 rounded-lg border border-white/10 bg-[#0b0b10] px-3 text-xs text-gray-300"><option value="ALL">Todos os grupos</option><option value="NONE">Sem grupo</option>{groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select></div></Card>
+        {visibleUsers.length === 0 ? <Card className="border-dashed border-white/10 bg-white/[0.02] p-12 text-center"><Users className="mx-auto mb-3 h-8 w-8 text-gray-700" /><p className="font-bold text-white">Nenhuma pessoa encontrada</p><p className="text-xs text-gray-600">Ajuste a busca ou os filtros.</p></Card> : <div className="grid gap-2 xl:grid-cols-2">{visibleUsers.map((user) => <button type="button" key={user.id} onClick={() => setSelectedId(user.id)} className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3 text-left transition hover:border-violet-400/25 hover:bg-violet-400/[0.04]"><Avatar user={user} /><span className="min-w-0 flex-1"><span className="flex items-center gap-2"><span className="truncate text-sm font-black text-white">{user.name}</span>{user.id === selfId && <span className="text-[9px] font-black text-orange-300">VOCÊ</span>}</span><span className="mt-1 flex flex-wrap items-center gap-1.5"><RolePill role={user.role} /><StatusPill status={user.status} />{user.groups.slice(0, 2).map((membership) => <span key={membership.group.id} className="rounded-full bg-violet-500/10 px-2 py-1 text-[9px] font-bold text-violet-300">{membership.group.name}</span>)}{user.groups.length > 2 && <span className="text-[9px] text-gray-600">+{user.groups.length - 2}</span>}</span></span><span className="hidden text-right text-[10px] text-gray-600 sm:block">{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Nunca entrou"}</span></button>)}</div>}
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-gray-600"><span>Exibindo {visibleUsers.length} de {filtered.length} resultado(s)</span><div className="flex items-center gap-2"><Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="h-8 border-white/10"><ChevronLeft className="h-3.5 w-3.5" /></Button><span className="min-w-20 text-center">{page} de {totalPages}</span><Button type="button" size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)} className="h-8 border-white/10"><ChevronRight className="h-3.5 w-3.5" /></Button></div></div>
+      </TabsContent>
 
-        {groups.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-[12px] text-gray-500">
-            Nenhum grupo ainda. Crie um para dar acesso de painel a alguém sem torná-lo admin.
-          </p>
-        ) : (
-          <div className="grid gap-3 xl:grid-cols-2">
-            {groups.map((group) => (
-              <GroupCard
-                key={group.id}
-                group={group}
-                catalog={catalog}
-                busy={busy}
-                onSave={(permissions) =>
-                  void run(
-                    `group-${group.id}`,
-                    () => updatePermissionGroup(group.id, { permissions }),
-                    `Permissões de ${group.name} salvas.`,
-                  )
-                }
-                onRemove={() =>
-                  void run(`group-${group.id}`, () => removePermissionGroup(group.id), `${group.name} removido.`)
-                }
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {canManageGroups && <TabsContent value="groups" className="space-y-4"><Card className="border-white/[0.07] bg-white/[0.025] p-4"><div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" /><Input value={groupSearch} onChange={(event) => setGroupSearch(event.target.value)} placeholder="Buscar grupo" className="border-white/10 bg-black/25 pl-9" /></div><Input value={newGroup} onChange={(event) => setNewGroup(event.target.value)} placeholder="Nome do novo grupo" className="border-white/10 bg-black/25" /><Button type="button" disabled={newGroup.trim().length < 2 || busy !== ""} onClick={() => void run("new-group", () => createPermissionGroup({ name: newGroup.trim() }), "Grupo criado.").then(() => setNewGroup(""))} className="bg-violet-600 text-white hover:bg-violet-500"><Plus className="mr-1.5 h-4 w-4" />Criar</Button></div></Card><div className="grid gap-3 xl:grid-cols-2">{filteredGroups.map((group) => <GroupEditor key={group.id} group={group} catalog={catalog} busy={busy !== ""} onSave={(next) => void run(`group-${group.id}`, () => updatePermissionGroup(group.id, { permissions: next }), `Permissões de ${group.name} salvas.`)} onRemove={() => void run(`group-${group.id}`, () => removePermissionGroup(group.id), `${group.name} removido.`)} />)}</div></TabsContent>}
 
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <UserCog className="h-4 w-4 text-violet-400" />
-          <h2 className="text-sm font-black uppercase tracking-wider text-white">Quem tem acesso</h2>
-        </div>
+      {canApprove && <TabsContent value="entry"><Card className="border-white/[0.07] bg-white/[0.025] p-5"><label className="flex cursor-pointer items-center justify-between gap-5"><span><span className="block text-sm font-black text-white">Exigir aprovação para entrar</span><span className="mt-1 block max-w-2xl text-[11px] leading-relaxed text-gray-500">Novas contas do Discord ficam aguardando liberação. Quem já foi aprovado continua entrando normalmente.</span></span><Switch checked={settings?.requireApproval ?? false} onCheckedChange={(checked) => void run("settings", () => updatePlatformSettings({ requireApproval: checked }), checked ? "Aprovação ativada." : "Entrada automática ativada.")} /></label></Card></TabsContent>}
+    </Tabs>
 
-        <div className="space-y-1.5">
-          {users.map((user) => (
-            <div
-              key={user.id}
-              className="flex flex-wrap items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-white">
-                  {user.name}
-                  {user.role === "ADMIN" && <span className="ml-2 text-[10px] text-orange-400">super admin</span>}
-                </p>
-                <p className="truncate text-[10px] text-gray-600">
-                  {user.groups.length > 0
-                    ? user.groups.map((membership) => membership.group.name).join(", ")
-                    : "sem grupo"}
-                  {user.lastLoginAt ? ` · último acesso ${formatDateTime(user.lastLoginAt)}` : ""}
-                </p>
-              </div>
+    <Sheet open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null) }}><SheetContent className="w-full overflow-y-auto border-white/10 bg-[#09090d] p-0 sm:max-w-lg"><SheetHeader className="border-b border-white/[0.07] p-5"><SheetTitle className="flex items-center gap-3 text-white">{selected && <Avatar user={selected} />}<span>{selected?.name}</span></SheetTitle><SheetDescription>Conta, acesso e permissões desta pessoa.</SheetDescription></SheetHeader>{selected && <div className="space-y-5 p-5"><div className="grid grid-cols-2 gap-2 text-[11px]"><div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3"><span className="text-gray-600">Discord</span><span className="mt-1 block break-all font-mono text-gray-300">{selected.discordId}</span></div><div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3"><span className="text-gray-600">Último acesso</span><span className="mt-1 block text-gray-300">{selected.lastLoginAt ? formatDateTime(selected.lastLoginAt) : "Nunca"}</span></div>{selectedDetail?.email && <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3"><span className="text-gray-600">E-mail</span><span className="mt-1 block truncate text-gray-300">{selectedDetail.email}</span></div>}{selectedDetail?.lastLoginIp && <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3"><span className="flex items-center gap-1 text-gray-600"><Wifi className="h-3 w-3" />IP recente</span><span className="mt-1 block font-mono text-gray-300">{selectedDetail.lastLoginIp}</span></div>}</div>
+      {canApprove && selected.role !== "ADMIN" && selected.role !== "BOT" && <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">Situação de acesso</p><div className="grid grid-cols-3 gap-2">{(["APPROVED", "PENDING", "BLOCKED"] as UserStatus[]).map((next) => <button type="button" key={next} disabled={busy !== "" || selected.status === next} onClick={() => void run(`status-${selected.id}`, () => reviewAccessUser(selected.id, { status: next }), `${selected.name}: ${USER_STATUS_LABELS[next]}.`)} className={`rounded-xl border px-2 py-2.5 text-[10px] font-black ${selected.status === next ? "border-violet-400/30 bg-violet-400/10 text-violet-200" : "border-white/[0.07] text-gray-500"}`}>{USER_STATUS_LABELS[next]}</button>)}</div></div>}
+      {canManageUsers && selected.role !== "ADMIN" && selected.role !== "BOT" && <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">Grupos</p><div className="grid grid-cols-2 gap-2">{groups.map((group) => { const active = selected.groups.some((membership) => membership.group.id === group.id); return <button type="button" key={group.id} disabled={busy !== ""} onClick={() => { const next = active ? selected.groups.filter((membership) => membership.group.id !== group.id).map((membership) => membership.group.id) : [...selected.groups.map((membership) => membership.group.id), group.id]; void run(`groups-${selected.id}`, () => setUserGroups(selected.id, next), `Grupos de ${selected.name} atualizados.`) }} className={`rounded-xl border px-3 py-2 text-left text-[11px] font-bold ${active ? "border-violet-400/30 bg-violet-400/10 text-violet-200" : "border-white/[0.07] text-gray-500"}`}>{active && <Check className="mr-1 inline h-3 w-3" />}{group.name}</button>})}</div></div>}
+      {isAdmin && selectedDetail && selected.id !== selfId && <div className="space-y-3 border-t border-white/[0.07] pt-5"><div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">Cargo da conta</p><div className="grid grid-cols-4 gap-1.5">{(["PLAYER", "USER", "BOT", "ADMIN"] as Role[]).map((role) => <button type="button" key={role} disabled={busy !== "" || selectedDetail.role === role} onClick={() => void changeRole(selectedDetail, role)} className={`rounded-lg border px-2 py-2 text-[10px] font-bold ${selectedDetail.role === role ? "border-orange-400/30 bg-orange-400/10 text-orange-300" : "border-white/[0.07] text-gray-600"}`}>{ROLE_META[role].label}</button>)}</div></div><div className="grid grid-cols-2 gap-2">{selectedDetail.role !== "BOT" && <Button type="button" variant="outline" disabled={busy !== ""} onClick={() => void impersonate(selectedDetail)} className="border-blue-500/20 text-blue-300"><LogIn className="mr-1.5 h-4 w-4" />Entrar como</Button>}<Button type="button" variant="outline" disabled={busy !== ""} onClick={() => setDeleteTarget(selectedDetail)} className="border-red-500/20 text-red-400"><Trash2 className="mr-1.5 h-4 w-4" />Remover conta</Button></div></div>}
+    </div>}</SheetContent></Sheet>
 
-              <div className="flex flex-wrap items-center gap-1.5">
-                {groups.map((group) => {
-                  const active = user.groups.some((membership) => membership.group.id === group.id)
-                  return (
-                    <button
-                      key={group.id}
-                      disabled={busy !== "" || user.role === "ADMIN"}
-                      onClick={() => {
-                        const next = active
-                          ? user.groups
-                              .filter((membership) => membership.group.id !== group.id)
-                              .map((membership) => membership.group.id)
-                          : [...user.groups.map((membership) => membership.group.id), group.id]
-                        void run(
-                          `groups-${user.id}`,
-                          () => setUserGroups(user.id, next),
-                          `Grupos de ${user.name} atualizados.`,
-                        )
-                      }}
-                      className={`cursor-pointer rounded-md border px-2 py-1 text-[10px] font-bold transition disabled:cursor-default disabled:opacity-40 ${
-                        active
-                          ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
-                          : "border-white/[0.07] bg-white/[0.02] text-gray-600 hover:text-white"
-                      }`}
-                    >
-                      {group.name}
-                    </button>
-                  )
-                })}
-
-                <StatusPill tone={STATUS_TONES[user.status]}>{USER_STATUS_LABELS[user.status]}</StatusPill>
-
-                {user.status !== "BLOCKED" && user.role !== "ADMIN" && (
-                  <button
-                    disabled={busy !== ""}
-                    onClick={() =>
-                      void run(
-                        `user-${user.id}`,
-                        () => reviewAccessUser(user.id, { status: "BLOCKED" }),
-                        `${user.name} bloqueado.`,
-                      )
-                    }
-                    className="cursor-pointer text-[10px] font-bold text-gray-600 transition hover:text-red-400"
-                  >
-                    bloquear
-                  </button>
-                )}
-                {user.status === "BLOCKED" && (
-                  <button
-                    disabled={busy !== ""}
-                    onClick={() =>
-                      void run(
-                        `user-${user.id}`,
-                        () => reviewAccessUser(user.id, { status: "APPROVED" }),
-                        `${user.name} liberado.`,
-                      )
-                    }
-                    className="cursor-pointer text-[10px] font-bold text-gray-600 transition hover:text-emerald-400"
-                  >
-                    liberar
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
+    <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}><AlertDialogContent className="border-white/10 bg-[#0d0d12] text-white"><AlertDialogHeader><AlertDialogTitle>Remover conta?</AlertDialogTitle><AlertDialogDescription className="text-gray-400">Isso apaga permanentemente {deleteTarget?.name} e os dados associados.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="border-white/10 bg-transparent text-gray-300">Cancelar</AlertDialogCancel><AlertDialogAction className="bg-red-600 text-white hover:bg-red-500" onClick={() => { if (!deleteTarget) return; const target = deleteTarget; setDeleteTarget(null); setSelectedId(null); void run(`delete-${target.id}`, () => adminDeleteUser(getToken()!, target.id), `${target.name} removido.`) }}>Remover</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+  </div>
 }

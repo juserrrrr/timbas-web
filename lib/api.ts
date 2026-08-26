@@ -20,7 +20,7 @@ async function tryRefresh(): Promise<boolean> {
 function redirectToLogin() {
   if (typeof window === 'undefined') return
   if (endImpersonation()) {
-    window.location.href = '/admin/players'
+    window.location.href = '/admin/access'
     return
   }
   clearAllTokens()

@@ -8,13 +8,12 @@ import {
   ShieldCheck,
   ToggleRight,
   Trophy,
-  Users,
 } from "lucide-react"
 import type { NavGroup, NavItem } from "@/lib/navigation"
 
 /// Navegação do painel, nas mesmas categorias do dashboard. `permission` diz quem
 /// vê o item: sem permissão, o item nem aparece, e a API recusa de qualquer jeito.
-export type AdminNavItem = NavItem & { permission?: string }
+export type AdminNavItem = NavItem & { permission?: string | string[] }
 export type AdminNavGroup = Omit<NavGroup, "items"> & { items: AdminNavItem[] }
 
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
@@ -29,13 +28,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         href: "/admin",
         accent: "orange",
       },
-    ],
-  },
-  {
-    id: "partida-customizada",
-    title: "Partida Customizada",
-    items: [
-      { icon: Users, label: "Jogadores", description: "Contas, cargos e histórico", href: "/admin/players", accent: "blue" },
     ],
   },
   {
@@ -73,11 +65,11 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       {
         icon: ShieldCheck,
-        label: "Acessos",
-        description: "Aprovação de entrada, grupos e permissões",
+        label: "Pessoas e acessos",
+        description: "Contas, entrada, grupos e permissões",
         href: "/admin/access",
         accent: "violet",
-        permission: "users.approve",
+        permission: ["users.approve", "users.manage", "groups.manage"],
       },
       { icon: Brain, label: "IA", description: "Provedor, modelo e recursos", href: "/admin/ai", accent: "violet", permission: "ai.manage" },
       {
@@ -123,6 +115,11 @@ export const ADMIN_FOOTER_ITEMS: NavItem[] = [
 export function visibleAdminGroups(permissions: string[]): AdminNavGroup[] {
   return ADMIN_NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.permission || permissions.includes(item.permission)),
+    items: group.items.filter((item) => {
+      if (!item.permission) return true
+      return Array.isArray(item.permission)
+        ? item.permission.some((permission) => permissions.includes(permission))
+        : permissions.includes(item.permission)
+    }),
   })).filter((group) => group.items.length > 0)
 }
