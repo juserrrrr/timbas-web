@@ -9,8 +9,7 @@ import "@fontsource/black-ops-one"
 import "@fontsource/graduate"
 import "@fontsource/teko/600.css"
 import { Button } from "@/components/ui/button"
-import { AWARD_FONT_FAMILY, AWARD_FONT_OPTIONS } from "@/lib/award-card-config"
-import { AWARD_FONT_WEIGHT } from "@/lib/award-card-render"
+import { AWARD_FONT_OPTIONS } from "@/lib/award-card-config"
 import { createCenteredAwardQr } from "@/lib/award-qr"
 import { DEFAULT_CHAMPION_CARD_LAYOUT, type ChampionCardLayout } from "@/lib/champion-card-config"
 import { renderChampionCard, type ChampionCardData } from "@/lib/champion-card-render"
@@ -36,25 +35,6 @@ function RangeControl({ label, value, min, max, onChange }: { label: string; val
   return <label className="grid grid-cols-[78px_1fr_68px] items-center gap-2 text-[10px] font-bold text-gray-500"><span>{label}</span><input type="range" min={min} max={max} step={0.0001} value={value} onChange={(event) => onChange(Number(event.target.value))} className="min-w-0 accent-amber-400" /><input ref={inputRef} aria-label={`${label} em porcentagem`} type="number" min={min * 100} max={max * 100} step={0.01} value={draft} onChange={(event) => updatePercent(event.target.value)} onBlur={() => setDraft((value * 100).toFixed(2))} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur() }} className="h-7 w-full rounded-md border border-white/10 bg-black/35 px-1 text-center font-mono text-[10px] text-gray-200 outline-none focus:border-amber-400" /></label>
 }
 
-function playersInVisualOrder(players: string[], columns: number) {
-  const rows = Math.ceil(players.length / columns)
-  return Array.from({ length: players.length }, (_, index) => players[(index % columns) * rows + Math.floor(index / columns)]).filter(Boolean)
-}
-
-function rosterDividerPositions(columns: number) {
-  return Array.from({ length: columns - 1 }, (_, index) => index + 1)
-    .map((divider) => divider / columns)
-}
-
-function textFitScale(text: string, family: string, weight: number, size: number, width: number) {
-  if (typeof document === "undefined") return 1
-  const context = document.createElement("canvas").getContext("2d")
-  if (!context) return 1
-  context.font = `${weight} 100px "${family}", Impact, sans-serif`
-  const naturalWidth = context.measureText(text).width / 100 * size
-  return naturalWidth > 0 ? Math.min(1, width / naturalWidth) : 1
-}
-
 export function ChampionCardStudio() {
   const [layout, setLayout] = useState<ChampionCardLayout>(DEFAULT_CHAMPION_CARD_LAYOUT)
   const [selected, setSelected] = useState<EditableElement>("team")
@@ -68,11 +48,10 @@ export function ChampionCardStudio() {
   const [notice, setNotice] = useState("")
   const [saving, setSaving] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const dragging = useRef<EditableElement | null>(null)
 
   const players = playersText.split(/[,\n]/).map((name) => name.trim()).filter(Boolean)
-  const family = AWARD_FONT_FAMILY[layout.font]
-  const weight = AWARD_FONT_WEIGHT[layout.font]
   const data: ChampionCardData = {
     tournamentName,
     team: { id: "preview", name: teamName, logoUrl: null },
@@ -89,13 +68,39 @@ export function ChampionCardStudio() {
   useEffect(() => {
     if (!qrUrl.trim()) return setQrPreview("")
     let active = true
-    void createCenteredAwardQr(qrUrl.trim(), "#c9a85d", 384).then((image) => {
+    void createCenteredAwardQr(qrUrl.trim(), "#c9a85d", 768).then((image) => {
       if (active) setQrPreview(image)
     }).catch(() => {
       if (active) setQrPreview("")
     })
     return () => { active = false }
   }, [qrUrl])
+
+  useEffect(() => {
+    const visibleCanvas = canvasRef.current
+    if (!visibleCanvas || (qrUrl.trim() && !qrPreview)) return
+    let active = true
+    const timeout = window.setTimeout(() => {
+      const output = document.createElement("canvas")
+      const previewData: ChampionCardData = {
+        tournamentName,
+        team: { id: "preview", name: teamName, logoUrl: null },
+        players: playersText.split(/[,\n]/).map((name) => name.trim()).filter(Boolean).map((playerName) => ({ playerName, appearances: 1 })),
+      }
+      void renderChampionCard(output, previewData, qrUrl, layout, qrPreview).then(() => {
+        if (!active) return
+        visibleCanvas.width = output.width
+        visibleCanvas.height = output.height
+        visibleCanvas.getContext("2d")?.drawImage(output, 0, 0)
+      }).catch(() => {
+        if (active) setNotice("Não foi possível atualizar a prévia do campeão.")
+      })
+    }, 35)
+    return () => {
+      active = false
+      window.clearTimeout(timeout)
+    }
+  }, [layout, playersText, qrPreview, qrUrl, teamName, tournamentName])
 
   const update = (patch: Partial<ChampionCardLayout>) => setLayout((current) => ({ ...current, ...patch }))
 
@@ -174,11 +179,6 @@ export function ChampionCardStudio() {
 
   const selectedX = selected === "championTitle" ? layout.championTitleX : selected === "team" ? layout.teamX : selected === "tournament" ? layout.tournamentX : selected === "rosterTitle" ? layout.rosterTitleX : selected === "roster" ? layout.rosterX + layout.rosterWidth / 2 : layout.qrX + layout.qrSize / 2
   const selectedY = selected === "championTitle" ? layout.championTitleY : selected === "team" ? layout.teamY : selected === "tournament" ? layout.tournamentY : selected === "rosterTitle" ? layout.rosterTitleY : selected === "roster" ? layout.rosterY + layout.rosterHeight / 2 : layout.qrY + layout.qrSize / 2
-  const rows = Math.max(1, Math.ceil(players.length / layout.rosterColumns))
-  const rosterFontSize = Math.max(0.7, Math.min(layout.rosterSize * 100, layout.rosterHeight * 100 / rows * 0.64))
-  const championTitleScale = textFitScale("CAMPEÃO", "Teko", 600, layout.championTitleSize, layout.championTitleWidth)
-  const rosterTitleText = players.length ? "ELENCO CAMPEÃO" : "TÍTULO CONQUISTADO"
-  const rosterTitleScale = textFitScale(rosterTitleText, "Teko", 600, layout.rosterTitleSize, layout.rosterTitleWidth)
 
   return <div className="mt-8 border-t border-amber-400/15 pt-6">
     <div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-400">Carta especial</p><h4 className="mt-1 text-sm font-black text-white">Editor do time campeão</h4><p className="mt-1 text-[11px] text-gray-500">Clique e arraste qualquer título, time, campeonato, nomes ou QR diretamente na carta. A prévia e o PNG usam 2240 × 2800.</p></div>
@@ -204,17 +204,14 @@ export function ChampionCardStudio() {
       </div>
       <div className="min-w-0"><div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.16em] text-gray-500"><span>Setas 0,01 · Shift 0,1 · Ctrl 1,0</span><span>2240 × 2800</span></div>
         <div ref={previewRef} tabIndex={0} onKeyDown={nudgeSelected} onPointerMove={move} onPointerUp={() => { dragging.current = null }} onPointerCancel={() => { dragging.current = null }} className="relative mx-auto aspect-[4/5] w-full max-w-[620px] touch-none overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-emerald-400/60" style={{ containerType: "inline-size" }}>
-          <img src="/images/awards/campeao-template-v3.png?v=4" alt="Template da carta do campeão" className="pointer-events-none absolute inset-0 h-full w-full object-contain" />
+          <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full object-contain" aria-label="Prévia exata da carta do campeão" />
           {guides && <><span className="pointer-events-none absolute inset-y-0 z-20 w-px bg-emerald-300/55" style={{ left: `${selectedX * 100}%` }} /><span className="pointer-events-none absolute inset-x-0 z-20 h-px bg-emerald-300/55" style={{ top: `${selectedY * 100}%` }} /></>}
-          <button type="button" onPointerDown={(event) => beginDrag(event, "championTitle")} className={`absolute z-10 flex cursor-move items-center justify-center overflow-hidden whitespace-nowrap border border-dashed px-1 font-teko font-semibold leading-none text-[#f3cc72] ${selectionFrames && selected === "championTitle" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.championTitleX * 100}%`, top: `${layout.championTitleY * 100}%`, width: `${layout.championTitleWidth * 100}%`, fontSize: `${layout.championTitleSize * 100}cqw`, transform: "translate(-50%,-50%)" }}><span style={{ transform: `scale(${championTitleScale})` }}>CAMPEÃO</span></button>
-          <button type="button" onPointerDown={(event) => beginDrag(event, "team")} className={`absolute flex cursor-move items-center justify-center border border-dashed px-1 text-center uppercase leading-none ${selectionFrames && selected === "team" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.teamX * 100}%`, top: `${layout.teamY * 100}%`, width: `${layout.teamWidth * 100}%`, transform: "translate(-50%,-50%)" }}><span className="truncate whitespace-nowrap" style={{ color: "#fff", fontFamily: family, fontWeight: weight, fontSize: `${layout.teamSize * 100}cqw` }}>{teamName || "Time campeão"}</span></button>
-          <button type="button" onPointerDown={(event) => beginDrag(event, "tournament")} className={`absolute flex cursor-move items-center justify-center border border-dashed px-1 text-center uppercase leading-none ${selectionFrames && selected === "tournament" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.tournamentX * 100}%`, top: `${layout.tournamentY * 100}%`, width: `${layout.tournamentWidth * 100}%`, transform: "translate(-50%,-50%)" }}><span className="truncate whitespace-nowrap" style={{ color: "#c9a85d", fontFamily: family, fontWeight: weight, fontSize: `${layout.tournamentSize * 100}cqw` }}>{tournamentName || "Campeonato"}</span></button>
-          <button type="button" onPointerDown={(event) => beginDrag(event, "rosterTitle")} className={`absolute z-10 flex cursor-move items-center justify-center overflow-hidden whitespace-nowrap border bg-transparent px-[0.6cqw] font-teko font-semibold leading-none text-[#d9bc78] ${selectionFrames && selected === "rosterTitle" ? "border-dashed border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.rosterTitleX * 100}%`, top: `${layout.rosterTitleY * 100}%`, width: `${layout.rosterTitleWidth * 100}%`, height: `${Math.max(0.022, layout.rosterTitleSize * 1.4) * 100}%`, fontSize: `${layout.rosterTitleSize * 100}cqw`, transform: "translate(-50%,-50%)" }}><span style={{ transform: `translateY(0.1em) scale(${rosterTitleScale})` }}>{rosterTitleText}</span></button>
-          <button type="button" onPointerDown={(event) => beginDrag(event, "roster")} className={`absolute cursor-move border border-dashed ${selectionFrames && selected === "roster" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.rosterX * 100}%`, top: `${layout.rosterY * 100}%`, width: `${layout.rosterWidth * 100}%`, height: `${layout.rosterHeight * 100}%` }}>
-            {rosterDividerPositions(layout.rosterColumns).map((position) => <span key={position} className="pointer-events-none absolute inset-y-0 z-0 w-px bg-[#c9a85d]/35" style={{ left: `${position * 100}%` }} />)}
-            <span className="relative z-[1] grid h-full content-between items-center uppercase leading-none text-[#f4f1e8]" style={{ gridTemplateColumns: `repeat(${layout.rosterColumns}, minmax(0, 1fr))`, fontFamily: family, fontWeight: weight, fontSize: `${rosterFontSize}cqw` }}>{playersInVisualOrder(players, layout.rosterColumns).map((name, index) => <span key={`${name}-${index}`} className="truncate px-[0.3cqw] text-center">{name}</span>)}</span>
-          </button>
-          {qrPreview && <button type="button" onPointerDown={(event) => beginDrag(event, "qr")} className={`absolute block cursor-move border border-dashed ${selectionFrames && selected === "qr" ? "border-emerald-300/90 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.qrX * 100}%`, top: `${layout.qrY * 100}%`, width: `${layout.qrSize * 100}%`, aspectRatio: "1" }}><img src={qrPreview} alt="QR Code" className="h-full w-full" /></button>}
+          <button type="button" aria-label="Mover título Campeão" onPointerDown={(event) => beginDrag(event, "championTitle")} className={`absolute z-10 cursor-move border border-dashed ${selectionFrames && selected === "championTitle" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.championTitleX * 100}%`, top: `${layout.championTitleY * 100}%`, width: `${layout.championTitleWidth * 100}%`, height: `${Math.max(0.018, layout.championTitleSize * 0.9) * 100}%`, transform: "translate(-50%,-50%)" }} />
+          <button type="button" aria-label="Mover nome do time" onPointerDown={(event) => beginDrag(event, "team")} className={`absolute z-10 cursor-move border border-dashed ${selectionFrames && selected === "team" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.teamX * 100}%`, top: `${layout.teamY * 100}%`, width: `${layout.teamWidth * 100}%`, height: `${Math.max(0.022, layout.teamSize * 0.85) * 100}%`, transform: "translate(-50%,-50%)" }} />
+          <button type="button" aria-label="Mover nome do campeonato" onPointerDown={(event) => beginDrag(event, "tournament")} className={`absolute z-10 cursor-move border border-dashed ${selectionFrames && selected === "tournament" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.tournamentX * 100}%`, top: `${layout.tournamentY * 100}%`, width: `${layout.tournamentWidth * 100}%`, height: `${Math.max(0.018, layout.tournamentSize * 0.9) * 100}%`, transform: "translate(-50%,-50%)" }} />
+          <button type="button" aria-label="Mover título Elenco Campeão" onPointerDown={(event) => beginDrag(event, "rosterTitle")} className={`absolute z-10 cursor-move border border-dashed ${selectionFrames && selected === "rosterTitle" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.rosterTitleX * 100}%`, top: `${layout.rosterTitleY * 100}%`, width: `${layout.rosterTitleWidth * 100}%`, height: `${Math.max(0.018, layout.rosterTitleSize * 1.1) * 100}%`, transform: "translate(-50%,-50%)" }} />
+          <button type="button" aria-label="Mover nomes do elenco" onPointerDown={(event) => beginDrag(event, "roster")} className={`absolute z-10 cursor-move border border-dashed ${selectionFrames && selected === "roster" ? "border-emerald-300/80 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.rosterX * 100}%`, top: `${layout.rosterY * 100}%`, width: `${layout.rosterWidth * 100}%`, height: `${layout.rosterHeight * 100}%` }} />
+          <button type="button" aria-label="Mover QR Code" onPointerDown={(event) => beginDrag(event, "qr")} className={`absolute z-10 block cursor-move border border-dashed ${selectionFrames && selected === "qr" ? "border-emerald-300/90 bg-emerald-300/5" : "border-transparent"}`} style={{ left: `${layout.qrX * 100}%`, top: `${layout.qrY * 100}%`, width: `${layout.qrSize * 100}%`, aspectRatio: "1" }} />
         </div>
       </div>
     </div>

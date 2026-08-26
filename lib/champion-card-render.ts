@@ -41,7 +41,7 @@ function rosterDividerPositions(columns: number) {
     .map((divider) => divider / columns)
 }
 
-export async function renderChampionCard(canvas: HTMLCanvasElement, data: ChampionCardData, qrUrl: string, inputLayout?: ChampionCardLayout) {
+export async function renderChampionCard(canvas: HTMLCanvasElement, data: ChampionCardData, qrUrl: string, inputLayout?: ChampionCardLayout, preparedQr?: string) {
   const layout = inputLayout ?? DEFAULT_CHAMPION_CARD_LAYOUT
   const family = AWARD_FONT_FAMILY[layout.font]
   const weight = AWARD_FONT_WEIGHT[layout.font]
@@ -118,7 +118,7 @@ export async function renderChampionCard(canvas: HTMLCanvasElement, data: Champi
   }
 
   if (qrUrl.trim()) {
-    const qr = await loadImage(await createCenteredAwardQr(qrUrl.trim(), "#c9a85d", 768))
+    const qr = await loadImage(preparedQr || await createCenteredAwardQr(qrUrl.trim(), "#c9a85d", 768))
     const size = width * layout.qrSize
     ctx.drawImage(qr, width * layout.qrX, height * layout.qrY, size, size)
   }
