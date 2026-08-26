@@ -2,6 +2,9 @@ import type { AwardFontKey } from "@/lib/award-card-config"
 
 export interface ChampionCardLayout {
   font: AwardFontKey
+  championTitleX: number
+  championTitleY: number
+  championTitleSize: number
   teamX: number
   teamY: number
   teamSize: number
@@ -16,6 +19,10 @@ export interface ChampionCardLayout {
   rosterHeight: number
   rosterSize: number
   rosterColumns: number
+  rosterTitleX: number
+  rosterTitleY: number
+  rosterTitleSize: number
+  rosterTitleWidth: number
   qrX: number
   qrY: number
   qrSize: number
@@ -23,6 +30,9 @@ export interface ChampionCardLayout {
 
 export const DEFAULT_CHAMPION_CARD_LAYOUT: ChampionCardLayout = {
   font: "teko",
+  championTitleX: 0.5,
+  championTitleY: 0.612,
+  championTitleSize: 0.026,
   teamX: 0.5,
   teamY: 0.65,
   teamSize: 0.058,
@@ -37,6 +47,10 @@ export const DEFAULT_CHAMPION_CARD_LAYOUT: ChampionCardLayout = {
   rosterHeight: 0.078,
   rosterSize: 0.018,
   rosterColumns: 2,
+  rosterTitleX: 0.415,
+  rosterTitleY: 0.73,
+  rosterTitleSize: 0.017,
+  rosterTitleWidth: 0.18,
   qrX: 0.68,
   qrY: 0.731,
   qrSize: 0.112,

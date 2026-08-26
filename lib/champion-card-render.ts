@@ -47,7 +47,7 @@ export async function renderChampionCard(canvas: HTMLCanvasElement, data: Champi
   const family = AWARD_FONT_FAMILY[layout.font]
   const weight = AWARD_FONT_WEIGHT[layout.font]
   await document.fonts.load(`${weight} 100px "${family}"`)
-  const template = await loadImage("/images/awards/campeao-template-v3.png")
+  const template = await loadImage("/images/awards/campeao-template-v3.png?v=4")
   canvas.width = template.naturalWidth * 2
   canvas.height = template.naturalHeight * 2
   const ctx = canvas.getContext("2d")
@@ -60,8 +60,8 @@ export async function renderChampionCard(canvas: HTMLCanvasElement, data: Champi
   ctx.textBaseline = "middle"
 
   ctx.fillStyle = "#f3cc72"
-  ctx.font = `600 ${width * 0.026}px "Teko", sans-serif`
-  ctx.fillText("CAMPEÃO", width / 2, height * 0.612)
+  ctx.font = `600 ${width * layout.championTitleSize}px "Teko", sans-serif`
+  ctx.fillText("CAMPEÃO", width * layout.championTitleX, height * layout.championTitleY)
 
   const teamName = (data.team.name.trim() || "Time campeão").toUpperCase()
   fitText(ctx, teamName, family, weight, width * layout.teamWidth, width * layout.teamSize, width * 0.018)
@@ -77,18 +77,22 @@ export async function renderChampionCard(canvas: HTMLCanvasElement, data: Champi
   ctx.fillText(tournamentName, width * layout.tournamentX, height * layout.tournamentY)
 
   const names = data.players.map((player) => player.playerName.trim()).filter(Boolean)
-  const rosterTitleX = width * (layout.rosterX + layout.rosterWidth / 2)
-  const rosterTitleY = height * (layout.rosterY - 0.022)
-  const rosterTitleWidth = width * Math.min(0.18, layout.rosterWidth * 0.48)
-  const rosterTitleHeight = height * 0.024
+  const rosterTitleX = width * layout.rosterTitleX
+  const rosterTitleY = height * layout.rosterTitleY
+  const rosterTitleWidth = width * layout.rosterTitleWidth
+  const rosterTitleHeight = height * Math.max(0.022, layout.rosterTitleSize * 1.4)
   ctx.fillStyle = "rgba(5, 5, 8, 0.95)"
   ctx.fillRect(rosterTitleX - rosterTitleWidth / 2, rosterTitleY - rosterTitleHeight / 2, rosterTitleWidth, rosterTitleHeight)
   ctx.strokeStyle = "rgba(201, 168, 93, 0.55)"
   ctx.lineWidth = Math.max(2, width * 0.001)
   ctx.strokeRect(rosterTitleX - rosterTitleWidth / 2, rosterTitleY - rosterTitleHeight / 2, rosterTitleWidth, rosterTitleHeight)
   ctx.fillStyle = "#d9bc78"
-  ctx.font = `600 ${width * 0.017}px "Teko", sans-serif`
-  ctx.fillText(names.length ? "ELENCO CAMPEÃO" : "TÍTULO CONQUISTADO", rosterTitleX, rosterTitleY)
+  ctx.font = `600 ${width * layout.rosterTitleSize}px "Teko", sans-serif`
+  ctx.fillText(
+    names.length ? "ELENCO CAMPEÃO" : "TÍTULO CONQUISTADO",
+    rosterTitleX,
+    rosterTitleY + width * layout.rosterTitleSize * 0.1,
+  )
 
   if (names.length) {
     const columns = layout.rosterColumns
