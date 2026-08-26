@@ -4,12 +4,25 @@ import { useEffect, useState } from "react"
 import { Radio, Save } from "lucide-react"
 import { toast } from "sonner"
 import { Card } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"
 import { TIMBAS_SERVER_ID } from "@/lib/servers"
 import { getAnnouncementGuilds, setAnnouncementChannel, type AnnouncementGuild } from "@/lib/services/streaming"
 import { LiveMonitorPanel } from "./live-monitor-panel"
 import { SfuPanel } from "./sfu-panel"
+
+/// O Radix não aceita item com valor vazio, então "não anunciar" precisa de um
+/// valor próprio que é traduzido de volta para vazio ao salvar.
+const NO_CHANNEL = "__none__"
 
 export default function LiveAdminPage() {
   const [guilds, setGuilds] = useState<AnnouncementGuild[]>([])
@@ -78,14 +91,36 @@ export default function LiveAdminPage() {
                   <p className="mt-1 text-xs text-gray-500">O criador será mencionado e a mensagem terá um embed com o link para assistir.</p>
                 </div>
                 <div className="flex gap-2 sm:w-[360px]">
-                  <select
-                    value={guild.channelId ?? ""}
-                    onChange={(event) => changeChannel(guild.id, event.target.value)}
-                    className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-white focus:border-red-500/40 focus:outline-none"
+                  <Select
+                    value={guild.channelId ?? NO_CHANNEL}
+                    onValueChange={(value) => changeChannel(guild.id, value === NO_CHANNEL ? "" : value)}
                   >
-                    <option value="">Não anunciar</option>
-                    {guild.channels.map((channel) => <option key={channel.id} value={channel.id}>#{channel.name}</option>)}
-                  </select>
+                    <SelectTrigger className="h-10 min-w-0 flex-1 rounded-xl border-white/[0.08] bg-white/[0.03] text-sm text-white data-[placeholder]:text-gray-500">
+                      <SelectValue placeholder="Escolher canal" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[320px] border-white/[0.08] bg-[#0d0d14] text-white">
+                      <SelectItem value={NO_CHANNEL} className="text-gray-400 focus:bg-white/[0.06] focus:text-white">
+                        Não anunciar
+                      </SelectItem>
+                      {guild.channels.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel className="text-[10px] uppercase tracking-wider text-gray-600">
+                            Canais de texto
+                          </SelectLabel>
+                          {guild.channels.map((channel) => (
+                            <SelectItem
+                              key={channel.id}
+                              value={channel.id}
+                              className="focus:bg-white/[0.06] focus:text-white"
+                            >
+                              <span className="mr-1 text-gray-600">#</span>
+                              {channel.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                    </SelectContent>
+                  </Select>
                   <button
                     onClick={() => save(guild)}
                     disabled={saving === guild.id}

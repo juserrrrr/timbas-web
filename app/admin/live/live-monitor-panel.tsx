@@ -118,6 +118,14 @@ export function LiveMonitorPanel() {
       ) : (
         data.streams.map((stream) => {
           const video = publishedVideo(stream)
+          // A leitura do host é a verdade sobre a imagem: o servidor de mídia
+          // guarda apenas o tamanho declarado na hora de publicar.
+          const shrunk = Boolean(
+            stream.telemetry &&
+              stream.telemetry.targetHeight > 0 &&
+              stream.telemetry.height > 0 &&
+              stream.telemetry.height < stream.telemetry.targetHeight * 0.9,
+          )
           const watching = stream.peers.filter((peer) => !peer.isHost && peer.attached)
           const idle = stream.peers.filter((peer) => !peer.isHost && !peer.attached)
 
@@ -162,14 +170,30 @@ export function LiveMonitorPanel() {
                   </span>
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 ring-1 ${
-                      video
-                        ? "bg-blue-500/10 text-blue-300 ring-blue-500/20"
-                        : "bg-white/[0.04] text-gray-400 ring-white/[0.08]"
+                      shrunk
+                        ? "bg-red-500/10 text-red-300 ring-red-500/20"
+                        : stream.telemetry
+                          ? "bg-blue-500/10 text-blue-300 ring-blue-500/20"
+                          : "bg-white/[0.04] text-gray-400 ring-white/[0.08]"
                     }`}
                   >
                     <MonitorPlay className="h-3.5 w-3.5" />
-                    {video ? `${video.height}p no servidor · ${video.mimeType || "?"}` : "Sem imagem publicada"}
+                    {stream.telemetry
+                      ? `${stream.telemetry.height}p · ${stream.telemetry.fps} FPS · ${(stream.telemetry.kbps / 1000).toFixed(1)} Mbps`
+                      : video
+                        ? `${video.height}p declarado · ${video.mimeType || "?"}`
+                        : "Sem imagem publicada"}
                   </span>
+                  {stream.telemetry && stream.telemetry.limitedBy !== "none" && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-amber-300 ring-1 ring-amber-500/20">
+                      <Gauge className="h-3.5 w-3.5" />
+                      {stream.telemetry.limitedBy === "cpu"
+                        ? "Segurando por CPU"
+                        : stream.telemetry.limitedBy === "bandwidth"
+                          ? "Segurando por internet"
+                          : "Segurando a imagem"}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -208,6 +232,15 @@ export function LiveMonitorPanel() {
                     <Activity className="h-3.5 w-3.5" />
                     Sala no servidor de mídia
                   </p>
+                  {stream.telemetry ? (
+                    <p className="mt-2 text-[11px] text-gray-400">
+                      Host codificando {stream.telemetry.width}x{stream.telemetry.height} a {stream.telemetry.fps} FPS,
+                      alvo {stream.telemetry.targetHeight}p, {stream.telemetry.rttMs} ms de ida e volta
+                      <span className="text-gray-600"> · leitura de {Math.round(stream.telemetry.ageMs / 1000)}s atrás</span>
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-gray-600">O host ainda não reportou o estado da codificação.</p>
+                  )}
                   {!stream.room ? (
                     <p className="mt-2 text-[11px] text-gray-600">
                       {data.sfu.enabled
