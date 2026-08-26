@@ -11,6 +11,16 @@ const OVERLAY_IDLE_MS = 2600
 
 export type ViewerStatus = "connecting" | "live" | "paused" | "waiting" | "unavailable" | "ended"
 
+/// Teto de qualidade escolhido por quem assiste. O máximo continua sendo o que
+/// o host publica: aqui só dá para pedir menos.
+export type ViewerQuality = "high" | "medium" | "low"
+
+const QUALITY_OPTIONS: Array<{ id: ViewerQuality; label: string; hint: string }> = [
+  { id: "high", label: "Alta", hint: "A mesma imagem que o host está enviando" },
+  { id: "medium", label: "Média", hint: "Menos dados, para conexão instável" },
+  { id: "low", label: "Baixa", hint: "O mínimo, para internet ruim" },
+]
+
 export interface ViewerStats {
   kbps: number
   fps: number
@@ -35,6 +45,8 @@ interface Props {
   studioHref?: string
   onToggleSound: () => void
   onVolumeChange: (volume: number) => void
+  quality: ViewerQuality
+  onQualityChange: (quality: ViewerQuality) => void
 }
 
 /**
@@ -55,6 +67,8 @@ export function ViewerShell({
   studioHref,
   onToggleSound,
   onVolumeChange,
+  quality,
+  onQualityChange,
 }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
   const hideTimerRef = useRef<number | null>(null)
@@ -240,6 +254,20 @@ export function ViewerShell({
                       className="h-1.5 w-20 cursor-pointer appearance-none rounded-full bg-white/20 accent-blue-500"
                     />
                   )}
+                </div>
+                <div className="flex items-center gap-1 rounded-xl bg-black/70 p-1 ring-1 ring-white/10 backdrop-blur">
+                  {QUALITY_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => onQualityChange(option.id)}
+                      title={option.hint}
+                      className={`cursor-pointer rounded-lg px-2 py-1 text-[11px] font-bold transition-colors ${
+                        quality === option.id ? "bg-white/[0.14] text-white" : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
                 <button
                   onClick={toggleFullscreen}

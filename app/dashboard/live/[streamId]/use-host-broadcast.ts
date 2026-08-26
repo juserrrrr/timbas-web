@@ -37,6 +37,10 @@ const VIEWER_SYNC_MS = 4000
 const RESOLUTION_RETRY_MS = 20_000
 /// Espaço entre as leituras que o host manda para o painel da organização.
 const TELEMETRY_MS = 5000
+/// Tempo encolhido antes de insistir mesmo com o aperto ainda ativo. Com
+/// maintain-resolution o codificador deveria derrubar quadros em vez de pixels,
+/// então ficar pequeno esse tanto de tempo é sinal de encoder travado.
+const STUCK_RESOLUTION_MS = 120_000
 
 /**
  * Publica a live: o host manda uma cópia para o servidor e ele distribui, então
@@ -61,10 +65,12 @@ export function useHostBroadcast(
   const captureHeightRef = useRef(0)
   const lastResolutionFixRef = useRef(0)
   const telemetrySentRef = useRef(0)
+  const shrunkSinceRef = useRef(0)
 
   const [viewers, setViewers] = useState<StreamPeer[]>(initialViewers)
   const [hasStarted, setHasStarted] = useState(live)
   const [switchingScreen, setSwitchingScreen] = useState(false)
+  const [restarting, setRestarting] = useState(false)
   const [starting, setStarting] = useState(false)
   const [stats, setStats] = useState<BroadcastStats | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -275,6 +281,37 @@ export function useHostBroadcast(
     }
   }, [connectRoom, ensureMixer, publishAudioTrack, publishVideoTrack, switchCapture, switchingScreen, videoTrackRef])
 
+  /**
+   * Reinicia só a ligação com o servidor, mantendo a captura de tela e o áudio
+   * já escolhidos. Serve para a live que travou ou que ficou presa numa
+   * resolução ruim: a sessão nova nasce limpa e o alvo do perfil é reimposto.
+   */
+  const restart = useCallback(async () => {
+    if (restarting) return
+    setRestarting(true)
+    setError(null)
+    try {
+      const previous = roomRef.current
+      roomRef.current = null
+      videoPubRef.current = null
+      audioPubRef.current = null
+      await previous?.disconnect()
+
+      const room = await connectRoom()
+      const mixer = ensureMixer()
+      await publishAudioTrack(room, mixer.track)
+      await publishVideoTrack(videoTrackRef.current)
+      await reapplyEncoding()
+      toast.success("Transmissão reiniciada", {
+        description: "A imagem volta em alguns segundos para quem está assistindo.",
+      })
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível reiniciar a transmissão.")
+    } finally {
+      setRestarting(false)
+    }
+  }, [connectRoom, ensureMixer, publishAudioTrack, publishVideoTrack, reapplyEncoding, restarting, videoTrackRef])
+
   const stopEverything = useCallback(() => {
     stopMedia()
     const room = roomRef.current
@@ -398,7 +435,12 @@ export function useHostBroadcast(
       // abaixo do alvo e o aperto passou, o alvo é reimposto. Com aperto de CPU
       // ou banda ainda ativo, insistir só piora, então espera passar.
       const shrunk = height > 0 && targetHeight > 0 && height < targetHeight * 0.9
-      if (shrunk && limitedBy === "none" && now - lastResolutionFixRef.current > RESOLUTION_RETRY_MS) {
+      if (!shrunk) shrunkSinceRef.current = 0
+      else if (!shrunkSinceRef.current) shrunkSinceRef.current = now
+
+      const stuck = shrunk && now - shrunkSinceRef.current > STUCK_RESOLUTION_MS
+      const worthRetrying = shrunk && (limitedBy === "none" || stuck)
+      if (worthRetrying && now - lastResolutionFixRef.current > RESOLUTION_RETRY_MS) {
         lastResolutionFixRef.current = now
         void reapplyEncoding()
       }
@@ -453,6 +495,7 @@ export function useHostBroadcast(
     hasStarted,
     starting,
     switchingScreen,
+    restarting,
     screen: media.screen,
     micReady: media.micReady,
     micOn: media.micOn,
@@ -469,6 +512,7 @@ export function useHostBroadcast(
     start,
     applyProfile,
     switchScreen,
+    restart,
     toggleMic: media.toggleMic,
     connectGameAudio: media.connectGameAudio,
     disconnectGameAudio: media.disconnectGameAudio,

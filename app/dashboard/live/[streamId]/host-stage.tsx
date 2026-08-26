@@ -226,6 +226,8 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
             onVolumeChange={broadcast.setVolume}
             onSwitchScreen={() => { void broadcast.switchScreen() }}
             onFinish={() => { void finishBroadcast() }}
+            restarting={broadcast.restarting}
+            onRestart={() => { void broadcast.restart() }}
           />
           {broadcast.error && <p className="text-xs text-amber-300">{broadcast.error}</p>}
         </div>

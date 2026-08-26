@@ -38,6 +38,7 @@ export interface HostBroadcast {
   hasStarted: boolean
   starting: boolean
   switchingScreen: boolean
+  restarting: boolean
   screen: ScreenInfo | null
   micReady: boolean
   micOn: boolean
@@ -54,6 +55,8 @@ export interface HostBroadcast {
   start: (options: StartOptions) => Promise<boolean>
   applyProfile: (profile: VideoProfile) => Promise<void>
   switchScreen: () => Promise<void>
+  /// Refaz a ligação com o servidor sem pedir a tela de novo.
+  restart: () => Promise<void>
   toggleMic: () => Promise<void>
   connectGameAudio: (deviceId?: string) => Promise<void>
   disconnectGameAudio: () => void

@@ -1,6 +1,6 @@
 "use client"
 
-import { Activity, Mic, MicOff, MonitorUp, RefreshCw, Square, Volume2, VolumeX, Zap } from "lucide-react"
+import { Activity, Mic, MicOff, MonitorUp, RefreshCw, RotateCcw, Square, Volume2, VolumeX, Zap } from "lucide-react"
 import type { AudioMixerLevels, AudioSourceKind } from "@/lib/live/audio-mixer"
 import type { BroadcastStats } from "./broadcast-types"
 import type { GameAudioState } from "./use-live-media"
@@ -23,6 +23,8 @@ interface Props {
   onVolumeChange: (kind: AudioSourceKind, volume: number) => void
   onSwitchScreen: () => void
   onFinish: () => void
+  restarting: boolean
+  onRestart: () => void
 }
 
 const GAME_AUDIO_COPY: Record<GameAudioState, { title: string; detail: string }> = {
@@ -51,6 +53,8 @@ export function HostLiveControls({
   onVolumeChange,
   onSwitchScreen,
   onFinish,
+  restarting,
+  onRestart,
 }: Props) {
   const gameConnected = gameAudioState === "live" || gameAudioState === "silent"
   const gameCopy = GAME_AUDIO_COPY[gameAudioState]
@@ -158,13 +162,24 @@ export function HostLiveControls({
           disabled={switchingScreen}
         />
 
-        <button
-          type="button"
-          onClick={onFinish}
-          className="inline-flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 text-sm font-black text-white transition-colors hover:bg-red-500"
-        >
-          <Square className="h-4 w-4" /> Encerrar live
-        </button>
+        <div className="flex min-h-20 flex-col gap-2">
+          <button
+            type="button"
+            onClick={onRestart}
+            disabled={restarting}
+            className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/[0.1] bg-white/[0.04] px-5 text-sm font-black text-white transition-colors hover:bg-white/[0.08] disabled:cursor-wait disabled:opacity-60"
+          >
+            <RotateCcw className={`h-4 w-4 ${restarting ? "animate-spin" : ""}`} />
+            {restarting ? "Reiniciando..." : "Reiniciar transmissão"}
+          </button>
+          <button
+            type="button"
+            onClick={onFinish}
+            className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 text-sm font-black text-white transition-colors hover:bg-red-500"
+          >
+            <Square className="h-4 w-4" /> Encerrar live
+          </button>
+        </div>
       </div>
     </div>
   )

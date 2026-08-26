@@ -19,7 +19,7 @@ import {
   type StreamSummary,
 } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
-import { ViewerShell, type ViewerStats, type ViewerStatus } from "./viewer-shell"
+import { ViewerShell, type ViewerQuality, type ViewerStats, type ViewerStatus } from "./viewer-shell"
 
 interface Props {
   streamId: string
@@ -48,6 +48,8 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
   const [hasRemoteAudio, setHasRemoteAudio] = useState(false)
   const [viewerCount, setViewerCount] = useState(stream.viewers)
   const [stats, setStats] = useState<ViewerStats | null>(null)
+  const videoPubRef = useRef<RemoteTrackPublication | null>(null)
+  const [quality, setQuality] = useState<ViewerQuality>("high")
 
   const tryPlayAudio = useCallback(async () => {
     const audio = audioRef.current
@@ -71,6 +73,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
 
     if (track.kind === Track.Kind.Video) {
       videoTrackRef.current = track
+      videoPubRef.current = publication
       // Pede a camada cheia de propósito: sem isso o servidor entrega a que
       // ele achar melhor e a imagem chega menor do que foi transmitida.
       publication.setVideoQuality(VideoQuality.HIGH)
@@ -121,6 +124,7 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
         track.detach()
         if (track.kind === Track.Kind.Video) {
           videoTrackRef.current = null
+          videoPubRef.current = null
           setStatus("waiting")
         } else {
           setHasRemoteAudio(false)
@@ -173,6 +177,15 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
       void roomRef.current?.disconnect()
       roomRef.current = null
     }
+  }, [])
+
+  // Quem assiste pode limitar a própria qualidade. O teto continua sendo o que
+  // o host publica: dá para pedir menos que isso, nunca mais.
+  const changeQuality = useCallback((next: ViewerQuality) => {
+    setQuality(next)
+    videoPubRef.current?.setVideoQuality(
+      next === "low" ? VideoQuality.LOW : next === "medium" ? VideoQuality.MEDIUM : VideoQuality.HIGH,
+    )
   }, [])
 
   const connected = useSignalChannel(streamId, peerId, handleEvent, status !== "ended", guestToken, onReconnect)
@@ -259,6 +272,8 @@ export function ViewerStage({ streamId, peerId, stream, guestToken, studioHref, 
       studioHref={studioHref}
       onToggleSound={toggleSound}
       onVolumeChange={changeVolume}
+      quality={quality}
+      onQualityChange={changeQuality}
     />
   )
 }
