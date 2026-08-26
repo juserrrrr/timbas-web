@@ -269,6 +269,7 @@ export interface MatchRoom {
   graceMinutes: number
   requireOpponentConfirm: boolean
   resultMode: "EA_API" | "AI_IMAGE" | "MANUAL"
+  eaAutoSyncEnabled: boolean
 }
 
 export function getMatchRoom(id: string, matchId: string): Promise<MatchRoom> {
