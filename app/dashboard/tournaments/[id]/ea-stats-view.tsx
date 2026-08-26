@@ -246,18 +246,64 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
     <Card className="overflow-hidden border-white/[0.07] bg-white/[0.025]">
       <div className="border-b border-white/[0.06] p-4">
         <h3 className="flex items-center gap-2 text-sm font-black text-white"><Medal className="h-4 w-4 text-amber-400" />Estatísticas do campeonato</h3>
-        <p className="mt-1 text-[11px] text-gray-500">Dados sincronizados dos amistosos no EA Sports FC Clubs.</p>
+        <p className="mt-1 text-[11px] text-gray-500">Dados sincronizados dos amistosos no EA Sports FC Clubs. A ordem é por participação em gols; as demais colunas são as mesmas que entram no índice do craque.</p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left text-xs">
+        <table className="w-full min-w-[1040px] text-left text-xs">
           <thead className="bg-white/[0.025] text-[10px] uppercase tracking-wider text-gray-600">
-            <tr><th className="px-4 py-3">Jogador</th><th className="px-3 py-3">J</th><th className="px-3 py-3">G</th><th className="px-3 py-3">A</th><th className="px-3 py-3">G+A</th><th className="px-3 py-3">Nota</th><th className="px-3 py-3">MVP</th><th className="px-4 py-3">Destaques</th></tr>
+            <tr>
+              <th className="px-4 py-3">Jogador</th>
+              <th className="px-3 py-3" title="Partidas">J</th>
+              <th className="px-3 py-3" title="Gols">G</th>
+              <th className="px-3 py-3" title="Assistências">A</th>
+              <th className="px-3 py-3" title="Gols mais assistências">G+A</th>
+              <th className="px-3 py-3" title="Finalizações">FIN</th>
+              <th className="px-3 py-3" title="Passes certos e aproveitamento">PASSES</th>
+              <th className="px-3 py-3" title="Desarmes certos e aproveitamento">DESARMES</th>
+              <th className="px-3 py-3" title="Defesas do goleiro">DEF</th>
+              <th className="px-3 py-3" title="Cartões amarelos e vermelhos">CART</th>
+              <th className="px-3 py-3">Nota</th>
+              <th className="px-3 py-3">MVP</th>
+              <th className="px-4 py-3">Destaques</th>
+            </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.05]">
             {players.map((player, index) => (
               <tr key={`${player.team?.id}:${player.externalPlayerId ?? player.playerName}`} className="text-gray-300">
                 <td className="px-4 py-3"><div className="flex items-center gap-2"><span className="w-5 text-center font-black text-gray-600">{index + 1}</span><TeamCrest name={player.team?.name} logoUrl={player.team?.logoUrl} size={28} /><div><p className="font-bold text-white">{player.playerName}</p><p className="text-[10px] text-gray-600">{player.team?.name ?? "-"}</p></div></div></td>
-                <td className="px-3 py-3">{player.appearances}</td><td className="px-3 py-3 font-black text-emerald-300">{player.goals}</td><td className="px-3 py-3 text-blue-300">{player.assists}</td><td className="px-3 py-3 font-bold text-white">{player.goalContributions}</td><td className="px-3 py-3">{player.averageRating?.toFixed(1) ?? "-"}</td><td className="px-3 py-3">{player.mvps}</td>
+                <td className="px-3 py-3">{player.appearances}</td>
+                <td className="px-3 py-3 font-black text-emerald-300">{player.goals}</td>
+                <td className="px-3 py-3 text-blue-300">{player.assists}</td>
+                <td className="px-3 py-3 font-bold text-white">{player.goalContributions}</td>
+                <td className="px-3 py-3">{player.shots || "-"}</td>
+                <td className="px-3 py-3 whitespace-nowrap">
+                  {player.passesCompleted ? (
+                    <>
+                      {player.passesCompleted}
+                      <span className="ml-1 text-[10px] text-gray-600">{player.passAccuracy?.toFixed(0) ?? 0}%</span>
+                    </>
+                  ) : "-"}
+                </td>
+                <td className="px-3 py-3 whitespace-nowrap">
+                  {player.tacklesCompleted ? (
+                    <>
+                      {player.tacklesCompleted}
+                      <span className="ml-1 text-[10px] text-gray-600">{player.tackleSuccess?.toFixed(0) ?? 0}%</span>
+                    </>
+                  ) : "-"}
+                </td>
+                <td className="px-3 py-3">{player.saves || "-"}</td>
+                <td className="px-3 py-3 whitespace-nowrap text-[10px]">
+                  {player.yellowCards || player.redCards ? (
+                    <>
+                      {player.yellowCards > 0 && <span className="text-amber-300">{player.yellowCards}A</span>}
+                      {player.yellowCards > 0 && player.redCards > 0 && <span className="text-gray-700"> · </span>}
+                      {player.redCards > 0 && <span className="text-red-400">{player.redCards}V</span>}
+                    </>
+                  ) : <span className="text-gray-700">-</span>}
+                </td>
+                <td className="px-3 py-3">{player.averageRating?.toFixed(1) ?? "-"}</td>
+                <td className="px-3 py-3">{player.mvps}</td>
                 <td className="px-4 py-3"><div className="flex flex-wrap gap-1">{(player.tags ?? []).map((tag) => <span key={tag} className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-300">{TAGS[tag] ?? tag}</span>)}</div></td>
               </tr>
             ))}
