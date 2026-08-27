@@ -232,7 +232,11 @@ export function TournamentClient({
     try {
       await startTournament(tournament.id)
       await load()
-      setNotice("Chaveamento gerado. Boa sorte!")
+      setNotice(
+        tournament.startsAt && new Date(tournament.startsAt).getTime() > Date.now()
+          ? "Chaveamento publicado. O check-in abrirá no horário definido."
+          : "Campeonato iniciado. Boa sorte!",
+      )
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "Não foi possível iniciar o campeonato.")
     } finally {
@@ -296,6 +300,19 @@ export function TournamentClient({
       setNotice("Horário de início definido.")
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "Não foi possível definir o início.")
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  const releaseNow = async () => {
+    setStarting(true)
+    try {
+      await updateTournament(tournament.id, { startsAt: new Date().toISOString() })
+      await load()
+      setNotice("Campeonato liberado. O check-in já está aberto.")
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "Não foi possível liberar o campeonato.")
     } finally {
       setStarting(false)
     }
@@ -397,7 +414,7 @@ export function TournamentClient({
                   className="bg-emerald-500 text-black hover:bg-emerald-400"
                 >
                   {starting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />}
-                  Iniciar campeonato
+                  {untilStart !== null && untilStart > 0 ? "Publicar chaveamento" : "Iniciar campeonato"}
                 </Button>
               )}
             </div>
@@ -443,6 +460,14 @@ export function TournamentClient({
           ) : tournament.startsAt ? <StatusPill tone="live">Campeonato liberado</StatusPill> : <StatusPill tone="warn">Horário pendente</StatusPill>}
         </div>
         <p className="mt-3 border-t border-white/[0.06] pt-3 text-[11px] text-gray-400">A chave pode ser publicada antes. O prazo de uma partida só começa após este horário e quando os dois times daquele confronto estiverem definidos.</p>
+        {tournament.status === "RUNNING" && untilStart !== null && untilStart > 0 && tournament.access.canManage && (
+          <div className="mt-3 flex justify-end border-t border-white/[0.06] pt-3">
+            <Button size="sm" disabled={starting} onClick={() => void releaseNow()} className="h-9 bg-emerald-500 px-3 text-xs font-bold text-black hover:bg-emerald-400">
+              {starting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Play className="mr-1.5 h-3.5 w-3.5" />}
+              Começar agora
+            </Button>
+          </div>
+        )}
         {!tournament.startsAt && tournament.access.canManage && (
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-3">
             <Input type="datetime-local" value={startWhen} onChange={(event) => setStartWhen(event.target.value)} className="h-9 w-60 border-white/10 bg-black/20 text-xs" />
