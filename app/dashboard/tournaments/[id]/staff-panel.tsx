@@ -27,7 +27,7 @@ export function StaffPanel({ tournament, onChanged }: { tournament: TournamentDe
       setSearching(true)
       void searchTournamentStaffCandidates(tournament.id, search)
         .then((items) => { if (active) setCandidates(items) })
-        .catch((err) => { if (active) setError(err instanceof Error ? err.message : "N\u00e3o foi poss\u00edvel buscar pessoas.") })
+        .catch((err) => { if (active) setError(err instanceof Error ? err.message : "Não foi possível buscar pessoas.") })
         .finally(() => { if (active) setSearching(false) })
     }, 220)
     return () => { active = false; window.clearTimeout(timer) }
@@ -127,7 +127,7 @@ export function StaffPanel({ tournament, onChanged }: { tournament: TournamentDe
           <div className="mt-4 border-t border-white/[0.06] pt-4">
             <div className="mb-3 flex items-start gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300 ring-1 ring-blue-500/20"><UserPlus className="h-4 w-4" /></span>
-              <div><p className="text-sm font-black text-white">Adicionar moderador</p><p className="mt-0.5 text-[11px] text-gray-500">Procure pelo nome da pessoa. Ela poder\u00e1 cuidar de partidas, resultados e aprova\u00e7\u00f5es.</p></div>
+              <div><p className="text-sm font-black text-white">Adicionar moderador</p><p className="mt-0.5 text-[11px] text-gray-500">Procure pelo nome da pessoa. Ela poderá cuidar de partidas, resultados e aprovações.</p></div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
@@ -141,10 +141,10 @@ export function StaffPanel({ tournament, onChanged }: { tournament: TournamentDe
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-gray-600" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent side="bottom" sideOffset={8} align="start" avoidCollisions={false} className="w-[var(--radix-popover-trigger-width)] border-white/10 bg-[#0b0b11] p-0 text-white shadow-2xl shadow-black/50">
+                <PopoverContent sideOffset={8} align="start" collisionPadding={12} className="max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] overflow-hidden border-white/10 bg-[#0b0b11] p-0 text-white shadow-2xl shadow-black/50">
                   <Command shouldFilter={false} className="bg-transparent">
                     <CommandInput value={search} onValueChange={setSearch} placeholder="Buscar pelo nome..." />
-                    <CommandList>
+                    <CommandList className="max-h-[min(18rem,calc(var(--radix-popover-content-available-height)-3.5rem))]">
                       {searching ? <div className="flex items-center justify-center gap-2 px-3 py-8 text-xs text-gray-500"><Loader2 className="h-4 w-4 animate-spin" />Buscando pessoas...</div> : (
                         <>
                           <CommandEmpty>Nenhuma pessoa encontrada.</CommandEmpty>

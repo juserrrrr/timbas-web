@@ -23,13 +23,32 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
       setInvites(await listTournamentRegistrationInvites(tournamentId))
       setError("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "N\u00e3o foi poss\u00edvel carregar os convites.")
+      setError(err instanceof Error ? err.message : "Não foi possível carregar os convites.")
     } finally {
       setLoading(false)
     }
   }, [tournamentId])
 
-  useEffect(() => { void load() }, [load])
+  // Um convite é consumido do outro lado, fora desta tela, então sem revalidar
+  // o painel ficava mostrando "aguardando alguém" para um link que já tinha
+  // sido aceito, até alguém dar F5. Mesmo ritmo do resto do campeonato: volta a
+  // buscar ao reabrir a aba e devagarinho enquanto ela está à vista.
+  useEffect(() => {
+    void load()
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") void load()
+    }
+    const timer = window.setInterval(refreshIfVisible, 20_000)
+    document.addEventListener("visibilitychange", refreshIfVisible)
+    window.addEventListener("focus", refreshIfVisible)
+
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener("visibilitychange", refreshIfVisible)
+      window.removeEventListener("focus", refreshIfVisible)
+    }
+  }, [load])
 
   const counts = useMemo(() => ({
     available: invites.filter((invite) => !invite.usedAt && !invite.revokedAt).length,
@@ -59,7 +78,7 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
       await load()
       setNotice("Novo convite criado e copiado.")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "N\u00e3o foi poss\u00edvel criar o convite.")
+      setError(err instanceof Error ? err.message : "Não foi possível criar o convite.")
     } finally {
       setBusy("")
     }
@@ -72,9 +91,9 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
       await revokeTournamentRegistrationInvite(tournamentId, revokeTarget.id)
       setRevokeTarget(null)
       await load()
-      setNotice("Convite cancelado. O link n\u00e3o pode mais ser utilizado.")
+      setNotice("Convite cancelado. O link não pode mais ser utilizado.")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "N\u00e3o foi poss\u00edvel cancelar o convite.")
+      setError(err instanceof Error ? err.message : "Não foi possível cancelar o convite.")
     } finally {
       setBusy("")
     }
@@ -171,7 +190,7 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
 
       <AlertDialog open={Boolean(revokeTarget)} onOpenChange={(open) => { if (!open) setRevokeTarget(null) }}>
         <AlertDialogContent className="border-white/10 bg-[#0b0b11] text-white">
-          <AlertDialogHeader><AlertDialogTitle>Cancelar este convite?</AlertDialogTitle><AlertDialogDescription>O link deixar\u00e1 de funcionar imediatamente, mas continuar\u00e1 aparecendo no hist\u00f3rico.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Cancelar este convite?</AlertDialogTitle><AlertDialogDescription>O link deixará de funcionar imediatamente, mas continuará aparecendo no histórico.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel>Voltar</AlertDialogCancel><AlertDialogAction onClick={() => void revoke()} className="bg-red-600 text-white hover:bg-red-500">Cancelar convite</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

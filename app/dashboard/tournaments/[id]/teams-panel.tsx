@@ -56,7 +56,7 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
       setSearchingCaptain(true)
       void searchTournamentTeamCandidates(tournament.id, captainSearch)
         .then((items) => { if (active) setCaptainCandidates(items) })
-        .catch((err) => { if (active) setError(err instanceof Error ? err.message : "N\u00e3o foi poss\u00edvel buscar pessoas.") })
+        .catch((err) => { if (active) setError(err instanceof Error ? err.message : "Não foi possível buscar pessoas.") })
         .finally(() => { if (active) setSearchingCaptain(false) })
     }, 220)
     return () => { active = false; window.clearTimeout(timer) }
@@ -182,10 +182,10 @@ export function TeamsPanel({ tournament, onChanged }: { tournament: TournamentDe
                     <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 text-gray-600" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] border-white/10 bg-[#0b0b11] p-0 text-white">
+                <PopoverContent align="start" sideOffset={8} collisionPadding={12} className="max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] overflow-hidden border-white/10 bg-[#0b0b11] p-0 text-white shadow-2xl shadow-black/50">
                   <Command shouldFilter={false} className="bg-transparent">
                     <CommandInput value={captainSearch} onValueChange={setCaptainSearch} placeholder="Buscar pelo nome..." />
-                    <CommandList>
+                    <CommandList className="max-h-[min(18rem,calc(var(--radix-popover-content-available-height)-3.5rem))]">
                       {searchingCaptain ? <div className="flex items-center justify-center gap-2 px-3 py-8 text-xs text-gray-500"><Loader2 className="h-4 w-4 animate-spin" />Buscando pessoas...</div> : (
                         <>
                           <CommandEmpty>Nenhuma pessoa encontrada.</CommandEmpty>
