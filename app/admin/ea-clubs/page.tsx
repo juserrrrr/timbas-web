@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { ChevronDown, ExternalLink, RefreshCw, Search, Shield } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/lib/toast"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"

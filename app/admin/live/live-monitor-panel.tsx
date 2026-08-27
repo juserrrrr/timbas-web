@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { Activity, Eye, Gauge, MonitorPlay, RefreshCw, Signal, Users } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/lib/toast"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { getToken } from "@/lib/auth"

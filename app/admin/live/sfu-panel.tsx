@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { CheckCircle2, Loader2, Lock, Save, Server, Trash2, TriangleAlert, Zap } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/lib/toast"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

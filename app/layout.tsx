@@ -8,6 +8,7 @@ import "./globals.css"
 
 import { ThemeProvider } from "@/components/theme-provider"
 import { AnnouncementModal } from "@/components/announcement-modal"
+import { Toaster } from "@/components/ui/sonner"
 import { PUBLIC_API_URL } from "@/lib/api-base"
 
 export const metadata: Metadata = {
@@ -50,6 +51,7 @@ export default function RootLayout({
         >
           <Suspense fallback={null}>{children}</Suspense>
           <AnnouncementModal />
+          <Toaster />
           <Analytics />
         </ThemeProvider>
       </body>

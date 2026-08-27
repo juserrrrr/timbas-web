@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Save, TimerReset, ToggleRight } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/lib/toast"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"

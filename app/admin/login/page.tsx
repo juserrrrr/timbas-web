@@ -4,8 +4,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { ShieldAlert, Lock } from "lucide-react"
-import { toast } from "sonner"
-import { Toaster } from "@/components/ui/sonner"
+import { toast } from "@/lib/toast"
 
 const DISCORD_SVG = (
   <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 flex-shrink-0">
@@ -44,18 +43,6 @@ export default function AdminLoginPage() {
 
   return (
     <div className="relative min-h-screen bg-[#050508] text-white overflow-hidden flex items-center justify-center px-4">
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          style: {
-            background: "#0d0d12",
-            border: "1px solid rgba(255,255,255,0.08)",
-            color: "#fff",
-            borderRadius: "12px",
-          },
-        }}
-      />
-
       {/* Background */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle,_#ffffff05_1px,_transparent_1px)] bg-[size:28px_28px]" />

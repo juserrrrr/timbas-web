@@ -9,7 +9,7 @@ import { getMatchHistory } from "@/lib/services/matches"
 import { adminGetUsers, AdminUser } from "@/lib/services/admin"
 import { getToken, decodeToken } from "@/lib/auth"
 import { TIMBAS_SERVER_ID, TIMBAS_SERVER_NAME } from "@/lib/servers"
-import { toast } from "sonner"
+import { toast } from "@/lib/toast"
 
 interface ServerSnapshot {
   id: string

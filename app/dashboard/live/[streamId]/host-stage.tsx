@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Check, Copy, Eye, EyeOff, Globe2, Link2, Lock, MonitorUp, Radio, Users } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/lib/toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getDiscordAvatarUrl, getToken } from "@/lib/auth"
 import { getStreamPermission, updateStreamVisibility, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"

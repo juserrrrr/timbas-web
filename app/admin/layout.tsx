@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Toaster, toast } from "sonner"
+import { toast } from "@/lib/toast"
 import { AdminSidebar } from "@/components/admin-sidebar"
 import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
 import { getMyPermissions } from "@/lib/services/access"
@@ -55,7 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [checked, user])
 
   const handleLogout = () => {
-    toast("Saindo...", { duration: 1500 })
+    toast.loading("Saindo da conta", { duration: 1500 })
     setTimeout(() => {
       clearToken()
       router.push("/admin/login")
@@ -69,27 +69,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <NavigationProvider>
     <div className="relative min-h-[100dvh] bg-[#050508] text-white">
-      <Toaster
-        position="top-right"
-        expand
-        richColors
-        toastOptions={{
-          style: {
-            background: "#0d0d12",
-            border: "1px solid rgba(255,255,255,0.08)",
-            color: "#fff",
-            borderRadius: "12px",
-            fontSize: "14px",
-          },
-          classNames: {
-            success: "!border-green-500/25 !bg-green-500/5",
-            error: "!border-red-500/25   !bg-red-500/5",
-            warning: "!border-yellow-500/25 !bg-yellow-500/5",
-            info: "!border-blue-500/25   !bg-blue-500/5",
-          },
-        }}
-      />
-
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle,_#ffffff04_1px,_transparent_1px)] bg-[size:28px_28px]" />
         <div className="absolute -top-64 left-1/4 h-[600px] w-[600px] rounded-full bg-orange-800 opacity-[0.06] blur-[130px]" />

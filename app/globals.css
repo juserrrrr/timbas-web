@@ -252,6 +252,70 @@
   animation: award-card-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Avisos.
+   O sonner cuida do empilhamento, do arrasto e do relogio. Daqui sai o resto:
+   a entrada do card, o pulo do icone e o trilho da borda, que ao esvaziar
+   mostra quanto tempo ainda falta para o aviso sumir sozinho. */
+
+@keyframes tb-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(22px) scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes tb-toast-icon-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes tb-toast-drain {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0);
+  }
+}
+
+.tb-toast {
+  animation: tb-toast-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Aviso fechado no meio da entrada nao fica brigando com a saida do sonner. */
+[data-sonner-toast][data-removed='true'] .tb-toast {
+  animation: none;
+}
+
+.tb-toast-icon {
+  animation: tb-toast-icon-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
+}
+
+.tb-toast-rail[data-counting='true'] {
+  animation: tb-toast-drain var(--tb-toast-duration) linear both;
+}
+
+/* O sonner congela o relogio quando o mouse entra na pilha, entao o trilho
+   para junto: senao ele mentiria sobre o tempo que sobrou. */
+[data-sonner-toaster]:hover .tb-toast-rail,
+[data-sonner-toaster]:focus-within .tb-toast-rail {
+  animation-play-state: paused;
+}
+
 @layer components {
   .dashboard-view {
     width: 100%;
@@ -320,7 +384,9 @@
 @media (prefers-reduced-motion: reduce) {
   .dashboard-view,
   .dashboard-view > *,
-  .award-card-enter {
+  .award-card-enter,
+  .tb-toast,
+  .tb-toast-icon {
     animation: none !important;
   }
 

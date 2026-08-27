@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Bot, Check, ChevronLeft, ChevronRight, Clock, Crown, KeyRound, LogIn, Plus, RefreshCw, Search, ShieldCheck, Trash2, UserCheck, Users, Wifi } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/lib/toast"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"

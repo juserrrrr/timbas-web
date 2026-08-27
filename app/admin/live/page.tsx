@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Radio, Save } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/lib/toast"
 import { Card } from "@/components/ui/card"
 import {
   Select,
