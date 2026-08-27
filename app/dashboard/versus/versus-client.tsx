@@ -112,6 +112,7 @@ export function VersusClient({ players, serverId }: Props) {
         <p className="mt-1 text-sm text-gray-500">Compare o desempenho de dois jogadores</p>
       </div>
 
+      <CustomMatchSubnav section="matches" />
       <CustomMatchSubnav section="stats" />
 
       <div className="grid grid-cols-1 items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:p-5">

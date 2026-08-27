@@ -20,6 +20,7 @@ export default async function TeamsPage() {
         <p className="mt-1 text-sm text-gray-500">Com quem você mais ganha partidas</p>
       </div>
 
+      <CustomMatchSubnav section="matches" />
       <CustomMatchSubnav section="stats" />
 
       {duoStats.length === 0 ? (

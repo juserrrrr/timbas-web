@@ -68,6 +68,7 @@ export function StatsClient({ players, serverId, currentUserId }: Props) {
           <h1 className="text-3xl font-black text-white">Estatísticas</h1>
           <p className="text-sm text-gray-500">Acompanhe o desempenho detalhado por jogador</p>
         </div>
+        <CustomMatchSubnav section="matches" />
         <CustomMatchSubnav section="stats" />
         <Select value={selectedUserId} onValueChange={setSelectedUserId} disabled={players.length === 0}>
           <SelectTrigger className="w-full border-white/10 bg-white/5 text-white sm:w-[280px] rounded-xl h-11">

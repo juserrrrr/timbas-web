@@ -14,9 +14,12 @@ export function DashboardAccessGate({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const flags = useEnabledFeatures()
   const permissions = useMyPermissions()
-  const item = [...ALL_NAV_ITEMS]
-    .sort((left, right) => right.href.length - left.href.length)
-    .find((candidate) => isNavItemActive(pathname, candidate.href, candidate.activeHrefs))
+  const candidates = [...ALL_NAV_ITEMS].sort((left, right) => right.href.length - left.href.length)
+  const item = candidates.find((candidate) => (
+    candidate.href === "/dashboard"
+      ? pathname === candidate.href
+      : pathname === candidate.href || pathname.startsWith(`${candidate.href}/`)
+  )) ?? candidates.find((candidate) => isNavItemActive(pathname, candidate.href, candidate.activeHrefs))
 
   if (!item) return children
   if (flags === null || permissions === null) {

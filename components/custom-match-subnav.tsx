@@ -9,6 +9,7 @@ const SECTIONS = {
   matches: [
     { label: "Em andamento", href: "/dashboard/active", icon: Swords },
     { label: "Histórico", href: "/dashboard/history", icon: History },
+    { label: "Estatísticas", href: "/dashboard/stats", icon: BarChart3 },
   ],
   stats: [
     { label: "Visão geral", href: "/dashboard/stats", icon: BarChart3 },

@@ -70,6 +70,23 @@ export const ACCENTS = {
 
 export const NAV_GROUPS: NavGroup[] = [
   {
+    id: "geral",
+    title: "Geral",
+    items: [
+      { icon: Home, label: "Início", description: "Resumo do Timbas e atalhos rápidos", href: "/dashboard", accent: "blue", flag: FEATURE_DASHBOARD_HOME, permission: "dashboard.home" },
+      {
+        icon: MonitorPlay,
+        label: "Transmissões",
+        description: "Compartilhe sua tela ao vivo com a galera",
+        href: "/dashboard/live",
+        accent: "rose",
+        beta: true,
+        flag: FEATURE_SCREEN_SHARE,
+        permission: "dashboard.live",
+      },
+    ],
+  },
+  {
     id: "competicoes",
     title: "Competições",
     items: [
@@ -96,29 +113,11 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: "geral",
-    title: "Geral",
-    items: [
-      { icon: Home, label: "Início", description: "Resumo do Timbas e atalhos rápidos", href: "/dashboard", accent: "blue", flag: FEATURE_DASHBOARD_HOME, permission: "dashboard.home" },
-      {
-        icon: MonitorPlay,
-        label: "Transmissões",
-        description: "Compartilhe sua tela ao vivo com a galera",
-        href: "/dashboard/live",
-        accent: "rose",
-        beta: true,
-        flag: FEATURE_SCREEN_SHARE,
-        permission: "dashboard.live",
-      },
-    ],
-  },
-  {
     id: "partida-customizada",
     title: "Partida Customizada",
     items: [
-      { icon: Swords, label: "Partidas", description: "Crie partidas e consulte o histórico", href: "/dashboard/active", activeHrefs: ["/dashboard/history"], accent: "emerald", flag: FEATURE_DASHBOARD_MATCHES_LIVE, permission: "dashboard.matches.live" },
+      { icon: Swords, label: "Partidas", description: "Crie, consulte o histórico e veja seu desempenho", href: "/dashboard/active", activeHrefs: ["/dashboard/history", "/dashboard/stats", "/dashboard/teams", "/dashboard/versus"], accent: "emerald", flag: FEATURE_DASHBOARD_MATCHES_LIVE, permission: "dashboard.matches.live" },
       { icon: Trophy, label: "Ranking", description: "Classificação geral de vitórias", href: "/dashboard/ranking", accent: "amber", flag: FEATURE_DASHBOARD_MATCHES_RANKING, permission: "dashboard.matches.ranking" },
-      { icon: BarChart3, label: "Estatísticas", description: "Desempenho, duplas e comparações", href: "/dashboard/stats", activeHrefs: ["/dashboard/teams", "/dashboard/versus"], accent: "rose", flag: FEATURE_DASHBOARD_MATCHES_STATS, permission: "dashboard.matches.stats" },
     ],
   },
   {
@@ -151,6 +150,7 @@ export const FOOTER_ITEMS: NavItem[] = [
 
 const GROUPED_ROUTE_ACCESS: NavItem[] = [
   { icon: History, label: "Histórico", description: "Todas as partidas já disputadas", href: "/dashboard/history", accent: "violet", flag: FEATURE_DASHBOARD_MATCHES_HISTORY, permission: "dashboard.matches.history" },
+  { icon: BarChart3, label: "Estatísticas", description: "Desempenho detalhado das partidas", href: "/dashboard/stats", accent: "rose", flag: FEATURE_DASHBOARD_MATCHES_STATS, permission: "dashboard.matches.stats" },
   { icon: Users, label: "Duplas", description: "Quem joga melhor junto", href: "/dashboard/teams", accent: "emerald", flag: FEATURE_DASHBOARD_MATCHES_TEAMS, permission: "dashboard.matches.teams" },
   { icon: Swords, label: "Comparação", description: "Confronto direto entre jogadores", href: "/dashboard/versus", accent: "orange", flag: FEATURE_DASHBOARD_MATCHES_VERSUS, permission: "dashboard.matches.versus" },
   { icon: ShieldCheck, label: "Verificar LoL", description: "Vincule sua conta da Riot", href: "/dashboard/verify", accent: "emerald", beta: true, flag: FEATURE_DASHBOARD_LOL_VERIFY, permission: "dashboard.lol.verify" },
