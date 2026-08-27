@@ -33,6 +33,7 @@ export interface TournamentEaAutomationSettings {
   id: number
   checkIntervalSeconds: number
   checksPerMinute: number
+  lookbackMinutes: number
   updatedByDiscordId: string | null
   updatedAt: string | null
 }
@@ -81,7 +82,7 @@ export async function getTournamentEaAutomationSettings(token: string): Promise<
 
 export async function updateTournamentEaAutomationSettings(
   token: string,
-  input: Pick<TournamentEaAutomationSettings, 'checkIntervalSeconds' | 'checksPerMinute'>,
+  input: Pick<TournamentEaAutomationSettings, 'checkIntervalSeconds' | 'checksPerMinute' | 'lookbackMinutes'>,
 ): Promise<TournamentEaAutomationSettings> {
   const res = await apiFetch(`${API_URL}/feature-flags/tournament-ea/automation`, {
     method: 'PATCH',

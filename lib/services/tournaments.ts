@@ -358,6 +358,10 @@ export function setTournamentMatchReady(id: string, matchId: string, ready: bool
   return post(`/tournaments/${id}/matches/${matchId}/ready`, { ready })
 }
 
+export function forfeitTournamentMatch(id: string, matchId: string) {
+  return post(`/tournaments/${id}/matches/${matchId}/forfeit`)
+}
+
 export function claimMatchResult(id: string, matchId: string, homeScore: number, awayScore: number) {
   return post(`/tournaments/${id}/matches/${matchId}/claim`, { homeScore, awayScore })
 }

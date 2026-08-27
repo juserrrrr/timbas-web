@@ -11,6 +11,7 @@ import {
   checkTournamentEaResult,
   correctLabTournamentResult,
   discardInterruptedLabEaResult,
+  forfeitTournamentMatch,
   getMatchRoom,
   postMatchMessage,
   proposeMatchSchedule,
@@ -158,6 +159,11 @@ export function MatchRoomDialog({
       }
       setEaRescan(null)
     })
+  }
+
+  const forfeit = () => {
+    if (!window.confirm('Desistir desta partida? O adversário vencerá por W.O. e esta ação não pode ser desfeita por você.')) return
+    void run('forfeit', () => forfeitTournamentMatch(tournament.id, match.id))
   }
 
   const home = match.homeTeam?.name ?? "Mandante"
@@ -582,6 +588,16 @@ export function MatchRoomDialog({
             <div className="flex flex-wrap gap-2 rounded-xl border border-red-500/15 bg-red-500/[0.03] p-3">
               <Input value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} placeholder="Motivo para pedir análise da organização" className="h-9 min-w-56 flex-1 border-white/10 bg-black/30 text-xs" />
               <Button variant="outline" disabled={busy !== "" || reviewReason.trim().length < 3} onClick={() => void run("review", () => requestTournamentMatchReview(tournament.id, match.id, reviewReason.trim()))} className="h-9 border-red-500/25 text-xs text-red-300 hover:bg-red-500/10"><TriangleAlert className="mr-1.5 h-3.5 w-3.5" />Pedir análise</Button>
+            </div>
+          )}
+
+          {!closed && mySide && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-500/15 bg-red-500/[0.03] p-3">
+              <div><p className="text-[11px] font-bold text-red-200">Não vai disputar esta partida?</p><p className="mt-0.5 text-[10px] text-gray-600">Ao desistir, o adversário vence imediatamente por W.O.</p></div>
+              <Button variant="outline" disabled={busy !== ""} onClick={forfeit} className="h-9 border-red-500/25 text-xs text-red-300 hover:bg-red-500/10">
+                {busy === "forfeit" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <UserX className="mr-1.5 h-3.5 w-3.5" />}
+                Desistir da partida
+              </Button>
             </div>
           )}
 
