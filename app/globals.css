@@ -130,6 +130,21 @@
     @apply bg-background text-foreground;
   }
 
+  /* A calha do html já preserva a largura quando Radix bloqueia a rolagem. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+    --removed-body-scroll-bar-size: 0px !important;
+  }
+
+  html body[data-scroll-locked] .right-scroll-bar-position {
+    right: 0 !important;
+  }
+
+  html body[data-scroll-locked] .width-before-scroll-bar {
+    margin-right: 0 !important;
+  }
+
   /* Custom scrollbar styles for dashboard content */
   .custom-scrollbar::-webkit-scrollbar {
     width: 8px;
