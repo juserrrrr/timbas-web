@@ -1,7 +1,7 @@
 export type CompetitionGame = "EA_FC" | "LOL" | "VALORANT" | "CS" | "ROCKET_LEAGUE" | "OTHER"
-export type TournamentFormat = "SINGLE_ELIMINATION" | "DOUBLE_ELIMINATION" | "ROUND_ROBIN" | "GROUPS_KNOCKOUT"
+export type TournamentFormat = "SINGLE_ELIMINATION" | "DOUBLE_ELIMINATION" | "ROUND_ROBIN" | "GROUPS_KNOCKOUT" | "SERIES"
 export type TournamentStatus = "DRAFT" | "REGISTRATION" | "RUNNING" | "FINISHED" | "CANCELLED"
-export type TournamentPhase = "GROUP" | "LEAGUE" | "WINNERS" | "LOSERS" | "GRAND_FINAL" | "THIRD_PLACE"
+export type TournamentPhase = "GROUP" | "LEAGUE" | "WINNERS" | "LOSERS" | "GRAND_FINAL" | "THIRD_PLACE" | "SERIES"
 export type TournamentMatchStatus = "PENDING" | "READY" | "AWAITING_PROOF" | "DISPUTED" | "FINISHED" | "WALKOVER"
 export type CompetitionRole = "OWNER" | "MODERATOR"
 export type TournamentAccessMode = "PUBLIC" | "INVITE_ONLY"
@@ -25,6 +25,7 @@ export interface TournamentSummary {
   format: TournamentFormat
   status: TournamentStatus
   maxTeams: number
+  bestOf: number
   bannerUrl: string | null
   startsAt: string | null
   registrationEndsAt: string | null
@@ -298,6 +299,7 @@ export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   DOUBLE_ELIMINATION: "Eliminação dupla",
   ROUND_ROBIN: "Pontos corridos",
   GROUPS_KNOCKOUT: "Grupos + mata-mata",
+  SERIES: "Série entre dois times",
 }
 
 export const FORMAT_DESCRIPTIONS: Record<TournamentFormat, string> = {
@@ -305,6 +307,13 @@ export const FORMAT_DESCRIPTIONS: Record<TournamentFormat, string> = {
   DOUBLE_ELIMINATION: "Todo mundo tem uma segunda chance na chave dos perdedores.",
   ROUND_ROBIN: "Todos contra todos, campeão é quem somar mais pontos.",
   GROUPS_KNOCKOUT: "Fase de grupos classifica para o mata-mata, estilo Copa.",
+  SERIES: "Dois times se enfrentam várias vezes, campeão é quem vencer mais jogos.",
+}
+
+/// Um confronto direto se descreve pelo número de jogos, não pelo nome do formato.
+export function formatLabel(tournament: { format: TournamentFormat; bestOf: number }): string {
+  if (tournament.format !== "SERIES") return FORMAT_LABELS[tournament.format]
+  return tournament.bestOf === 1 ? "Jogo único" : `Melhor de ${tournament.bestOf}`
 }
 
 export const STATUS_LABELS: Record<TournamentStatus, string> = {
@@ -322,6 +331,7 @@ export const PHASE_LABELS: Record<TournamentPhase, string> = {
   LOSERS: "Repescagem",
   GRAND_FINAL: "Grande final",
   THIRD_PLACE: "3º lugar",
+  SERIES: "Série",
 }
 
 export const MATCH_STATUS_LABELS: Record<TournamentMatchStatus, string> = {

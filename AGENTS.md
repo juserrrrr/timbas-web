@@ -73,6 +73,12 @@ where people join, draft, set a lineup, play rounds and trade; it must never gro
 a create, start, finish or settings control for a league. Tournaments do not have
 that restriction and stay manageable from the dashboard by their own staff.
 
+A tournament in the `SERIES` format is a confronto direto between two teams, so it
+has no bracket and no table: `series-view.tsx` replaces both with the running game
+score and the games played so far. Games appear one at a time, since the API only
+creates the next one when the series is still open, and the create dialog swaps the
+team count for the number of games (MD1, MD3, MD5, MD7).
+
 Screenshots are compressed in the browser by `lib/image-upload.ts` before upload.
 Never post a raw `File` to the API. Proof images need an auth header, so they are
 loaded with `fetchImageObjectUrl` and revoked on unmount, not set as a plain `src`.

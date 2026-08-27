@@ -27,6 +27,7 @@ export interface CreateTournamentInput {
   groupCount?: number
   advancePerGroup?: number
   legs?: number
+  bestOf?: number
   thirdPlace?: boolean
   allowDraws?: boolean
   requireProof?: boolean

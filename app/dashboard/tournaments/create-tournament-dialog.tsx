@@ -24,6 +24,7 @@ import {
 const GAMES = Object.keys(GAME_LABELS) as CompetitionGame[]
 const FORMATS = Object.keys(FORMAT_LABELS) as TournamentFormat[]
 const TEAM_COUNTS = [4, 8, 16, 32]
+const BEST_OF_OPTIONS = [1, 3, 5, 7]
 const STEPS = ["Identidade", "Formato", "Regras"] as const
 
 function Chip({
@@ -92,6 +93,7 @@ export function CreateTournamentDialog({
   const [groupCount, setGroupCount] = useState(2)
   const [advancePerGroup, setAdvancePerGroup] = useState(2)
   const [legs, setLegs] = useState(1)
+  const [bestOf, setBestOf] = useState(3)
   const [thirdPlace, setThirdPlace] = useState(false)
   const [registrationEndsAt, setRegistrationEndsAt] = useState("")
   const [autoStartOnClose, setAutoStartOnClose] = useState(true)
@@ -117,6 +119,7 @@ export function CreateTournamentDialog({
     })
   }, [open])
 
+  const isSeries = format === "SERIES"
   const isGroups = format === "GROUPS_KNOCKOUT"
   const isLeague = format === "ROUND_ROBIN" || isGroups
   const isKnockout = format === "SINGLE_ELIMINATION" || isGroups
@@ -153,10 +156,11 @@ export function CreateTournamentDialog({
           ? invitedUsers.split(",").map((value) => value.trim()).filter(Boolean)
           : undefined,
         format,
-        maxTeams,
+        maxTeams: isSeries ? 2 : maxTeams,
         groupCount: isGroups ? activeGroupCount : undefined,
         advancePerGroup: isGroups ? activeAdvance : undefined,
         legs: isLeague ? legs : 1,
+        bestOf: isSeries ? bestOf : undefined,
         thirdPlace: isKnockout ? thirdPlace : false,
         registrationEndsAt: registrationEndsAt ? brasiliaLocalToIso(registrationEndsAt) : undefined,
         autoStartOnClose: registrationEndsAt ? autoStartOnClose : false,
@@ -310,16 +314,34 @@ export function CreateTournamentDialog({
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Máximo de times</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {TEAM_COUNTS.map((count) => (
-                    <Chip key={count} active={maxTeams === count} onClick={() => setMaxTeams(count)}>
-                      {count} times
-                    </Chip>
-                  ))}
+              {isSeries ? (
+                <div className="space-y-2">
+                  <Label>Quantos jogos decidem a série</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {BEST_OF_OPTIONS.map((count) => (
+                      <Chip key={count} active={bestOf === count} onClick={() => setBestOf(count)}>
+                        {count === 1 ? "Jogo único" : `MD${count}`}
+                      </Chip>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-gray-500">
+                    {bestOf === 1
+                      ? "Um jogo só, quem vencer leva o título."
+                      : `Vence quem chegar primeiro a ${Math.floor(bestOf / 2) + 1} vitórias. O próximo jogo só nasce se a série ainda estiver aberta, e o mando alterna a cada jogo.`}
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Máximo de times</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TEAM_COUNTS.map((count) => (
+                      <Chip key={count} active={maxTeams === count} onClick={() => setMaxTeams(count)}>
+                        {count} times
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {isGroups && (
                 <div className="space-y-3">

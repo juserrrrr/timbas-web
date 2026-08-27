@@ -33,7 +33,7 @@ import {
 import { ReportResultDialog } from "@/components/competitions/report-result-dialog"
 import { buildLabTournamentKnockout, cancelTournamentWalkover, correctLabTournamentResult, createTournamentRegistrationInvite, declareWalkover, getLabEaScoreAudit, getTournament, rebuildLabTournamentKnockout, reportResult, startTournament, updateTournament, type LabEaScoreAuditItem } from "@/lib/services/tournaments"
 import {
-  FORMAT_LABELS,
+  formatLabel,
   GAME_LABELS,
   STATUS_LABELS,
   type TournamentDetail,
@@ -41,6 +41,7 @@ import {
   type TournamentStatus,
 } from "@/lib/services/tournaments.types"
 import { BracketView } from "./bracket-view"
+import { SeriesView } from "./series-view"
 import { MatchRoomDialog } from "./match-room"
 import { MatchesView } from "./matches-view"
 import { ProofReviewPanel } from "./proof-review-panel"
@@ -70,7 +71,7 @@ function TournamentMetric({ label, value, icon, tone }: { label: string; value: 
   )
 }
 
-type TabId = "bracket" | "standings" | "my-matches" | "matches" | "teams" | "ea-stats" | "proofs" | "invites" | "staff"
+type TabId = "series" | "bracket" | "standings" | "my-matches" | "matches" | "teams" | "ea-stats" | "proofs" | "invites" | "staff"
 
 export function TournamentClient({
   tournamentId,
@@ -89,7 +90,7 @@ export function TournamentClient({
   const [tab, setTab] = useState<TabId>(() => {
     if (requestedMatchId) return "matches"
     if (initialTournament?.status === "FINISHED" && initialTournament.game === "EA_FC") return "ea-stats"
-    return "bracket"
+    return initialTournament?.format === "SERIES" ? "series" : "bracket"
   })
   const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(
     () =>
@@ -216,8 +217,13 @@ export function TournamentClient({
     ).length
 
     return [
+      tournament.format === "SERIES" && { id: "series" as const, label: "Série", icon: Swords },
       hasBracket && { id: "bracket" as const, label: "Chave", icon: GitBranch },
-      (hasTable || tournament.matches.length === 0) && { id: "standings" as const, label: "Classificação", icon: Table2 },
+      (hasTable || (tournament.matches.length === 0 && tournament.format !== "SERIES")) && {
+        id: "standings" as const,
+        label: "Classificação",
+        icon: Table2,
+      },
       tournament.access.teamIds.length > 0 && { id: "my-matches" as const, label: "Minhas partidas", icon: Play },
       { id: "matches" as const, label: "Partidas", icon: Swords },
       { id: "teams" as const, label: "Times", icon: Users },
@@ -393,7 +399,7 @@ export function TournamentClient({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2"><span className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">{tournament.gameLabel || GAME_LABELS[tournament.game]}</span>{tournament.accessMode === "INVITE_ONLY" && <span className="inline-flex items-center gap-1 rounded-full border border-blue-400/20 bg-blue-400/[0.08] px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-blue-200"><LockKeyhole className="h-2.5 w-2.5" />Somente por convite</span>}</div>
                 <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white sm:text-3xl">{tournament.name}</h1>
-                <p className="mt-1 truncate text-xs text-gray-500">{tournament.description || FORMAT_LABELS[tournament.format]}</p>
+                <p className="mt-1 truncate text-xs text-gray-500">{tournament.description || formatLabel(tournament)}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -434,7 +440,7 @@ export function TournamentClient({
             </div>
           </div>
           <div className="mt-5 grid gap-px overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.07] sm:grid-cols-3">
-            <TournamentMetric label="Formato" value={FORMAT_LABELS[tournament.format]} icon={<GitBranch className="h-4 w-4" />} tone="text-blue-300" />
+            <TournamentMetric label="Formato" value={formatLabel(tournament)} icon={<GitBranch className="h-4 w-4" />} tone="text-blue-300" />
             <TournamentMetric label="Times" value={`${tournament.teams.length}/${tournament.maxTeams}`} icon={<Users className="h-4 w-4" />} tone="text-emerald-300" />
             <TournamentMetric label="Partidas" value={`${finishedMatches}/${tournament.matches.length} encerradas`} icon={<ListOrdered className="h-4 w-4" />} tone="text-red-300" />
           </div>
@@ -516,6 +522,7 @@ export function TournamentClient({
         </div>
 
         <div key={tab} className="content-enter min-h-[320px] p-4 sm:p-6">
+          {tab === "series" && <SeriesView tournament={tournament} onSelectMatch={setSelectedMatch} />}
           {tab === "bracket" && <BracketView tournament={tournament} onSelectMatch={setSelectedMatch} />}
           {tab === "standings" && <StandingsView tournament={tournament} />}
           {tab === "my-matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} onlyMine />}

@@ -48,6 +48,7 @@ export function buildDemoTournament(input: {
   groupCount?: number
   advancePerGroup?: number
   legs?: number
+  bestOf?: number
   thirdPlace?: boolean
   stage: DemoTournamentStage
 }): Promise<DemoTournamentResult> {

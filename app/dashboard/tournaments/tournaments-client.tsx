@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card"
 import { joinTournamentByInvite, listTournaments } from "@/lib/services/tournaments"
 import { getMyPermissions } from "@/lib/services/access"
 import {
-  FORMAT_LABELS,
+  formatLabel,
   GAME_LABELS,
   STATUS_LABELS,
   type TournamentStatus,
@@ -199,7 +199,7 @@ export function TournamentsClient({
                   {tournament.accessMode === "INVITE_ONLY" && <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-blue-400/20 bg-blue-400/[0.08] px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-blue-200"><LockKeyhole className="h-3 w-3" />Entrada somente por convite</span>}
 
                   <div className="mt-4 grid grid-cols-3 overflow-hidden rounded-xl border border-white/[0.06] bg-black/20">
-                    <CardMetric icon={<Swords className="h-3.5 w-3.5" />} label="Formato" value={FORMAT_LABELS[tournament.format]} />
+                    <CardMetric icon={<Swords className="h-3.5 w-3.5" />} label="Formato" value={formatLabel(tournament)} />
                     <CardMetric icon={<Users className="h-3.5 w-3.5" />} label="Times" value={`${tournament.teamCount}/${tournament.maxTeams}`} />
                     <CardMetric icon={<Trophy className="h-3.5 w-3.5" />} label="Partidas" value={String(tournament.matchCount)} />
                   </div>

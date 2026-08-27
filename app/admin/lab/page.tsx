@@ -50,6 +50,7 @@ import { brasiliaInputValue, brasiliaLocalToIso } from "@/lib/date-time"
 
 const FORMATS = Object.keys(FORMAT_LABELS) as TournamentFormat[]
 const TEAM_COUNTS = [4, 5, 8, 12, 16]
+const BEST_OF_OPTIONS = [1, 3, 5, 7]
 
 /// O debug vem do servidor com número, texto, lista ou mapa. Aqui tudo vira uma
 /// linha legível, sem JSON cru na tela.
@@ -153,6 +154,7 @@ export default function DemoLabPage() {
 
   const [format, setFormat] = useState<TournamentFormat>("SINGLE_ELIMINATION")
   const [teamCount, setTeamCount] = useState(8)
+  const [bestOf, setBestOf] = useState(3)
   const [thirdPlace, setThirdPlace] = useState(true)
   const [groupCount, setGroupCount] = useState(2)
   const [advancePerGroup, setAdvancePerGroup] = useState(2)
@@ -797,13 +799,29 @@ export default function DemoLabPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Times</Label>
-              <Chips options={TEAM_COUNTS} value={teamCount} onChange={setTeamCount} />
-              <p className="text-[11px] text-gray-600">
-                Use 5 ou 12 para conferir como a chave lida com byes.
-              </p>
-            </div>
+            {format === "SERIES" ? (
+              <div className="space-y-1.5">
+                <Label>Jogos da série</Label>
+                <Chips
+                  options={BEST_OF_OPTIONS}
+                  value={bestOf}
+                  onChange={setBestOf}
+                  render={(count) => (count === 1 ? "Jogo único" : `MD${count}`)}
+                />
+                <p className="text-[11px] text-gray-600">
+                  A série é sempre entre 2 times, e o jogo seguinte só nasce quando o anterior não
+                  decidiu.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>Times</Label>
+                <Chips options={TEAM_COUNTS} value={teamCount} onChange={setTeamCount} />
+                <p className="text-[11px] text-gray-600">
+                  Use 5 ou 12 para conferir como a chave lida com byes.
+                </p>
+              </div>
+            )}
 
             {format === "GROUPS_KNOCKOUT" && groupOptions.length === 0 && (
               <p className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] text-amber-200">
@@ -852,6 +870,7 @@ export default function DemoLabPage() {
                   buildDemoTournament({
                     format,
                     teamCount,
+                    bestOf,
                     thirdPlace,
                     groupCount: activeGroupCount,
                     advancePerGroup: activeAdvance,
