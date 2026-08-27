@@ -10,9 +10,16 @@ services:
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-3000}:3000"
+    # Deixa a API alcançável pelo endereço interno da máquina, sem sair para a
+    # internet só para falar com o container vizinho.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+      # Só o servidor Next usa. Vazio mantém o comportamento antigo, de chamar a
+      # API pelo domínio público.
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-}
       NEXT_PUBLIC_API_TOKEN: ${NEXT_PUBLIC_API_TOKEN:-}

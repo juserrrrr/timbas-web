@@ -1,5 +1,5 @@
+import { API_URL } from '../api-base'
 // Barra final na env var gerava URLs com "//" e o proxy respondia sem CORS
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 // ─── Scout types ──────────────────────────────────────────────────────────────
 

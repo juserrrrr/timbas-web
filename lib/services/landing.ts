@@ -1,6 +1,7 @@
 import { apiFetch, authHeaders } from "../api"
 import { TIMBAS_SERVER_ID } from "../servers"
 import { getRanking, type PlayerStats } from "./ranking"
+import { API_URL } from "../api-base"
 
 type LandingData = {
   players: PlayerStats[]
@@ -11,7 +12,7 @@ let cachedToken: string | null = null
 let cachedRequest: Promise<LandingData> | null = null
 
 async function getTotalMatches(token: string): Promise<number> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "")
+  const apiUrl = API_URL
   if (!apiUrl) return 0
 
   const response = await apiFetch(

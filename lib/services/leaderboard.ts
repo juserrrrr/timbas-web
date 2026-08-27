@@ -1,7 +1,7 @@
 import type { GameModeEnum } from '../game-mode'
 export type { GameModeEnum }
+import { API_URL } from '../api-base'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 export interface PlayerStats {
   rank: number

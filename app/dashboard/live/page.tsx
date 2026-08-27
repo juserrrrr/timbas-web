@@ -36,25 +36,49 @@ export default function LivePage() {
     if (!token) return
 
     let active = true
-    const load = async () => {
-      const permission = await getStreamPermission(token).catch(() => ({ canStream: false, featureEnabled: false, sfu: false }))
-      if (!active) return
-      setCanStream(permission.canStream)
-      setFeatureEnabled(permission.featureEnabled)
-      setSfuReady(permission.sfu !== false)
+    // Permissão e flag quase nunca mudam no meio da sessão, então só a lista
+    // volta a cada ciclo. As duas chamadas da primeira carga vão juntas: em
+    // sequência a tela ficava esperando dois round trips para aparecer.
+    let permissionAt = 0
 
-      if (permission.featureEnabled) {
-        const list = await listStreams(token).catch(() => [])
-        if (active) setStreams(list)
+    const load = async (withPermission: boolean) => {
+      const [permission, list] = await Promise.all([
+        withPermission
+          ? getStreamPermission(token).catch(() => ({ canStream: false, featureEnabled: false, sfu: false }))
+          : Promise.resolve(null),
+        listStreams(token).catch(() => [] as StreamSummary[]),
+      ])
+      if (!active) return
+
+      if (permission) {
+        permissionAt = Date.now()
+        setCanStream(permission.canStream)
+        setFeatureEnabled(permission.featureEnabled)
+        setSfuReady(permission.sfu !== false)
+        if (!permission.featureEnabled) {
+          setLoading(false)
+          return
+        }
       }
-      if (active) setLoading(false)
+      setStreams(list)
+      setLoading(false)
     }
 
-    void load()
-    const interval = setInterval(load, 5000)
+    void load(true)
+
+    const tick = () => {
+      // Aba escondida não precisa continuar batendo na API.
+      if (document.hidden) return
+      void load(Date.now() - permissionAt > 60_000)
+    }
+    const interval = setInterval(tick, 5000)
+    const onVisible = () => { if (!document.hidden) tick() }
+    document.addEventListener("visibilitychange", onVisible)
+
     return () => {
       active = false
       clearInterval(interval)
+      document.removeEventListener("visibilitychange", onVisible)
     }
   }, [])
 

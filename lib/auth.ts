@@ -1,8 +1,9 @@
+import { API_URL } from './api-base'
+import { clearDashboardAccess } from './dashboard-access-store'
 const TOKEN_KEY = 'timbas_token'
 const REFRESH_TOKEN_KEY = 'timbas_refresh_token'
 const IMPERSONATOR_TOKEN_KEY = 'timbas_impersonator_token'
 const SESSION_HINT_KEY = 'timbas_session_hint'
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 function getCookie(key: string): string | null {
   if (typeof window === 'undefined') return null
@@ -70,6 +71,9 @@ export function clearAllTokens() {
   clearRefreshToken()
   deleteCookie(IMPERSONATOR_TOKEN_KEY)
   deleteCookie(SESSION_HINT_KEY)
+  // Senão a próxima pessoa a logar nesta aba pinta o menu com o acesso da
+  // anterior antes da resposta nova chegar.
+  clearDashboardAccess()
 }
 
 export function isImpersonating(): boolean {

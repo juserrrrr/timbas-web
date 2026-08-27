@@ -1,6 +1,6 @@
 import { clearAllTokens, endImpersonation, isImpersonating } from './auth'
+import { API_URL } from './api-base'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 async function tryRefresh(): Promise<boolean> {
   if (isImpersonating()) return false

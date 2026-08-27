@@ -1,6 +1,6 @@
 import { apiFetch } from '../api'
+import { API_URL } from '../api-base'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 export const FEATURE_SCREEN_SHARE = 'screen_share'
 export const FEATURE_TOURNAMENT_EA_RESULTS = 'tournament_ea_results'

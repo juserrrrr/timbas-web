@@ -1,10 +1,7 @@
 import { apiFetch } from '@/lib/api'
+import { apiBase } from '../api-base'
 
-const API = () => {
-  const url = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
-  if (!url) throw new Error('NEXT_PUBLIC_API_URL not defined')
-  return url
-}
+const API = () => apiBase()
 
 function headers(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }

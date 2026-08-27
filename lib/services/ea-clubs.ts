@@ -4,8 +4,8 @@ import type {
   EaClub, EaClubDashboard, EaClubPlayer, EaClubPlayerProfile, EaClubPreview,
   EaLeaderboardCategory, EaSyncResult,
 } from "./ea-clubs.types"
+import { API_URL } from "../api-base"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "")
 
 function endpoint(path: string) {
   if (!API_URL) throw new Error("NEXT_PUBLIC_API_URL não configurado")

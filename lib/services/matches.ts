@@ -1,4 +1,5 @@
 import { apiFetch, authHeaders } from '../api'
+import { apiBase } from '../api-base'
 
 export interface MatchPlayer {
   userId: number
@@ -23,8 +24,7 @@ export interface Match {
 }
 
 export async function getMatchHistory(token: string, discordServerId: string): Promise<Match[]> {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
-  if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL is not defined')
+  const API_URL = apiBase()
 
   const response = await apiFetch(`${API_URL}/leaderboard/${discordServerId}/matches`, {
     headers: authHeaders(token),

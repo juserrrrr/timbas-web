@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getToken } from "@/lib/auth"
 import { getFeatureFlags, getTournamentEaAutomationSettings, updateFeatureFlag, updateTournamentEaAutomationSettings, type FeatureFlag, type TournamentEaAutomationSettings } from "@/lib/services/feature-flags"
+import { clearDashboardAccess } from "@/lib/dashboard-access-store"
 
 function formatUpdatedAt(value: string | null) {
   if (!value) return "nunca alterada"
@@ -47,6 +48,8 @@ export default function FeaturesPage() {
     try {
       const token = getToken()!
       const updated = await updateFeatureFlag(token, flag.key, enabled)
+      // O menu do dashboard monta em cima das flags, então precisa reperguntar.
+      clearDashboardAccess()
       setFlags((prev) => prev.map((f) => (f.key === flag.key ? { ...f, ...updated } : f)))
       toast.success(enabled ? "Recurso ativado" : "Recurso desativado", { description: flag.description ?? flag.key })
     } catch (e: unknown) {

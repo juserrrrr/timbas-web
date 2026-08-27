@@ -1,7 +1,7 @@
 import { apiFetch } from '../api'
 import type { GameModeEnum } from '../game-mode'
+import { API_URL } from '../api-base'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 export interface PlayerUser {
   id: number

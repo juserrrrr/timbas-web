@@ -1,4 +1,5 @@
 import { apiFetch, authHeaders } from '../api'
+import { apiBase } from '../api-base'
 
 export interface PlayerStats {
   rank: number
@@ -15,8 +16,7 @@ export interface PlayerStats {
 }
 
 export async function getRanking(token: string, discordServerId: string): Promise<PlayerStats[]> {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
-  if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL is not defined')
+  const API_URL = apiBase()
 
   const response = await apiFetch(`${API_URL}/leaderboard/${discordServerId}`, {
     headers: authHeaders(token),

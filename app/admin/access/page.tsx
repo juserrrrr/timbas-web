@@ -33,6 +33,7 @@ import {
   type PlatformSettings,
   type UserStatus,
 } from "@/lib/services/access"
+import { clearDashboardAccess } from "@/lib/dashboard-access-store"
 
 const PAGE_SIZE = 12
 const ROLE_META: Record<Role, { label: string; className: string; icon: typeof Users }> = {
@@ -182,7 +183,9 @@ export default function AdminAccessPage() {
 
   async function run(key: string, action: () => Promise<unknown>, message: string) {
     setBusy(key)
-    try { await action(); toast.success(message); await load(true) }
+    // Qualquer coisa aqui mexe em permissão de alguém, então a resposta que a
+    // tela tem guardada envelheceu na hora.
+    try { await action(); clearDashboardAccess(); toast.success(message); await load(true) }
     catch (caught) { toast.error(caught instanceof Error ? caught.message : "Não foi possível concluir a ação.") }
     finally { setBusy("") }
   }

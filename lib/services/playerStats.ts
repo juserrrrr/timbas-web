@@ -1,4 +1,5 @@
 import { apiFetch, authHeaders } from '../api'
+import { apiBase } from '../api-base'
 
 export interface SideStats {
   wins: number
@@ -29,8 +30,7 @@ export async function getPlayerDetailStats(
   const cached = cache.get(key)
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) return cached.data
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
-  if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL is not defined')
+  const API_URL = apiBase()
 
   const response = await apiFetch(`${API_URL}/leaderboard/${discordServerId}/player/${userId}`, {
     headers: authHeaders(token),

@@ -1,4 +1,5 @@
 import { patch, post, remove, request } from "./http"
+import { loadDashboardAccess } from "./dashboard-bootstrap"
 
 export type UserStatus = "PENDING" | "APPROVED" | "BLOCKED"
 
@@ -42,16 +43,10 @@ export const USER_STATUS_LABELS: Record<UserStatus, string> = {
   BLOCKED: "Bloqueado",
 }
 
-let myPermissionsCache: { expiresAt: number; request: Promise<{ role: string; permissions: string[] }> } | null = null
-
+/// Divide a chamada com o dashboard: quem pergunta as permissões no meio da
+/// navegação aproveita a resposta que a tela já buscou, em vez de abrir outra.
 export function getMyPermissions(): Promise<{ role: string; permissions: string[] }> {
-  if (myPermissionsCache && myPermissionsCache.expiresAt > Date.now()) return myPermissionsCache.request
-  const next = request<{ role: string; permissions: string[] }>("/admin/access/me").catch((error) => {
-    myPermissionsCache = null
-    throw error
-  })
-  myPermissionsCache = { expiresAt: Date.now() + 30_000, request: next }
-  return next
+  return loadDashboardAccess()
 }
 
 export function getPermissionCatalog(): Promise<PermissionCategory[]> {

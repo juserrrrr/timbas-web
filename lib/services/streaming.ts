@@ -1,6 +1,6 @@
 import { apiFetch } from '../api'
+import { API_URL, PUBLIC_API_URL } from '../api-base'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 export interface StreamSummary {
   id: string
@@ -172,8 +172,10 @@ export async function createPublicSignalTicket(streamId: string, peerId: string,
   return ticket
 }
 
+/// Quem abre esta URL é o EventSource do browser, então ela é sempre a pública,
+/// mesmo se por acaso for montada no servidor.
 export function publicStreamEventsUrl(streamId: string, ticket: string): string {
-  return `${API_URL}/streaming/public/streams/${streamId}/events?ticket=${encodeURIComponent(ticket)}`
+  return `${PUBLIC_API_URL}/streaming/public/streams/${streamId}/events?ticket=${encodeURIComponent(ticket)}`
 }
 
 export interface AnnouncementGuild {
@@ -250,7 +252,7 @@ export async function createSignalTicket(token: string, streamId: string, peerId
 }
 
 export function streamEventsUrl(streamId: string, ticket: string): string {
-  return `${API_URL}/streaming/streams/${streamId}/events?ticket=${encodeURIComponent(ticket)}`
+  return `${PUBLIC_API_URL}/streaming/streams/${streamId}/events?ticket=${encodeURIComponent(ticket)}`
 }
 
 export interface RtcCredentials {
