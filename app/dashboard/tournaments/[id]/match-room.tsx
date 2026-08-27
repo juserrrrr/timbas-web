@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { CalendarClock, Camera, Check, Clock, DatabaseZap, Loader2, RefreshCw, Send, TriangleAlert, UserX, X } from "lucide-react"
+import { CalendarClock, Camera, Check, ChevronDown, Clock, DatabaseZap, HelpCircle, Loader2, MessageCircle, RefreshCw, Send, TriangleAlert, UserX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -37,10 +37,10 @@ const CLOSED_POLL_MS = 20000
 function remainingLabel(deadlineAt: string | null): string | null {
   if (!deadlineAt) return null
   const diff = new Date(deadlineAt).getTime() - Date.now()
-  if (diff <= 0) return "prazo estourado"
+  if (diff <= 0) return "prazo encerrado"
   const hours = Math.floor(diff / 3_600_000)
   const minutes = Math.floor((diff % 3_600_000) / 60_000)
-  return hours > 0 ? `${hours}h ${minutes}min para o prazo` : `${minutes}min para o prazo`
+  return hours > 0 ? `${hours}h ${minutes}min restantes` : `${Math.max(minutes, 1)} min restantes`
 }
 
 function localInputValue(date: Date): string {
@@ -168,7 +168,8 @@ export function MatchRoomDialog({
 
   const home = match.homeTeam?.name ?? "Mandante"
   const away = match.awayTeam?.name ?? "Visitante"
-  const closed = match.status === "FINISHED" || match.status === "WALKOVER"
+  const currentStatus = room?.match.status ?? match.status
+  const closed = currentStatus === "FINISHED" || currentStatus === "WALKOVER"
 
   const mySide = room?.mySide ?? null
   const myTeamId = mySide === "HOME" ? match.homeTeamId : mySide === "AWAY" ? match.awayTeamId : null
@@ -193,24 +194,23 @@ export function MatchRoomDialog({
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto border-white/10 bg-[#0b0b12]">
-        <DialogHeader>
-          <DialogTitle className="text-white">Sala da partida</DialogTitle>
-          <DialogDescription>
-            {match.label ?? `Rodada ${match.round}`}. Combinem o horário aqui, joguem no jogo e depois lancem o
-            placar.
+      <DialogContent className="max-h-[92vh] max-w-xl gap-0 overflow-y-auto border-white/10 bg-[#0b0b12] p-0">
+        <DialogHeader className="border-b border-white/[0.06] px-5 pb-4 pt-5 pr-12">
+          <DialogTitle className="text-base text-white">Sua partida</DialogTitle>
+          <DialogDescription className="text-xs">
+            {match.label ?? `Rodada ${match.round}`}. Confirme sua presença e acompanhe o resultado aqui.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
-            <TeamCrest name={match.homeTeam?.name} logoUrl={match.homeTeam?.logoUrl} size={32} />
-            <span className="min-w-0 flex-1 truncate text-sm font-bold text-white">{home}</span>
-            <span className="flex-shrink-0 rounded-lg bg-black/40 px-2.5 py-1 text-sm font-black text-white">
+        <div className="space-y-3 p-4 sm:p-5">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+            <TeamCrest name={match.homeTeam?.name} logoUrl={match.homeTeam?.logoUrl} size={36} />
+            <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-white">{home}</span>
+            <span className="flex-shrink-0 rounded-full border border-white/[0.06] bg-black/40 px-3 py-1 text-xs font-black text-gray-300">
               {match.homeScore ?? "-"} × {match.awayScore ?? "-"}
             </span>
-            <span className="min-w-0 flex-1 truncate text-right text-sm font-bold text-white">{away}</span>
-            <TeamCrest name={match.awayTeam?.name} logoUrl={match.awayTeam?.logoUrl} size={32} />
+            <span className="min-w-0 flex-1 truncate text-right text-sm font-extrabold text-white">{away}</span>
+            <TeamCrest name={match.awayTeam?.name} logoUrl={match.awayTeam?.logoUrl} size={36} />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -220,13 +220,13 @@ export function MatchRoomDialog({
                 Marcada para {formatDateTime(match.scheduledAt)}
               </StatusPill>
             )}
-            {remaining && !closed && (
-              <StatusPill tone={remaining === "prazo estourado" ? "danger" : "warn"}>
+            {remaining && !closed && !quickMode && (
+              <StatusPill tone={remaining === "prazo encerrado" ? "danger" : "warn"}>
                 <Clock className="h-3 w-3" />
                 {remaining}
               </StatusPill>
             )}
-            {mySide && <StatusPill tone="neutral">Você joga por {mySide === "HOME" ? home : away}</StatusPill>}
+            {mySide && <StatusPill tone="neutral">Seu time: {mySide === "HOME" ? home : away}</StatusPill>}
           </div>
 
           {error && (
@@ -295,67 +295,83 @@ export function MatchRoomDialog({
           )}
 
           {!closed && quickMode && room && (
-            <div className={`space-y-3 rounded-xl border p-3 ${bothReady ? "border-emerald-500/25 bg-emerald-500/[0.05]" : "border-amber-500/20 bg-amber-500/[0.05]"}`}>
+            <section className={`space-y-3 rounded-2xl border p-4 ${bothReady ? "border-emerald-500/25 bg-emerald-500/[0.045]" : "border-amber-500/20 bg-amber-500/[0.04]"}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${bothReady ? "text-emerald-300" : "text-amber-300"}`}>Passo 1</p>
+                  <h3 className="mt-1 text-sm font-bold text-white">
+                    {bothReady ? "Tudo certo para jogar" : "Confirme sua presença"}
+                  </h3>
+                </div>
+                {remaining && !bothReady && <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${remaining === "prazo encerrado" ? "bg-red-500/10 text-red-300" : "bg-amber-500/10 text-amber-300"}`}>{remaining}</span>}
+              </div>
               <div>
-                <h3 className={`text-[11px] font-bold uppercase tracking-[0.14em] ${bothReady ? "text-emerald-300" : "text-amber-300"}`}>
-                  {bothReady ? "Partida liberada" : "Check-in da partida"}
-                </h3>
-                <p className="mt-1 text-[11px] text-gray-400">
+                <p className="text-[11px] leading-relaxed text-gray-400">
                   {bothReady
-                    ? "Os dois times confirmaram presença. Agora joguem o amistoso e sincronizem o resultado pela EA."
+                    ? "Os dois times estão prontos. Jogue o amistoso e depois confira o resultado da EA abaixo."
                     : !checkInOpen
-                      ? "O check-in abre quando este confronto começar."
-                      : `Cada time precisa marcar Pronto antes do prazo. Quem não confirmar perde por W.O. Cada lado pode pedir +${room.graceMinutes} minutos uma vez.`}
+                      ? "A confirmação será liberada quando o confronto começar."
+                      : room.graceMinutes > 0
+                        ? `Toque em Pronto para jogar. Se precisar, peça mais ${room.graceMinutes} minutos ou desista da partida.`
+                        : "Toque em Pronto para jogar. Se não puder disputar, use Desistir."}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <div className={`rounded-lg border px-3 py-2 text-center text-[11px] font-bold ${homeReady ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : "border-white/[0.07] bg-black/20 text-gray-500"}`}>
-                  {home}: {homeReady ? "Pronto" : "Pendente"}
+                <div className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-center text-[11px] font-bold ${homeReady ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : "border-white/[0.07] bg-black/20 text-gray-500"}`}>
+                  {homeReady && <Check className="h-3 w-3" />}{home}: {homeReady ? "Pronto" : "Aguardando"}
                 </div>
-                <div className={`rounded-lg border px-3 py-2 text-center text-[11px] font-bold ${awayReady ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : "border-white/[0.07] bg-black/20 text-gray-500"}`}>
-                  {away}: {awayReady ? "Pronto" : "Pendente"}
+                <div className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-center text-[11px] font-bold ${awayReady ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" : "border-white/[0.07] bg-black/20 text-gray-500"}`}>
+                  {awayReady && <Check className="h-3 w-3" />}{away}: {awayReady ? "Pronto" : "Aguardando"}
                 </div>
               </div>
 
               {mySide && (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                   <Button
                     size="sm"
                     disabled={busy !== "" || bothReady || !checkInOpen || checkInExpired}
                     onClick={() => void run("ready", () => setTournamentMatchReady(tournament.id, match.id, !myReady))}
-                    className={myReady ? "h-9 border border-white/10 bg-white/[0.06] px-3 text-[11px] text-gray-300 hover:bg-white/[0.1]" : "h-9 bg-emerald-500 px-3 text-[11px] font-bold text-black hover:bg-emerald-400"}
+                    className={myReady ? "h-10 border border-white/10 bg-white/[0.06] px-4 text-xs text-gray-300 hover:bg-white/[0.1]" : "h-10 bg-emerald-500 px-4 text-xs font-black text-black hover:bg-emerald-400"}
                   >
                     {busy === "ready" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
-                    {bothReady ? "Os dois estão prontos" : myReady ? "Desmarcar pronto" : "Pronto para jogar"}
+                    {bothReady ? "Presença confirmada" : myReady ? "Cancelar confirmação" : "Pronto para jogar"}
                   </Button>
                   {!bothReady && (
-                    <Button size="sm" variant="outline" disabled={busy !== "" || graceUsed || room.graceMinutes <= 0 || !checkInOpen || checkInExpired} onClick={() => void run("grace", () => requestMatchGrace(tournament.id, match.id))} className="h-9 border-amber-500/25 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
-                      {busy === "grace" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Clock className="mr-1.5 h-3.5 w-3.5" />}
-                      {graceUsed ? "Tolerância já usada" : `Pedir +${room.graceMinutes} min`}
+                    <Button size="sm" variant="outline" disabled={busy !== "" || graceUsed || room.graceMinutes <= 0 || !checkInOpen || checkInExpired} onClick={() => void run("grace", () => requestMatchGrace(tournament.id, match.id))} className="h-10 border-amber-500/20 px-3 text-[11px] text-amber-300 hover:bg-amber-500/10">
+                      {busy === "grace" ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Clock className="mr-1 h-3.5 w-3.5" />}
+                      {graceUsed ? "Tempo usado" : `+${room.graceMinutes} min`}
                     </Button>
                   )}
+                  <Button variant="ghost" disabled={busy !== ""} onClick={forfeit} className="h-10 px-3 text-[11px] text-red-300 hover:bg-red-500/10 hover:text-red-200">
+                    {busy === "forfeit" ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <UserX className="mr-1 h-3.5 w-3.5" />}
+                    Desistir
+                  </Button>
                 </div>
               )}
-            </div>
+            </section>
           )}
 
           {!closed && room?.resultMode === "EA_API" && (mySide || room?.canModerate) && (
-            <div className="space-y-2 rounded-lg border border-blue-500/15 bg-blue-500/[0.05] p-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div><p className="text-[11px] font-bold text-blue-100">{room.eaAutoSyncEnabled ? "Auditoria automática da EA ativa" : "Busca automática da EA desativada"}</p><p className="mt-0.5 text-[10px] text-blue-200/60">{room.eaAutoSyncEnabled ? "A fila consulta primeiro quem nunca foi checado e depois quem espera há mais tempo. O botão continua disponível para uma checagem imediata." : "O botão continua disponível para uma checagem manual."}</p></div>
+            <section className="space-y-3 rounded-2xl border border-blue-500/15 bg-blue-500/[0.035] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Passo 2</p>
+                  <p className="mt-1 text-sm font-bold text-white">Confirme o resultado</p>
+                  <p className="mt-1 max-w-sm text-[11px] leading-relaxed text-gray-500">{bothReady ? `${room.eaAutoSyncEnabled ? "A EA está procurando o amistoso automaticamente." : "Busque o amistoso assim que ele terminar."}${remaining ? ` O prazo para isso tem ${remaining}.` : ""}` : "Esta etapa será liberada quando os dois times estiverem prontos."}</p>
+                </div>
                 <Button
                   size="sm"
                   disabled={busy !== "" || (quickMode ? !bothReady : !match.scheduledAt)}
                   onClick={() => void checkEa()}
-                  className="h-8 bg-blue-500 px-3 text-[11px] text-white hover:bg-blue-400"
+                  className="h-10 bg-blue-500 px-4 text-xs font-bold text-white hover:bg-blue-400"
                 >
                   {busy === "ea" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="mr-1.5 h-3.5 w-3.5" />}
-                  Checar agora
+                  Buscar resultado
                 </Button>
               </div>
-              {(room.eaAutoSyncEnabled || room.match.eaLastCheckedAt || room.match.eaCheckMessage) && <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-blue-500/10 pt-2 text-[9px] text-gray-500"><span>Última checagem: <b className="text-gray-300">{room.match.eaLastCheckedAt ? formatDateTime(room.match.eaLastCheckedAt) : "aguardando a fila"}</b></span>{room.match.eaNextCheckAt && <span>Próxima: <b className="text-gray-300">{formatDateTime(room.match.eaNextCheckAt)}</b></span>}{room.match.eaCheckMessage && <span className="basis-full text-blue-200/55">{room.match.eaCheckMessage}</span>}</div>}
-            </div>
+              {(room.eaAutoSyncEnabled || room.match.eaLastCheckedAt || room.match.eaCheckMessage) && <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-blue-500/10 pt-2 text-[9px] text-gray-600"><span>Última busca: <b className="text-gray-400">{room.match.eaLastCheckedAt ? formatDateTime(room.match.eaLastCheckedAt) : "aguardando"}</b></span>{room.match.eaNextCheckAt && <span>Próxima: <b className="text-gray-400">{formatDateTime(room.match.eaNextCheckAt)}</b></span>}{room.match.eaCheckMessage && <span className="basis-full text-blue-200/55">{room.match.eaCheckMessage}</span>}</div>}
+            </section>
           )}
 
           {!closed && eaChoices.length > 0 && (mySide || room?.canModerate) && (
@@ -584,14 +600,20 @@ export function MatchRoomDialog({
             </div>
           )}
 
-          {!closed && mySide && match.status !== "DISPUTED" && (
-            <div className="flex flex-wrap gap-2 rounded-xl border border-red-500/15 bg-red-500/[0.03] p-3">
-              <Input value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} placeholder="Motivo para pedir análise da organização" className="h-9 min-w-56 flex-1 border-white/10 bg-black/30 text-xs" />
-              <Button variant="outline" disabled={busy !== "" || reviewReason.trim().length < 3} onClick={() => void run("review", () => requestTournamentMatchReview(tournament.id, match.id, reviewReason.trim()))} className="h-9 border-red-500/25 text-xs text-red-300 hover:bg-red-500/10"><TriangleAlert className="mr-1.5 h-3.5 w-3.5" />Pedir análise</Button>
-            </div>
+          {!closed && mySide && currentStatus !== "DISPUTED" && (
+            <details className="group rounded-2xl border border-white/[0.06] bg-white/[0.015]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-semibold text-gray-400 transition hover:text-white [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2"><HelpCircle className="h-4 w-4" />Precisa de ajuda da organização?</span>
+                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="flex flex-wrap gap-2 border-t border-white/[0.05] p-3">
+                <Input value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} placeholder="Explique o problema em poucas palavras" className="h-10 min-w-56 flex-1 border-white/10 bg-black/30 text-xs" />
+                <Button variant="outline" disabled={busy !== "" || reviewReason.trim().length < 3} onClick={() => void run("review", () => requestTournamentMatchReview(tournament.id, match.id, reviewReason.trim()))} className="h-10 border-red-500/25 text-xs text-red-300 hover:bg-red-500/10"><TriangleAlert className="mr-1.5 h-3.5 w-3.5" />Enviar pedido</Button>
+              </div>
+            </details>
           )}
 
-          {!closed && mySide && (
+          {!closed && mySide && !quickMode && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-500/15 bg-red-500/[0.03] p-3">
               <div><p className="text-[11px] font-bold text-red-200">Não vai disputar esta partida?</p><p className="mt-0.5 text-[10px] text-gray-600">Ao desistir, o adversário vence imediatamente por W.O.</p></div>
               <Button variant="outline" disabled={busy !== ""} onClick={forfeit} className="h-9 border-red-500/25 text-xs text-red-300 hover:bg-red-500/10">
@@ -601,9 +623,12 @@ export function MatchRoomDialog({
             </div>
           )}
 
-          <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">Conversa</h3>
-
+          <details className="group rounded-2xl border border-white/[0.06] bg-white/[0.015]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-semibold text-gray-400 transition hover:text-white [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center gap-2"><MessageCircle className="h-4 w-4" />Conversa com o adversário{(room?.messages ?? []).filter((message) => !message.system).length > 0 ? ` (${(room?.messages ?? []).filter((message) => !message.system).length})` : ""}</span>
+              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="space-y-2 border-t border-white/[0.05] p-3">
             <div className="max-h-64 space-y-1.5 overflow-y-auto">
               {(room?.messages ?? []).map((message) => (
                 <div
@@ -654,7 +679,8 @@ export function MatchRoomDialog({
                 {busy === "chat" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
-          </div>
+            </div>
+          </details>
         </div>
       </DialogContent>
     </Dialog>

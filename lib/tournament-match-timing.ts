@@ -1,6 +1,7 @@
 import type { TournamentDetail, TournamentMatch } from "./services/tournaments.types"
 
 const OPEN = new Set(["READY", "AWAITING_PROOF", "DISPUTED"])
+const MATCH_COMPLETION_REVIEW_MINUTES = 240
 
 function duration(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000))
@@ -13,7 +14,12 @@ function duration(ms: number): string {
 
 export function matchTiming(match: TournamentMatch, tournament: TournamentDetail, now = Date.now()) {
   if (!OPEN.has(match.status) || !match.readyAt) return null
-  if (tournament.matchWindowMinutes > 0 && match.homeReadyAt && match.awayReadyAt) return null
+  if (tournament.matchWindowMinutes > 0 && match.homeReadyAt && match.awayReadyAt) {
+    const startedAt = Math.max(new Date(match.homeReadyAt).getTime(), new Date(match.awayReadyAt).getTime())
+    const deadlineAt = startedAt + MATCH_COMPLETION_REVIEW_MINUTES * 60_000
+    if (now >= deadlineAt) return { label: "Aguardando revisão", deadlineAt, expired: true, waiting: false }
+    return { label: `Em andamento, revisão em ${duration(deadlineAt - now)}`, deadlineAt, expired: false, waiting: false }
+  }
   const readyAt = new Date(match.readyAt).getTime()
   const startsAt = tournament.startsAt ? new Date(tournament.startsAt).getTime() : 0
   const beginsAt = Math.max(readyAt, startsAt)

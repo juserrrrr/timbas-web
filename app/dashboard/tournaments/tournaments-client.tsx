@@ -24,11 +24,10 @@ import {
 } from "@/components/competitions/shared"
 import { CreateTournamentDialog } from "./create-tournament-dialog"
 
-const FILTERS: Array<{ id: string; label: string; status?: TournamentStatus }> = [
+const FILTERS: Array<{ id: string; label: string; statuses?: TournamentStatus[] }> = [
+  { id: "active", label: "Abertos e em andamento", statuses: ["REGISTRATION", "RUNNING"] },
+  { id: "finished", label: "Encerrados", statuses: ["FINISHED"] },
   { id: "all", label: "Todos" },
-  { id: "open", label: "Inscrições abertas", status: "REGISTRATION" },
-  { id: "running", label: "Em andamento", status: "RUNNING" },
-  { id: "finished", label: "Encerrados", status: "FINISHED" },
 ]
 
 const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done" | "danger"> = {
@@ -72,7 +71,7 @@ export function TournamentsClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   const [tournaments, setTournaments] = useState<TournamentSummary[]>(initialTournaments ?? [])
-  const [filter, setFilter] = useState("all")
+  const [filter, setFilter] = useState("active")
   const [loading, setLoading] = useState(!initialTournaments)
   const [error, setError] = useState("")
   const [creating, setCreating] = useState(false)
@@ -125,8 +124,8 @@ export function TournamentsClient({
   }, [])
 
   const visible = useMemo(() => {
-    const status = FILTERS.find((item) => item.id === filter)?.status
-    return status ? tournaments.filter((tournament) => tournament.status === status) : tournaments
+    const statuses = FILTERS.find((item) => item.id === filter)?.statuses
+    return statuses ? tournaments.filter((tournament) => statuses.includes(tournament.status)) : tournaments
   }, [tournaments, filter])
 
   if (loading) return <PageLoading />
@@ -145,7 +144,7 @@ export function TournamentsClient({
         </div>
         <div className="relative flex gap-2 overflow-x-auto border-t border-white/[0.07] bg-black/10 px-6 py-3 [scrollbar-width:none] sm:px-8 [&::-webkit-scrollbar]:hidden">
           {FILTERS.map((item) => {
-            const count = item.status ? tournaments.filter((tournament) => tournament.status === item.status).length : tournaments.length
+            const count = item.statuses ? tournaments.filter((tournament) => item.statuses!.includes(tournament.status)).length : tournaments.length
             return <button key={item.id} onClick={() => setFilter(item.id)} className={`flex h-9 flex-shrink-0 cursor-pointer items-center gap-2 rounded-xl border px-3.5 text-xs font-bold transition ${filter === item.id ? "border-blue-400/20 bg-blue-500/10 text-blue-200" : "border-transparent text-gray-500 hover:bg-white/[0.035] hover:text-white"}`}>{item.label}<span className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[9px] font-black ${filter === item.id ? "bg-blue-400/15 text-blue-200" : "bg-white/[0.04] text-gray-600"}`}>{count}</span></button>
           })}
         </div>

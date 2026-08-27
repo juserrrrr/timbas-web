@@ -12,6 +12,10 @@ import {
 } from "@/lib/services/tournaments.types"
 import { matchTiming } from "@/lib/tournament-match-timing"
 
+type MatchFilter = "open" | "closed" | "all"
+
+const CLOSED_STATUSES = new Set<TournamentMatchStatus>(["FINISHED", "WALKOVER"])
+
 const TONES: Record<TournamentMatchStatus, "neutral" | "live" | "warn" | "done" | "danger"> = {
   PENDING: "neutral",
   READY: "live",
@@ -40,20 +44,29 @@ export function MatchesView({
   onlyMine?: boolean
 }) {
   const [now, setNow] = useState(() => Date.now())
+  const [filter, setFilter] = useState<MatchFilter>(() => tournament.status === "FINISHED" ? "closed" : "open")
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [])
-  const visibleMatches = onlyMine
+  const scopedMatches = onlyMine
     ? tournament.matches.filter((match) => tournament.access.teamIds.some((id) => id === match.homeTeamId || id === match.awayTeamId))
     : tournament.matches
-  if (visibleMatches.length === 0) {
+  if (scopedMatches.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center text-sm text-gray-500">
         As partidas são geradas quando o campeonato começa.
       </p>
     )
   }
+
+  const openCount = scopedMatches.filter((match) => !CLOSED_STATUSES.has(match.status) && match.status !== "PENDING").length
+  const closedCount = scopedMatches.filter((match) => CLOSED_STATUSES.has(match.status)).length
+  const visibleMatches = scopedMatches.filter((match) => {
+    if (filter === "closed") return CLOSED_STATUSES.has(match.status)
+    if (filter === "open") return !CLOSED_STATUSES.has(match.status) && match.status !== "PENDING"
+    return true
+  })
 
   const byRound = new Map<string, TournamentMatch[]>()
   for (const match of visibleMatches) {
@@ -63,6 +76,24 @@ export function MatchesView({
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1.5 overflow-x-auto rounded-xl border border-white/[0.06] bg-black/20 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {([
+          { id: "open" as const, label: "Abertas e em andamento", count: openCount },
+          { id: "closed" as const, label: "Encerradas", count: closedCount },
+          { id: "all" as const, label: "Todas", count: scopedMatches.length },
+        ]).map((item) => (
+          <button key={item.id} type="button" onClick={() => setFilter(item.id)} className={`flex h-9 flex-shrink-0 items-center gap-2 rounded-lg px-3 text-[11px] font-bold transition ${filter === item.id ? "bg-blue-500/15 text-blue-200" : "text-gray-500 hover:bg-white/[0.04] hover:text-gray-300"}`}>
+            {item.label}<span className={`rounded-full px-1.5 py-0.5 text-[9px] ${filter === item.id ? "bg-blue-400/15 text-blue-200" : "bg-white/[0.04] text-gray-600"}`}>{item.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {visibleMatches.length === 0 && (
+        <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center text-sm text-gray-500">
+          {filter === "open" ? "Nenhuma partida aberta ou em andamento agora." : filter === "closed" ? "Nenhuma partida encerrada ainda." : "Nenhuma partida nesta visualização."}
+        </p>
+      )}
+
       {[...byRound.entries()].map(([key, matches]) => {
         const [phase, round] = key.split("|")
         const heading =
@@ -78,6 +109,14 @@ export function MatchesView({
                   (id) => id === match.homeTeamId || id === match.awayTeamId,
                 )
                 const timing = matchTiming(match, tournament, now)
+                const bothReady = Boolean(match.homeReadyAt && match.awayReadyAt)
+                const statusLabel = match.status === "READY" && bothReady
+                  ? "Em andamento"
+                  : match.status === "READY"
+                    ? "Check-in aberto"
+                    : match.status === "DISPUTED"
+                      ? "Revisão necessária"
+                      : MATCH_STATUS_LABELS[match.status]
 
                 return (
                   <button
@@ -125,7 +164,7 @@ export function MatchesView({
                     <div className="hidden flex-shrink-0 sm:block">
                       <StatusPill tone={TONES[match.status]}>
                         <Icon className="h-3 w-3" />
-                        {MATCH_STATUS_LABELS[match.status]}
+                        {statusLabel}
                       </StatusPill>
                     </div>
                     </div>
