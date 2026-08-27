@@ -1,6 +1,6 @@
 "use client"
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react"
+import { type ReactNode, useCallback, useMemo, useRef, useState } from "react"
 import { Ban, Check, Copy, Link2, Loader2, ShieldCheck, Sparkles, TicketCheck, TicketX, UserCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { formatDateTime } from "@/components/competitions/shared"
 import { createTournamentRegistrationInvite, listTournamentRegistrationInvites, revokeTournamentRegistrationInvite } from "@/lib/services/tournaments"
 import type { TournamentRegistrationInvite } from "@/lib/services/tournaments.types"
+import { useSmartPolling } from "@/hooks/use-smart-polling"
 
 export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId: string; registrationOpen: boolean }) {
   const [invites, setInvites] = useState<TournamentRegistrationInvite[]>([])
@@ -17,38 +18,25 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
   const [error, setError] = useState("")
   const [filter, setFilter] = useState<"all" | "available" | "used" | "revoked">("all")
   const [revokeTarget, setRevokeTarget] = useState<TournamentRegistrationInvite | null>(null)
+  const dataSignature = useRef("")
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setInvites(await listTournamentRegistrationInvites(tournamentId))
+      const nextInvites = await listTournamentRegistrationInvites(tournamentId)
+      const signature = JSON.stringify(nextInvites)
+      if (signature !== dataSignature.current) {
+        dataSignature.current = signature
+        setInvites(nextInvites)
+      }
       setError("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar os convites.")
+      if (!silent) setError(err instanceof Error ? err.message : "Não foi possível carregar os convites.")
     } finally {
       setLoading(false)
     }
   }, [tournamentId])
 
-  // Um convite é consumido do outro lado, fora desta tela, então sem revalidar
-  // o painel ficava mostrando "aguardando alguém" para um link que já tinha
-  // sido aceito, até alguém dar F5. Mesmo ritmo do resto do campeonato: volta a
-  // buscar ao reabrir a aba e devagarinho enquanto ela está à vista.
-  useEffect(() => {
-    void load()
-
-    const refreshIfVisible = () => {
-      if (document.visibilityState === "visible") void load()
-    }
-    const timer = window.setInterval(refreshIfVisible, 20_000)
-    document.addEventListener("visibilitychange", refreshIfVisible)
-    window.addEventListener("focus", refreshIfVisible)
-
-    return () => {
-      window.clearInterval(timer)
-      document.removeEventListener("visibilitychange", refreshIfVisible)
-      window.removeEventListener("focus", refreshIfVisible)
-    }
-  }, [load])
+  useSmartPolling(() => load(dataSignature.current !== ""), { intervalMs: 15_000 })
 
   const counts = useMemo(() => ({
     available: invites.filter((invite) => !invite.usedAt && !invite.revokedAt).length,

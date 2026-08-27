@@ -19,6 +19,7 @@ import { publicTournamentUrl } from "@/lib/public-site-url"
 import { LoadingState } from "@/components/ui/loading-state"
 import { renderChampionCard, type ChampionCardData } from "@/lib/champion-card-render"
 import { DEFAULT_CHAMPION_CARD_LAYOUT, type ChampionCardLayout } from "@/lib/champion-card-config"
+import { useSmartPolling } from "@/hooks/use-smart-polling"
 
 const TAGS: Record<string, string> = {
   MVP: "MVP",
@@ -251,31 +252,39 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
   const [championLayout, setChampionLayout] = useState<ChampionCardLayout>(DEFAULT_CHAMPION_CARD_LAYOUT)
   const [readyAwardKeys, setReadyAwardKeys] = useState<Set<TournamentEaAward["key"]>>(new Set())
   const [championReady, setChampionReady] = useState(false)
+  const dataSignature = useRef("")
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setReadyAwardKeys(new Set())
-    setChampionReady(false)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
-      const [awardResult, settings] = await Promise.all([
-        getTournamentEaAwards(tournamentId),
-        getAwardCardSettings().catch(() => ({ campeao: undefined })),
-      ])
-      setPlayers(Array.isArray(awardResult.players) ? awardResult.players : [])
-      setOfficialAwards(awardResult.awards)
-      setChampionCard(awardResult.championCard)
-      const { campeao, ...individualSettings } = settings
-      setAwardSettings(individualSettings)
-      setChampionLayout({ ...DEFAULT_CHAMPION_CARD_LAYOUT, ...campeao })
+      const awardResult = await getTournamentEaAwards(tournamentId)
+      const signature = JSON.stringify(awardResult)
+      if (signature !== dataSignature.current) {
+        dataSignature.current = signature
+        setPlayers(Array.isArray(awardResult.players) ? awardResult.players : [])
+        setOfficialAwards(awardResult.awards)
+        setChampionCard(awardResult.championCard)
+        setReadyAwardKeys(new Set())
+        setChampionReady(false)
+      }
       setError("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar as estatísticas da EA.")
+      if (!silent) setError(err instanceof Error ? err.message : "Não foi possível carregar as estatísticas da EA.")
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [tournamentId])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    getAwardCardSettings()
+      .then((settings) => {
+        const { campeao, ...individualSettings } = settings
+        setAwardSettings(individualSettings)
+        setChampionLayout({ ...DEFAULT_CHAMPION_CARD_LAYOUT, ...campeao })
+      })
+      .catch(() => undefined)
+  }, [])
+  useSmartPolling(() => load(dataSignature.current !== ""), { intervalMs: finished ? 30_000 : 8_000 })
 
   const markAwardRendered = useCallback((key: TournamentEaAward["key"]) => {
     setReadyAwardKeys((current) => current.has(key) ? current : new Set(current).add(key))

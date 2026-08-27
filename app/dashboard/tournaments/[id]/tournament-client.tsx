@@ -51,6 +51,7 @@ import { EaStatsView } from "./ea-stats-view"
 import { InvitesPanel } from "./invites-panel"
 import { matchTiming } from "@/lib/tournament-match-timing"
 import { brasiliaLocalToIso } from "@/lib/date-time"
+import { useSmartPolling } from "@/hooks/use-smart-polling"
 
 const STATUS_TONES: Record<TournamentStatus, "neutral" | "live" | "warn" | "done" | "danger"> = {
   DRAFT: "neutral",
@@ -110,35 +111,54 @@ export function TournamentClient({
   // O servidor já trouxe este campeonato, então a primeira busca do cliente
   // seria a mesma resposta de novo. As seguintes, do relógio, continuam.
   const servedFromServer = useRef(Boolean(initialTournament))
+  const tournamentSignature = useRef(initialTournament ? JSON.stringify(initialTournament) : "")
+  const scoreAuditSignature = useRef("")
+  const requestVersion = useRef(0)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    const version = ++requestVersion.current
     try {
       const next = await getTournament(tournamentId)
-      setTournament(next)
+      if (version !== requestVersion.current) return
+      const nextSignature = JSON.stringify(next)
+      const changed = nextSignature !== tournamentSignature.current
+      if (changed) {
+        tournamentSignature.current = nextSignature
+        setTournament(next)
+      }
       if (next.labMode && next.access.canModerate) {
         try {
-          setScoreAudit(await getLabEaScoreAudit(tournamentId))
+          const nextAudit = await getLabEaScoreAudit(tournamentId)
+          if (version !== requestVersion.current) return
+          const nextAuditSignature = JSON.stringify(nextAudit)
+          if (nextAuditSignature !== scoreAuditSignature.current) {
+            scoreAuditSignature.current = nextAuditSignature
+            setScoreAudit(nextAudit)
+          }
         } catch {
-          setScoreAudit([])
+          if (!silent) setScoreAudit([])
         }
-      } else {
+      } else if (scoreAuditSignature.current !== "[]") {
+        scoreAuditSignature.current = "[]"
         setScoreAudit([])
       }
-      if (!initialTabChosen.current && !requestedMatchId && next.status === "FINISHED" && next.game === "EA_FC") {
-        setTab("ea-stats")
+      if (changed) {
+        if (!initialTabChosen.current && !requestedMatchId && next.status === "FINISHED" && next.game === "EA_FC") {
+          setTab("ea-stats")
+        }
+        setSelectedMatch((current) => {
+          const id = current?.id ?? requestedMatchId
+          return id ? next.matches.find((match) => match.id === id) ?? null : null
+        })
+        if (requestedMatchId) setTab("matches")
+        setPhotoMatch((current) => current ? next.matches.find((match) => match.id === current.id) ?? null : null)
       }
       initialTabChosen.current = true
-      setSelectedMatch((current) => {
-        const id = current?.id ?? requestedMatchId
-        return id ? next.matches.find((match) => match.id === id) ?? null : null
-      })
-      if (requestedMatchId) setTab("matches")
-      setPhotoMatch((current) => current ? next.matches.find((match) => match.id === current.id) ?? null : null)
       setError("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar o campeonato")
+      if (!silent) setError(err instanceof Error ? err.message : "Não foi possível carregar o campeonato")
     } finally {
-      setLoading(false)
+      if (version === requestVersion.current) setLoading(false)
     }
   }, [requestedMatchId, tournamentId])
 
@@ -149,8 +169,14 @@ export function TournamentClient({
       // ainda precisa de uma ida, e só para quem modera um campeonato de lab.
       if (initialTournament?.labMode && initialTournament.access.canModerate) {
         void getLabEaScoreAudit(tournamentId)
-          .then(setScoreAudit)
-          .catch(() => setScoreAudit([]))
+          .then((value) => {
+            scoreAuditSignature.current = JSON.stringify(value)
+            setScoreAudit(value)
+          })
+          .catch(() => {
+            scoreAuditSignature.current = "[]"
+            setScoreAudit([])
+          })
       }
       return
     }
@@ -168,23 +194,11 @@ export function TournamentClient({
     return live ? 4_000 : 15_000
   }, [tournament])
 
-  // A tela também volta a buscar na hora em que a aba é reaberta: quem estava em
-  // outra janela quando o placar saiu via a chave parada até o próximo tique.
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load()
-    }, pollMs)
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void load()
-    }
-    document.addEventListener("visibilitychange", onVisible)
-    window.addEventListener("focus", onVisible)
-    return () => {
-      window.clearInterval(timer)
-      document.removeEventListener("visibilitychange", onVisible)
-      window.removeEventListener("focus", onVisible)
-    }
-  }, [load, pollMs])
+  useSmartPolling(() => load({ silent: true }), {
+    enabled: Boolean(tournament),
+    immediate: false,
+    intervalMs: pollMs,
+  })
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
@@ -501,7 +515,7 @@ export function TournamentClient({
           <div><h2 className="text-sm font-black text-white">{activeTab?.label}</h2><p className="mt-0.5 text-[10px] text-gray-600">Gerencie e acompanhe esta etapa do campeonato.</p></div>
         </div>
 
-        <div className="min-h-[320px] p-4 sm:p-6">
+        <div key={tab} className="content-enter min-h-[320px] p-4 sm:p-6">
           {tab === "bracket" && <BracketView tournament={tournament} onSelectMatch={setSelectedMatch} />}
           {tab === "standings" && <StandingsView tournament={tournament} />}
           {tab === "my-matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} onlyMine />}

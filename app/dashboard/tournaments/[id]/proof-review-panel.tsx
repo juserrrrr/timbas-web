@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Bot, Check, Loader2, ScanLine, ShieldCheck, TriangleAlert, UserRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -8,6 +8,7 @@ import { EmptyState, StatusPill, TeamCrest, formatDateTime, formatDurationSecond
 import { LoadingState } from "@/components/ui/loading-state"
 import { correctLabTournamentResult, discardInterruptedLabEaResult, fetchProofImage, listPendingMatchReviews, listPendingProofs, rejectTournamentEaAudit, resolveTournamentMatchReview, reviewProof, type LabEaScoreAuditItem } from "@/lib/services/tournaments"
 import type { PendingProof, TournamentMatch } from "@/lib/services/tournaments.types"
+import { useSmartPolling } from "@/hooks/use-smart-polling"
 
 function ProofImage({ tournamentId, proofId }: { tournamentId: string; proofId: string }) {
   const [url, setUrl] = useState("")
@@ -42,7 +43,7 @@ function ProofImage({ tournamentId, proofId }: { tournamentId: string; proofId: 
   }
   return (
     <a href={url} target="_blank" rel="noreferrer" className="block">
-      <img src={url} alt="Prova do placar" className="max-h-60 w-full rounded-lg bg-black/40 object-contain" />
+      <img src={url} alt="Prova do placar" loading="lazy" decoding="async" className="max-h-60 w-full rounded-lg bg-black/40 object-contain" />
     </a>
   )
 }
@@ -70,36 +71,35 @@ export function ProofReviewPanel({
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState("")
   const [error, setError] = useState("")
+  const dataSignature = useRef("")
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
       const [nextProofs, nextReviews] = await Promise.all([listPendingProofs(tournamentId), listPendingMatchReviews(tournamentId)])
-      setProofs(nextProofs)
-      setReviews(nextReviews)
-      setScores((current) => {
-        const next = { ...current }
-        for (const match of nextReviews) {
-          if (!next[match.id] && match.claimedHomeScore !== null && match.claimedHomeScore !== undefined && match.claimedAwayScore !== null && match.claimedAwayScore !== undefined) {
-            next[match.id] = { home: String(match.claimedHomeScore), away: String(match.claimedAwayScore) }
+      const signature = JSON.stringify([nextProofs, nextReviews])
+      if (signature !== dataSignature.current) {
+        dataSignature.current = signature
+        setProofs(nextProofs)
+        setReviews(nextReviews)
+        setScores((current) => {
+          const next = { ...current }
+          for (const match of nextReviews) {
+            if (!next[match.id] && match.claimedHomeScore !== null && match.claimedHomeScore !== undefined && match.claimedAwayScore !== null && match.claimedAwayScore !== undefined) {
+              next[match.id] = { home: String(match.claimedHomeScore), away: String(match.claimedAwayScore) }
+            }
           }
-        }
-        return next
-      })
+          return next
+        })
+      }
       setError("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar as provas pendentes")
+      if (!silent) setError(err instanceof Error ? err.message : "Não foi possível carregar as provas pendentes")
     } finally {
       setLoading(false)
     }
   }, [tournamentId])
 
-  useEffect(() => {
-    void load()
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load()
-    }, 10_000)
-    return () => window.clearInterval(timer)
-  }, [load])
+  useSmartPolling(() => load(dataSignature.current !== ""), { intervalMs: 8_000 })
 
   const review = async (proofId: string, approve: boolean) => {
     setBusyId(proofId)

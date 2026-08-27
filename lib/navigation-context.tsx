@@ -49,7 +49,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       {/* LoadingState always in DOM, animate-ping never restarts */}
       <div
         style={{ pointerEvents: visible ? undefined : "none" }}
-        className={`fixed bottom-0 left-0 right-0 top-14 z-30 flex items-center justify-center md:left-[65px] transition-opacity duration-150 ${visible ? "opacity-100" : "opacity-0"}`}
+        className={`fixed inset-x-0 bottom-0 top-14 z-30 flex items-center justify-center transition-opacity duration-150 ${visible ? "opacity-100" : "opacity-0"}`}
       >
         <LoadingState className="m-0 min-h-0" />
       </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { CalendarClock, Camera, Check, ChevronDown, Clock, DatabaseZap, HelpCircle, Loader2, MessageCircle, RefreshCw, Send, TriangleAlert, UserX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -27,6 +27,7 @@ import {
 } from "@/lib/services/tournaments"
 import type { TournamentDetail, TournamentMatch } from "@/lib/services/tournaments.types"
 import { brasiliaInputValue, brasiliaLocalToIso } from "@/lib/date-time"
+import { useSmartPolling } from "@/hooks/use-smart-polling"
 
 // A sala acompanha a partida em tempo quase real enquanto ela está aberta e
 // desacelera quando o resultado já saiu, que é quando nada mais muda sozinho.
@@ -72,33 +73,27 @@ export function MatchRoomDialog({
   const [error, setError] = useState("")
   const [eaChoices, setEaChoices] = useState<EaMatchChoice[]>([])
   const [eaRescan, setEaRescan] = useState<LabEaRescanResult | null>(null)
+  const roomSignature = useRef("")
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setRoom(await getMatchRoom(tournament.id, match.id))
+      const next = await getMatchRoom(tournament.id, match.id)
+      const signature = JSON.stringify(next)
+      if (signature !== roomSignature.current) {
+        roomSignature.current = signature
+        setRoom(next)
+      }
       setError("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível abrir a sala da partida.")
+      if (!silent) setError(err instanceof Error ? err.message : "Não foi possível abrir a sala da partida.")
     }
   }, [tournament.id, match.id])
 
   const roomClosed = room?.match.status === "FINISHED" || room?.match.status === "WALKOVER"
 
-  useEffect(() => {
-    void load()
-    const pollMs = roomClosed ? CLOSED_POLL_MS : LIVE_POLL_MS
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") void load()
-    }, pollMs)
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void load()
-    }
-    document.addEventListener("visibilitychange", onVisible)
-    return () => {
-      clearInterval(timer)
-      document.removeEventListener("visibilitychange", onVisible)
-    }
-  }, [roomClosed, load])
+  useSmartPolling(() => load(roomSignature.current !== ""), {
+    intervalMs: roomClosed ? CLOSED_POLL_MS : LIVE_POLL_MS,
+  })
 
   const run = async (key: string, action: () => Promise<unknown>) => {
     setBusy(key)
