@@ -12,6 +12,7 @@ import { LoadingState } from "@/components/ui/loading-state"
 import {
   getVerifyStatus, startVerification, confirmVerification, unlinkAccount
 } from "@/lib/services/clash"
+import { LolToolsSubnav } from "@/components/lol-tools-subnav"
 
 type Step = "status" | "form" | "pending" | "success"
 
@@ -169,6 +170,8 @@ export default function VerifyClient({ token }: { token: string }) {
           Vincule sua conta do League of Legends ao Timbas para acessar funcionalidades exclusivas
         </p>
       </div>
+
+      <LolToolsSubnav />
 
       {/* Error */}
       {error && (

@@ -1,9 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Link from "next/link"
 import {
-  ShieldAlert, RefreshCw, Search, Zap, AlertCircle, UserSearch,
+  ShieldAlert, RefreshCw, Search, Zap, AlertCircle,
   Share2, Check, Copy, Radar, History, ChevronRight,
 } from "lucide-react"
 import { BetaBadge } from "@/components/ui/beta-badge"
@@ -19,6 +18,7 @@ import {
   ScoutResult,
 } from "@/lib/services/clash"
 import ClashResultsView from "./clash-results-view"
+import { LolToolsSubnav } from "@/components/lol-tools-subnav"
 
 // Guarda o job em andamento para retomar o acompanhamento se o usuário
 // sair da tela e voltar, a análise continua rodando no servidor.
@@ -299,13 +299,6 @@ export default function ClashScoutClient({ token }: { token: string }) {
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <Link
-            href="/dashboard/lol-profile"
-            className="flex items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs font-black text-sky-300 transition-all hover:border-sky-500/35 hover:bg-sky-500/15"
-          >
-            <UserSearch className="h-3.5 w-3.5" />
-            Perfil individual
-          </Link>
           {data && (
             <>
               {!hasGeneratedAi(data) && (
@@ -340,6 +333,8 @@ export default function ClashScoutClient({ token }: { token: string }) {
           )}
         </div>
       </div>
+
+      <LolToolsSubnav />
 
       {/* Busca (aquisição de alvo) */}
       {!data && !loading && (

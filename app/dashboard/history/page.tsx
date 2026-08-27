@@ -6,6 +6,8 @@ import { getSession } from "@/lib/session"
 import { fetchMatchHistory, fetchPlayerDetailStats, fetchDuoStats } from "@/lib/services/leaderboard"
 import { gameModeLabel } from "@/lib/game-mode"
 import { HistoryPagination } from "./history-pagination"
+import { CustomMatchSubnav } from "@/components/custom-match-subnav"
+import { CreateMatchLink } from "@/app/dashboard/active/create-match-link"
 
 export const dynamic = "force-dynamic"
 
@@ -31,10 +33,15 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="dashboard-view space-y-6">
-      <div>
-        <h1 className="text-3xl font-black text-white">Histórico de Partidas</h1>
-        <p className="text-sm text-gray-500">Veja todas as partidas jogadas e seus resultados</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-black text-white">Partidas personalizadas</h1>
+          <p className="text-sm text-gray-500">Crie novas partidas e consulte tudo o que já foi jogado.</p>
+        </div>
+        <CreateMatchLink />
       </div>
+
+      <CustomMatchSubnav section="matches" />
 
       {matches.length === 0 && page === 1 ? (
         <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center animate-in fade-in zoom-in duration-500">

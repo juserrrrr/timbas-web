@@ -13,6 +13,7 @@ import {
   PlayerProfileAnalysis,
   ScoutPlayer,
 } from "@/lib/services/clash"
+import { LolToolsSubnav } from "@/components/lol-tools-subnav"
 
 function ChampionIcon({ name, championId, size = 34 }: { name: string; championId?: number; size?: number }) {
   return (
@@ -262,6 +263,8 @@ export default function LolProfileClient({ token }: { token: string }) {
         </div>
         <p className="ml-[52px] mt-1 text-sm text-gray-500">Busque estatísticas recentes de qualquer Riot ID</p>
       </div>
+
+      <LolToolsSubnav />
 
       <div className="rounded-2xl border border-white/[0.08] bg-[#07070c]/70 p-5">
         <div className="flex flex-col gap-3 sm:flex-row">

@@ -5,7 +5,6 @@ import {
   History,
   Home,
   MonitorPlay,
-  Radio,
   Settings,
   ShieldAlert,
   ShieldCheck,
@@ -38,6 +37,7 @@ export type NavItem = {
   label: string
   description: string
   href: string
+  activeHrefs?: string[]
   accent: NavAccent
   beta?: boolean
   /// Recurso controlado por feature flag. Com a flag desligada o item continua
@@ -116,12 +116,9 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "partida-customizada",
     title: "Partida Customizada",
     items: [
-      { icon: Radio, label: "Ao Vivo", description: "Partidas acontecendo agora", href: "/dashboard/active", accent: "emerald", flag: FEATURE_DASHBOARD_MATCHES_LIVE, permission: "dashboard.matches.live" },
+      { icon: Swords, label: "Partidas", description: "Crie partidas e consulte o histórico", href: "/dashboard/active", activeHrefs: ["/dashboard/history"], accent: "emerald", flag: FEATURE_DASHBOARD_MATCHES_LIVE, permission: "dashboard.matches.live" },
       { icon: Trophy, label: "Ranking", description: "Classificação geral de vitórias", href: "/dashboard/ranking", accent: "amber", flag: FEATURE_DASHBOARD_MATCHES_RANKING, permission: "dashboard.matches.ranking" },
-      { icon: History, label: "Histórico", description: "Todas as partidas já disputadas", href: "/dashboard/history", accent: "violet", flag: FEATURE_DASHBOARD_MATCHES_HISTORY, permission: "dashboard.matches.history" },
-      { icon: Users, label: "Duplas", description: "Quem joga melhor junto", href: "/dashboard/teams", accent: "emerald", flag: FEATURE_DASHBOARD_MATCHES_TEAMS, permission: "dashboard.matches.teams" },
-      { icon: BarChart3, label: "Estatísticas", description: "Números detalhados das partidas", href: "/dashboard/stats", accent: "rose", flag: FEATURE_DASHBOARD_MATCHES_STATS, permission: "dashboard.matches.stats" },
-      { icon: Swords, label: "Comparação", description: "Confronto direto entre jogadores", href: "/dashboard/versus", accent: "orange", flag: FEATURE_DASHBOARD_MATCHES_VERSUS, permission: "dashboard.matches.versus" },
+      { icon: BarChart3, label: "Estatísticas", description: "Desempenho, duplas e comparações", href: "/dashboard/stats", activeHrefs: ["/dashboard/teams", "/dashboard/versus"], accent: "rose", flag: FEATURE_DASHBOARD_MATCHES_STATS, permission: "dashboard.matches.stats" },
     ],
   },
   {
@@ -143,9 +140,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "lol",
     title: "League of Legends",
     items: [
-      { icon: ShieldAlert, label: "Clash Scout", description: "Análise do time adversário no Clash", href: "/dashboard/clash", accent: "amber", beta: true, flag: FEATURE_DASHBOARD_CLASH, permission: "dashboard.clash" },
-      { icon: ShieldCheck, label: "Verificar LoL", description: "Vincule sua conta da Riot", href: "/dashboard/verify", accent: "emerald", beta: true, flag: FEATURE_DASHBOARD_LOL_VERIFY, permission: "dashboard.lol.verify" },
-      { icon: UserSearch, label: "Perfil LoL", description: "Leitura do seu estilo de jogo", href: "/dashboard/lol-profile", accent: "sky", beta: true, flag: FEATURE_DASHBOARD_LOL_PROFILE, permission: "dashboard.lol.profile" },
+      { icon: ShieldAlert, label: "Rift Tools", description: "Scout, conta Riot e análise de perfil", href: "/dashboard/clash", activeHrefs: ["/dashboard/verify", "/dashboard/lol-profile"], accent: "amber", beta: true, flag: FEATURE_DASHBOARD_CLASH, permission: "dashboard.clash" },
     ],
   },
 ]
@@ -154,7 +149,15 @@ export const FOOTER_ITEMS: NavItem[] = [
   { icon: Settings, label: "Configurações", description: "Preferências da sua conta", href: "/dashboard/settings", accent: "slate", flag: FEATURE_DASHBOARD_SETTINGS, permission: "dashboard.settings" },
 ]
 
-export const ALL_NAV_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((group) => group.items), ...FOOTER_ITEMS]
+const GROUPED_ROUTE_ACCESS: NavItem[] = [
+  { icon: History, label: "Histórico", description: "Todas as partidas já disputadas", href: "/dashboard/history", accent: "violet", flag: FEATURE_DASHBOARD_MATCHES_HISTORY, permission: "dashboard.matches.history" },
+  { icon: Users, label: "Duplas", description: "Quem joga melhor junto", href: "/dashboard/teams", accent: "emerald", flag: FEATURE_DASHBOARD_MATCHES_TEAMS, permission: "dashboard.matches.teams" },
+  { icon: Swords, label: "Comparação", description: "Confronto direto entre jogadores", href: "/dashboard/versus", accent: "orange", flag: FEATURE_DASHBOARD_MATCHES_VERSUS, permission: "dashboard.matches.versus" },
+  { icon: ShieldCheck, label: "Verificar LoL", description: "Vincule sua conta da Riot", href: "/dashboard/verify", accent: "emerald", beta: true, flag: FEATURE_DASHBOARD_LOL_VERIFY, permission: "dashboard.lol.verify" },
+  { icon: UserSearch, label: "Perfil LoL", description: "Leitura do seu estilo de jogo", href: "/dashboard/lol-profile", accent: "sky", beta: true, flag: FEATURE_DASHBOARD_LOL_PROFILE, permission: "dashboard.lol.profile" },
+]
+
+export const ALL_NAV_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((group) => group.items), ...GROUPED_ROUTE_ACCESS, ...FOOTER_ITEMS]
 
 /// Marca o que está atrás de feature flag desligada em vez de esconder. Item
 /// que aparece e some conforme o admin mexe nas flags confunde mais do que
@@ -183,7 +186,7 @@ export function footerItemsFor(flags: string[] | null, permissions: string[] | n
   return FOOTER_ITEMS.map((item) => navItemForAccess(item, flags, permissions))
 }
 
-export function isNavItemActive(pathname: string, href: string): boolean {
+export function isNavItemActive(pathname: string, href: string, activeHrefs: string[] = []): boolean {
   if (href === "/dashboard") return pathname === href
-  return pathname === href || pathname.startsWith(`${href}/`)
+  return [href, ...activeHrefs].some((candidate) => pathname === candidate || pathname.startsWith(`${candidate}/`))
 }

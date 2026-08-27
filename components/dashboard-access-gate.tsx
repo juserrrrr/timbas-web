@@ -16,7 +16,7 @@ export function DashboardAccessGate({ children }: { children: ReactNode }) {
   const permissions = useMyPermissions()
   const item = [...ALL_NAV_ITEMS]
     .sort((left, right) => right.href.length - left.href.length)
-    .find((candidate) => isNavItemActive(pathname, candidate.href))
+    .find((candidate) => isNavItemActive(pathname, candidate.href, candidate.activeHrefs))
 
   if (!item) return children
   if (flags === null || permissions === null) {

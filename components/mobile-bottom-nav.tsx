@@ -92,7 +92,7 @@ export function MobileBottomNav() {
               </span>
               <div className="flex flex-col gap-1">
                 {group.items.map((item) => {
-                  const isActive = isNavItemActive(pathname, item.href)
+                  const isActive = isNavItemActive(pathname, item.href, item.activeHrefs)
                   const accent = ACCENTS[item.accent]
                   return (
                     <Link
@@ -130,7 +130,7 @@ export function MobileBottomNav() {
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-14 items-stretch border-t border-white/[0.06] bg-[#07070c]/95 backdrop-blur-xl">
         {quickItems.map((item) => (
-          <BarItem key={item.href} item={item} isActive={isNavItemActive(pathname, item.href)} />
+          <BarItem key={item.href} item={item} isActive={isNavItemActive(pathname, item.href, item.activeHrefs)} />
         ))}
 
         <button

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getToken } from "@/lib/auth"
 import { apiFetch, authHeaders } from "@/lib/api"
 import type { PlayerStats, PlayerDetailStats } from "@/lib/services/leaderboard"
+import { CustomMatchSubnav } from "@/components/custom-match-subnav"
 
 interface Props {
   players: PlayerStats[]
@@ -67,6 +68,7 @@ export function StatsClient({ players, serverId, currentUserId }: Props) {
           <h1 className="text-3xl font-black text-white">Estatísticas</h1>
           <p className="text-sm text-gray-500">Acompanhe o desempenho detalhado por jogador</p>
         </div>
+        <CustomMatchSubnav section="stats" />
         <Select value={selectedUserId} onValueChange={setSelectedUserId} disabled={players.length === 0}>
           <SelectTrigger className="w-full border-white/10 bg-white/5 text-white sm:w-[280px] rounded-xl h-11">
             <User className="mr-2 h-4 w-4 text-blue-400" />

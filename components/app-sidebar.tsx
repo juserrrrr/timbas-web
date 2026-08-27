@@ -267,7 +267,7 @@ export function AppSidebar({
                   <NavLink
                     key={item.href}
                     item={item}
-                    isActive={isNavItemActive(pathname, item.href)}
+                    isActive={isNavItemActive(pathname, item.href, item.activeHrefs)}
                     expanded={expanded}
                     onNavigate={close}
                   />
@@ -288,7 +288,7 @@ export function AppSidebar({
             <NavLink
               key={item.href}
               item={item}
-              isActive={isNavItemActive(pathname, item.href)}
+              isActive={isNavItemActive(pathname, item.href, item.activeHrefs)}
               expanded={expanded}
               onNavigate={close}
             />
