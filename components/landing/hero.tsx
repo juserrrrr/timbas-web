@@ -40,17 +40,7 @@ export function Hero() {
         <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
           <div className="min-w-0">
             <Reveal>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.04] px-3.5 py-1.5 text-[12px] text-gray-300 backdrop-blur">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-70" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-400" />
-                </span>
-                Bot no Discord e painel na web, a mesma conta nos dois
-              </span>
-            </Reveal>
-
-            <Reveal delay={70}>
-              <h1 className="font-display mt-7 text-[clamp(2.6rem,7vw,4.6rem)] text-white">
+              <h1 className="font-display text-[clamp(2.6rem,7vw,4.6rem)] text-white">
                 Tudo que a sua galera joga,{" "}
                 <span className="bg-gradient-to-r from-blue-400 via-white to-red-400 bg-clip-text text-transparent">
                   num lugar só.
@@ -58,7 +48,7 @@ export function Hero() {
               </h1>
             </Reveal>
 
-            <Reveal delay={140}>
+            <Reveal delay={80}>
               <p className="mt-6 max-w-[52ch] text-[16px] leading-relaxed text-gray-400">
                 Partida personalizada de LoL sorteada no Discord, campeonato de qualquer jogo com chave que anda
                 sozinha, liga draft de EA FC que busca o placar na própria EA, transmissão ao vivo para a galera
@@ -66,7 +56,7 @@ export function Hero() {
               </p>
             </Reveal>
 
-            <Reveal delay={210}>
+            <Reveal delay={150}>
               <div className="mt-9 flex flex-wrap gap-3">
                 <Button
                   asChild
@@ -89,7 +79,7 @@ export function Hero() {
               </div>
             </Reveal>
 
-            <Reveal delay={280}>
+            <Reveal delay={220}>
               <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-5 border-t border-white/[0.07] pt-7">
                 {CAPABILITIES.map((item) => (
                   <div key={item.label} className="flex items-center gap-2.5">
@@ -145,7 +135,7 @@ export function Hero() {
           </div>
         </div>
 
-        <Reveal delay={360}>
+        <Reveal delay={300}>
           <a
             href="#tudo"
             className="mx-auto mt-16 flex w-fit flex-col items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600 transition-colors hover:text-gray-300"
