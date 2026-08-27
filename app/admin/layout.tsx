@@ -16,9 +16,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [permissions, setPermissions] = useState<string[]>([])
   const [checked, setChecked] = useState(false)
 
+  /// A tela de entrada mora dentro de /admin, mas não pode passar pela
+  /// portaria: quem chega nela é justamente quem ainda não tem sessão.
+  const isLoginRoute = pathname === "/admin/login"
+
   // Quem entra no painel não é mais só o ADMIN fixo: qualquer permissão de painel
   // abre a porta, e o menu mostra só o que a pessoa pode.
   useEffect(() => {
+    if (isLoginRoute) return
     const token = getToken()
     if (!token) {
       router.replace("/admin/login")
@@ -41,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         clearToken()
         router.replace("/admin/login?error=unauthorized")
       })
-  }, [router])
+  }, [isLoginRoute, router])
 
   useEffect(() => {
     if (!checked || !user) return
@@ -61,6 +66,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.push("/admin/login")
     }, 800)
   }
+
+  if (isLoginRoute) return <>{children}</>
 
   if (!checked) {
     return <div className="min-h-[100dvh] bg-[#050508]"><LoadingState className="m-0 min-h-[100dvh]" /></div>
