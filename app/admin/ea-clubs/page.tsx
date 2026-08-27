@@ -2,15 +2,44 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { ChevronDown, ExternalLink, RefreshCw, Search, Shield } from "lucide-react"
+import {
+  ChevronDown,
+  Clock,
+  ExternalLink,
+  Gamepad2,
+  Hash,
+  Plus,
+  RefreshCw,
+  Search,
+  Shield,
+  ShieldPlus,
+} from "lucide-react"
 import { toast } from "@/lib/toast"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PageLoading } from "@/components/competitions/shared"
+import {
+  AdminEmpty,
+  AdminHeader,
+  AdminMetrics,
+  InlineNotice,
+  SectionCard,
+  TabCount,
+  adminTabClass,
+  adminTabListClass,
+} from "@/components/admin/shell"
 import { createEaClub, getEaClubs, searchEaClubs, syncEaClub, validateEaClub } from "@/lib/services/ea-clubs"
 import type { EaClub, EaClubPreview } from "@/lib/services/ea-clubs.types"
+
+function formatSync(value: string | null | undefined) {
+  if (!value) return "nunca sincronizado"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "nunca sincronizado"
+  return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+}
 
 export default function AdminEaClubsPage() {
   const [clubs, setClubs] = useState<EaClub[]>([])
@@ -35,7 +64,9 @@ export default function AdminEaClubsPage() {
     }
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+  }, [load])
 
   async function search(event: FormEvent) {
     event.preventDefault()
@@ -97,17 +128,209 @@ export default function AdminEaClubsPage() {
     }
   }
 
-  return <div className="space-y-8">
-    <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-400">Administração</p><h1 className="text-3xl font-black text-white">EA FC Clubs</h1><p className="mt-1 text-sm text-gray-500">Conecte e sincronize os clubes disponíveis no dashboard.</p></div>
+  if (loading && clubs.length === 0) return <PageLoading />
 
-    <Card className="border-white/[0.07] bg-white/[0.025] p-6">
-      <h2 className="mb-4 text-lg font-black text-white">Adicionar clube</h2>
-      <form onSubmit={search} className="flex flex-col gap-3 sm:flex-row"><div className="flex-1"><Label htmlFor="club-name" className="sr-only">Nome do clube</Label><Input id="club-name" value={clubName} onChange={event => setClubName(event.target.value)} placeholder="Nome do clube" minLength={2} required /></div><Button type="submit" disabled={searching}><Search className="mr-2 h-4 w-4" />{searching ? "Buscando..." : "Buscar clube"}</Button></form>
-      {error && <p role="alert" className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</p>}
-      {results && <div className="mt-5 space-y-2">{results.length ? results.map(found => <div key={found.externalClubId} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-black/30 p-4"><div><p className="font-bold text-white">{found.name}</p><p className="text-xs text-gray-500">Club ID: {found.externalClubId}</p></div><Button size="sm" disabled={Boolean(busyId)} onClick={() => void connect(found)}>{busyId === found.externalClubId ? "Conectando..." : "Conectar clube"}</Button></div>) : <p className="py-4 text-center text-sm text-gray-500">Nenhum clube encontrado.</p>}</div>}
-      <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="mt-5 border-t border-white/[0.07] pt-4"><CollapsibleTrigger className="flex w-full items-center justify-between text-sm text-gray-500 hover:text-white"><span>Opção avançada: conectar pelo Club ID</span><ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} /></CollapsibleTrigger><CollapsibleContent><form onSubmit={connectById} className="mt-4 flex gap-3"><Input value={externalClubId} onChange={event => setExternalClubId(event.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="Club ID" required /><Button variant="outline" disabled={Boolean(busyId)}>Conectar pelo ID</Button></form></CollapsibleContent></Collapsible>
-    </Card>
+  const synced = clubs.filter((club) => club.lastSyncAt)
+  const lastSync = synced
+    .map((club) => new Date(club.lastSyncAt!).getTime())
+    .sort((a, b) => b - a)
+    .at(0)
 
-    <section><h2 className="mb-4 text-lg font-black text-white">Clubes conectados</h2>{loading ? <Card className="border-white/[0.07] bg-white/[0.025] p-8 text-center text-gray-500">Carregando...</Card> : clubs.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{clubs.map(club => <Card key={club.id} className="border-white/[0.07] bg-white/[0.025] p-5"><div className="flex items-start gap-3"><div className="rounded-xl bg-blue-500/10 p-3"><Shield className="h-5 w-5 text-blue-400" /></div><div className="min-w-0 flex-1"><p className="truncate font-black text-white">{club.nickname || club.name}</p><p className="text-xs text-gray-500">Club ID: {club.externalClubId}</p><p className="mt-2 text-xs text-gray-600">Último sync: {club.lastSyncAt ? new Date(club.lastSyncAt).toLocaleString("pt-BR") : "Nunca"}</p></div></div><div className="mt-4 flex gap-2"><Button size="sm" disabled={Boolean(busyId)} onClick={() => void synchronize(club)}><RefreshCw className={`mr-2 h-3.5 w-3.5 ${busyId === club.id ? "animate-spin" : ""}`} />Sincronizar</Button><Button asChild size="sm" variant="outline"><Link href={`/dashboard/ea-clubs/${club.id}`}><ExternalLink className="mr-2 h-3.5 w-3.5" />Ver dashboard</Link></Button></div></Card>)}</div> : <Card className="border-dashed border-white/10 bg-white/[0.02] p-10 text-center text-gray-500">Nenhum clube conectado.</Card>}</section>
-  </div>
+  return (
+    <div className="space-y-6">
+      <AdminHeader
+        eyebrow="Integrações"
+        title="EA FC Clubs"
+        subtitle="Conecte um clube da EA e traga as partidas dele para dentro do Timbas."
+        icon={Gamepad2}
+        accent="blue"
+      />
+
+      <AdminMetrics
+        columns={3}
+        items={[
+          { label: "Clubes", value: clubs.length, hint: "conectados ao Timbas", icon: Shield, accent: "blue" },
+          {
+            label: "Já sincronizados",
+            value: synced.length,
+            hint: `${clubs.length - synced.length} nunca importaram`,
+            icon: RefreshCw,
+            accent: "emerald",
+          },
+          {
+            label: "Último sync",
+            value: lastSync ? new Date(lastSync).toLocaleDateString("pt-BR") : "-",
+            hint: lastSync ? new Date(lastSync).toLocaleTimeString("pt-BR", { timeStyle: "short" }) : "nenhum ainda",
+            icon: Clock,
+            accent: "amber",
+          },
+        ]}
+      />
+
+      {error && <InlineNotice tone="danger">{error}</InlineNotice>}
+
+      <Tabs defaultValue="clubs" className="gap-4">
+        <TabsList className={adminTabListClass()}>
+          <TabsTrigger value="clubs" className={adminTabClass("blue")}>
+            <Shield className="h-3.5 w-3.5" />
+            Clubes conectados
+            <TabCount value={clubs.length} />
+          </TabsTrigger>
+          <TabsTrigger value="add" className={adminTabClass("blue")}>
+            <ShieldPlus className="h-3.5 w-3.5" />
+            Conectar clube
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="clubs">
+          {clubs.length === 0 ? (
+            <AdminEmpty
+              icon={Shield}
+              title="Nenhum clube conectado"
+              description="Busque o clube pelo nome na aba ao lado. Depois de conectado, cada sincronização traz as partidas novas."
+            />
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {clubs.map((club) => (
+                <div
+                  key={club.id}
+                  className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5"
+                >
+                  <span
+                    aria-hidden
+                    className="absolute left-0 top-5 bottom-5 w-[3px] rounded-r-full bg-blue-400 opacity-30 transition-opacity group-hover:opacity-70"
+                  />
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10">
+                      <Shield className="h-5 w-5 text-blue-400" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-black text-white">{club.nickname || club.name}</p>
+                      <p className="mt-0.5 flex items-center gap-1 font-mono text-[11px] text-gray-600">
+                        <Hash className="h-3 w-3" />
+                        {club.externalClubId}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-3 flex items-center gap-1.5 text-[11px] text-gray-500">
+                    <Clock className="h-3 w-3 flex-shrink-0" />
+                    {formatSync(club.lastSyncAt)}
+                  </p>
+
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={Boolean(busyId)}
+                      onClick={() => void synchronize(club)}
+                      className="bg-blue-500 text-white hover:bg-blue-400"
+                    >
+                      <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${busyId === club.id ? "animate-spin" : ""}`} />
+                      Sincronizar
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="border-white/10">
+                      <Link href={`/dashboard/ea-clubs/${club.id}`}>
+                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                        Ver no dashboard
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="add" className="space-y-3">
+          <SectionCard
+            icon={Search}
+            accent="blue"
+            title="Procurar pelo nome"
+            description="O nome precisa bater com o do clube na EA. A busca devolve os que combinam para você escolher o certo."
+          >
+            <form onSubmit={search} className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex-1">
+                <Label htmlFor="club-name" className="sr-only">
+                  Nome do clube
+                </Label>
+                <Input
+                  id="club-name"
+                  value={clubName}
+                  onChange={(event) => setClubName(event.target.value)}
+                  placeholder="Nome do clube na EA"
+                  minLength={2}
+                  required
+                  className="h-10 border-white/10 bg-black/25"
+                />
+              </div>
+              <Button type="submit" disabled={searching} className="bg-blue-500 text-white hover:bg-blue-400">
+                <Search className="mr-1.5 h-4 w-4" />
+                {searching ? "Buscando..." : "Buscar clube"}
+              </Button>
+            </form>
+
+            {results && (
+              <div className="mt-4 space-y-2">
+                {results.length ? (
+                  results.map((found) => (
+                    <div
+                      key={found.externalClubId}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-black/25 p-3.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-black text-white">{found.name}</p>
+                        <p className="font-mono text-[11px] text-gray-600">Club ID {found.externalClubId}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={Boolean(busyId)}
+                        onClick={() => void connect(found)}
+                        className="bg-blue-500 text-white hover:bg-blue-400"
+                      >
+                        <Plus className="mr-1 h-3.5 w-3.5" />
+                        {busyId === found.externalClubId ? "Conectando..." : "Conectar"}
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="py-4 text-center text-[12px] text-gray-500">
+                    Nenhum clube com esse nome. Confira a grafia exata usada na EA.
+                  </p>
+                )}
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            icon={Hash}
+            accent="slate"
+            title="Já sabe o Club ID?"
+            description="O número que aparece na URL do clube no site da EA conecta direto, sem passar pela busca."
+          >
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between text-[12px] font-bold text-gray-400 transition-colors hover:text-white">
+                <span>Conectar pelo Club ID</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <form onSubmit={connectById} className="mt-4 flex gap-2">
+                  <Input
+                    value={externalClubId}
+                    onChange={(event) => setExternalClubId(event.target.value.replace(/\D/g, ""))}
+                    inputMode="numeric"
+                    placeholder="Somente números"
+                    required
+                    className="h-10 border-white/10 bg-black/25 font-mono"
+                  />
+                  <Button variant="outline" disabled={Boolean(busyId)} className="border-white/10">
+                    Conectar pelo ID
+                  </Button>
+                </form>
+              </CollapsibleContent>
+            </Collapsible>
+          </SectionCard>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
 }

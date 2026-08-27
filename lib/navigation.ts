@@ -38,6 +38,10 @@ export type NavItem = {
   description: string
   href: string
   activeHrefs?: string[]
+  /// Só fica ativo na própria rota. Serve para item que é raiz de outros, como
+  /// a visão geral do painel e a lista de recursos, que senão ficaria aceso o
+  /// tempo todo.
+  exact?: boolean
   accent: NavAccent
   beta?: boolean
   /// Recurso controlado por feature flag. Com a flag desligada o item continua
@@ -186,7 +190,12 @@ export function footerItemsFor(flags: string[] | null, permissions: string[] | n
   return FOOTER_ITEMS.map((item) => navItemForAccess(item, flags, permissions))
 }
 
-export function isNavItemActive(pathname: string, href: string, activeHrefs: string[] = []): boolean {
-  if (href === "/dashboard") return pathname === href
+export function isNavItemActive(
+  pathname: string,
+  href: string,
+  activeHrefs: string[] = [],
+  exact = false,
+): boolean {
+  if (exact || href === "/dashboard") return [href, ...activeHrefs].includes(pathname)
   return [href, ...activeHrefs].some((candidate) => pathname === candidate || pathname.startsWith(`${candidate}/`))
 }

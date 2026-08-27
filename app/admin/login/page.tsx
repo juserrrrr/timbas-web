@@ -22,7 +22,7 @@ export default function AdminLoginPage() {
     const error = searchParams.get("error")
     if (error === "unauthorized") {
       toast.error("Acesso negado", {
-        description: "Seu cargo no Discord não tem permissão de admin.",
+        description: "Esta conta não tem nenhuma permissão de painel.",
         duration: 6000,
       })
     } else if (error === "auth_failed") {
@@ -69,13 +69,13 @@ export default function AdminLoginPage() {
                 <h1 className="text-xl font-black text-white">
                   Timbas<span className="text-orange-400">Admin</span>
                 </h1>
-                <p className="mt-1 text-xs text-gray-600">Acesso restrito a administradores</p>
+                <p className="mt-1 text-xs text-gray-500">Painel de administração do Timbas</p>
               </div>
             </div>
 
             {/* Info banner */}
             <div className="rounded-xl border border-orange-500/15 bg-orange-500/5 px-4 py-3 text-xs text-orange-300/70 leading-relaxed">
-              Seu cargo no Discord será verificado automaticamente após o login. Apenas membros com permissão de admin terão acesso.
+              Entre com o Discord e o painel confere o que o seu acesso abre. Quem não tem nenhuma permissão de painel volta para esta tela.
             </div>
 
             {/* Discord button */}

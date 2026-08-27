@@ -1,10 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { Activity, Eye, Gauge, MonitorPlay, RefreshCw, Signal, Users } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Activity, Eye, Gauge, MonitorPlay, RadioTower, RefreshCw, Signal, Users } from "lucide-react"
 import { toast } from "@/lib/toast"
-import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
+import { AdminEmpty } from "@/components/admin/shell"
 import { getToken } from "@/lib/auth"
 import {
   forceStreamQuality,
@@ -42,16 +42,23 @@ function publishedVideo(stream: LiveMonitorStream) {
   return { height: best.height, width: best.width, mimeType: best.mimeType }
 }
 
-export function LiveMonitorPanel() {
+export function LiveMonitorPanel({ onData }: { onData?: (data: LiveMonitor) => void }) {
   const [data, setData] = useState<LiveMonitor | null>(null)
   const [loading, setLoading] = useState(true)
   const [forcing, setForcing] = useState("")
+
+  // O topo da página mostra quantas lives estão no ar. A ref evita que a
+  // função vinda de lá reinicie o intervalo a cada render.
+  const report = useRef(onData)
+  report.current = onData
 
   const load = useCallback(async () => {
     const token = getToken()
     if (!token) return
     try {
-      setData(await getLiveMonitor(token))
+      const next = await getLiveMonitor(token)
+      setData(next)
+      report.current?.(next)
     } catch (error: unknown) {
       toast.error("Erro ao carregar as lives", {
         description: error instanceof Error ? error.message : undefined,
@@ -90,17 +97,14 @@ export function LiveMonitorPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-black uppercase tracking-wider text-gray-500">No ar agora</h2>
-          <p className="mt-1 text-xs text-gray-600">
-            Quem está transmitindo, quem está assistindo e o que o servidor de mídia está recebendo. Atualiza sozinho a
-            cada {REFRESH_MS / 1000} segundos.
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+        <p className="text-[11.5px] leading-relaxed text-gray-500">
+          Quem está transmitindo, quem está assistindo e o que o servidor de mídia está recebendo. A lista se atualiza
+          sozinha a cada {REFRESH_MS / 1000} segundos.
+        </p>
         <button
           onClick={() => void load()}
-          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-xs font-bold text-gray-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+          className="inline-flex h-9 flex-shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-xs font-bold text-gray-300 transition-colors hover:bg-white/[0.06] hover:text-white"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Atualizar
@@ -108,13 +112,15 @@ export function LiveMonitorPanel() {
       </div>
 
       {loading ? (
-        <Card className="flex justify-center border-white/[0.06] bg-white/[0.02] py-16">
-          <Spinner className="size-5 text-red-400" />
-        </Card>
+        <div className="flex justify-center rounded-2xl border border-white/[0.07] bg-white/[0.025] py-16">
+          <Spinner className="size-5 text-rose-400" />
+        </div>
       ) : !data || data.streams.length === 0 ? (
-        <Card className="border-white/[0.06] bg-white/[0.02] px-5 py-12 text-center text-sm text-gray-500">
-          Nenhuma transmissão aberta no momento.
-        </Card>
+        <AdminEmpty
+          icon={RadioTower}
+          title="Nenhuma live aberta"
+          description="Quando alguém começar a transmitir, a sala aparece aqui com a telemetria do host em tempo real."
+        />
       ) : (
         data.streams.map((stream) => {
           const video = publishedVideo(stream)
@@ -130,7 +136,7 @@ export function LiveMonitorPanel() {
           const idle = stream.peers.filter((peer) => !peer.isHost && !peer.attached)
 
           return (
-            <Card key={stream.id} className="space-y-4 border-white/[0.06] bg-white/[0.02] p-4">
+            <div key={stream.id} className="space-y-4 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -296,7 +302,7 @@ export function LiveMonitorPanel() {
                   O host aplica na hora, sem cortar a live. Sem host conectado não tem para quem pedir.
                 </span>
               </div>
-            </Card>
+            </div>
           )
         })
       )}
