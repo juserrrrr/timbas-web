@@ -1,5 +1,5 @@
 import { clearAllTokens, endImpersonation, isImpersonating } from './auth'
-import { API_URL } from './api-base'
+import { API_URL, apiServerFetch } from './api-base'
 
 
 async function tryRefresh(): Promise<boolean> {
@@ -28,13 +28,13 @@ function redirectToLogin() {
 }
 
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  let res = await fetch(url, { ...options, credentials: options.credentials ?? 'include' })
+  let res = await apiServerFetch(url, { ...options, credentials: options.credentials ?? 'include' })
 
   if (res.status === 401) {
     const refreshed = await tryRefresh()
 
     if (refreshed) {
-      res = await fetch(url, { ...options, credentials: options.credentials ?? 'include' })
+      res = await apiServerFetch(url, { ...options, credentials: options.credentials ?? 'include' })
     }
 
     if (res.status === 401) {

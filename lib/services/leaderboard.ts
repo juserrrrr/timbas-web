@@ -1,6 +1,6 @@
 import type { GameModeEnum } from '../game-mode'
 export type { GameModeEnum }
-import { API_URL } from '../api-base'
+import { API_URL, apiServerFetch } from '../api-base'
 
 
 export interface PlayerStats {
@@ -113,7 +113,7 @@ export interface PaginatedMatches {
 }
 
 async function serverFetch<T>(url: string, token: string): Promise<T> {
-  const res = await fetch(url, {
+  const res = await apiServerFetch(url, {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     cache: "no-store",
   })
