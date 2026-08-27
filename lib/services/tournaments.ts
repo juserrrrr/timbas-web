@@ -1,4 +1,5 @@
 import { apiUrl, fetchImageObjectUrl, patch, post, remove, request } from "./http"
+import { apiServerFetch } from "../api-base"
 import type {
   CompetitionGame,
   CompetitionRole,
@@ -64,6 +65,32 @@ export function listTournaments(params: {
 
 export function getTournament(id: string): Promise<TournamentDetail> {
   return request(`/tournaments/${id}`)
+}
+
+/**
+ * Versões de servidor, para o server component já entregar a tela com dado.
+ *
+ * As de cima leem o token do document.cookie, que só existe no browser. Aqui o
+ * token vem do cookie que o server component leu, e a chamada sai pelo endereço
+ * interno, então custa quase nada perto de uma ida pelo navegador.
+ */
+async function serverRequest<T>(path: string, token: string): Promise<T> {
+  const res = await apiServerFetch(apiUrl(path), {
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    cache: "no-store",
+  })
+  if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
+  return res.json() as Promise<T>
+}
+
+export function fetchTournamentOnServer(token: string, id: string): Promise<TournamentDetail> {
+  return serverRequest<TournamentDetail>(`/tournaments/${id}`, token)
+}
+
+export function fetchTournamentsOnServer(
+  token: string,
+): Promise<{ total: number; items: TournamentSummary[] }> {
+  return serverRequest<{ total: number; items: TournamentSummary[] }>("/tournaments", token)
 }
 
 export function createTournament(input: CreateTournamentInput): Promise<TournamentSummary> {

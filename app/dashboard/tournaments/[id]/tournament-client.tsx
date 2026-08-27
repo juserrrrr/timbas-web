@@ -71,15 +71,31 @@ function TournamentMetric({ label, value, icon, tone }: { label: string; value: 
 
 type TabId = "bracket" | "standings" | "my-matches" | "matches" | "teams" | "ea-stats" | "proofs" | "invites" | "staff"
 
-export function TournamentClient({ tournamentId }: { tournamentId: string }) {
+export function TournamentClient({
+  tournamentId,
+  initialTournament = null,
+}: {
+  tournamentId: string
+  /** Vem pronto do server component, então a tela nasce com o campeonato. */
+  initialTournament?: TournamentDetail | null
+}) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const requestedMatchId = searchParams.get("match")
-  const [tournament, setTournament] = useState<TournamentDetail | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [tournament, setTournament] = useState<TournamentDetail | null>(initialTournament)
+  const [loading, setLoading] = useState(!initialTournament)
   const [error, setError] = useState("")
-  const [tab, setTab] = useState<TabId>("bracket")
-  const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(null)
+  const [tab, setTab] = useState<TabId>(() => {
+    if (requestedMatchId) return "matches"
+    if (initialTournament?.status === "FINISHED" && initialTournament.game === "EA_FC") return "ea-stats"
+    return "bracket"
+  })
+  const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(
+    () =>
+      requestedMatchId
+        ? initialTournament?.matches.find((match) => match.id === requestedMatchId) ?? null
+        : null,
+  )
   const [photoMatch, setPhotoMatch] = useState<TournamentMatch | null>(null)
   const [cancelingWalkover, setCancelingWalkover] = useState(false)
   const [openingWalkover, setOpeningWalkover] = useState(false)
@@ -90,7 +106,10 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   const [notice, setNotice] = useState("")
   const [now, setNow] = useState(() => Date.now())
   const [startWhen, setStartWhen] = useState("")
-  const initialTabChosen = useRef(false)
+  const initialTabChosen = useRef(Boolean(initialTournament))
+  // O servidor já trouxe este campeonato, então a primeira busca do cliente
+  // seria a mesma resposta de novo. As seguintes, do relógio, continuam.
+  const servedFromServer = useRef(Boolean(initialTournament))
 
   const load = useCallback(async () => {
     try {
@@ -124,8 +143,19 @@ export function TournamentClient({ tournamentId }: { tournamentId: string }) {
   }, [requestedMatchId, tournamentId])
 
   useEffect(() => {
+    if (servedFromServer.current) {
+      servedFromServer.current = false
+      // O extrato do lab não vem no payload do campeonato, então essa parte
+      // ainda precisa de uma ida, e só para quem modera um campeonato de lab.
+      if (initialTournament?.labMode && initialTournament.access.canModerate) {
+        void getLabEaScoreAudit(tournamentId)
+          .then(setScoreAudit)
+          .catch(() => setScoreAudit([]))
+      }
+      return
+    }
     void load()
-  }, [load])
+  }, [initialTournament, load, tournamentId])
 
   // Ritmo de atualização conforme o campeonato: rápido enquanto existe partida
   // valendo, devagar quando não há nada para mudar. Os pisos evitam martelar a
