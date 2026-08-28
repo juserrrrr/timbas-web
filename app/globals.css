@@ -707,3 +707,89 @@ select option:hover {
     transform: none;
   }
 }
+
+/* Retorno do Discord. O ponto de luz atravessa a conexão enquanto a sessão é
+   validada, e o brilho do ambiente respira sem deslocar o conteúdo. */
+@keyframes auth-callback-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes auth-callback-packet {
+  0% { opacity: 0; transform: translate3d(-4px, -50%, 0) scale(0.6); }
+  18% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--packet-distance, 64px), -50%, 0) scale(1); }
+}
+
+@keyframes auth-callback-scan {
+  from { opacity: 0; transform: translateY(-15vh); }
+  25%, 75% { opacity: 1; }
+  to { opacity: 0; transform: translateY(115vh); }
+}
+
+@keyframes auth-callback-orb {
+  0%, 100% { transform: scale(0.92); opacity: 0.65; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes auth-callback-service {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes auth-callback-check {
+  from { opacity: 0; transform: scale(0.45) rotate(-12deg); }
+  to { opacity: 1; transform: none; }
+}
+
+.auth-callback-card {
+  animation: auth-callback-card-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-callback-packet {
+  animation: auth-callback-packet 1.35s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.auth-callback-scan {
+  animation: auth-callback-scan 5s linear infinite;
+}
+
+.auth-callback-orb {
+  animation: auth-callback-orb 7s ease-in-out infinite;
+}
+
+.auth-callback-service {
+  animation: auth-callback-service 3s ease-in-out infinite;
+}
+
+.auth-callback-service:last-child {
+  animation-delay: -1.5s;
+}
+
+.auth-callback-check {
+  animation: auth-callback-check 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@media (min-width: 640px) {
+  .auth-callback-stage {
+    --packet-distance: 112px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-callback-card,
+  .auth-callback-packet,
+  .auth-callback-scan,
+  .auth-callback-orb,
+  .auth-callback-service,
+  .auth-callback-check {
+    animation: none;
+  }
+}
