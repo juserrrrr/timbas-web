@@ -269,7 +269,7 @@ export default function AdminCompetitionsPage() {
                         )}
 
                         <Link
-                          href={`/dashboard/tournaments/${tournament.id}`}
+                          href={`/tournaments/${tournament.id}`}
                           className="flex h-8 items-center gap-1 rounded-md border border-white/[0.07] px-2.5 text-[11px] font-bold text-gray-400 transition-colors hover:text-white"
                         >
                           Abrir

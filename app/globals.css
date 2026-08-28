@@ -802,9 +802,9 @@ select option:hover {
 
 @keyframes app-content-in {
   from {
-    opacity: 0;
-    transform: translate3d(0, 10px, 0);
-    filter: blur(3px);
+    opacity: 0.72;
+    transform: translate3d(0, 6px, 0);
+    filter: blur(1px);
   }
   to {
     opacity: 1;
@@ -832,7 +832,7 @@ select option:hover {
 }
 
 .modern-app-surface {
-  animation: app-content-in 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: app-content-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .modern-app-surface :where(h1) {

@@ -374,7 +374,7 @@ export function TournamentClient({
     setNotice("")
     try {
       const invite = await createTournamentRegistrationInvite(tournament.id)
-      const link = `${window.location.origin}/dashboard/tournaments?invite=${invite.code}`
+      const link = `${window.location.origin}/tournaments?invite=${invite.code}`
       await navigator.clipboard.writeText(link)
       setNotice("Convite individual copiado. O link funciona uma única vez.")
       setTab("invites")
@@ -392,7 +392,7 @@ export function TournamentClient({
       <section className="relative overflow-hidden rounded-[26px] border border-white/[0.08] bg-[#08090d] shadow-2xl shadow-black/30">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(37,99,235,0.18),transparent_36%),radial-gradient(circle_at_92%_0%,rgba(220,38,38,0.12),transparent_38%)]" />
         <div className="relative p-5 sm:p-6">
-          <button onClick={() => router.push("/dashboard/tournaments")} className="mb-4 flex cursor-pointer items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-gray-500 transition hover:text-white"><ArrowLeft className="h-3.5 w-3.5" />Campeonatos</button>
+          <button onClick={() => router.push("/tournaments")} className="mb-4 flex cursor-pointer items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-gray-500 transition hover:text-white"><ArrowLeft className="h-3.5 w-3.5" />Campeonatos</button>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-center gap-4">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10 text-blue-300"><Trophy className="h-5 w-5" /></span>

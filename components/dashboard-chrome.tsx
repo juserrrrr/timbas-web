@@ -10,8 +10,8 @@ import { ImpersonationBanner } from "@/components/impersonation-banner"
 import { ALL_NAV_ITEMS, isNavItemActive } from "@/lib/navigation"
 
 const ROUTE_NAMES: Record<string, string> = {
-  "/dashboard/profile": "Meu perfil",
-  "/dashboard/match/create": "Nova partida",
+  "/profile": "Meu perfil",
+  "/match/create": "Nova partida",
 }
 
 function currentPage(pathname: string) {
@@ -52,7 +52,7 @@ export function DashboardTopbar() {
 
 export function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const keepRankingUntouched = pathname === "/dashboard/ranking"
+  const keepRankingUntouched = pathname === "/ranking"
 
   return (
     <div key={pathname} className={keepRankingUntouched ? "" : "modern-app-surface"}>

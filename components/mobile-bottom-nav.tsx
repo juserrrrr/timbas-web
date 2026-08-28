@@ -10,13 +10,13 @@ import { ACCENTS, footerItemsFor, isNavItemActive, navGroupsFor, type NavItem } 
 import { useEnabledFeatures } from "@/hooks/use-enabled-features"
 import { useMyPermissions } from "@/hooks/use-my-permissions"
 
-const QUICK_HREFS = ["/dashboard", "/dashboard/active", "/dashboard/tournaments", "/dashboard/draft"]
+const QUICK_HREFS = ["/dashboard", "/matches", "/tournaments", "/draft"]
 
 const QUICK_ICONS: Record<string, typeof Home> = {
   "/dashboard": Home,
-  "/dashboard/active": Radio,
-  "/dashboard/tournaments": Trophy,
-  "/dashboard/draft": ClipboardList,
+  "/matches": Radio,
+  "/tournaments": Trophy,
+  "/draft": ClipboardList,
 }
 
 function BarItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
@@ -27,7 +27,6 @@ function BarItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
   return (
     <Link
       href={item.href}
-      prefetch={false}
       onClick={(event) => {
         event.preventDefault()
         if (!isActive) navigate(item.href)
@@ -99,7 +98,6 @@ export function MobileBottomNav() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      prefetch={false}
                       onClick={(event) => {
                         event.preventDefault()
                         if (!isActive) navigate(item.href)

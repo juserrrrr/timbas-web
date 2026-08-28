@@ -70,7 +70,7 @@ export function RankingLive() {
           {authed && players.length > 0 && (
             <Reveal delay={160}>
               <Button asChild variant="outline" className="border-white/10 bg-white/[0.04] text-gray-200">
-                <Link href="/dashboard/ranking">
+                <Link href="/ranking">
                   Ver ranking completo
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>

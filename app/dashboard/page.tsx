@@ -70,12 +70,12 @@ export default async function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap gap-2 lg:justify-end">
-            <Link href="/dashboard/active" className="group flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-zinc-950 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-white/10">
+            <Link href="/matches" className="group flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-zinc-950 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-white/10">
               <Radio className="h-4 w-4" />
               Ver partidas
               <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </Link>
-            <Link href="/dashboard/profile" className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-4 text-xs font-bold text-zinc-300 transition hover:border-white/20 hover:bg-white/[0.07] hover:text-white">
+            <Link href="/profile" className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-4 text-xs font-bold text-zinc-300 transition hover:border-white/20 hover:bg-white/[0.07] hover:text-white">
               <UserRound className="h-4 w-4" />
               Meu perfil
             </Link>
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
               </div>
               <p className="mt-1 text-[11px] text-zinc-600">O que aconteceu mais recentemente</p>
             </div>
-            <Link href="/dashboard/history" className="group flex items-center gap-1 text-[11px] font-bold text-zinc-500 transition hover:text-white">
+            <Link href="/history" className="group flex items-center gap-1 text-[11px] font-bold text-zinc-500 transition hover:text-white">
               Ver histórico <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </Link>
           </div>
@@ -137,7 +137,7 @@ export default async function DashboardPage() {
                 const date = new Date(match.dateCreated)
 
                 return (
-                  <Link key={match.id} href={`/dashboard/match/${match.id}`} className="group flex items-center gap-3 px-5 py-3.5 transition hover:bg-white/[0.035] sm:px-6">
+                  <Link key={match.id} href={`/match/${match.id}`} className="group flex items-center gap-3 px-5 py-3.5 transition hover:bg-white/[0.035] sm:px-6">
                     <span className={`h-8 w-1 flex-shrink-0 rounded-full ${pending ? "bg-amber-400" : won ? "bg-emerald-400" : "bg-red-400"}`} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-zinc-200 transition group-hover:text-white">Partida #{match.id}</p>
@@ -166,9 +166,9 @@ export default async function DashboardPage() {
             <p className="mt-2 text-xs leading-relaxed text-zinc-600">Tudo que você mais usa, a um clique de distância.</p>
             <div className="mt-4 space-y-2">
               {[
-                { href: "/dashboard/tournaments", label: "Campeonatos", icon: Trophy, tone: "text-amber-400" },
-                { href: "/dashboard/stats", label: "Estatísticas", icon: TrendingUp, tone: "text-violet-400" },
-                { href: "/dashboard/active", label: "Partidas ativas", icon: Radio, tone: "text-emerald-400" },
+                { href: "/tournaments", label: "Campeonatos", icon: Trophy, tone: "text-amber-400" },
+                { href: "/stats", label: "Estatísticas", icon: TrendingUp, tone: "text-violet-400" },
+                { href: "/matches", label: "Partidas ativas", icon: Radio, tone: "text-emerald-400" },
               ].map((item) => (
                 <Link key={item.href} href={item.href} className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/15 px-3.5 py-3 transition hover:border-white/12 hover:bg-white/[0.04]">
                   <item.icon className={`h-4 w-4 ${item.tone}`} />

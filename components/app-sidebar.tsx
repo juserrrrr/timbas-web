@@ -33,7 +33,6 @@ function NavLink({
   const link = (
     <Link
       href={item.href}
-      prefetch={false}
       aria-label={item.label}
       onClick={(event) => {
         event.preventDefault()
@@ -204,7 +203,7 @@ export function AppSidebar({
         <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/60 via-white/30 to-red-400/60" />
         <span aria-hidden className="pointer-events-none absolute -left-20 top-0 h-48 w-48 rounded-full bg-blue-500/[0.07] blur-3xl" />
         <div className="flex h-14 flex-shrink-0 items-center border-b border-white/[0.06]">
-          <Link href={homeHref} prefetch={false} onClick={close} className="flex items-center">
+          <Link href={homeHref} onClick={close} className="flex items-center">
             <span className="relative flex h-14 w-[65px] flex-shrink-0 items-center justify-center">
               <span className="block h-8 w-8 overflow-hidden rounded-[10px] ring-1 ring-white/15 shadow-lg shadow-blue-950/40 transition-transform duration-300 group-hover/sidebar:scale-105">
                 <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="Timbas" width={32} height={32} className="object-cover" />

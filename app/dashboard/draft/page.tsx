@@ -66,7 +66,7 @@ export default function DraftLeaguesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {leagues.map((league) => (
-            <button key={league.id} onClick={() => router.push(`/dashboard/draft/${league.id}`)} className="text-left">
+            <button key={league.id} onClick={() => router.push(`/draft/${league.id}`)} className="text-left">
               <Card className="h-full border-white/[0.07] bg-white/[0.025] p-5 transition hover:border-emerald-500/30 hover:bg-emerald-500/[0.04]">
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="min-w-0 truncate text-lg font-black text-white">{league.name}</h2>

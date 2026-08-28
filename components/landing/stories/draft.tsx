@@ -24,7 +24,7 @@ function DraftRoom() {
 
   return (
     <div ref={ref}>
-      <Frame label="timbas.gg/dashboard/draft/liga-timbas" accent="emerald">
+      <Frame label="timbas.gg/draft/liga-timbas" accent="emerald">
         <div className="p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-400/25 bg-emerald-400/[0.07] px-3.5 py-3">
             <span className="flex items-center gap-2.5">

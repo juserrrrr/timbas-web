@@ -25,7 +25,7 @@ function MatchCard({ match }: { match: CustomLeagueMatch }) {
   const totalPlayers = match.queuePlayers.length + match.Teams.flatMap((t) => t.players).length
   const maxPlayers = match.playersPerTeam * 2
   const { navigate } = useNavigation()
-  const href = `/dashboard/match/${match.id}`
+  const href = `/match/${match.id}`
 
   return (
     <Link href={href} onClick={(e) => { e.preventDefault(); navigate(href) }} className="group block">
@@ -100,9 +100,9 @@ export function ActiveMatchesList({ matches, serverName, error }: Props) {
         <p className="font-semibold text-gray-400">Nenhuma partida ativa</p>
         <p className="mt-1 text-sm text-gray-600">Crie uma nova partida ou aguarde alguém criar via Discord.</p>
         <Link
-          href="/dashboard/match/create"
+          href="/match/create"
           prefetch={false}
-          onClick={(e) => { e.preventDefault(); navigate("/dashboard/match/create") }}
+          onClick={(e) => { e.preventDefault(); navigate("/match/create") }}
           className="mt-5 flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300 transition-all hover:bg-blue-500/20"
         >
           <Plus className="h-4 w-4" />

@@ -102,7 +102,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
 
   const finishBroadcast = async () => {
     await broadcast.finish()
-    router.push("/dashboard/live")
+    router.push("/streams")
   }
 
   const changeVisibility = async (next: Visibility) => {

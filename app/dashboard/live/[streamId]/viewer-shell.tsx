@@ -114,7 +114,7 @@ export function ViewerShell({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link
-            href="/dashboard/live"
+            href="/streams"
             className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-gray-400 ring-1 ring-white/[0.08] transition-colors hover:bg-white/[0.08] hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -192,7 +192,7 @@ export function ViewerShell({
                     <Radio className="h-6 w-6 text-gray-500" />
                   </div>
                   <p className="text-sm font-bold text-white">Transmissão encerrada</p>
-                  <Link href="/dashboard/live" className="text-xs font-semibold text-blue-400 hover:text-blue-300">Ver outras transmissões</Link>
+                  <Link href="/streams" className="text-xs font-semibold text-blue-400 hover:text-blue-300">Ver outras transmissões</Link>
                 </>
               )}
             </div>

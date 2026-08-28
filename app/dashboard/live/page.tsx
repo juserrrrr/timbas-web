@@ -91,7 +91,7 @@ export default function LivePage() {
     try {
       // Privacy is chosen in the studio, before the stream is shared.
       const stream = await createStream(token, title.trim() || undefined, TIMBAS_SERVER_ID, "MEMBERS")
-      router.push(`/dashboard/live/${stream.id}/studio`)
+      router.push(`/streams/${stream.id}/studio`)
     } catch (error: unknown) {
       toast.error("Não foi possível abrir o estúdio", { description: error instanceof Error ? error.message : undefined })
       setStarting(false)
@@ -170,7 +170,7 @@ export default function LivePage() {
           {streams.map((stream) => (
             <Link
               key={stream.id}
-              href={stream.isHost ? `/dashboard/live/${stream.id}/studio` : `/live/${stream.slug}`}
+              href={stream.isHost ? `/streams/${stream.id}/studio` : `/live/${stream.slug}`}
               className="group rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 transition-colors hover:border-red-500/25 hover:bg-white/[0.04]"
             >
               <div className="flex items-start gap-3">

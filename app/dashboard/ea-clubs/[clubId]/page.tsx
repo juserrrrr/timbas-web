@@ -85,7 +85,7 @@ export default function EaClubDashboardPage({ params }: { params: Promise<{ club
               {category?.source === "EA_CLUB" && <span className="text-[10px] font-bold uppercase text-emerald-500">Total no clube</span>}
             </div>
             <p className="mt-4 text-xs font-bold uppercase tracking-wider text-gray-500">{highlight.label}</p>
-            {entry ? <Link href={`/dashboard/ea-clubs/${clubId}/players/${entry.player.id}`} className="mt-1 block">
+            {entry ? <Link href={`/ea-clubs/${clubId}/players/${entry.player.id}`} className="mt-1 block">
               <p className="truncate text-xl font-black text-white hover:text-blue-300">{entry.player.playerName}</p>
               <p className={`mt-1 text-sm font-bold ${highlight.color}`}>{isRating ? entry.value.toFixed(1) : entry.value} {highlight.suffix}</p>
               {appearances != null && <p className="mt-1 text-xs font-medium text-gray-500">{appearances} {appearances === 1 ? "partida" : "partidas"} pelo clube</p>}

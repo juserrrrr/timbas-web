@@ -73,7 +73,7 @@ export function PublicStreamRoom({ streamId }: { streamId: string }) {
     peerId: session.peerId,
     stream: session.stream,
     guestToken: session.guestToken,
-    studioHref: session.owner ? `/dashboard/live/${session.stream.id}/studio` : undefined,
+    studioHref: session.owner ? `/streams/${session.stream.id}/studio` : undefined,
     onReconnect: connect,
   }
 

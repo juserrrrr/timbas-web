@@ -78,7 +78,7 @@ export default async function ProfilePage() {
             </div>
           </div>
 
-          <Link href="/dashboard/settings" className="group flex h-10 flex-shrink-0 items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 text-xs font-bold text-zinc-400 transition hover:border-white/15 hover:bg-white/[0.06] hover:text-white">
+          <Link href="/settings" className="group flex h-10 flex-shrink-0 items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 text-xs font-bold text-zinc-400 transition hover:border-white/15 hover:bg-white/[0.06] hover:text-white">
             <Settings className="h-3.5 w-3.5" /> Ajustes <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </Link>
         </div>

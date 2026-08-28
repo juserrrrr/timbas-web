@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+const CLEAN_DASHBOARD_ROOTS = new Set([
+  'matches', 'match', 'history', 'stats', 'teams', 'versus', 'ranking',
+  'tournaments', 'draft', 'ea-clubs', 'clash', 'verify', 'lol-profile',
+  'streams', 'profile', 'settings',
+])
+
+const LEGACY_DASHBOARD_ROOTS: Record<string, string> = {
+  active: 'matches',
+  live: 'streams',
+}
+
 function decodeTokenPayload(token: string): Record<string, any> | null {
   try {
     const payload = token.split('.')[1]
@@ -26,10 +37,20 @@ export function proxy(request: NextRequest) {
 
   const hasValidToken = token && !isTokenExpired(token)
 
+  if (pathname.startsWith('/dashboard/')) {
+    const segments = pathname.slice('/dashboard/'.length).split('/')
+    segments[0] = LEGACY_DASHBOARD_ROOTS[segments[0]] ?? segments[0]
+    const cleanUrl = request.nextUrl.clone()
+    cleanUrl.pathname = `/${segments.join('/')}`
+    return NextResponse.redirect(cleanUrl)
+  }
+
   // ── Dashboard ─────────────────────────────────────────────
-  if (!hasValidToken && pathname.startsWith('/dashboard')) {
+  const cleanRoot = pathname.split('/')[1]
+  const isDashboardArea = pathname === '/dashboard' || CLEAN_DASHBOARD_ROOTS.has(cleanRoot)
+  if (!hasValidToken && isDashboardArea) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
+    loginUrl.searchParams.set('redirect', `${pathname}${request.nextUrl.search}`)
     const res = NextResponse.redirect(loginUrl)
     if (token) {
       res.cookies.delete('timbas_token')
@@ -68,5 +89,11 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/admin/:path*', '/admin/login'],
+  matcher: [
+    '/dashboard/:path*', '/login', '/admin/:path*', '/admin/login',
+    '/matches/:path*', '/match/:path*', '/history/:path*', '/stats/:path*',
+    '/teams/:path*', '/versus/:path*', '/ranking/:path*', '/tournaments/:path*',
+    '/draft/:path*', '/ea-clubs/:path*', '/clash/:path*', '/verify/:path*',
+    '/lol-profile/:path*', '/streams/:path*', '/profile/:path*', '/settings/:path*',
+  ],
 }

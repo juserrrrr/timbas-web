@@ -222,7 +222,7 @@ export default function VerifyClient({ token }: { token: string }) {
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-2">
             <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Funcionalidades disponíveis</p>
             <Link
-              href="/dashboard/clash"
+              href="/clash"
               className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-white/[0.04] group"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20">
@@ -352,7 +352,7 @@ export default function VerifyClient({ token }: { token: string }) {
           </div>
           <div className="flex gap-2">
             <Link
-              href="/dashboard/clash"
+              href="/clash"
               className="flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-black text-black transition-all hover:bg-amber-400"
             >
               <ShieldAlert className="h-4 w-4" />

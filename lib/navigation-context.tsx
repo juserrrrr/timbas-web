@@ -57,9 +57,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
 /**
  * Rendered by app/dashboard/loading.tsx while a route segment suspends.
- * Instead of mounting a second LoadingState (which restarts the animation),
- * it flips the shared overlay on, the same loader instance covers both
- * the navigation transition and the route suspense, with no visual reset.
+ * Keeps the persistent shell visible while the new route content streams in.
  */
 export function RouteLoadingSignal() {
   const { setRouteLoading } = useContext(NavigationContext)
@@ -71,11 +69,11 @@ export function RouteLoadingSignal() {
 
   return (
     <div className="app-local-loading min-h-[280px] animate-pulse space-y-4 py-2" aria-label="Carregando conteúdo">
-      <div className="h-24 rounded-[26px] border border-white/[0.06] bg-white/[0.02]" />
+      <div className="h-24 rounded-[26px] border border-white/[0.08] bg-gradient-to-br from-white/[0.055] to-blue-500/[0.025]" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((item) => <div key={item} className="h-24 rounded-2xl border border-white/[0.05] bg-white/[0.015]" />)}
+        {[0, 1, 2, 3].map((item) => <div key={item} className="h-24 rounded-2xl border border-white/[0.07] bg-gradient-to-br from-white/[0.04] to-transparent" />)}
       </div>
-      <div className="h-40 rounded-[22px] border border-white/[0.05] bg-white/[0.015]" />
+      <div className="h-40 rounded-[22px] border border-white/[0.07] bg-gradient-to-br from-white/[0.04] to-red-500/[0.015]" />
     </div>
   )
 }

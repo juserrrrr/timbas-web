@@ -10,6 +10,11 @@ import { getLatestAnnouncement, type PlatformAnnouncement } from "@/lib/services
 import { getToken } from "@/lib/auth"
 
 const SEEN_KEY = "timbas.latestAnnouncementSeen"
+const AUTHENTICATED_ROOTS = new Set([
+  "matches", "match", "history", "stats", "teams", "versus", "ranking",
+  "tournaments", "draft", "ea-clubs", "clash", "verify", "lol-profile",
+  "streams", "profile", "settings",
+])
 
 export function AnnouncementModal() {
   const pathname = usePathname()
@@ -17,7 +22,10 @@ export function AnnouncementModal() {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    const isAuthenticatedArea = pathname.startsWith("/dashboard") || (pathname.startsWith("/admin") && pathname !== "/admin/login")
+    const root = pathname.split("/")[1]
+    const isAuthenticatedArea = pathname === "/dashboard"
+      || AUTHENTICATED_ROOTS.has(root)
+      || (pathname.startsWith("/admin") && pathname !== "/admin/login")
     if (!isAuthenticatedArea || !getToken()) {
       setOpen(false)
       return

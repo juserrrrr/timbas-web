@@ -229,7 +229,7 @@ export default function AdminEaClubsPage() {
                       Sincronizar
                     </Button>
                     <Button asChild size="sm" variant="outline" className="border-white/10">
-                      <Link href={`/dashboard/ea-clubs/${club.id}`}>
+                      <Link href={`/ea-clubs/${club.id}`}>
                         <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                         Ver no dashboard
                       </Link>

@@ -59,7 +59,7 @@ export default function AdminDraftLeaguePage({ params }: { params: Promise<{ id:
           <>
             <StatusPill tone={STATUS_TONES[league.status]}>{DRAFT_STATUS_LABELS[league.status]}</StatusPill>
             <Link
-              href={`/dashboard/draft/${league.id}`}
+              href={`/draft/${league.id}`}
               className="flex h-9 items-center gap-1 rounded-lg border border-white/[0.08] px-3 text-[12px] font-bold text-gray-400 transition-colors hover:text-white"
             >
               Ver como jogador

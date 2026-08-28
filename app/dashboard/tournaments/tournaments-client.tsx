@@ -107,7 +107,7 @@ export function TournamentsClient({
     }
     setLoading(true)
     joinTournamentByInvite(invite)
-      .then(({ tournamentId }) => router.replace(`/dashboard/tournaments/${tournamentId}`))
+      .then(({ tournamentId }) => router.replace(`/tournaments/${tournamentId}`))
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Não foi possível aceitar o convite")
         setLoading(false)
@@ -179,7 +179,7 @@ export function TournamentsClient({
             return (
             <Link
               key={tournament.id}
-              href={`/dashboard/tournaments/${tournament.id}`}
+              href={`/tournaments/${tournament.id}`}
               prefetch={false}
               className="text-left"
             >
@@ -225,7 +225,7 @@ export function TournamentsClient({
       {canCreate && <CreateTournamentDialog
         open={creating}
         onOpenChange={setCreating}
-        onCreated={(id) => router.push(`/dashboard/tournaments/${id}`)}
+        onCreated={(id) => router.push(`/tournaments/${id}`)}
       />}
     </div>
   )

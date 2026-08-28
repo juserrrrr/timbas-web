@@ -52,7 +52,7 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
   }), [filter, invites])
 
   const copy = async (invite: TournamentRegistrationInvite) => {
-    const link = `${window.location.origin}/dashboard/tournaments?invite=${invite.code}`
+    const link = `${window.location.origin}/tournaments?invite=${invite.code}`
     await navigator.clipboard.writeText(link)
     setNotice("Link copiado. Ele deixa de funcionar assim que uma conta aceitar o convite.")
   }
@@ -62,7 +62,7 @@ export function InvitesPanel({ tournamentId, registrationOpen }: { tournamentId:
     setNotice("")
     try {
       const created = await createTournamentRegistrationInvite(tournamentId)
-      await navigator.clipboard.writeText(`${window.location.origin}/dashboard/tournaments?invite=${created.code}`)
+      await navigator.clipboard.writeText(`${window.location.origin}/tournaments?invite=${created.code}`)
       await load()
       setNotice("Novo convite criado e copiado.")
     } catch (err) {

@@ -13,7 +13,7 @@ function StreamPreview() {
 
   return (
     <div ref={ref} className="space-y-3">
-      <Frame label="timbas.gg/dashboard/live/ranked-comigo" accent="rose">
+      <Frame label="timbas.gg/streams/ranked-comigo" accent="rose">
         <div className="p-3 sm:p-4">
           <div className="relative aspect-video overflow-hidden rounded-xl border border-white/[0.07] bg-[#07070c]">
             {/* A tela transmitida, sugerida com luz em vez de um print falso. */}

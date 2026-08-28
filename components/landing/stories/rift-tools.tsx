@@ -22,7 +22,7 @@ function ScoutCard() {
 
   return (
     <div ref={ref}>
-      <Frame label="timbas.gg/dashboard/clash" accent="violet">
+      <Frame label="timbas.gg/clash" accent="violet">
         <div className="p-4 sm:p-5">
           <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-black/30 px-3.5 py-2.5">
             <Search className="h-4 w-4 flex-shrink-0 text-gray-600" />

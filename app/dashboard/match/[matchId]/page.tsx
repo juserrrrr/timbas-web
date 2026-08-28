@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 export default async function MatchPage({ params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = await params
   const matchIdNum = parseInt(matchId, 10)
-  if (isNaN(matchIdNum)) redirect("/dashboard/active")
+  if (isNaN(matchIdNum)) redirect("/matches")
 
   const cookieStore = await cookies()
   const token = cookieStore.get("timbas_token")?.value

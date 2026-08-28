@@ -7,14 +7,14 @@ import { useNavigation } from "@/lib/navigation-context"
 
 const SECTIONS = {
   matches: [
-    { label: "Em andamento", href: "/dashboard/active", icon: Swords },
-    { label: "Histórico", href: "/dashboard/history", icon: History },
-    { label: "Estatísticas", href: "/dashboard/stats", icon: BarChart3 },
+    { label: "Em andamento", href: "/matches", icon: Swords },
+    { label: "Histórico", href: "/history", icon: History },
+    { label: "Estatísticas", href: "/stats", icon: BarChart3 },
   ],
   stats: [
-    { label: "Visão geral", href: "/dashboard/stats", icon: BarChart3 },
-    { label: "Duplas", href: "/dashboard/teams", icon: Users },
-    { label: "Comparação", href: "/dashboard/versus", icon: Swords },
+    { label: "Visão geral", href: "/stats", icon: BarChart3 },
+    { label: "Duplas", href: "/teams", icon: Users },
+    { label: "Comparação", href: "/versus", icon: Swords },
   ],
 } as const
 
@@ -30,7 +30,6 @@ export function CustomMatchSubnav({ section }: { section: keyof typeof SECTIONS 
           <Link
             key={item.href}
             href={item.href}
-            prefetch={false}
             aria-current={active ? "page" : undefined}
             onClick={(event) => {
               event.preventDefault()

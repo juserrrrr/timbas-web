@@ -326,7 +326,7 @@ export async function getScoutHistory(token: string, limit = 8): Promise<ScoutHi
   return body
 }
 
-// ─── Verify API calls (usados em /dashboard/verify) ──────────────────────────
+// ─── Verify API calls (usados em /verify) ──────────────────────────
 
 export async function getVerifyStatus(token: string): Promise<{ verified: boolean; riotId?: string; verifiedAt?: string }> {
   if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL não configurado')

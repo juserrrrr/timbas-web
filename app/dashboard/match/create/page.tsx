@@ -50,7 +50,7 @@ export default function CreateMatchPage() {
         gameMode,
         playersPerTeam: size,
       })
-      navigate(`/dashboard/match/${match.id}`)
+      navigate(`/match/${match.id}`)
     } catch (e: any) {
       setLoading(false)
       setError(e.message || "Erro ao criar partida")

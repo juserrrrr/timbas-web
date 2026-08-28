@@ -6,9 +6,9 @@ import { usePathname } from "next/navigation"
 import { useNavigation } from "@/lib/navigation-context"
 
 const TOOLS = [
-  { label: "Clash Scout", href: "/dashboard/clash", icon: ShieldAlert },
-  { label: "Verificar conta", href: "/dashboard/verify", icon: ShieldCheck },
-  { label: "Perfil LoL", href: "/dashboard/lol-profile", icon: UserSearch },
+  { label: "Clash Scout", href: "/clash", icon: ShieldAlert },
+  { label: "Verificar conta", href: "/verify", icon: ShieldCheck },
+  { label: "Perfil LoL", href: "/lol-profile", icon: UserSearch },
 ] as const
 
 export function LolToolsSubnav() {
@@ -23,7 +23,6 @@ export function LolToolsSubnav() {
           <Link
             key={item.href}
             href={item.href}
-            prefetch={false}
             aria-current={active ? "page" : undefined}
             onClick={(event) => {
               event.preventDefault()

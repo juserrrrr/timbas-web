@@ -595,7 +595,7 @@ export default function DemoLabPage() {
                 {inventory?.tournaments.map((item) => (
                   <Link
                     key={item.id}
-                    href={`/dashboard/tournaments/${item.id}`}
+                    href={`/tournaments/${item.id}`}
                     className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 transition hover:border-amber-500/30"
                   >
                     <Trophy className="h-4 w-4 flex-shrink-0 text-amber-400" />
@@ -608,7 +608,7 @@ export default function DemoLabPage() {
                 {inventory?.leagues.map((item) => (
                   <Link
                     key={item.id}
-                    href={`/dashboard/draft/${item.id}`}
+                    href={`/draft/${item.id}`}
                     className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 transition hover:border-emerald-500/30"
                   >
                     <Users className="h-4 w-4 flex-shrink-0 text-emerald-400" />
@@ -849,7 +849,7 @@ export default function DemoLabPage() {
                 })} className="w-full bg-emerald-500 text-black hover:bg-emerald-400">
                   {busy === "ea-prepare" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />} Preparar teste como jogador
                 </Button>
-                {preparedMatchId && <Link href={`/dashboard/tournaments/${eaTournamentId.trim()}?match=${encodeURIComponent(preparedMatchId)}&lab=ea`} className="block rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-xs font-bold text-blue-300">Abrir diretamente a partida [LAB]</Link>}
+                {preparedMatchId && <Link href={`/tournaments/${eaTournamentId.trim()}?match=${encodeURIComponent(preparedMatchId)}&lab=ea`} className="block rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-xs font-bold text-blue-300">Abrir diretamente a partida [LAB]</Link>}
               </div>
             </div>
             <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.035] p-4">

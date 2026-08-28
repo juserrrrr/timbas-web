@@ -49,7 +49,7 @@ function Bracket() {
 
   return (
     <div ref={ref}>
-      <Frame label="timbas.gg/dashboard/tournaments" accent="amber">
+      <Frame label="timbas.gg/tournaments" accent="amber">
         <div className="p-4 sm:p-5">
           <div className="flex flex-wrap gap-1.5">
             {FORMATS.map((option) => (

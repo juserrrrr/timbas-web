@@ -81,7 +81,7 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
   return (
     <div className="dashboard-view space-y-6">
       <button
-        onClick={() => router.push("/dashboard/draft")}
+        onClick={() => router.push("/draft")}
         className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-gray-500 transition hover:text-white"
       >
         <ArrowLeft className="h-3.5 w-3.5" />

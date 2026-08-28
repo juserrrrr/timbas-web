@@ -234,7 +234,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                           Em andamento
                         </Badge>
                         <Link
-                          href={`/dashboard/match/${match.id}`}
+                          href={`/match/${match.id}`}
                           prefetch={false}
                           className="flex items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 text-xs font-bold text-yellow-400 transition-all hover:border-yellow-500/50 hover:bg-yellow-500/20"
                         >

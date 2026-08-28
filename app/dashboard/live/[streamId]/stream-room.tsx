@@ -39,7 +39,7 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
         </div>
         <p className="text-sm font-bold text-white">{error}</p>
         <Link
-          href="/dashboard/live"
+          href="/streams"
           className="inline-flex items-center gap-2 text-xs font-semibold text-blue-400 hover:text-blue-300"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -62,7 +62,7 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
         <p className="text-sm font-bold text-white">
           {expectedRole === "host" ? "Este estúdio pertence a outra pessoa." : "Você é o criador desta transmissão."}
         </p>
-        <Link href={expectedRole === "host" ? `/dashboard/live/${streamId}/watch` : `/dashboard/live/${streamId}/studio`} className="text-xs font-semibold text-blue-400 hover:text-blue-300">
+        <Link href={expectedRole === "host" ? `/streams/${streamId}/watch` : `/streams/${streamId}/studio`} className="text-xs font-semibold text-blue-400 hover:text-blue-300">
           Abrir a tela correta
         </Link>
       </div>
@@ -87,7 +87,7 @@ export function StreamRoom({ streamId, expectedRole }: { streamId: string; expec
         streamId={streamId}
         peerId={session.peerId}
         stream={session.stream}
-        studioHref={session.owner ? `/dashboard/live/${streamId}/studio` : undefined}
+        studioHref={session.owner ? `/streams/${streamId}/studio` : undefined}
         onReconnect={connect}
       />
     </div>
