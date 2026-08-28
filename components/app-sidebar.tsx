@@ -45,7 +45,7 @@ function NavLink({
       } ${
         isActive
           ? `${accent.bg} ${accent.text} ${expanded ? `ring-1 ring-inset ${accent.ring}` : ""}`
-          : "text-gray-500 hover:bg-white/[0.05] hover:text-white"
+          : "text-gray-500 hover:bg-white/[0.055] hover:text-white"
       }`}
     >
       {isActive && expanded && (
@@ -190,21 +190,23 @@ export function AppSidebar({
       <div
         onClick={close}
         aria-hidden={!expanded}
-        className={`fixed inset-0 z-40 bg-black/55 backdrop-blur-sm transition-opacity duration-300 ${
+      className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-md transition-opacity duration-300 ${
           expanded ? "cursor-pointer opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
 
       <aside
         style={{ width: expanded ? PANEL : RAIL }}
-        className={`fixed left-0 top-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-r border-white/[0.06] bg-[#07070c] transition-[width] duration-300 ease-out ${
-          expanded ? "shadow-2xl shadow-black/60" : ""
+        className={`group/sidebar fixed left-0 top-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-r border-white/[0.07] bg-zinc-950/95 shadow-2xl shadow-black/20 backdrop-blur-2xl transition-[width,box-shadow] duration-300 ease-out ${
+          expanded ? "shadow-black/70" : ""
         }`}
       >
+        <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/60 via-white/30 to-red-400/60" />
+        <span aria-hidden className="pointer-events-none absolute -left-20 top-0 h-48 w-48 rounded-full bg-blue-500/[0.07] blur-3xl" />
         <div className="flex h-14 flex-shrink-0 items-center border-b border-white/[0.06]">
           <Link href={homeHref} prefetch={false} onClick={close} className="flex items-center">
             <span className="relative flex h-14 w-[65px] flex-shrink-0 items-center justify-center">
-              <span className="block h-8 w-8 overflow-hidden rounded-lg ring-1 ring-white/10">
+              <span className="block h-8 w-8 overflow-hidden rounded-[10px] ring-1 ring-white/15 shadow-lg shadow-blue-950/40 transition-transform duration-300 group-hover/sidebar:scale-105">
                 <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="Timbas" width={32} height={32} className="object-cover" />
               </span>
               {logoBadge}

@@ -16,7 +16,7 @@ export function LolToolsSubnav() {
   const { navigate } = useNavigation()
 
   return (
-    <nav aria-label="Rift Tools" className="flex gap-1 overflow-x-auto rounded-2xl border border-white/[0.07] bg-white/[0.02] p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav aria-label="Rift Tools" className="flex gap-1 overflow-x-auto rounded-2xl border border-white/[0.07] bg-black/20 p-1.5 shadow-inner shadow-black/30 backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {TOOLS.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
         return (

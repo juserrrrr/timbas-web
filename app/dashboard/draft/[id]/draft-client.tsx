@@ -4,9 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
-  ArrowLeftRight,
   CalendarDays,
-  Coins,
   Goal,
   Shirt,
   Sparkles,
@@ -25,10 +23,8 @@ import { DRAFT_STATUS_LABELS, WEEKDAY_SHORT, type DraftLeagueDetail, type DraftL
 import { DraftRoom } from "./draft-room"
 import { DraftStandings } from "./draft-standings"
 import { FixturesPanel } from "./fixtures-panel"
-import { formatMoney } from "@/lib/money"
 import { ScorersPanel } from "./scorers-panel"
 import { WaitingRoomPanel } from "./waiting-room"
-import { MarketPanel } from "./market-panel"
 import { SquadPanel } from "./squad-panel"
 
 const STATUS_TONES: Record<DraftLeagueStatus, "neutral" | "live" | "warn" | "done"> = {
@@ -38,7 +34,7 @@ const STATUS_TONES: Record<DraftLeagueStatus, "neutral" | "live" | "warn" | "don
   FINISHED: "done",
 }
 
-type TabId = "room" | "squad" | "fixtures" | "market" | "standings" | "scorers"
+type TabId = "room" | "squad" | "fixtures" | "standings" | "scorers"
 
 export function DraftClient({ leagueId }: { leagueId: string }) {
   const router = useRouter()
@@ -73,7 +69,6 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
       { id: "room" as const, label: "Sala do draft", icon: Sparkles },
       { id: "squad" as const, label: "Meu elenco", icon: Shirt },
       { id: "fixtures" as const, label: "Rodadas", icon: CalendarDays },
-      { id: "market" as const, label: "Mercado", icon: ArrowLeftRight },
       { id: "scorers" as const, label: "Artilharia", icon: Goal },
     ]
   }, [league])
@@ -113,12 +108,7 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
           icon={CalendarDays}
           accent="text-violet-400"
         />
-        <StatTile
-          label="Prêmio por vitória"
-          value={formatMoney(league.coinsWin)}
-          icon={Coins}
-          accent="text-amber-400"
-        />
+        <StatTile label="Formato" value={league.orderType === "SNAKE" ? "Snake" : "Linear"} icon={Sparkles} accent="text-amber-400" />
       </div>
 
       <div className="flex gap-1.5 overflow-x-auto border-b border-white/[0.06] pb-px">
@@ -147,7 +137,6 @@ export function DraftClient({ leagueId }: { leagueId: string }) {
         ))}
       {tab === "squad" && <SquadPanel league={league} onChanged={() => void load()} />}
       {tab === "fixtures" && <FixturesPanel league={league} onChanged={() => void load()} />}
-      {tab === "market" && <MarketPanel league={league} onChanged={() => void load()} />}
       {tab === "scorers" && <ScorersPanel league={league} />}
     </div>
   )

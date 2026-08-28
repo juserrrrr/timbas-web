@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { AlertCircle, Coins, type LucideIcon } from "lucide-react"
+import { AlertCircle, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { RouteLoadingSignal } from "@/lib/navigation-context"
@@ -12,10 +12,6 @@ export function formatDateTime(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return "-"
   return `${date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: BRASILIA_TIME_ZONE })} BRT`
-}
-
-export function formatCoins(value: number) {
-  return value.toLocaleString("pt-BR")
 }
 
 export function formatDurationSeconds(seconds: number) {
@@ -40,8 +36,9 @@ export function CompetitionHeader({
   actions?: ReactNode
 }) {
   return (
-    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-      <div className="flex items-center gap-3">
+    <div className="relative flex flex-col justify-between gap-4 overflow-hidden rounded-[26px] border border-white/[0.07] bg-white/[0.018] p-5 sm:flex-row sm:items-center sm:p-6">
+      <span aria-hidden className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-blue-400/0 via-white/30 to-red-400/0" />
+      <div className="relative flex items-center gap-3">
         <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border ${accentBg}`}>
           <Icon className={`h-6 w-6 ${accent}`} />
         </div>
@@ -51,7 +48,7 @@ export function CompetitionHeader({
           <p className="text-sm text-gray-500">{subtitle}</p>
         </div>
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="relative flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   )
 }
@@ -78,15 +75,6 @@ export function StatTile({
       <p className={`mt-1 text-2xl font-black tabular-nums ${accent}`}>{value}</p>
       {hint && <p className="mt-0.5 text-[11px] text-gray-600">{hint}</p>}
     </Card>
-  )
-}
-
-export function CoinAmount({ value, className = "" }: { value: number; className?: string }) {
-  return (
-    <span className={`inline-flex items-center gap-1 font-bold tabular-nums text-amber-400 ${className}`}>
-      <Coins className="h-3.5 w-3.5" />
-      {formatCoins(value)}
-    </span>
   )
 }
 

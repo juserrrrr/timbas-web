@@ -2,11 +2,10 @@
 
 import { use, useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowUpRight, CalendarDays, Coins, Shirt, Users } from "lucide-react"
+import { ArrowUpRight, CalendarDays, Sparkles, Shirt, Users } from "lucide-react"
 import { ErrorState, PageLoading, StatusPill } from "@/components/competitions/shared"
 import { AdminHeader, AdminMetrics } from "@/components/admin/shell"
 import { LeagueAdminPanel } from "@/components/competitions/league-admin-panel"
-import { formatMoney } from "@/lib/money"
 import { getDraftLeague } from "@/lib/services/draft"
 import {
   DRAFT_STATUS_LABELS,
@@ -88,10 +87,10 @@ export default function AdminDraftLeaguePage({ params }: { params: Promise<{ id:
             accent: "violet",
           },
           {
-            label: "Prêmio",
-            value: formatMoney(league.coinsWin),
-            hint: "por vitória na rodada",
-            icon: Coins,
+            label: "Formato",
+            value: league.orderType === "SNAKE" ? "Snake" : "Linear",
+            hint: "ordem das escolhas",
+            icon: Sparkles,
             accent: "amber",
           },
         ]}

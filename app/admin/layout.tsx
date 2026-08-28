@@ -8,6 +8,7 @@ import { getToken, decodeToken, clearToken, TokenPayload } from "@/lib/auth"
 import { getMyPermissions } from "@/lib/services/access"
 import { NavigationProvider } from "@/lib/navigation-context"
 import { LoadingState } from "@/components/ui/loading-state"
+import { AdminTopbar } from "@/components/admin-topbar"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -75,17 +76,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <NavigationProvider>
-    <div className="relative min-h-[100dvh] bg-[#050508] text-white">
+    <div className="modern-app-shell admin-modern-shell relative min-h-[100dvh] bg-zinc-950 text-white">
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle,_#ffffff04_1px,_transparent_1px)] bg-[size:28px_28px]" />
-        <div className="absolute -top-64 left-1/4 h-[600px] w-[600px] rounded-full bg-orange-800 opacity-[0.06] blur-[130px]" />
-        <div className="absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-red-900 opacity-[0.06] blur-[120px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle,_rgb(255_255_255/0.025)_1px,_transparent_1px)] bg-[size:28px_28px]" />
+        <div className="app-ambient-orb absolute -top-64 left-1/4 h-[600px] w-[600px] rounded-full bg-orange-700/[0.075] blur-[130px]" />
+        <div className="app-ambient-orb absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-red-800/[0.055] blur-[120px] [animation-delay:-5s]" />
       </div>
 
       <AdminSidebar permissions={permissions} userName={user?.name ?? ""} onLogout={handleLogout} />
+      <AdminTopbar userName={user?.name ?? ""} />
 
-      <main className="ml-[65px] min-h-[100dvh]">
-        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8"><div key={pathname} className="dashboard-view">{children}</div></div>
+      <main className="ml-[65px] min-h-[100dvh] pt-14">
+        <div className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 sm:py-7 xl:px-10"><div key={pathname} className="dashboard-view modern-app-surface">{children}</div></div>
       </main>
     </div>
     </NavigationProvider>

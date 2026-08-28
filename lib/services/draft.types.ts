@@ -243,7 +243,7 @@ export const RESULT_MODE_LABELS: Record<DraftResultMode, string> = {
 
 export const RESULT_MODE_HINTS: Record<DraftResultMode, string> = {
   REPORTED:
-    "Vocês marcam e jogam a partida no EA FC 26. Depois quem jogou manda o placar com a foto da tela final, e a IA confere antes de contabilizar. A plataforma cuida de tabela, dinheiro, elenco e transferências.",
+    "Vocês marcam e jogam a partida no EA FC 26. Depois quem jogou manda o placar com a foto da tela final, e a IA confere antes de contabilizar. A plataforma cuida de tabela, elenco e rodadas.",
   SIMULATED:
     "No dia e hora da rodada o servidor joga a partida sozinho, usando atributos, forma e a tática de cada elenco, e dá nota para cada jogador. Ninguém precisa entrar no jogo.",
 }

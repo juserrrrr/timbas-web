@@ -1,5 +1,3 @@
-import "@fontsource/anton"
-
 import { AuthScene } from "@/components/auth/auth-scene"
 import { LoginPanel } from "./login-panel"
 

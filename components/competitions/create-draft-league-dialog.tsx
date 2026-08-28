@@ -1,16 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Loader2, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { formatMoney } from "@/lib/money"
 import { brasiliaLocalToIso } from "@/lib/date-time"
-import { listCompetitions } from "@/lib/services/catalog"
 import { createDraftLeague } from "@/lib/services/draft"
 import {
   FORMATIONS,
@@ -23,8 +20,8 @@ import {
   type DraftStartMode,
 } from "@/lib/services/draft.types"
 
-// Padrões de uma liga de manager: rodada duas vezes por semana à noite, caixa que
-// dá para um reforço bom, salário ligado e mercado que fecha na véspera da rodada.
+// Padrões de uma liga de manager: rodada duas vezes por semana à noite e
+// configuração simples o bastante para a temporada começar sem burocracia.
 const DEFAULTS = {
   orderType: "SNAKE" as const,
   resultMode: "REPORTED" as DraftResultMode,
@@ -33,19 +30,8 @@ const DEFAULTS = {
   pickSeconds: 120,
   matchDays: [0, 3],
   matchHour: 21,
-  startingBudget: 800_000_000,
-  paySalaries: true,
-  marketAutoManaged: true,
-  marketClosesMinutesBefore: 180,
-  auctionsEnabled: true,
-  auctionHours: 24,
-  auctionMinIncrementPercent: 5,
-  auctionAntiSnipeMinutes: 5,
   pointsWin: 3,
   pointsDraw: 1,
-  coinsWin: 15_000_000,
-  coinsDraw: 6_000_000,
-  coinsLoss: 2_000_000,
 }
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -132,30 +118,10 @@ export function CreateDraftLeagueDialog({
   const [pickSeconds, setPickSeconds] = useState(DEFAULTS.pickSeconds)
   const [matchDays, setMatchDays] = useState<number[]>(DEFAULTS.matchDays)
   const [matchHour, setMatchHour] = useState(DEFAULTS.matchHour)
-  const [startingBudget, setStartingBudget] = useState(DEFAULTS.startingBudget)
-  const [paySalaries, setPaySalaries] = useState(DEFAULTS.paySalaries)
-  const [marketAutoManaged, setMarketAutoManaged] = useState(DEFAULTS.marketAutoManaged)
-  const [marketClosesMinutesBefore, setMarketClosesMinutesBefore] = useState(DEFAULTS.marketClosesMinutesBefore)
   const [pointsWin, setPointsWin] = useState(DEFAULTS.pointsWin)
   const [pointsDraw, setPointsDraw] = useState(DEFAULTS.pointsDraw)
-  const [coinsWin, setCoinsWin] = useState(DEFAULTS.coinsWin)
-  const [coinsDraw, setCoinsDraw] = useState(DEFAULTS.coinsDraw)
-  const [coinsLoss, setCoinsLoss] = useState(DEFAULTS.coinsLoss)
-  const [auctionsEnabled, setAuctionsEnabled] = useState(DEFAULTS.auctionsEnabled)
-  const [auctionHours, setAuctionHours] = useState(DEFAULTS.auctionHours)
-  const [auctionMinIncrementPercent, setAuctionMinIncrementPercent] = useState(DEFAULTS.auctionMinIncrementPercent)
-  const [auctionAntiSnipeMinutes, setAuctionAntiSnipeMinutes] = useState(DEFAULTS.auctionAntiSnipeMinutes)
-  const [sources, setSources] = useState<string[]>([])
-  const [competitions, setCompetitions] = useState<Array<{ id: string; name: string }>>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
-
-  useEffect(() => {
-    if (!open) return
-    listCompetitions()
-      .then((result) => setCompetitions(result.items))
-      .catch(() => setCompetitions([]))
-  }, [open])
 
   const toggleDay = (day: number) =>
     setMatchDays((current) =>
@@ -180,20 +146,15 @@ export function CreateDraftLeagueDialog({
         pickSeconds,
         matchDays,
         matchHour,
-        startingBudget,
-        paySalaries,
-        marketAutoManaged,
-        marketClosesMinutesBefore,
+        startingBudget: 0,
+        paySalaries: false,
+        marketAutoManaged: false,
         pointsWin,
         pointsDraw,
-        coinsWin,
-        coinsDraw,
-        coinsLoss,
-        auctionsEnabled,
-        auctionHours,
-        auctionMinIncrementPercent,
-        auctionAntiSnipeMinutes,
-        sourceCompetitionIds: sources,
+        coinsWin: 0,
+        coinsDraw: 0,
+        coinsLoss: 0,
+        auctionsEnabled: false,
       })
       onOpenChange(false)
       onCreated(created.id)
@@ -394,57 +355,7 @@ export function CreateDraftLeagueDialog({
             </div>
           </Section>
 
-          <Section
-            title="Dinheiro da liga"
-            hint="O caixa é só desta liga e recomeça a cada draft, em reais e na escala do futebol. Ele paga salário, contratação e transferência."
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <NumberField
-                id="starting-budget"
-                label="Caixa inicial de cada elenco"
-                value={startingBudget}
-                onChange={setStartingBudget}
-                step={50_000_000}
-                hint={`${formatMoney(startingBudget)} por elenco. Paga a folha de uma temporada e ainda dá para um titular de time grande.`}
-              />
-              <label className="flex h-fit cursor-pointer items-center justify-between gap-3 self-end rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold text-white">Cobrar salário</span>
-                  <span className="block text-[11px] leading-snug text-gray-500">
-                    A folha do elenco sai do caixa em cada rodada
-                  </span>
-                </span>
-                <Switch checked={paySalaries} onCheckedChange={setPaySalaries} />
-              </label>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <NumberField
-                id="coins-win"
-                label="Prêmio por vitória"
-                value={coinsWin}
-                onChange={setCoinsWin}
-                step={1_000_000}
-                hint={formatMoney(coinsWin)}
-              />
-              <NumberField
-                id="coins-draw"
-                label="Por empate"
-                value={coinsDraw}
-                onChange={setCoinsDraw}
-                step={1_000_000}
-                hint={formatMoney(coinsDraw)}
-              />
-              <NumberField
-                id="coins-loss"
-                label="Por derrota"
-                value={coinsLoss}
-                onChange={setCoinsLoss}
-                step={1_000_000}
-                hint={formatMoney(coinsLoss)}
-              />
-            </div>
-
+          <Section title="Pontuação" hint="Defina como os resultados movimentam a tabela da temporada.">
             <div className="grid gap-3 sm:grid-cols-2">
               <NumberField
                 id="points-win"
@@ -455,106 +366,6 @@ export function CreateDraftLeagueDialog({
               />
               <NumberField id="points-draw" label="Pontos por empate" value={pointsDraw} onChange={setPointsDraw} max={10} />
             </div>
-          </Section>
-
-          <Section title="Mercado">
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
-              <span className="min-w-0">
-                <span className="block text-sm font-bold text-white">Fechar sozinho antes da rodada</span>
-                <span className="block text-[11px] leading-snug text-gray-500">
-                  Reabre quando a rodada termina. Desligado, você abre e fecha na mão.
-                </span>
-              </span>
-              <Switch checked={marketAutoManaged} onCheckedChange={setMarketAutoManaged} />
-            </label>
-
-            {marketAutoManaged && (
-              <NumberField
-                id="market-closes"
-                label="Fecha quantos minutos antes"
-                value={marketClosesMinutesBefore}
-                onChange={setMarketClosesMinutesBefore}
-                step={30}
-                max={10080}
-                hint="180 minutos deixa a escalação e a última negociação fora do aperto."
-              />
-            )}
-
-            <div className="space-y-1.5">
-              <Label>De onde a liga aceita jogador</Label>
-              {competitions.length === 0 ? (
-                <p className="text-[11px] text-gray-600">
-                  Nenhuma competição na base ainda. Sem nenhuma marcada, a liga vive só do pool importado no começo.
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {competitions.map((competition) => (
-                    <Chip
-                      key={competition.id}
-                      active={sources.includes(competition.id)}
-                      onClick={() =>
-                        setSources((current) =>
-                          current.includes(competition.id)
-                            ? current.filter((id) => id !== competition.id)
-                            : [...current, competition.id],
-                        )
-                      }
-                    >
-                      {competition.name}
-                    </Chip>
-                  ))}
-                </div>
-              )}
-              <p className="text-[11px] leading-snug text-gray-600">
-                Só o Brasileirão deixa a liga fechada nele. Com mais de uma competição, dá para contratar de fora
-                durante a temporada.
-              </p>
-            </div>
-          </Section>
-
-          <Section
-            title="Leilão"
-            hint="Lance aberto: todo mundo vê o maior lance e quem deu. O dinheiro do líder fica preso até alguém cobrir, então ninguém arremata sem caixa."
-          >
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
-              <span className="min-w-0">
-                <span className="block text-sm font-bold text-white">Usar leilão nesta liga</span>
-                <span className="block text-[11px] leading-snug text-gray-500">
-                  Elenco leiloa quem é dele, e a organização leiloa quem está livre
-                </span>
-              </span>
-              <Switch checked={auctionsEnabled} onCheckedChange={setAuctionsEnabled} />
-            </label>
-
-            {auctionsEnabled && (
-              <div className="grid gap-3 sm:grid-cols-3">
-                <NumberField
-                  id="auction-hours"
-                  label="Duração (h)"
-                  value={auctionHours}
-                  onChange={setAuctionHours}
-                  min={1}
-                  max={336}
-                  hint="24h dá um dia inteiro para todos verem."
-                />
-                <NumberField
-                  id="auction-increment"
-                  label="Incremento (%)"
-                  value={auctionMinIncrementPercent}
-                  onChange={setAuctionMinIncrementPercent}
-                  max={100}
-                  hint="Cada lance sobe ao menos isso."
-                />
-                <NumberField
-                  id="auction-antisnipe"
-                  label="Prorrogação (min)"
-                  value={auctionAntiSnipeMinutes}
-                  onChange={setAuctionAntiSnipeMinutes}
-                  max={120}
-                  hint="Lance no fim empurra o prazo. Zero desliga."
-                />
-              </div>
-            )}
           </Section>
 
           {error && (

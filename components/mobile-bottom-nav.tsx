@@ -32,8 +32,9 @@ function BarItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
         event.preventDefault()
         if (!isActive) navigate(item.href)
       }}
-      className="flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 py-1"
+      className={`relative mx-0.5 flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl py-1 transition-colors ${isActive ? "bg-white/[0.04]" : ""}`}
     >
+      {isActive && <span className={`absolute top-0 h-0.5 w-5 rounded-full ${accent.bar}`} />}
       <Icon className={`h-5 w-5 transition-colors ${isActive ? accent.text : "text-gray-500"}`} />
       <span className={`text-[10px] font-medium transition-colors ${isActive ? "text-white" : "text-gray-600"}`}>
         {item.label}
@@ -73,11 +74,11 @@ export function MobileBottomNav() {
       {open && <div className="fixed inset-0 z-40 cursor-pointer bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />}
 
       <div
-        className={`fixed bottom-[56px] left-0 right-0 z-50 transition-all duration-300 ease-out ${
+        className={`fixed bottom-16 left-0 right-0 z-50 transition-all duration-300 ease-out ${
           open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
         }`}
       >
-        <div className="mx-3 mb-2 max-h-[65vh] overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#0d0d14]/95 p-3 shadow-2xl backdrop-blur-xl">
+        <div className="mx-3 mb-2 max-h-[65vh] overflow-y-auto rounded-[22px] border border-white/[0.09] bg-zinc-950/95 p-3 shadow-2xl shadow-black/70 backdrop-blur-2xl">
           <div className="mb-2 flex items-center justify-between px-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Todas as seções</span>
             <button onClick={() => setOpen(false)} className="cursor-pointer rounded-lg p-1 text-gray-500 hover:text-white">
@@ -128,14 +129,14 @@ export function MobileBottomNav() {
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-14 items-stretch border-t border-white/[0.06] bg-[#07070c]/95 backdrop-blur-xl">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-stretch border-t border-white/[0.07] bg-zinc-950/90 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-18px_50px_-35px_rgb(59_130_246/0.55)] backdrop-blur-2xl">
         {quickItems.map((item) => (
           <BarItem key={item.href} item={item} isActive={isNavItemActive(pathname, item.href, item.activeHrefs)} />
         ))}
 
         <button
           onClick={() => setOpen(!open)}
-          className="flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 py-1"
+          className={`relative mx-0.5 flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl py-1 transition-colors ${open ? "bg-white/[0.04]" : ""}`}
         >
           <MoreHorizontal className={`h-5 w-5 transition-colors ${open ? "text-white" : "text-gray-500"}`} />
           <span className={`text-[10px] font-medium transition-colors ${open ? "text-white" : "text-gray-600"}`}>Mais</span>

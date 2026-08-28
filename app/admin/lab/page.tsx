@@ -15,7 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ErrorState, PageLoading, StatusPill, formatDateTime } from "@/components/competitions/shared"
 import { AdminHeader, InlineNotice, adminTabClass, adminTabListClass } from "@/components/admin/shell"
 import { advancePerGroupOptions, groupCountOptions, pickOption } from "@/lib/group-plan"
-import { formatMoney } from "@/lib/money"
 import {
   buildDemoDraft,
   buildDemoTournament,
@@ -198,11 +197,7 @@ export default function DemoLabPage() {
   const [rosterSize, setRosterSize] = useState(25)
   const [draftStage, setDraftStage] = useState<DemoDraftStage>("ACTIVE")
   const [draftResultMode, setDraftResultMode] = useState<DraftResultMode>("SIMULATED")
-  const [startingBudget, setStartingBudget] = useState(800_000_000)
-  const [paySalaries, setPaySalaries] = useState(true)
   const [vacantRosters, setVacantRosters] = useState(0)
-  const [auctionsEnabled, setAuctionsEnabled] = useState(true)
-  const [auctionHours, setAuctionHours] = useState(24)
 
   const groupOptions = groupCountOptions(teamCount)
   const activeGroupCount = pickOption(groupOptions, groupCount, 2)
@@ -330,7 +325,7 @@ export default function DemoLabPage() {
       />
 
       <InlineNotice tone="warn">
-        Tudo criado aqui nasce com o nome começando em <span className="font-mono">[DEMO]</span>, não mexe em carteira de
+        Tudo criado aqui nasce com o nome começando em <span className="font-mono">[DEMO]</span>, não interfere nos dados de
         ninguém e pode ser apagado de uma vez pelo botão acima. Os elencos de draft usam usuários de teste próprios, sem
         tocar em ninguém real.
       </InlineNotice>
@@ -538,38 +533,6 @@ export default function DemoLabPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Caixa inicial de cada elenco</Label>
-                  <Chips
-                        options={[200_000_000, 800_000_000, 2_000_000_000]}
-                        value={startingBudget}
-                        onChange={setStartingBudget}
-                        render={(value) => formatMoney(value)}
-                      />
-                </div>
-
-                <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2">
-                  <span className="text-[12px] text-gray-300">Cobrar salário por rodada</span>
-                  <Switch checked={paySalaries} onCheckedChange={setPaySalaries} />
-                </label>
-
-                <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2">
-                  <span className="text-[12px] text-gray-300">Leilão liberado</span>
-                  <Switch checked={auctionsEnabled} onCheckedChange={setAuctionsEnabled} />
-                </label>
-
-                {auctionsEnabled && (
-                  <div className="space-y-1.5">
-                    <Label>Duração do leilão</Label>
-                    <Chips
-                      options={[1, 6, 24, 48]}
-                      value={auctionHours}
-                      onChange={setAuctionHours}
-                      render={(hours) => `${hours}h`}
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
                   <Label>Até onde simular</Label>
                   <StagePicker stages={DRAFT_STAGES} value={draftStage} onChange={setDraftStage} accent="emerald" />
                 </div>
@@ -582,11 +545,10 @@ export default function DemoLabPage() {
                         rosterCount,
                         rosterSize,
                         resultMode: draftResultMode,
-                        startingBudget,
-                        paySalaries,
+                        startingBudget: 0,
+                        paySalaries: false,
                         vacantRosters,
-                        auctionsEnabled,
-                        auctionHours,
+                        auctionsEnabled: false,
                         stage: draftStage,
                       }),
                     )

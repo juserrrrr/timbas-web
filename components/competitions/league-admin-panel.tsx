@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { StatusPill } from "@/components/competitions/shared"
-import { formatMoney } from "@/lib/money"
 import { listCompetitions } from "@/lib/services/catalog"
 import {
   addVacantRosters,
@@ -28,9 +27,9 @@ import {
   type DraftLeagueDetail,
 } from "@/lib/services/draft.types"
 
-const IMPORT_EXAMPLE = `Neymar;ATA;89;Santos;500
-Alisson;GOL;88;Liverpool;400
-Casemiro;VOL;85;São Paulo;350`
+const IMPORT_EXAMPLE = `Neymar;ATA;89;Santos
+Alisson;GOL;88;Liverpool
+Casemiro;VOL;85;São Paulo`
 
 function parsePlayers(raw: string): PlayerImportInput[] {
   return raw
@@ -38,13 +37,12 @@ function parsePlayers(raw: string): PlayerImportInput[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [name, position, overall, realTeam, price] = line.split(/[;,\t]/).map((part) => part?.trim())
+      const [name, position, overall, realTeam] = line.split(/[;,\t]/).map((part) => part?.trim())
       return {
         name,
         position: position || "ATA",
         overall: Number(overall) || 70,
         realTeam: realTeam || undefined,
-        price: Number(price) || 100,
       }
     })
     .filter((player) => player.name && player.name.length >= 2)
@@ -135,7 +133,7 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
           </div>
           <p className="mb-3 text-[11px] text-gray-500">
             Uma linha por jogador, separando por ponto e vírgula:{" "}
-            <span className="text-gray-400">nome;posição;overall;clube;preço</span>
+            <span className="text-gray-400">nome;posição;overall;clube</span>
           </p>
           <Textarea
             value={raw}
@@ -169,7 +167,7 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
         <Card className="border-white/[0.07] bg-white/[0.025] p-4">
           <div className="mb-3 flex items-center gap-2">
             <CalendarClock className="h-4 w-4 text-violet-400" />
-            <h3 className="text-sm font-black text-white">Calendário, simulação e mercado</h3>
+            <h3 className="text-sm font-black text-white">Calendário e simulação</h3>
           </div>
 
           <div className="space-y-4">
@@ -225,151 +223,6 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
                   className="border-white/10 bg-white/[0.03]"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="market-close">Mercado fecha antes (minutos)</Label>
-                <Input
-                  id="market-close"
-                  type="number"
-                  min={0}
-                  max={10080}
-                  defaultValue={league.marketClosesMinutesBefore}
-                  onBlur={(event) => {
-                    const minutes = Number(event.target.value)
-                    if (minutes === league.marketClosesMinutesBefore || minutes < 0) return
-                    void run(
-                      () => updateDraftLeague(league.id, { marketClosesMinutesBefore: minutes }),
-                      `Mercado fecha ${minutes} minutos antes da rodada.`,
-                    )
-                  }}
-                  className="border-white/10 bg-white/[0.03]"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="starting-budget">Caixa inicial de cada elenco</Label>
-                <Input
-                  id="starting-budget"
-                  type="number"
-                  min={0}
-                  step={100}
-                  defaultValue={league.startingBudget}
-                  onBlur={(event) => {
-                    const budget = Number(event.target.value)
-                    if (budget === league.startingBudget || budget < 0) return
-                    void run(
-                      () => updateDraftLeague(league.id, { startingBudget: budget }),
-                      `Cada elenco começa com ${budget}.`,
-                    )
-                  }}
-                  className="border-white/10 bg-white/[0.03]"
-                />
-                <p className="text-[11px] text-gray-600">
-                  {formatMoney(league.startingBudget)} por elenco. Vale a partir do próximo draft: começar o draft
-                  reparte esse caixa de novo para todos.
-                </p>
-              </div>
-
-              <label className="flex h-fit cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold text-white">Cobrar salário</span>
-                  <span className="block text-[11px] leading-snug text-gray-500">
-                    A cada rodada, a folha do elenco sai do caixa
-                  </span>
-                </span>
-                <Switch
-                  checked={league.paySalaries}
-                  onCheckedChange={(checked) =>
-                    void run(
-                      () => updateDraftLeague(league.id, { paySalaries: checked }),
-                      checked ? "Salário passa a ser cobrado." : "Salário desligado.",
-                    )
-                  }
-                />
-              </label>
-            </div>
-
-            <div className="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3">
-              <label className="flex cursor-pointer items-center justify-between gap-3">
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold text-white">Leilão</span>
-                  <span className="block text-[11px] leading-snug text-gray-500">
-                    Lance aberto, dinheiro preso no lance e prorrogação no fim
-                  </span>
-                </span>
-                <Switch
-                  checked={league.auctionsEnabled}
-                  onCheckedChange={(checked) =>
-                    void run(
-                      () => updateDraftLeague(league.id, { auctionsEnabled: checked }),
-                      checked ? "Leilão liberado." : "Leilão desligado.",
-                    )
-                  }
-                />
-              </label>
-
-              {league.auctionsEnabled && (
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="auction-hours">Duração (h)</Label>
-                    <Input
-                      id="auction-hours"
-                      type="number"
-                      min={1}
-                      max={336}
-                      defaultValue={league.auctionHours}
-                      onBlur={(event) => {
-                        const hours = Number(event.target.value)
-                        if (hours === league.auctionHours || hours < 1) return
-                        void run(
-                          () => updateDraftLeague(league.id, { auctionHours: hours }),
-                          `Leilão passa a durar ${hours}h.`,
-                        )
-                      }}
-                      className="border-white/10 bg-white/[0.03]"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="auction-increment">Incremento (%)</Label>
-                    <Input
-                      id="auction-increment"
-                      type="number"
-                      min={0}
-                      max={100}
-                      defaultValue={league.auctionMinIncrementPercent}
-                      onBlur={(event) => {
-                        const percent = Number(event.target.value)
-                        if (percent === league.auctionMinIncrementPercent || percent < 0) return
-                        void run(
-                          () => updateDraftLeague(league.id, { auctionMinIncrementPercent: percent }),
-                          `Cada lance sobe ao menos ${percent}%.`,
-                        )
-                      }}
-                      className="border-white/10 bg-white/[0.03]"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="auction-antisnipe">Prorrogação (min)</Label>
-                    <Input
-                      id="auction-antisnipe"
-                      type="number"
-                      min={0}
-                      max={120}
-                      defaultValue={league.auctionAntiSnipeMinutes}
-                      onBlur={(event) => {
-                        const minutes = Number(event.target.value)
-                        if (minutes === league.auctionAntiSnipeMinutes || minutes < 0) return
-                        void run(
-                          () => updateDraftLeague(league.id, { auctionAntiSnipeMinutes: minutes }),
-                          minutes === 0 ? "Prorrogação desligada." : `Lance no fim empurra ${minutes} min.`,
-                        )
-                      }}
-                      className="border-white/10 bg-white/[0.03]"
-                    />
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="grid gap-2">
@@ -405,45 +258,6 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
               ))}
             </div>
 
-            <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
-              <span className="min-w-0">
-                <span className="block text-sm font-bold text-white">Mercado automático</span>
-                <span className="block text-[11px] leading-snug text-gray-500">
-                  Fecha sozinho antes da rodada e reabre quando ela termina
-                </span>
-              </span>
-              <Switch
-                checked={league.marketAutoManaged}
-                onCheckedChange={(checked) =>
-                  void run(
-                    () => updateDraftLeague(league.id, { marketAutoManaged: checked }),
-                    checked ? "Mercado no automático." : "Mercado no manual.",
-                  )
-                }
-              />
-            </label>
-
-            {league.status === "ACTIVE" && (
-              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold text-white">Janela de transferências</span>
-                  <span className="block text-[11px] leading-snug text-gray-500">
-                    {league.marketAutoManaged
-                      ? "No automático isso volta a mudar sozinho na próxima checagem"
-                      : "Quando fechada, ninguém compra, vende ou troca jogadores"}
-                  </span>
-                </span>
-                <Switch
-                  checked={league.transferWindowOpen}
-                  onCheckedChange={(checked) =>
-                    void run(
-                      () => updateDraftLeague(league.id, { transferWindowOpen: checked }),
-                      checked ? "Mercado aberto." : "Mercado fechado.",
-                    )
-                  }
-                />
-              </label>
-            )}
           </div>
         </Card>
       )}
@@ -509,7 +323,7 @@ export function LeagueAdminPanel({ league, onChanged }: { league: DraftLeagueDet
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-white">{owner.user.name}</p>
                 <p className="text-[11px] text-gray-500">
-                  Edita as regras, importa o pool, inicia o draft, abre e fecha o mercado
+                  Edita as regras, importa o pool e inicia o draft
                 </p>
               </div>
               <StatusPill tone="warn">Dono</StatusPill>

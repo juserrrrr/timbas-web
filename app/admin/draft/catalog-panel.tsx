@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { EmptyState, ErrorState, PageLoading, StatusPill } from "@/components/competitions/shared"
-import { formatMoney } from "@/lib/money"
 import { OVERALL_TIERS, groupByTier, tierOf, type OverallTierId } from "@/lib/tiers"
 import { CatalogImportDialog } from "@/components/competitions/catalog-import-dialog"
 import { CatalogTeamsCard } from "./catalog-teams-card"
@@ -91,9 +90,6 @@ function PlayerRow({
       <div className="flex items-center gap-2 text-[11px]">
         <span className="w-7 flex-shrink-0 text-center font-black text-gray-300">{player.overall}</span>
         <span className="w-9 flex-shrink-0 text-gray-600">{player.position}</span>
-        <span className="hidden w-24 flex-shrink-0 text-right text-[10px] text-amber-400/80 sm:block">
-          {formatMoney(player.price)}
-        </span>
         <button
           onClick={() => (open ? setOpen(false) : startEditing())}
           className="min-w-0 flex-1 cursor-pointer truncate text-left text-white hover:text-sky-300"
@@ -588,7 +584,7 @@ export function CatalogPanel() {
                     className="border-white/10 bg-white/[0.03] text-[12px]"
                   />
                   <p className="text-[11px] leading-snug text-gray-500">
-                    Os elencos vêm de 12 em 12 clubes, com camisa, ficha, os seis atributos e o valor de mercado. Quem
+                    Os elencos vêm de 12 em 12 clubes, com camisa, ficha e os seis atributos. Quem
                     está emprestado ou ainda é da base fica de fora, e o modelo avisa se a data passa do que ele
                     conhece.
                   </p>

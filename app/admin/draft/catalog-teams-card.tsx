@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { StatusPill, formatDateTime } from "@/components/competitions/shared"
-import { formatMoney } from "@/lib/money"
 import {
   SOURCE_LABELS,
   createCatalogTeam,
@@ -155,7 +154,6 @@ function TeamPlayers({ teamId, version }: { teamId: string; version: number }) {
           <span className={`min-w-0 flex-1 truncate ${player.active ? "text-white" : "text-gray-600 line-through"}`}>
             {player.name}
           </span>
-          <span className="flex-shrink-0 text-[10px] tabular-nums text-amber-400/80">{formatMoney(player.price)}</span>
         </div>
       ))}
     </div>

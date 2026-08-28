@@ -11,7 +11,7 @@ const EXAMPLE = `## Uma experiência melhor em cada partida
 - **Transmissões mais completas:** compartilhe sua tela, acompanhe partidas ao vivo e convide a galera por um link simples, com uma experiência mais estável e organizada para quem transmite e para quem assiste.
 - **Campeonatos mais fáceis de acompanhar:** inscrições, equipes, chaves, horários, check-in e resultados agora ficam reunidos em um fluxo mais claro do início até a final.
 - **Resultados conectados ao EA FC:** partidas dos campeonatos podem ser conferidas com dados do EA FC Clubs, trazendo mais agilidade e confiança para a competição.
-- **Liga Draft evoluída:** elencos, escolhas, mercado, escalações, rodadas e disputas ficam centralizados para jogadores e organizadores.
+- **Liga Draft evoluída:** elencos, escolhas, escalações, rodadas e disputas ficam centralizados para jogadores e organizadores.
 - **EA FC Clubs em destaque:** consulte clubes, jogadores, histórico, rankings e estatísticas sincronizadas em páginas próprias.
 - **Premiações especiais:** campeão, craque e destaques individuais ganharam cartas em alta resolução, com QR Code e visual exclusivo para compartilhar.
 - **Navegação renovada:** menus mais organizados, telas mais modernas e uma experiência melhor tanto no computador quanto no celular.

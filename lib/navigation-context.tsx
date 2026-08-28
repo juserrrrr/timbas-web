@@ -12,7 +12,6 @@ import {
   type ReactNode,
 } from "react"
 import { useRouter } from "next/navigation"
-import { LoadingState } from "@/components/ui/loading-state"
 
 type NavCtx = { navigate: (href: string) => void; setRouteLoading: (v: boolean) => void }
 
@@ -44,14 +43,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   return (
     <NavigationContext.Provider value={value}>
       {children}
-      {/* Background mounts/unmounts with visible, backdrop-blur only when visible */}
-      {visible && <div className="fixed bottom-0 left-0 right-0 top-14 z-30 bg-[#050508]/80 backdrop-blur-sm md:left-[65px]" />}
-      {/* LoadingState always in DOM, animate-ping never restarts */}
       <div
-        style={{ pointerEvents: visible ? undefined : "none" }}
-        className={`fixed inset-x-0 bottom-0 top-14 z-30 flex items-center justify-center transition-opacity duration-150 ${visible ? "opacity-100" : "opacity-0"}`}
+        role="progressbar"
+        aria-label="Carregando página"
+        aria-hidden={!visible}
+        className={`pointer-events-none fixed left-[65px] right-0 top-14 z-[70] h-0.5 overflow-hidden transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0"}`}
       >
-        <LoadingState className="m-0 min-h-0" />
+        <span className="app-route-progress block h-full w-1/3 rounded-full bg-gradient-to-r from-blue-500 via-white to-red-500 shadow-lg shadow-blue-500/40" />
       </div>
     </NavigationContext.Provider>
   )
@@ -71,7 +69,15 @@ export function RouteLoadingSignal() {
     return () => setRouteLoading(false)
   }, [setRouteLoading])
 
-  return null
+  return (
+    <div className="app-local-loading min-h-[280px] animate-pulse space-y-4 py-2" aria-label="Carregando conteúdo">
+      <div className="h-24 rounded-[26px] border border-white/[0.06] bg-white/[0.02]" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((item) => <div key={item} className="h-24 rounded-2xl border border-white/[0.05] bg-white/[0.015]" />)}
+      </div>
+      <div className="h-40 rounded-[22px] border border-white/[0.05] bg-white/[0.015]" />
+    </div>
+  )
 }
 
 export function useNavigation() {

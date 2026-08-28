@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeftRight, CalendarDays, Coins, Timer, Users } from "lucide-react"
+import { ArrowLeftRight, CalendarDays, ShieldCheck, Timer, Users } from "lucide-react"
 import { useSequence } from "../motion"
 import { Frame, StorySection } from "../section"
 
@@ -84,8 +84,8 @@ function DraftRoom() {
               )}
             </span>
             <span className="inline-flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-amber-300">
-              <Coins className="h-3.5 w-3.5" />
-              {(1240 - picked * 130).toLocaleString("pt-BR")} moedas
+              <ShieldCheck className="h-3.5 w-3.5" />
+              elenco confirmado
             </span>
           </div>
         </div>
@@ -114,12 +114,12 @@ export function DraftStory() {
         {
           icon: CalendarDays,
           title: "Temporada com dias marcados",
-          text: "Rodadas nos dias combinados, tabela atualizada e prêmio em moedas para quem vence.",
+          text: "Rodadas nos dias combinados, tabela atualizada e uma temporada que todo mundo acompanha.",
         },
         {
           icon: ArrowLeftRight,
-          title: "Mercado aberto entre as rodadas",
-          text: "Transferência e negociação de jogador com orçamento controlado pela liga.",
+          title: "Elenco vivo entre as rodadas",
+          text: "Gestão do elenco e escolhas estratégicas durante toda a temporada.",
         },
         {
           icon: Users,

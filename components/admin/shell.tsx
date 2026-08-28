@@ -170,7 +170,9 @@ export function AdminHeader({
   const tone = ADMIN_ACCENTS[accent]
 
   return (
-    <div className="space-y-4">
+    <section className="relative space-y-4 overflow-hidden rounded-[26px] border border-white/[0.07] bg-white/[0.018] p-5 sm:p-6">
+      <span aria-hidden className={`absolute inset-y-6 left-0 w-[3px] rounded-r-full ${tone.bar} opacity-70`} />
+      <span aria-hidden className={`pointer-events-none absolute -right-24 -top-32 h-64 w-64 rounded-full ${tone.bar} opacity-[0.06] blur-3xl`} />
       {backHref && (
         <Link
           href={backHref}
@@ -190,7 +192,7 @@ export function AdminHeader({
           </span>
           <div className="min-w-0">
             <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${tone.text}`}>{eyebrow}</p>
-            <h1 className="truncate text-2xl font-black tracking-tight text-white sm:text-[28px]">{title}</h1>
+            <h1 className="truncate text-2xl font-black tracking-tight text-white sm:text-[30px]">{title}</h1>
             <p className="mt-0.5 text-[13px] leading-snug text-gray-500">{subtitle}</p>
           </div>
         </div>
@@ -198,7 +200,7 @@ export function AdminHeader({
       </div>
 
       <div className={`h-px w-full ${tone.bar} opacity-25 [mask-image:linear-gradient(to_right,black,transparent)]`} />
-    </div>
+    </section>
   )
 }
 
@@ -224,8 +226,9 @@ export function AdminMetrics({
         return (
           <div
             key={item.label}
-            className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3.5"
+            className="group/metric relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3.5"
           >
+            <span aria-hidden className={`absolute inset-y-3 left-0 w-0.5 rounded-r-full ${tone.bar} opacity-50`} />
             <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border ${tone.chip}`}>
               <item.icon className="h-[18px] w-[18px]" />
             </span>
@@ -273,7 +276,7 @@ export function SectionCard({
 
   return (
     <section
-      className={`group/section relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] ${className}`}
+      className={`group/section relative overflow-hidden rounded-[22px] border border-white/[0.07] bg-white/[0.025] ${className}`}
     >
       <span
         aria-hidden
@@ -372,7 +375,7 @@ export function AdminShortcut({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3.5 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+      className="group flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3.5 transition-all hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[0.05]"
     >
       <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border ${tone.chip}`}>
         <Icon className="h-[18px] w-[18px]" />

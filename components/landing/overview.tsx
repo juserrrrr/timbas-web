@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   Swords,
   Trophy,
-  Wallet,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react"
 import { Reveal } from "./motion"
@@ -45,7 +45,7 @@ const PILLARS: Array<{
   {
     icon: ClipboardList,
     title: "Liga Draft",
-    text: "Draft ao vivo, elenco, rodadas, mercado e prêmio em moedas.",
+    text: "Draft ao vivo, montagem de elenco, rodadas e disputa entre amigos.",
     accent: "emerald",
     href: "#draft",
   },
@@ -71,9 +71,9 @@ const PILLARS: Array<{
     href: "#bot",
   },
   {
-    icon: Wallet,
-    title: "Ranking e carteira",
-    text: "Classificação por temporada, conquistas, moedas e hall da fama.",
+    icon: Sparkles,
+    title: "Conquistas e história",
+    text: "Classificação por temporada, conquistas e hall da fama.",
     accent: "gold",
     href: "#ranking",
   },
@@ -100,7 +100,7 @@ export function Overview() {
           <Reveal delay={130}>
             <p className="mx-auto mt-5 max-w-[58ch] text-[15px] leading-relaxed text-gray-400">
               Cada bloco daqui para baixo explica uma parte. Tudo divide a mesma conta do Discord, o mesmo ranking e a
-              mesma carteira, então nada precisa ser combinado duas vezes.
+              mesmo perfil, então nada precisa ser combinado duas vezes.
             </p>
           </Reveal>
         </div>

@@ -5,7 +5,6 @@ import { Clock, Loader2, Search, Sparkles, Timer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { formatMoney } from "@/lib/money"
 import { OVERALL_TIERS, groupByTier, tierOf, type OverallTierId } from "@/lib/tiers"
 import { EmptyState, StatusPill } from "@/components/competitions/shared"
 import { attributeRow, attributeTone, hasAttributes } from "@/lib/attributes"
@@ -116,7 +115,7 @@ export function DraftRoom({ league, onChanged }: { league: DraftLeagueDetail; on
         description={
           league.status === "SETUP"
             ? "O dono da liga inicia o draft quando houver elencos inscritos e jogadores suficientes no pool."
-            : "Todos os elencos foram montados. Acompanhe as rodadas e o mercado."
+            : "Todos os elencos foram montados. Acompanhe as rodadas e a classificação."
         }
       />
     )
@@ -271,7 +270,6 @@ export function DraftRoom({ league, onChanged }: { league: DraftLeagueDetail; on
                         <p className="truncate text-[11px] text-gray-600">
                           {player.position}
                           {player.realTeam ? ` · ${player.realTeam}` : ""}
-                          {player.price ? ` · ${formatMoney(player.price)}` : ""}
                         </p>
                       </div>
                       <Button
