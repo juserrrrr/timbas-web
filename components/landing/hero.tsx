@@ -40,6 +40,14 @@ export function Hero() {
         <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
           <div className="min-w-0">
             <Reveal>
+              {/* O bordão da galera abrindo a página, antes de qualquer explicação. */}
+              <p className="mb-6 flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.24em] text-white sm:text-[13px]">
+                <span aria-hidden className="h-px w-8 flex-shrink-0 bg-gradient-to-r from-blue-400 to-red-400" />
+                É o Timbas, pai.
+              </p>
+            </Reveal>
+
+            <Reveal delay={40}>
               <h1 className="font-display text-[clamp(2.6rem,7vw,4.6rem)] text-white">
                 Tudo que a sua galera joga,{" "}
                 <span className="bg-gradient-to-r from-blue-400 via-white to-red-400 bg-clip-text text-transparent">
