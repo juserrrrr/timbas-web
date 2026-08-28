@@ -354,7 +354,7 @@ export function TournamentClient({
   }
 
   const rebuildLabKnockout = async () => {
-    if (!window.confirm("Refazer os confrontos do mata-mata com a classificaÃ§Ã£o atual dos grupos?")) return
+    if (!window.confirm("Refazer os confrontos do mata-mata com a classificação atual dos grupos?")) return
     setPublishingKnockout(true)
     setNotice("")
     try {
@@ -363,7 +363,7 @@ export function TournamentClient({
       setTab("bracket")
       setNotice("Mata-mata refeito com o cruzamento correto dos grupos.")
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "NÃ£o foi possÃ­vel refazer o mata-mata.")
+      setNotice(err instanceof Error ? err.message : "Não foi possível refazer o mata-mata.")
     } finally {
       setPublishingKnockout(false)
     }

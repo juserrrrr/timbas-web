@@ -190,7 +190,7 @@ function AwardCardPreview({ award, tournamentId, settings, index, reveal, onRend
     >
       <canvas ref={canvasRef} className={`block aspect-[4/5] w-full object-cover transition-opacity duration-500 ${rendering || renderError ? "opacity-20" : "opacity-100"}`} aria-label={`${award.title}: ${award.player.playerName}`} />
       {rendering && <span className="absolute inset-0 flex items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-amber-300" /></span>}
-      {renderError && <span className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs font-bold text-red-300">NÃ£o foi possÃ­vel carregar a arte deste card.</span>}
+      {renderError && <span className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs font-bold text-red-300">Não foi possível carregar a arte deste card.</span>}
       <button
         type="button"
         onClick={() => void downloadAwardPng(award.title, award.subtitle, award.player, achievement, tournamentId, settings)}

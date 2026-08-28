@@ -1,14 +1,18 @@
 "use client"
 
-import { useState } from "react"
-import { Bell, BellOff, Check, Copy, Gauge, Globe2, Info, Link2, Lock, Mic, MicOff, MonitorUp, Volume2, VolumeX } from "lucide-react"
+import { useState, type ComponentType } from "react"
+import { AlertCircle, Bell, Check, ChevronDown, Copy, Gauge, Globe2, Lock, Mic, MonitorUp, Volume2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Switch } from "@/components/ui/switch"
 import type { VideoFrameRate, VideoQuality } from "@/lib/live/tuning"
 
 type Visibility = "MEMBERS" | "PUBLIC"
 
 export interface LiveSetupValues {
+  /// Nome da live. Já nasce preenchido, então quem só quer subir rápido não
+  /// precisa parar para escrever nada.
+  title: string
   visibility: Visibility
   quality: VideoQuality
   frameRate: VideoFrameRate
@@ -30,9 +34,19 @@ interface Props {
   loopbackDevices: MediaDeviceInfo[]
   starting: boolean
   limit720p30fps?: boolean
+  error?: string | null
   onStart: () => void
 }
 
+const QUALITY_LABEL: Record<VideoQuality, string> = {
+  "720p": "HD",
+  "1080p": "Full HD",
+  source: "Original",
+}
+
+/// O modal é a última parada antes de a live subir, então mostra o que a pessoa
+/// decide em um olhar: nome, quem entra e os três interruptores. Resolução,
+/// link e as manhas do Chrome ficam dobrados embaixo, para quem quiser.
 export function LiveSetupDialog({
   open,
   onOpenChange,
@@ -44,6 +58,7 @@ export function LiveSetupDialog({
   loopbackDevices,
   starting,
   limit720p30fps = false,
+  error,
   onStart,
 }: Props) {
   const [copied, setCopied] = useState(false)
@@ -57,247 +72,259 @@ export function LiveSetupDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!starting) onOpenChange(next) }}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden border-white/[0.09] bg-[#101014] p-0 text-white sm:max-w-xl">
-        <div className="shrink-0 border-b border-white/[0.07] bg-gradient-to-br from-blue-500/10 via-transparent to-red-500/10 px-6 py-5">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden border-white/[0.09] bg-[#101014] p-0 text-white sm:max-w-lg">
+        <div className="shrink-0 border-b border-white/[0.07] bg-gradient-to-br from-blue-500/10 via-transparent to-red-500/10 px-5 py-4">
           <DialogHeader>
-            <DialogTitle className="text-xl text-white">Preparar transmissão</DialogTitle>
-            <DialogDescription className="text-gray-400">Ajuste imagem e som antes de escolher a tela.</DialogDescription>
+            <DialogTitle className="text-lg text-white">Preparar transmissão</DialogTitle>
+            <DialogDescription className="text-[13px] text-gray-400">
+              Confere o básico e escolhe a tela. Tudo isso dá para mudar depois, já no ar.
+            </DialogDescription>
           </DialogHeader>
+        </div>
 
-          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-black/20 p-3">
-            <Avatar className="h-11 w-11 ring-2 ring-blue-500/25">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={hostName} />}
-              <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-sm font-black text-white">
-                {hostName.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Transmitindo como</p>
-              <p className="truncate text-sm font-black text-white">@{hostName}</p>
-              <p className="text-[11px] text-blue-300">Nick único na plataforma</p>
+        <div className="live-modal-scrollbar min-h-0 min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-5 py-4">
+          <div>
+            <div className="mb-1.5 flex items-baseline justify-between gap-3">
+              <label htmlFor="live-title" className="text-xs font-black uppercase tracking-wider text-gray-500">Nome da live</label>
+              <span className="text-[10px] font-bold text-gray-600">{values.title.length}/80</span>
+            </div>
+            <input
+              id="live-title"
+              value={values.title}
+              onChange={(event) => onChange({ title: event.target.value.slice(0, 80) })}
+              placeholder={`Live do ${hostName}`}
+              className="h-11 w-full rounded-xl border border-white/[0.09] bg-white/[0.04] px-3 text-sm font-bold text-white outline-none transition-colors placeholder:font-normal placeholder:text-gray-600 focus:border-blue-500/60"
+            />
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-500">
+              <Avatar className="h-5 w-5 ring-1 ring-blue-500/25">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={hostName} />}
+                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-red-600 text-[8px] font-black text-white">
+                  {hostName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              Transmitindo como <span className="font-bold text-gray-300">@{hostName}</span>
             </div>
           </div>
-        </div>
 
-        <div className="live-modal-scrollbar min-h-0 min-w-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-4 pb-5 sm:px-6">
-          <section className="min-w-0">
-            <SectionTitle icon={<Link2 className="h-3.5 w-3.5" />}>Link da live</SectionTitle>
-            <div className="flex gap-2">
-              <div className="block min-w-0 max-w-full flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 font-mono text-xs text-gray-300">
-                {liveUrl || "Preparando link..."}
-              </div>
-              <button
-                type="button"
-                onClick={() => { void copyLink() }}
-                disabled={!liveUrl}
-                aria-label="Copiar link da live"
-                className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white/[0.05] text-gray-200 ring-1 ring-white/[0.09] transition-colors hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-              </button>
-            </div>
-          </section>
-
-          <section>
-            <SectionTitle icon={<Gauge className="h-3.5 w-3.5" />}>Qualidade da imagem</SectionTitle>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { value: "720p", label: "HD", detail: "720p, leve" },
-                { value: "1080p", label: "Full HD", detail: "1080p, ideal" },
-                { value: "source", label: "Original", detail: "Sua resolução" },
-              ] as const).map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => onChange({ quality: option.value })}
-                  disabled={limit720p30fps && option.value !== "720p"}
-                  className={`min-w-0 cursor-pointer rounded-xl border px-2 py-3 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${values.quality === option.value ? "border-blue-500/60 bg-blue-500/10" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
-                >
-                  <span className="block truncate text-xs font-black text-white">{option.label}</span>
-                  <span className="mt-0.5 block text-[10px] text-gray-500">{option.detail}</span>
-                </button>
-              ))}
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {([
-                { fps: 30 as const, hint: "texto mais nítido" },
-                { fps: 60 as const, hint: "movimento mais liso" },
-              ]).map((option) => (
-                <button
-                  key={option.fps}
-                  type="button"
-                  onClick={() => onChange({ frameRate: option.fps })}
-                  disabled={limit720p30fps && option.fps !== 30}
-                  className={`cursor-pointer rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${values.frameRate === option.fps ? "border-emerald-500/60 bg-emerald-500/10 text-white" : "border-white/[0.08] bg-white/[0.02] text-gray-400 hover:bg-white/[0.05]"}`}
-                >
-                  {option.fps} FPS <span className="font-normal text-gray-500">{option.hint}</span>
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
-              Para gameplay, Full HD com 60 FPS é o combo mais parecido com o que você vê na tela. Em internet fraca, 1080p com 30 FPS segura melhor.
-            </p>
-          </section>
-
-          <section>
-            <SectionTitle icon={<Volume2 className="h-3.5 w-3.5" />}>Som do jogo</SectionTitle>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ChoiceCard
-                active={values.withGameAudio}
-                onClick={() => onChange({ withGameAudio: true })}
-                icon={<Volume2 className="h-4 w-4 text-blue-300" />}
-                title="Com som do PC"
-                detail="A galera ouve o LoL junto com a imagem."
-              />
-              <ChoiceCard
-                active={!values.withGameAudio}
-                onClick={() => onChange({ withGameAudio: false })}
-                icon={<VolumeX className="h-4 w-4 text-gray-500" />}
-                title="Só a imagem"
-                detail="Nenhum som do computador é enviado."
-                tone="neutral"
-              />
-            </div>
-
-            {values.withGameAudio && (
-              <div className="mt-2 flex gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-3">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-                <div className="min-w-0 text-[11px] leading-relaxed text-gray-300">
-                  <p className="font-bold text-amber-200">No seletor do Chrome, escolha Tela inteira e marque Compartilhar áudio do sistema.</p>
-                  <p className="mt-1 text-gray-400">
-                    Compartilhar apenas a janela do LoL sempre vai mudo: o Chrome não deixa uma janela enviar som.
-                    {loopbackDevices.length > 0
-                      ? ` Como o seu PC tem "${loopbackDevices[0].label}", o Timbas pega o som por ali sozinho se isso acontecer.`
-                      : " Se preferir compartilhar só a janela, dá para conectar o som depois pelo botão Áudio do jogo."}
-                  </p>
-                </div>
-              </div>
-            )}
-          </section>
-
-          <section>
-            <SectionTitle>Microfone ao iniciar</SectionTitle>
+          <div>
+            <p className="mb-1.5 text-xs font-black uppercase tracking-wider text-gray-500">Quem pode entrar</p>
             <div className="grid grid-cols-2 gap-2">
-              <ChoiceCard
-                active={values.withMic}
-                onClick={() => onChange({ withMic: true })}
-                icon={<Mic className={`h-4 w-4 ${values.withMic ? "text-emerald-300" : "text-gray-500"}`} />}
-                title="Ligado"
-                detail="Tela, som do jogo e sua voz."
-                tone="emerald"
-              />
-              <ChoiceCard
-                active={!values.withMic}
-                onClick={() => onChange({ withMic: false })}
-                icon={<MicOff className={`h-4 w-4 ${!values.withMic ? "text-red-300" : "text-gray-500"}`} />}
-                title="Desligado"
-                detail="Você liga a voz durante a live."
-                tone="red"
-              />
-            </div>
-          </section>
-
-          <section>
-            <SectionTitle>Avisar no Discord</SectionTitle>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ChoiceCard
-                active={!values.announce}
-                onClick={() => onChange({ announce: false })}
-                icon={<BellOff className={`h-4 w-4 ${!values.announce ? "text-gray-300" : "text-gray-500"}`} />}
-                title="Subir em silêncio"
-                detail="Ninguém é marcado. Você manda o link para quem quiser."
-              />
-              <ChoiceCard
-                active={values.announce}
-                onClick={() => onChange({ announce: true })}
-                icon={<Bell className={`h-4 w-4 ${values.announce ? "text-amber-300" : "text-gray-500"}`} />}
-                title="Anunciar no canal"
-                detail="O bot avisa no canal configurado. Só sai uma vez."
-                tone="amber"
-              />
-            </div>
-          </section>
-
-          <section>
-            <SectionTitle>Quem pode assistir</SectionTitle>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ChoiceCard
+              <PickPill
                 active={values.visibility === "MEMBERS"}
                 onClick={() => onChange({ visibility: "MEMBERS" })}
-                icon={<Lock className="h-4 w-4 text-amber-300" />}
-                title="Somente membros"
-                detail="Precisa estar logado no Timbas."
+                icon={Lock}
+                label="Só membros"
+                hint="Precisa estar logado"
+                tone="amber"
               />
-              <ChoiceCard
+              <PickPill
                 active={values.visibility === "PUBLIC"}
                 onClick={() => onChange({ visibility: "PUBLIC" })}
-                icon={<Globe2 className="h-4 w-4 text-emerald-300" />}
-                title="Link público"
-                detail="Qualquer pessoa com o link entra."
+                icon={Globe2}
+                label="Link público"
+                hint="Qualquer um com o link"
                 tone="emerald"
               />
             </div>
-          </section>
+          </div>
+
+          <div className="space-y-2">
+            <ToggleRow
+              icon={Volume2}
+              title="Som do jogo"
+              hint={values.withGameAudio
+                ? "Na hora de escolher, marque Compartilhar áudio do sistema."
+                : "A live sobe sem o som do computador."}
+              checked={values.withGameAudio}
+              onChange={(next) => onChange({ withGameAudio: next })}
+            />
+            <ToggleRow
+              icon={Mic}
+              title="Seu microfone"
+              hint={values.withMic ? "Você entra no ar já falando." : "Dá para abrir a voz durante a live."}
+              checked={values.withMic}
+              onChange={(next) => onChange({ withMic: next })}
+            />
+            <ToggleRow
+              icon={Bell}
+              title="Avisar no Discord"
+              hint={values.announce ? "O bot marca o canal uma vez quando você subir." : "Ninguém é marcado. Você manda o link."}
+              checked={values.announce}
+              onChange={(next) => onChange({ announce: next })}
+            />
+          </div>
+
+          <details className="group rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center gap-2 text-xs font-bold text-gray-300">
+                <Gauge className="h-3.5 w-3.5 text-gray-500" />
+                Imagem e link
+              </span>
+              <span className="flex items-center gap-2 text-[11px] font-semibold text-gray-500">
+                {QUALITY_LABEL[values.quality]} · {values.frameRate} FPS
+                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+              </span>
+            </summary>
+
+            <div className="space-y-3 border-t border-white/[0.06] p-4">
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: "720p", detail: "leve" },
+                  { value: "1080p", detail: "ideal" },
+                  { value: "source", detail: "sua tela" },
+                ] as const).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => onChange({ quality: option.value })}
+                    disabled={limit720p30fps && option.value !== "720p"}
+                    className={`min-w-0 cursor-pointer rounded-xl border px-2 py-2.5 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${values.quality === option.value ? "border-blue-500/60 bg-blue-500/10" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
+                  >
+                    <span className="block truncate text-xs font-black text-white">{QUALITY_LABEL[option.value]}</span>
+                    <span className="mt-0.5 block text-[10px] text-gray-500">{option.detail}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { fps: 30 as const, hint: "texto nítido" },
+                  { fps: 60 as const, hint: "movimento liso" },
+                ]).map((option) => (
+                  <button
+                    key={option.fps}
+                    type="button"
+                    onClick={() => onChange({ frameRate: option.fps })}
+                    disabled={limit720p30fps && option.fps !== 30}
+                    className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${values.frameRate === option.fps ? "border-emerald-500/60 bg-emerald-500/10 text-white" : "border-white/[0.08] bg-white/[0.02] text-gray-400 hover:bg-white/[0.05]"}`}
+                  >
+                    {option.fps} FPS <span className="font-normal text-gray-500">{option.hint}</span>
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-[11px] leading-relaxed text-gray-500">
+                {limit720p30fps
+                  ? "Sua conta está limitada a 720p com 30 FPS pelo administrador."
+                  : "Para gameplay, Full HD com 60 FPS é o mais parecido com o que você vê. Em internet fraca, 30 FPS segura melhor."}
+              </p>
+
+              {values.withGameAudio && (
+                <p className="text-[11px] leading-relaxed text-amber-200/80">
+                  O Chrome só manda som quando você escolhe Tela inteira e marca Compartilhar áudio do sistema. Janela solta sempre vai muda.
+                  {loopbackDevices.length > 0
+                    ? ` Se acontecer, o Timbas pega o som pela "${loopbackDevices[0].label}" sozinho.`
+                    : " Se acontecer, dá para conectar o som depois pelo botão Áudio do jogo."}
+                </p>
+              )}
+
+              <div className="flex gap-2">
+                <div className="block min-w-0 max-w-full flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 font-mono text-[11px] text-gray-400">
+                  {liveUrl || "Preparando link..."}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { void copyLink() }}
+                  disabled={!liveUrl}
+                  aria-label="Copiar link da live"
+                  className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white/[0.05] text-gray-200 ring-1 ring-white/[0.09] transition-colors hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </details>
         </div>
 
-        <DialogFooter className="relative z-10 shrink-0 border-t border-white/[0.08] bg-[#101014]/95 px-4 py-4 shadow-[0_-14px_32px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:px-6">
+        <DialogFooter className="relative z-10 shrink-0 flex-col gap-0 border-t border-white/[0.08] bg-[#101014]/95 px-5 py-4 shadow-[0_-14px_32px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:flex-col">
+          {error && (
+            <p className="mb-2.5 flex w-full items-start gap-2 rounded-xl border border-red-500/25 bg-red-500/[0.07] px-3 py-2 text-[11px] leading-relaxed text-red-300">
+              <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
+              {error}
+            </p>
+          )}
           <button
             type="button"
             onClick={onStart}
             disabled={starting}
-            className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-black text-white transition-colors hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"
+            className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-black text-white transition-colors hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"
           >
             <MonitorUp className="h-4 w-4" />
-            {starting ? "Preparando transmissão..." : "Escolher tela e iniciar"}
+            {starting ? "Escolha a tela na janela do navegador..." : "Escolher tela e começar"}
           </button>
+          <p className="mt-2 w-full text-center text-[11px] text-gray-500">
+            O navegador vai perguntar qual tela você quer mostrar.
+          </p>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
 
-function SectionTitle({ icon, children }: { icon?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-500">
-      {icon}
-      {children}
-    </div>
-  )
-}
-
-function ChoiceCard({
+function PickPill({
   active,
   onClick,
-  icon,
-  title,
-  detail,
-  tone = "blue",
+  icon: Icon,
+  label,
+  hint,
+  tone,
 }: {
   active: boolean
   onClick: () => void
-  icon: React.ReactNode
-  title: string
-  detail: string
-  tone?: "blue" | "emerald" | "red" | "amber" | "neutral"
+  icon: ComponentType<{ className?: string }>
+  label: string
+  hint: string
+  tone: "amber" | "emerald"
 }) {
-  const activeRing =
-    tone === "emerald" ? "border-emerald-500/60 bg-emerald-500/10"
-      : tone === "red" ? "border-red-500/50 bg-red-500/10"
-        : tone === "amber" ? "border-amber-500/60 bg-amber-500/10"
-          : tone === "neutral" ? "border-white/25 bg-white/[0.06]"
-            : "border-blue-500/60 bg-blue-500/10"
+  const activeSkin = tone === "emerald"
+    ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-200"
+    : "border-amber-500/60 bg-amber-500/10 text-amber-200"
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-w-0 cursor-pointer items-start gap-3 rounded-2xl border p-3 text-left transition-colors ${active ? activeRing : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"}`}
+      aria-pressed={active}
+      className={`flex min-w-0 cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${active ? activeSkin : "border-white/[0.08] bg-white/[0.02] text-gray-400 hover:bg-white/[0.05]"}`}
     >
-      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/30">{icon}</span>
+      <Icon className="h-4 w-4 shrink-0" />
       <span className="min-w-0">
-        <span className="block text-sm font-bold text-white">{title}</span>
-        <span className="mt-0.5 block text-[11px] leading-relaxed text-gray-400">{detail}</span>
+        <span className="block truncate text-xs font-black text-white">{label}</span>
+        <span className="block truncate text-[10px] text-gray-500">{hint}</span>
       </span>
     </button>
+  )
+}
+
+function ToggleRow({
+  icon: Icon,
+  title,
+  hint,
+  checked,
+  onChange,
+}: {
+  icon: ComponentType<{ className?: string }>
+  title: string
+  hint: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <label className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${checked ? "border-blue-500/30 bg-blue-500/[0.06]" : "border-white/[0.07] bg-white/[0.02]"}`}>
+      <span className="flex min-w-0 items-center gap-3">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${checked ? "bg-blue-500/15 text-blue-300" : "bg-white/[0.04] text-gray-500"}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-bold text-white">{title}</span>
+          <span className="block text-[11px] leading-snug text-gray-500">{hint}</span>
+        </span>
+      </span>
+      <Switch
+        checked={checked}
+        onCheckedChange={onChange}
+        className="shrink-0 data-[state=checked]:bg-blue-500 data-[state=unchecked]:bg-white/[0.14]"
+      />
+    </label>
   )
 }

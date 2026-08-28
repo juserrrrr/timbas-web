@@ -1,14 +1,13 @@
 "use client"
 
-import { FormEvent, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Lock, MonitorPlay, MonitorUp, Radio, Server, Users } from "lucide-react"
 import { toast } from "@/lib/toast"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { RouteLoadingSignal } from "@/lib/navigation-context"
 import { PlayerAvatar } from "@/components/player-avatar"
-import { getToken } from "@/lib/auth"
+import { decodeToken, getToken } from "@/lib/auth"
 import { createStream, getStreamPermission, listStreams, type StreamSummary } from "@/lib/services/streaming"
 import { TIMBAS_SERVER_ID } from "@/lib/servers"
 
@@ -28,8 +27,6 @@ export default function LivePage() {
   const [sfuReady, setSfuReady] = useState(true)
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [title, setTitle] = useState("")
 
   useEffect(() => {
     const token = getToken()
@@ -82,15 +79,18 @@ export default function LivePage() {
     }
   }, [])
 
-  const start = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const openStudio = async () => {
     const token = getToken()
     if (!token) return
 
     setStarting(true)
     try {
-      // Privacy is chosen in the studio, before the stream is shared.
-      const stream = await createStream(token, title.trim() || undefined, TIMBAS_SERVER_ID, "MEMBERS")
+      // O nome já sai pronto daqui e continua editável no estúdio, no mesmo
+      // modal onde a pessoa escolhe imagem e som. Perguntar duas vezes seguidas
+      // só atrasava quem quer subir e voltar para o jogo. A privacidade também
+      // é escolhida lá, antes de a tela ir para alguém.
+      const nick = decodeToken(token)?.name?.trim()
+      const stream = await createStream(token, nick ? `Live do ${nick}`.slice(0, 80) : undefined, TIMBAS_SERVER_ID, "MEMBERS")
       router.push(`/streams/${stream.id}/studio`)
     } catch (error: unknown) {
       toast.error("Não foi possível abrir o estúdio", { description: error instanceof Error ? error.message : undefined })
@@ -129,12 +129,12 @@ export default function LivePage() {
 
         {canStream && (
           <button
-            onClick={() => setCreateOpen(true)}
-            disabled={!sfuReady}
+            onClick={() => { void openStudio() }}
+            disabled={!sfuReady || starting}
             className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <MonitorUp className="h-4 w-4" />
-            Iniciar transmissão
+            {starting ? "Abrindo estúdio..." : "Iniciar transmissão"}
           </button>
         )}
       </div>
@@ -199,36 +199,6 @@ export default function LivePage() {
           ))}
         </div>
       )}
-
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="border-white/[0.09] bg-[#101014] text-white sm:max-w-md">
-          <form onSubmit={start}>
-            <DialogHeader>
-              <DialogTitle className="text-white">Preparar transmissão</DialogTitle>
-              <DialogDescription className="text-gray-400">Dê um nome para a live. O link, a privacidade e o microfone são definidos no estúdio.</DialogDescription>
-            </DialogHeader>
-            <div className="mt-5">
-              <label htmlFor="stream-title" className="mb-2 block text-xs font-bold text-gray-300">Nome da transmissão</label>
-              <input
-                id="stream-title"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                maxLength={80}
-                autoFocus
-                placeholder="Ex.: Treino de hoje"
-                className="h-11 w-full rounded-xl border border-white/[0.09] bg-white/[0.04] px-3 text-sm text-white placeholder:text-gray-600 outline-none transition-colors focus:border-blue-500/60"
-              />
-            </div>
-            <DialogFooter className="mt-6">
-              <button type="button" onClick={() => setCreateOpen(false)} className="h-10 cursor-pointer rounded-xl px-4 text-sm font-bold text-gray-300 transition-colors hover:bg-white/[0.06]">Cancelar</button>
-              <button type="submit" disabled={starting} className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">
-                <MonitorUp className="h-4 w-4" />
-                {starting ? "Abrindo..." : "Abrir estúdio"}
-              </button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

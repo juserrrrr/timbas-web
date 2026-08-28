@@ -108,7 +108,22 @@ export async function startStream(
     headers: h(token),
     body: JSON.stringify({ announce }),
   })
-  return parse(res, 'Erro ao iniciar a transmissÃ£o')
+  return parse(res, 'Erro ao iniciar a transmissão')
+}
+
+/// Ajustes do host na própria live. Vai só o que mudou: o nome antes de
+/// subir, a privacidade a qualquer momento.
+export async function updateStream(
+  token: string,
+  streamId: string,
+  patch: { title?: string; visibility?: 'MEMBERS' | 'PUBLIC' },
+): Promise<StreamSummary> {
+  const res = await apiFetch(`${API_URL}/streaming/streams/${streamId}`, {
+    method: 'PATCH',
+    headers: h(token),
+    body: JSON.stringify(patch),
+  })
+  return parse(res, 'Erro ao atualizar a transmissão')
 }
 
 export async function updateStreamVisibility(
@@ -198,7 +213,7 @@ export async function getAnnouncementTargets(token: string): Promise<Announcemen
 
 export async function getAnnouncementGuilds(token: string): Promise<AnnouncementGuild[]> {
   const res = await apiFetch(`${API_URL}/streaming/admin/announcement-channels`, { headers: h(token), cache: 'no-store' })
-  return parse(res, 'Erro ao carregar os canais de anÃºncio')
+  return parse(res, 'Erro ao carregar os canais de anúncio')
 }
 
 export async function setAnnouncementChannel(token: string, guildId: string, channelId: string | null): Promise<void> {
@@ -207,7 +222,7 @@ export async function setAnnouncementChannel(token: string, guildId: string, cha
     headers: h(token),
     body: JSON.stringify({ guildId, ...(channelId ? { channelId } : {}) }),
   })
-  await parse(res, 'Erro ao salvar o canal de anÃºncio')
+  await parse(res, 'Erro ao salvar o canal de anúncio')
 }
 
 export async function joinStream(

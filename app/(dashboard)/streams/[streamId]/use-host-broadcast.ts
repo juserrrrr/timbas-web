@@ -24,7 +24,7 @@ import {
   leaveStream,
   reportHostTelemetry,
   startStream,
-  updateStreamVisibility,
+  updateStream,
   type SignalEvent,
   type StreamPeer,
 } from "@/lib/services/streaming"
@@ -218,7 +218,7 @@ export function useHostBroadcast(
 
   // ─── LIFECYCLE ─────────────────────────────────────────────────────────────
 
-  const start = useCallback(async ({ profile, visibility, withMic, withGameAudio, announce }: StartOptions) => {
+  const start = useCallback(async ({ profile, visibility, title, withMic, withGameAudio, announce, onCaptureReady }: StartOptions) => {
     setError(null)
     if (!navigator.mediaDevices?.getDisplayMedia) {
       setError("Seu navegador não suporta compartilhamento de tela.")
@@ -231,6 +231,9 @@ export function useHostBroadcast(
       // Capture first: the picker has to open while the click is still the
       // current user gesture, and the mixer has to be born inside it too.
       await beginCapture(profile, withMic, withGameAudio)
+      // A tela já está na mão: o resto é ligação com o servidor e pode
+      // acontecer com o estúdio na frente, não com um modal esperando.
+      onCaptureReady?.()
 
       const token = getToken()
       if (!token) throw new Error("Faça login novamente para transmitir.")
@@ -240,7 +243,7 @@ export function useHostBroadcast(
       await publishAudioTrack(room, mixer.track)
       await publishVideoTrack(videoTrackRef.current)
 
-      await updateStreamVisibility(token, streamId, visibility).catch(() => null)
+      await updateStream(token, streamId, { visibility, ...(title ? { title } : {}) }).catch(() => null)
       await startStream(token, streamId, announce)
       setHasStarted(true)
       return true

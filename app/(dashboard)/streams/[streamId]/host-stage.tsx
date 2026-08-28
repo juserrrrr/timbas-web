@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, Copy, Eye, EyeOff, Globe2, Link2, Lock, MonitorUp, Radio, Users } from "lucide-react"
+import { Check, Copy, Eye, EyeOff, Globe2, Link2, Loader2, Lock, MonitorUp, Radio, Users } from "lucide-react"
 import { toast } from "@/lib/toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getDiscordAvatarUrl, getToken } from "@/lib/auth"
-import { getStreamPermission, updateStreamVisibility, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
+import { getStreamPermission, updateStream, type StreamPeer, type StreamSummary } from "@/lib/services/streaming"
 import { useSignalChannel } from "@/hooks/use-signal-channel"
 import { HostLiveControls } from "./host-live-controls"
 import { LiveSetupDialog, type LiveSetupValues } from "./live-setup-dialog"
@@ -29,7 +29,9 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   const previousPeerIdRef = useRef(peerId)
 
   const [setupOpen, setSetupOpen] = useState(true)
+  const [title, setTitle] = useState(stream.title)
   const [setup, setSetup] = useState<LiveSetupValues>({
+    title: stream.title,
     visibility: stream.visibility,
     quality: "1080p",
     frameRate: 60,
@@ -62,7 +64,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
   }, [])
 
   // Pausar apenas o player local evita que o navegador continue desenhando a
-  // mesma live que jÃ¡ estÃ¡ codificando. A track publicada no servidor nÃ£o Ã©
+  // mesma live que já está codificando. A track publicada no servidor não é
   // afetada: espectadores continuam recebendo imagem e som normalmente.
   useEffect(() => {
     const preview = broadcast.previewRef.current
@@ -88,16 +90,25 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       setLimit720p30fps(true)
       setSetup((current) => ({ ...current, quality: "720p", frameRate: 30 }))
     }
+    const chosenTitle = setup.title.trim()
     const started = await broadcast.start({
       profile: serverLimit ? { quality: "720p", frameRate: 30 } : { quality: setup.quality, frameRate: setup.frameRate },
       visibility: setup.visibility,
+      title: chosenTitle || undefined,
       withMic: setup.withMic,
       withGameAudio: setup.withGameAudio,
       announce: setup.announce,
+      // Com a tela na mão a live já é a tela principal. O que falta acontece
+      // atrás, com o aviso de "colocando no ar" no lugar da prévia.
+      onCaptureReady: () => setSetupOpen(false),
     })
     if (!started) return
     setVisibility(setup.visibility)
+    if (chosenTitle) setTitle(chosenTitle)
     setSetupOpen(false)
+    toast.success("Você está no ar", {
+      description: setup.announce ? "O bot avisou no Discord. O link também está no botão Copiar link." : "Manda o link para a galera no botão Copiar link.",
+    })
   }
 
   const finishBroadcast = async () => {
@@ -114,7 +125,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
 
     setSavingPrivacy(true)
     try {
-      const updated = await updateStreamVisibility(token, streamId, next)
+      const updated = await updateStream(token, streamId, { visibility: next })
       setVisibility(updated.visibility)
       setSetup((current) => ({ ...current, visibility: updated.visibility }))
       setPrivacyOpen(false)
@@ -137,6 +148,10 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
     window.setTimeout(() => setCopied(false), 2000)
   }
 
+  // Tela na mão, live ainda subindo: é o momento em que o modal já saiu e a
+  // pessoa precisa ver que alguma coisa está acontecendo.
+  const publishing = broadcast.starting && !broadcast.hasStarted
+
   const statusLine = broadcast.sharing
     ? "Você está transmitindo"
     : broadcast.hasStarted ? "Live aberta, sem tela compartilhada" : "Escolha a tela para começar"
@@ -149,7 +164,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
             <Radio className={`h-5 w-5 text-red-400 ${broadcast.sharing ? "animate-pulse" : ""}`} />
           </div>
           <div>
-            <h1 className="text-lg font-black tracking-tight text-white sm:text-xl">{stream.title}</h1>
+            <h1 className="text-lg font-black tracking-tight text-white sm:text-xl">{title}</h1>
             <p className="text-xs text-gray-500">
               @{stream.hostName} · {statusLine}{connected ? "" : " · reconectando"}
             </p>
@@ -157,6 +172,12 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {broadcast.sharing && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600/90 px-2.5 py-1.5 text-[11px] font-black uppercase tracking-wider text-white">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+              No ar
+            </span>
+          )}
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-gray-300 ring-1 ring-white/[0.08]">
             <Users className="h-3.5 w-3.5" />{broadcast.viewers.length}
           </span>
@@ -178,8 +199,18 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-black">
-        <div className={`relative w-full ${previewVisible ? "aspect-video" : "min-h-28"}`}>
+        <div className={`relative w-full ${previewVisible ? "aspect-video" : publishing ? "min-h-44" : "min-h-28"}`}>
           <video ref={broadcast.previewRef} autoPlay playsInline muted className={previewVisible ? "h-full w-full object-contain" : "hidden"} />
+
+          {publishing && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#07070c] px-6 text-center">
+              <Loader2 className="h-7 w-7 animate-spin text-blue-400" />
+              <div>
+                <p className="text-sm font-bold text-white">Colocando você no ar...</p>
+                <p className="mt-1 text-xs text-gray-500">Ligando no servidor de transmissão e publicando a tela escolhida.</p>
+              </div>
+            </div>
+          )}
 
           {!broadcast.sharing && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#07070c] px-6 text-center">
@@ -222,7 +253,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
               className="absolute right-3 top-3 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-black/75 px-3 py-2 text-xs font-bold text-white ring-1 ring-white/10 backdrop-blur transition-colors hover:bg-black/90"
             >
               <EyeOff className="h-4 w-4" />
-              Ocultar prÃ©via
+              Ocultar prévia
             </button>
           )}
 
@@ -233,8 +264,8 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
                   <EyeOff className="h-5 w-5 text-blue-300" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white">PrÃ©via oculta</p>
-                  <p className="truncate text-xs text-gray-500">A transmissÃ£o continua normalmente com menos trabalho visual no navegador.</p>
+                  <p className="text-sm font-bold text-white">Você está transmitindo</p>
+                  <p className="truncate text-xs text-gray-500">A prévia está desligada para poupar o seu PC. A galera continua vendo tudo.</p>
                 </div>
               </div>
               <button
@@ -243,7 +274,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
                 className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-white/[0.06] px-3 py-2 text-xs font-bold text-white ring-1 ring-white/10 transition-colors hover:bg-white/[0.1]"
               >
                 <Eye className="h-4 w-4" />
-                <span className="hidden sm:inline">Mostrar prÃ©via</span>
+                <span className="hidden sm:inline">Mostrar prévia</span>
                 <span className="sm:hidden">Mostrar</span>
               </button>
             </div>
@@ -309,6 +340,7 @@ export function HostStage({ streamId, peerId, stream, initialViewers, onReconnec
         onChange={(patch) => setSetup((current) => ({ ...current, ...patch }))}
         loopbackDevices={broadcast.loopbackDevices}
         starting={broadcast.starting}
+        error={broadcast.error}
         onStart={() => { void startBroadcast() }}
       />
 

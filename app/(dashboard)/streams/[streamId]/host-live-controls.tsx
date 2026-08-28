@@ -1,5 +1,6 @@
 "use client"
 
+import type { ComponentType, ReactNode } from "react"
 import { Activity, Mic, MicOff, MonitorUp, RefreshCw, RotateCcw, Square, Volume2, VolumeX, Zap } from "lucide-react"
 import type { AudioMixerLevels, AudioSourceKind } from "@/lib/live/audio-mixer"
 import type { BroadcastStats } from "./broadcast-types"
@@ -35,6 +36,9 @@ const GAME_AUDIO_COPY: Record<GameAudioState, { title: string; detail: string }>
   unavailable: { title: "Navegador não liberou o áudio", detail: "Ative a Mixagem estéreo ou instale o VB-Cable." },
 }
 
+/// Som fica em cartão, porque tem medidor e volume para mostrar. O resto é
+/// comando seco e vive numa barra: um cartão grande só para dizer "trocar tela"
+/// ocupava um quarto da largura sem ter o que colocar dentro.
 export function HostLiveControls({
   micOn,
   micReady,
@@ -92,7 +96,7 @@ export function HostLiveControls({
         </div>
       )}
 
-      <div className="grid gap-3 xl:grid-cols-[1fr_1.35fr_1fr_auto]">
+      <div className="grid gap-3 lg:grid-cols-2">
         <ControlCard
           tone={micOn ? "emerald" : "red"}
           icon={micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
@@ -152,36 +156,78 @@ export function HostLiveControls({
             {gameConnected && <VolumeSlider label="Volume do jogo" onChange={(value) => onVolumeChange("game", value)} />}
           </div>
         </ControlCard>
+      </div>
 
-        <ControlCard
-          tone="blue"
-          icon={<RefreshCw className={`h-5 w-5 ${switchingScreen ? "animate-spin" : ""}`} />}
-          title={switchingScreen ? "Trocando tela..." : "Trocar tela"}
-          detail={screenLabel || "Escolha outra janela, aba ou monitor."}
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-2">
+        <ActionButton
+          icon={RefreshCw}
+          spinning={switchingScreen}
+          label={switchingScreen ? "Trocando tela..." : "Trocar tela"}
+          hint={screenLabel || "Outra janela, aba ou monitor"}
           onClick={onSwitchScreen}
           disabled={switchingScreen}
+          tone="blue"
+        />
+        <ActionButton
+          icon={RotateCcw}
+          spinning={restarting}
+          label={restarting ? "Reiniciando..." : "Reiniciar"}
+          hint="Refaz a ligação com o servidor"
+          onClick={onRestart}
+          disabled={restarting}
+          tone="neutral"
         />
 
-        <div className="flex min-h-20 flex-col gap-2">
-          <button
-            type="button"
-            onClick={onRestart}
-            disabled={restarting}
-            className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/[0.1] bg-white/[0.04] px-5 text-sm font-black text-white transition-colors hover:bg-white/[0.08] disabled:cursor-wait disabled:opacity-60"
-          >
-            <RotateCcw className={`h-4 w-4 ${restarting ? "animate-spin" : ""}`} />
-            {restarting ? "Reiniciando..." : "Reiniciar transmissão"}
-          </button>
-          <button
-            type="button"
-            onClick={onFinish}
-            className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 text-sm font-black text-white transition-colors hover:bg-red-500"
-          >
-            <Square className="h-4 w-4" /> Encerrar live
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onFinish}
+          className="ml-auto inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-black text-white transition-colors hover:bg-red-500"
+        >
+          <Square className="h-4 w-4" />
+          Encerrar live
+        </button>
       </div>
     </div>
+  )
+}
+
+function ActionButton({
+  icon: Icon,
+  spinning = false,
+  label,
+  hint,
+  onClick,
+  disabled,
+  tone,
+}: {
+  icon: ComponentType<{ className?: string }>
+  spinning?: boolean
+  label: string
+  hint: string
+  onClick: () => void
+  disabled?: boolean
+  tone: "blue" | "neutral"
+}) {
+  const skin = tone === "blue"
+    ? "bg-blue-500/[0.08] ring-blue-500/25 hover:bg-blue-500/15"
+    : "bg-white/[0.03] ring-white/[0.09] hover:bg-white/[0.07]"
+  const iconSkin = tone === "blue" ? "bg-blue-500/15 text-blue-300" : "bg-white/[0.06] text-gray-300"
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex h-12 min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left ring-1 ring-inset transition-colors disabled:cursor-wait disabled:opacity-60 sm:flex-none sm:max-w-[15rem] ${skin}`}
+    >
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconSkin}`}>
+        <Icon className={`h-4 w-4 ${spinning ? "animate-spin" : ""}`} />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[13px] font-black text-white">{label}</span>
+        <span className="block truncate text-[10.5px] text-gray-500">{hint}</span>
+      </span>
+    </button>
   )
 }
 
@@ -203,13 +249,13 @@ function ControlCard({
   children,
 }: {
   tone: keyof typeof TONES
-  icon: React.ReactNode
+  icon: ReactNode
   title: string
   detail: string
   level?: number
   onClick?: () => void
   disabled?: boolean
-  children?: React.ReactNode
+  children?: ReactNode
 }) {
   const palette = TONES[tone]
   const header = (
@@ -224,7 +270,7 @@ function ControlCard({
   )
 
   return (
-    <div className={`min-h-20 rounded-2xl border p-4 ${palette.border}`}>
+    <div className={`rounded-2xl border p-4 ${palette.border}`}>
       {onClick ? (
         <button
           type="button"

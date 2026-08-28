@@ -23,6 +23,12 @@ export interface BroadcastStats {
 export interface StartOptions {
   profile: VideoProfile
   visibility: Visibility
+  /// Nome escolhido na hora de subir. Vai antes do start para o aviso do
+  /// Discord já sair com o nome certo.
+  title?: string
+  /// Chamado assim que a tela é escolhida, antes de conectar e publicar. É o
+  /// gancho que deixa o modal sair da frente e a live aparecer na hora.
+  onCaptureReady?: () => void
   withMic: boolean
   withGameAudio: boolean
   /// Avisar no Discord ao subir. Padrão desligado: o anúncio marca o servidor
