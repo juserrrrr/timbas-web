@@ -18,6 +18,9 @@ export interface BroadcastStats {
   limitedBy: "none" | "cpu" | "bandwidth" | "other"
   /// Altura que o perfil escolhido promete entregar.
   targetHeight: number
+  /// O perfil promete segurar a resolução. Sendo falso, imagem menor que o
+  /// alvo é o codificador fazendo o certo, não sinal de problema.
+  pinnedResolution: boolean
 }
 
 export interface StartOptions {

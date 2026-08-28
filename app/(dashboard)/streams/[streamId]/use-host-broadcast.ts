@@ -14,6 +14,7 @@ import {
   AUDIO_BITRATE_BPS,
   displayVideoConstraints,
   expectedHeightFor,
+  pinsResolution,
   sfuVideoOptions,
   type VideoProfile,
 } from "@/lib/live/tuning"
@@ -124,6 +125,10 @@ export function useHostBroadcast(
    * Reimpõe o alvo do perfil no codificador e na captura. O codificador encolhe
    * a imagem sozinho quando falta CPU ou banda, mas não volta a crescer por
    * conta própria: sem isto a live nasce em 1080p e morre em 180p.
+   *
+   * O tamanho só é reimposto no perfil que promete resolução. No de movimento a
+   * escala fica com o codificador, senão a imagem voltaria para 1080p empapado
+   * a cada tentativa.
    */
   const reapplyEncoding = useCallback(async () => {
     const track = videoPubRef.current?.track as LocalVideoTrack | undefined
@@ -134,9 +139,10 @@ export function useHostBroadcast(
       const params = sender.getParameters()
       if (params.encodings?.length) {
         params.degradationPreference = options.degradationPreference
+        const pinned = pinsResolution(profileRef.current)
         for (const encoding of params.encodings) {
           encoding.active = true
-          encoding.scaleResolutionDownBy = 1
+          if (pinned) encoding.scaleResolutionDownBy = 1
           encoding.maxBitrate = options.screenShareEncoding.maxBitrate
           encoding.maxFramerate = options.screenShareEncoding.maxFramerate
         }
@@ -436,8 +442,11 @@ export function useHostBroadcast(
 
       // O codificador encolhe sozinho e não volta: quando a imagem está bem
       // abaixo do alvo e o aperto passou, o alvo é reimposto. Com aperto de CPU
-      // ou banda ainda ativo, insistir só piora, então espera passar.
-      const shrunk = height > 0 && targetHeight > 0 && height < targetHeight * 0.9
+      // ou banda ainda ativo, insistir só piora, então espera passar. No perfil
+      // de movimento nem isso: lá encolher é a resposta certa e quem manda no
+      // tamanho é o codificador.
+      const shrunk = pinsResolution(profileRef.current)
+        && height > 0 && targetHeight > 0 && height < targetHeight * 0.9
       if (!shrunk) shrunkSinceRef.current = 0
       else if (!shrunkSinceRef.current) shrunkSinceRef.current = now
 
@@ -457,6 +466,7 @@ export function useHostBroadcast(
         relayed: false,
         limitedBy,
         targetHeight,
+        pinnedResolution: pinsResolution(profileRef.current),
       }
       setStats(sample)
 

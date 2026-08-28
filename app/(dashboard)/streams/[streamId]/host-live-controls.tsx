@@ -86,7 +86,7 @@ export function HostLiveControls({
                   : "Segurando a imagem"}
             </span>
           )}
-          {stats.limitedBy === "none" && stats.targetHeight > 0 && stats.height > 0 && stats.height < stats.targetHeight * 0.9 && (
+          {stats.pinnedResolution && stats.limitedBy === "none" && stats.targetHeight > 0 && stats.height > 0 && stats.height < stats.targetHeight * 0.9 && (
             <span className="text-amber-300">Recuperando a resolução...</span>
           )}
           <span className="inline-flex items-center gap-1.5 text-emerald-300">

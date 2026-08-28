@@ -37,14 +37,27 @@ export function contentHintFor(profile: VideoProfile): "motion" | "detail" {
 }
 
 /**
- * Transmissão de jogo é sempre resolução em primeiro lugar. Com
- * "maintain-framerate" o codificador segurava os quadros e ia cortando pixels,
- * e era assim que uma live começava em 1080p e terminava em 180p com 58 FPS:
- * quem assiste não consegue ler nada da tela. Perder quadros numa hora ruim de
- * rede é bem menos pior do que perder a imagem.
+ * Quem escolhe 30 FPS está mostrando tela para ler, e aí a resolução vem antes
+ * de tudo: com "maintain-framerate" o codificador segurava os quadros e ia
+ * cortando pixels, e era assim que uma live começava em 1080p e terminava em
+ * 180p, sem dar para ler nada.
+ *
+ * Em 60 FPS o assunto é o oposto. Segurar 1080p num aperto de banda ou de CPU
+ * não guarda a imagem, guarda só o número: o codificador continua com a mesma
+ * grade de pixels e vai tirando bit de cada quadro, e cena de jogo, onde quase
+ * tudo muda de um quadro para o outro, vira borrão. "balanced" deixa ele
+ * escolher, então a live cai para uma resolução menor e limpa e volta a crescer
+ * quando a banda sobra.
  */
-function degradationFor(_profile: VideoProfile): RTCDegradationPreference {
-  return "maintain-resolution"
+function degradationFor(profile: VideoProfile): RTCDegradationPreference {
+  return profile.frameRate === 60 ? "balanced" : "maintain-resolution"
+}
+
+/// O alvo de resolução só é reimposto no perfil que promete resolução. No de
+/// movimento, encolher é a saída certa e forçar o alvo de volta seria desfazer
+/// a decisão do codificador a cada 20 segundos.
+export function pinsResolution(profile: VideoProfile): boolean {
+  return degradationFor(profile) === "maintain-resolution"
 }
 
 /// Altura que o perfil promete entregar. Serve para o vigia saber que o
