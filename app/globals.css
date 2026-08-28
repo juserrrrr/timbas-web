@@ -855,6 +855,37 @@ select option:hover {
   animation: app-content-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* As três ferramentas de LoL dividem o mesmo cabeçalho e as mesmas abas, que
+   ficam parados no layout do grupo. Só o miolo troca, e ele entra com um
+   movimento curto, o suficiente para a pessoa ver que mudou. */
+@keyframes rift-panel-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rift-panel {
+  animation: rift-panel-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* O painel já faz a entrada. A cascata do .dashboard-view por dentro repetiria
+   a mesma animação item por item e é justamente ela que dá cara de recarga. */
+.rift-panel .dashboard-view,
+.rift-panel .dashboard-view > * {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rift-panel {
+    animation: none;
+  }
+}
+
 .modern-app-surface :where(h1) {
   text-wrap: balance;
   letter-spacing: -0.035em;

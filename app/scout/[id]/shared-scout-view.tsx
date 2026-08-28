@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { ScoutResult } from "@/lib/services/clash"
-import ClashResultsView from "@/app/(dashboard)/clash/clash-results-view"
+import ClashResultsView from "@/app/(dashboard)/(rift)/clash/clash-results-view"
 import { ShieldAlert, Clock, ExternalLink } from "lucide-react"
 
 interface Props {

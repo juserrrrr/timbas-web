@@ -175,6 +175,21 @@ export function normalizeDashboardPathname(pathname: string): string {
   return `/${segments.join("/")}`
 }
 
+/// Rotas que dividem a mesma casca: cabeçalho e abas desenhados por um
+/// layout comum. Dentro do grupo a chave do conteúdo não muda, então trocar de
+/// aba troca só o miolo em vez de remontar a tela inteira e piscar tudo junto.
+const SHELL_GROUPS: Record<string, string[]> = {
+  rift: ["/clash", "/verify", "/lol-profile"],
+}
+
+export function dashboardShellKey(pathname: string): string {
+  const normalized = normalizeDashboardPathname(pathname)
+  const group = Object.entries(SHELL_GROUPS).find(([, routes]) =>
+    routes.some((route) => normalized === route || normalized.startsWith(`${route}/`)),
+  )
+  return group ? group[0] : normalized
+}
+
 /// Marca o que está atrás de feature flag desligada em vez de esconder. Item
 /// que aparece e some conforme o admin mexe nas flags confunde mais do que
 /// ajuda: a pessoa não sabe se o recurso existe, se sumiu ou se quebrou. Assim

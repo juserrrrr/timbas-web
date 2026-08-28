@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from "react"
 import {
-  ShieldAlert, RefreshCw, Search, Zap, AlertCircle,
+  RefreshCw, Search, Zap, AlertCircle,
   Share2, Check, Copy, Radar, History, ChevronRight,
 } from "lucide-react"
-import { BetaBadge } from "@/components/ui/beta-badge"
 import {
   startScout,
   retryScoutAi,
@@ -18,7 +17,7 @@ import {
   ScoutResult,
 } from "@/lib/services/clash"
 import ClashResultsView from "./clash-results-view"
-import { LolToolsSubnav } from "@/components/lol-tools-subnav"
+import { RiftHeaderActions } from "@/components/rift-tools-shell"
 
 // Guarda o job em andamento para retomar o acompanhamento se o usuário
 // sair da tela e voltar, a análise continua rodando no servidor.
@@ -282,59 +281,40 @@ export default function ClashScoutClient({ token }: { token: string }) {
 
   return (
     <div className="dashboard-view relative space-y-8">
-      {/* Header */}
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-        <div>
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 shadow-lg shadow-amber-500/10">
-              <ShieldAlert className="h-5 w-5 text-amber-400" />
-            </div>
-            <h1 className="text-3xl font-black text-white tracking-tight">
-              Clash <span className="text-amber-400">Scout</span>
-            </h1>
-            <BetaBadge className="text-[10px] px-2" />
-          </div>
-          <p className="text-sm text-gray-500 ml-[52px]">
-            Digite o nick de qualquer jogador para ver o time, stats e análise de IA
-          </p>
-        </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          {data && (
-            <>
-              {!hasGeneratedAi(data) && (
-                <div className="flex flex-col items-stretch gap-1 sm:items-end">
-                  <button
-                    onClick={handleRetryAi}
-                    disabled={retryingAi}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-xs font-black text-violet-300 transition-all hover:border-violet-500/40 hover:bg-violet-500/15 disabled:cursor-wait disabled:opacity-50"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${retryingAi ? "animate-spin" : ""}`} />
-                    {retryingAi ? "Tentando IA (até 3x)..." : "Tentar IA novamente"}
-                  </button>
-                  {aiRetryError && <p className="max-w-xs text-right text-[10px] text-red-400">{aiRetryError}</p>}
-                </div>
-              )}
-              <button
-                onClick={handleShare}
-                disabled={sharing}
-                className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-400 transition-all hover:border-emerald-500/35 hover:bg-emerald-500/15 disabled:opacity-50"
-              >
-                {sharing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : copied ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
-                {sharing ? "Salvando..." : copied ? "Link copiado!" : "Compartilhar"}
-              </button>
-              <button
-                onClick={() => { requestVersionRef.current++; expectedJobIdRef.current = null; setData(null); setInput(""); setShareId(null); setAnalysisId(null); setAiRetryError(null); setJob(null); localStorage.removeItem(SCOUT_JOB_STORAGE_KEY) }}
-                className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-bold text-gray-400 transition-all hover:border-white/[0.15] hover:text-white"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Nova busca
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <LolToolsSubnav />
+      <RiftHeaderActions>
+        {data && (
+          <>
+            {!hasGeneratedAi(data) && (
+              <div className="flex flex-col items-stretch gap-1 sm:items-end">
+                <button
+                  onClick={handleRetryAi}
+                  disabled={retryingAi}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-xs font-black text-violet-300 transition-all hover:border-violet-500/40 hover:bg-violet-500/15 disabled:cursor-wait disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${retryingAi ? "animate-spin" : ""}`} />
+                  {retryingAi ? "Tentando IA (até 3x)..." : "Tentar IA novamente"}
+                </button>
+                {aiRetryError && <p className="max-w-xs text-right text-[10px] text-red-400">{aiRetryError}</p>}
+              </div>
+            )}
+            <button
+              onClick={handleShare}
+              disabled={sharing}
+              className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-400 transition-all hover:border-emerald-500/35 hover:bg-emerald-500/15 disabled:opacity-50"
+            >
+              {sharing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : copied ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
+              {sharing ? "Salvando..." : copied ? "Link copiado!" : "Compartilhar"}
+            </button>
+            <button
+              onClick={() => { requestVersionRef.current++; expectedJobIdRef.current = null; setData(null); setInput(""); setShareId(null); setAnalysisId(null); setAiRetryError(null); setJob(null); localStorage.removeItem(SCOUT_JOB_STORAGE_KEY) }}
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-bold text-gray-400 transition-all hover:border-white/[0.15] hover:text-white"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Nova busca
+            </button>
+          </>
+        )}
+      </RiftHeaderActions>
 
       {/* Busca (aquisição de alvo) */}
       {!data && !loading && (

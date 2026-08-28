@@ -2,8 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { AlertCircle, BarChart3, Brain, Crosshair, Eye, RefreshCw, Search, Shield, ShieldAlert, Skull, Swords, Trophy } from "lucide-react"
-import { BetaBadge } from "@/components/ui/beta-badge"
+import { AlertCircle, Brain, Crosshair, Eye, RefreshCw, Search, Shield, ShieldAlert, Skull, Swords, Trophy } from "lucide-react"
 import {
   formatRank,
   getChampionIconUrl,
@@ -13,7 +12,13 @@ import {
   PlayerProfileAnalysis,
   ScoutPlayer,
 } from "@/lib/services/clash"
-import { LolToolsSubnav } from "@/components/lol-tools-subnav"
+
+const PROFILE_HINTS = [
+  { icon: Trophy, label: "Elo e desempenho por fila" },
+  { icon: Swords, label: "Campeões mais jogados" },
+  { icon: Brain, label: "Leitura de estilo pela IA" },
+  { icon: ShieldAlert, label: "Sugestões de ban" },
+]
 
 function ChampionIcon({ name, championId, size = 34 }: { name: string; championId?: number; size?: number }) {
   return (
@@ -253,19 +258,6 @@ export default function LolProfileClient({ token }: { token: string }) {
 
   return (
     <div className="dashboard-view space-y-6">
-      <div>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10">
-            <BarChart3 className="h-5 w-5 text-sky-400" />
-          </div>
-          <h1 className="text-3xl font-black text-white">Perfil LoL</h1>
-          <BetaBadge className="text-[10px] px-2" />
-        </div>
-        <p className="ml-[52px] mt-1 text-sm text-gray-500">Busque estatísticas recentes de qualquer Riot ID</p>
-      </div>
-
-      <LolToolsSubnav />
-
       <div className="rounded-2xl border border-white/[0.08] bg-[#07070c]/70 p-5">
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
@@ -294,6 +286,37 @@ export default function LolProfileClient({ token }: { token: string }) {
           </div>
         )}
       </div>
+
+      {!player && !loading && (
+        <div className="rounded-2xl border border-dashed border-white/[0.09] bg-white/[0.015] px-6 py-12 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-500/10 text-sky-300">
+            <Search className="h-5 w-5" />
+          </span>
+          <p className="mt-4 text-base font-black text-white">Comece pelo Riot ID</p>
+          <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-gray-500">
+            Busque no formato Nome#TAG e o perfil abre com o que a Riot devolve das partidas recentes.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {PROFILE_HINTS.map((hint) => (
+              <span key={hint.label} className="flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-2 text-xs font-bold text-gray-400">
+                <hint.icon className="h-3.5 w-3.5 text-gray-500" />
+                {hint.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {loading && !player && (
+        <div className="space-y-4">
+          <div className="app-skeleton-block h-28 rounded-2xl border border-white/[0.07] bg-white/[0.02]" />
+          <div className="grid gap-4 xl:grid-cols-3">
+            {[0, 1, 2].map((block) => (
+              <div key={block} className="app-skeleton-block h-40 rounded-2xl border border-white/[0.07] bg-white/[0.02]" />
+            ))}
+          </div>
+        </div>
+      )}
 
       {player && (
         <div className="space-y-4">

@@ -5,14 +5,12 @@ import Image from "next/image"
 import Link from "next/link"
 import {
   Shield, CheckCircle2, AlertCircle, RefreshCw,
-  Clock, ChevronRight, ShieldAlert, Link2, Unlink, ShieldCheck
+  Clock, ChevronRight, ShieldAlert, Link2, Unlink
 } from "lucide-react"
-import { BetaBadge } from "@/components/ui/beta-badge"
 import { LoadingState } from "@/components/ui/loading-state"
 import {
   getVerifyStatus, startVerification, confirmVerification, unlinkAccount
 } from "@/lib/services/clash"
-import { LolToolsSubnav } from "@/components/lol-tools-subnav"
 
 type Step = "status" | "form" | "pending" | "success"
 
@@ -156,23 +154,6 @@ export default function VerifyClient({ token }: { token: string }) {
 
   return (
     <div className="dashboard-view mx-auto max-w-lg space-y-6">
-
-      {/* Header */}
-      <div>
-        <div className="mb-1 flex flex-wrap items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-            <ShieldCheck className="h-4 w-4 text-emerald-400" />
-          </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Verificar Conta LoL</h1>
-          <BetaBadge className="text-[10px] px-2" />
-        </div>
-        <p className="text-sm text-gray-500 ml-11">
-          Vincule sua conta do League of Legends ao Timbas para acessar funcionalidades exclusivas
-        </p>
-      </div>
-
-      <LolToolsSubnav />
-
       {/* Error */}
       {error && (
         <div className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-4">

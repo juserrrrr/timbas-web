@@ -7,7 +7,7 @@ import { Radio, Slash } from "lucide-react"
 import { UserMenu } from "@/components/user-menu"
 import { DashboardAccessGate } from "@/components/dashboard-access-gate"
 import { ImpersonationBanner } from "@/components/impersonation-banner"
-import { ALL_NAV_ITEMS, isNavItemActive, normalizeDashboardPathname } from "@/lib/navigation"
+import { ALL_NAV_ITEMS, dashboardShellKey, isNavItemActive, normalizeDashboardPathname } from "@/lib/navigation"
 
 const ROUTE_NAMES: Record<string, string> = {
   "/profile": "Meu perfil",
@@ -52,7 +52,7 @@ export function DashboardContent({ children }: { children: React.ReactNode }) {
   // por um spinner no meio da navegação.
   return (
     <DashboardAccessGate>
-      <div key={pathname} className={keepRankingUntouched ? "" : "modern-app-surface"}>
+      <div key={dashboardShellKey(pathname)} className={keepRankingUntouched ? "" : "modern-app-surface"}>
         {children}
         {!keepRankingUntouched && (
           <div aria-hidden className="pointer-events-none mx-auto mt-12 flex items-center justify-center gap-2 pb-2 text-zinc-800">
