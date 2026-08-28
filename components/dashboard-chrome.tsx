@@ -36,13 +36,6 @@ export function DashboardTopbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
-        <div className="hidden items-center gap-2 rounded-full border border-emerald-400/10 bg-emerald-400/[0.04] px-2.5 py-1.5 lg:flex">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          </span>
-          <span className="text-[10px] font-bold uppercase tracking-[0.13em] text-emerald-300/70">Sistema online</span>
-        </div>
         <ImpersonationBanner />
         <UserMenu />
       </div>
