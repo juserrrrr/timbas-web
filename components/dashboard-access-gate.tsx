@@ -8,10 +8,10 @@ import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { useEnabledFeatures } from "@/hooks/use-enabled-features"
 import { useMyPermissions } from "@/hooks/use-my-permissions"
-import { ALL_NAV_ITEMS, isNavItemActive } from "@/lib/navigation"
+import { ALL_NAV_ITEMS, isNavItemActive, normalizeDashboardPathname } from "@/lib/navigation"
 
 export function DashboardAccessGate({ children }: { children: ReactNode }) {
-  const pathname = usePathname()
+  const pathname = normalizeDashboardPathname(usePathname())
   const flags = useEnabledFeatures()
   const permissions = useMyPermissions()
   const candidates = [...ALL_NAV_ITEMS].sort((left, right) => right.href.length - left.href.length)

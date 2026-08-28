@@ -1,13 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Loader2, RefreshCw, Swords } from "lucide-react"
+import { Loader2, RefreshCw } from "lucide-react"
 import { ActiveMatchesList } from "./active-matches-list"
-import { CreateMatchLink } from "./create-match-link"
 import { getToken } from "@/lib/auth"
 import { TIMBAS_SERVER_ID, TIMBAS_SERVER_NAME } from "@/lib/servers"
 import { getActiveMatches, type CustomLeagueMatch } from "@/lib/services/match"
-import { CustomMatchSubnav } from "@/components/custom-match-subnav"
 
 export default function ActiveMatchesPage() {
   const [matches, setMatches] = useState<CustomLeagueMatch[]>([])
@@ -32,16 +30,6 @@ export default function ActiveMatchesPage() {
 
   return (
     <div className="dashboard-view space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-3xl font-black text-white"><Swords className="h-7 w-7 text-emerald-400" />Partidas personalizadas</h1>
-          <p className="mt-1 text-sm text-gray-500">Crie uma partida ou acompanhe as que estão em andamento em <span className="text-gray-300">{TIMBAS_SERVER_NAME}</span>.</p>
-        </div>
-        <CreateMatchLink />
-      </div>
-
-      <CustomMatchSubnav section="matches" />
-
       {loading ? (
         <div className="flex min-h-40 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.02]"><Loader2 className="h-5 w-5 animate-spin text-emerald-400" /></div>
       ) : error ? (

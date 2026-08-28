@@ -163,6 +163,18 @@ const GROUPED_ROUTE_ACCESS: NavItem[] = [
 
 export const ALL_NAV_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((group) => group.items), ...GROUPED_ROUTE_ACCESS, ...FOOTER_ITEMS]
 
+const DASHBOARD_ROUTE_ALIASES: Record<string, string> = {
+  active: "matches",
+  live: "streams",
+}
+
+export function normalizeDashboardPathname(pathname: string): string {
+  if (!pathname.startsWith("/dashboard/")) return pathname
+  const segments = pathname.slice("/dashboard/".length).split("/")
+  segments[0] = DASHBOARD_ROUTE_ALIASES[segments[0]] ?? segments[0]
+  return `/${segments.join("/")}`
+}
+
 /// Marca o que está atrás de feature flag desligada em vez de esconder. Item
 /// que aparece e some conforme o admin mexe nas flags confunde mais do que
 /// ajuda: a pessoa não sabe se o recurso existe, se sumiu ou se quebrou. Assim
@@ -196,6 +208,7 @@ export function isNavItemActive(
   activeHrefs: string[] = [],
   exact = false,
 ): boolean {
-  if (exact || href === "/dashboard") return [href, ...activeHrefs].includes(pathname)
-  return [href, ...activeHrefs].some((candidate) => pathname === candidate || pathname.startsWith(`${candidate}/`))
+  const normalizedPathname = normalizeDashboardPathname(pathname)
+  if (exact || href === "/dashboard") return [href, ...activeHrefs].includes(normalizedPathname)
+  return [href, ...activeHrefs].some((candidate) => normalizedPathname === candidate || normalizedPathname.startsWith(`${candidate}/`))
 }

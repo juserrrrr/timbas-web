@@ -2,7 +2,6 @@ import { Users, Trophy } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { getSession } from "@/lib/session"
 import { fetchDuoStats } from "@/lib/services/leaderboard"
-import { CustomMatchSubnav } from "@/components/custom-match-subnav"
 
 export const dynamic = "force-dynamic"
 
@@ -15,14 +14,6 @@ export default async function TeamsPage() {
 
   return (
     <div className="dashboard-view space-y-6">
-      <div>
-        <h1 className="text-3xl font-black text-white">Melhores Duplas</h1>
-        <p className="mt-1 text-sm text-gray-500">Com quem você mais ganha partidas</p>
-      </div>
-
-      <CustomMatchSubnav section="matches" />
-      <CustomMatchSubnav section="stats" />
-
       {duoStats.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center sm:p-12">
           <Users className="mx-auto mb-3 h-10 w-10 text-gray-600" />

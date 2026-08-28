@@ -8,7 +8,6 @@ import { getToken } from "@/lib/auth"
 import { apiFetch, authHeaders } from "@/lib/api"
 import { PlayerAvatar } from "@/components/player-avatar"
 import type { PlayerStats, PlayerDetailStats } from "@/lib/services/leaderboard"
-import { CustomMatchSubnav } from "@/components/custom-match-subnav"
 
 type Winner = "left" | "right" | "tie"
 
@@ -107,14 +106,6 @@ export function VersusClient({ players, serverId }: Props) {
 
   return (
     <div className="dashboard-view space-y-6">
-      <div>
-        <h1 className="text-3xl font-black text-white">Comparação</h1>
-        <p className="mt-1 text-sm text-gray-500">Compare o desempenho de dois jogadores</p>
-      </div>
-
-      <CustomMatchSubnav section="matches" />
-      <CustomMatchSubnav section="stats" />
-
       <div className="grid grid-cols-1 items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:p-5">
         <Select value={leftId} onValueChange={setLeftId} disabled={players.length === 0}>
           <SelectTrigger className="border-blue-500/30 bg-blue-500/5 text-white hover:border-blue-500/50">

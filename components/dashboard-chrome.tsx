@@ -7,7 +7,7 @@ import { Radio, Slash } from "lucide-react"
 import { UserMenu } from "@/components/user-menu"
 import { DashboardAccessGate } from "@/components/dashboard-access-gate"
 import { ImpersonationBanner } from "@/components/impersonation-banner"
-import { ALL_NAV_ITEMS, isNavItemActive } from "@/lib/navigation"
+import { ALL_NAV_ITEMS, isNavItemActive, normalizeDashboardPathname } from "@/lib/navigation"
 
 const ROUTE_NAMES: Record<string, string> = {
   "/profile": "Meu perfil",
@@ -21,7 +21,7 @@ function currentPage(pathname: string) {
 }
 
 export function DashboardTopbar() {
-  const pathname = usePathname()
+  const pathname = normalizeDashboardPathname(usePathname())
   const page = currentPage(pathname)
 
   return (
@@ -51,7 +51,7 @@ export function DashboardTopbar() {
 }
 
 export function DashboardContent({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const pathname = normalizeDashboardPathname(usePathname())
   const keepRankingUntouched = pathname === "/ranking"
 
   return (

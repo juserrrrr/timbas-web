@@ -4,6 +4,7 @@ import Link from "next/link"
 import { BarChart3, History, Swords, Users } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useNavigation } from "@/lib/navigation-context"
+import { normalizeDashboardPathname } from "@/lib/navigation"
 
 const SECTIONS = {
   matches: [
@@ -19,7 +20,7 @@ const SECTIONS = {
 } as const
 
 export function CustomMatchSubnav({ section }: { section: keyof typeof SECTIONS }) {
-  const pathname = usePathname()
+  const pathname = normalizeDashboardPathname(usePathname())
   const { navigate } = useNavigation()
 
   return (
