@@ -54,16 +54,21 @@ export function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = normalizeDashboardPathname(usePathname())
   const keepRankingUntouched = pathname === "/ranking"
 
+  // A portaria fica por fora do bloco com key: presa lá dentro ela remontava a
+  // cada rota, voltava a "ainda não sei quem é você" e trocava a tela inteira
+  // por um spinner no meio da navegação.
   return (
-    <div key={pathname} className={keepRankingUntouched ? "" : "modern-app-surface"}>
-      <DashboardAccessGate>{children}</DashboardAccessGate>
-      {!keepRankingUntouched && (
-        <div aria-hidden className="pointer-events-none mx-auto mt-12 flex items-center justify-center gap-2 pb-2 text-zinc-800">
-          <span className="h-px w-10 bg-gradient-to-r from-transparent to-current" />
-          <Radio className="h-3 w-3" />
-          <span className="h-px w-10 bg-gradient-to-l from-transparent to-current" />
-        </div>
-      )}
-    </div>
+    <DashboardAccessGate>
+      <div key={pathname} className={keepRankingUntouched ? "" : "modern-app-surface"}>
+        {children}
+        {!keepRankingUntouched && (
+          <div aria-hidden className="pointer-events-none mx-auto mt-12 flex items-center justify-center gap-2 pb-2 text-zinc-800">
+            <span className="h-px w-10 bg-gradient-to-r from-transparent to-current" />
+            <Radio className="h-3 w-3" />
+            <span className="h-px w-10 bg-gradient-to-l from-transparent to-current" />
+          </div>
+        )}
+      </div>
+    </DashboardAccessGate>
   )
 }

@@ -2,7 +2,7 @@
 
 import { Swords } from "lucide-react"
 import { usePathname } from "next/navigation"
-import { CreateMatchLink } from "@/app/dashboard/active/create-match-link"
+import { CreateMatchLink } from "@/app/(dashboard)/matches/create-match-link"
 import { CustomMatchSubnav } from "@/components/custom-match-subnav"
 import { TIMBAS_SERVER_NAME } from "@/lib/servers"
 import { normalizeDashboardPathname } from "@/lib/navigation"

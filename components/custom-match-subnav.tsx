@@ -3,8 +3,8 @@
 import Link from "next/link"
 import { BarChart3, History, Swords, Users } from "lucide-react"
 import { usePathname } from "next/navigation"
-import { useNavigation } from "@/lib/navigation-context"
 import { normalizeDashboardPathname } from "@/lib/navigation"
+import { NavigationLinkSignal } from "@/lib/navigation-context"
 
 const SECTIONS = {
   matches: [
@@ -21,7 +21,6 @@ const SECTIONS = {
 
 export function CustomMatchSubnav({ section }: { section: keyof typeof SECTIONS }) {
   const pathname = normalizeDashboardPathname(usePathname())
-  const { navigate } = useNavigation()
 
   return (
     <nav aria-label={section === "matches" ? "Seções das partidas" : "Seções das estatísticas"} className="flex gap-1 overflow-x-auto rounded-2xl border border-white/[0.07] bg-black/20 p-1.5 shadow-inner shadow-black/30 backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -31,13 +30,11 @@ export function CustomMatchSubnav({ section }: { section: keyof typeof SECTIONS 
           <Link
             key={item.href}
             href={item.href}
+            prefetch={true}
             aria-current={active ? "page" : undefined}
-            onClick={(event) => {
-              event.preventDefault()
-              if (!active) navigate(item.href)
-            }}
             className={`relative flex h-9 flex-shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-bold transition-all ${active ? "bg-white/[0.09] text-white shadow-lg shadow-black/20 ring-1 ring-inset ring-white/[0.07]" : "text-gray-500 hover:bg-white/[0.04] hover:text-gray-200"}`}
           >
+            <NavigationLinkSignal />
             <item.icon className="h-3.5 w-3.5" />
             {item.label}
           </Link>

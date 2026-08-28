@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
+import { NavigationLinkSignal } from "@/lib/navigation-context"
 
 export function UserMenu() {
   const router = useRouter()
@@ -73,13 +74,15 @@ export function UserMenu() {
         <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
 
         <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm text-gray-400 focus:bg-white/[0.05] focus:text-white">
-          <Link href="/profile" className="flex items-center gap-2.5">
+          <Link href="/profile" prefetch={true} className="flex items-center gap-2.5">
+            <NavigationLinkSignal />
             <User className="h-4 w-4" />
             Meu Perfil
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm text-gray-400 focus:bg-white/[0.05] focus:text-white">
-          <Link href="/settings" className="flex items-center gap-2.5">
+          <Link href="/settings" prefetch={true} className="flex items-center gap-2.5">
+            <NavigationLinkSignal />
             <Settings className="h-4 w-4" />
             Configurações
           </Link>

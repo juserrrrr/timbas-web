@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import { Swords, Clock, Users, Plus } from "lucide-react"
-import { useNavigation } from "@/lib/navigation-context"
 import type { CustomLeagueMatch } from "@/lib/services/match"
 import { gameModeLabel } from "@/lib/game-mode"
+import { NavigationLinkSignal } from "@/lib/navigation-context"
 
 const FORMAT_LABELS: Record<string, string> = {
   ALEATORIO: "Aleatório",
@@ -24,11 +24,11 @@ function MatchCard({ match }: { match: CustomLeagueMatch }) {
   const sc = STATUS_CONFIG[match.status] ?? STATUS_CONFIG.WAITING
   const totalPlayers = match.queuePlayers.length + match.Teams.flatMap((t) => t.players).length
   const maxPlayers = match.playersPerTeam * 2
-  const { navigate } = useNavigation()
   const href = `/match/${match.id}`
 
   return (
-    <Link href={href} onClick={(e) => { e.preventDefault(); navigate(href) }} className="group block">
+    <Link href={href} prefetch={true} className="group block">
+      <NavigationLinkSignal />
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.1] hover:bg-white/[0.04]">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -81,7 +81,6 @@ interface Props {
 }
 
 export function ActiveMatchesList({ matches, serverName, error }: Props) {
-  const { navigate } = useNavigation()
 
   if (error) {
     return (
@@ -101,10 +100,10 @@ export function ActiveMatchesList({ matches, serverName, error }: Props) {
         <p className="mt-1 text-sm text-gray-600">Crie uma nova partida ou aguarde alguém criar via Discord.</p>
         <Link
           href="/match/create"
-          prefetch={false}
-          onClick={(e) => { e.preventDefault(); navigate("/match/create") }}
+          prefetch={true}
           className="mt-5 flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300 transition-all hover:bg-blue-500/20"
         >
+          <NavigationLinkSignal />
           <Plus className="h-4 w-4" />
           Criar partida
         </Link>

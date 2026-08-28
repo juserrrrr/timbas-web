@@ -5,8 +5,8 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Lock, PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react"
-import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge, BetaMark } from "@/components/ui/beta-badge"
+import { NavigationLinkSignal } from "@/lib/navigation-context"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ACCENTS, isNavItemActive, type NavGroup, type NavItem } from "@/lib/navigation"
 
@@ -27,18 +27,14 @@ function NavLink({
   expanded: boolean
   onNavigate: () => void
 }) {
-  const { navigate } = useNavigation()
   const accent = ACCENTS[item.accent]
 
   const link = (
     <Link
       href={item.href}
+      prefetch={true}
       aria-label={item.label}
-      onClick={(event) => {
-        event.preventDefault()
-        onNavigate()
-        if (!isActive) navigate(item.href)
-      }}
+      onClick={onNavigate}
       className={`group relative flex w-full items-center overflow-hidden rounded-xl transition-colors duration-200 ${
         expanded ? "h-11" : "h-[41px]"
       } ${
@@ -47,6 +43,7 @@ function NavLink({
           : "text-gray-500 hover:bg-white/[0.055] hover:text-white"
       }`}
     >
+      <NavigationLinkSignal />
       {isActive && expanded && (
         <span className={`absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full ${accent.bar}`} />
       )}
@@ -203,7 +200,8 @@ export function AppSidebar({
         <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/60 via-white/30 to-red-400/60" />
         <span aria-hidden className="pointer-events-none absolute -left-20 top-0 h-48 w-48 rounded-full bg-blue-500/[0.07] blur-3xl" />
         <div className="flex h-14 flex-shrink-0 items-center border-b border-white/[0.06]">
-          <Link href={homeHref} onClick={close} className="flex items-center">
+          <Link href={homeHref} prefetch={true} onClick={close} className="flex items-center">
+            <NavigationLinkSignal />
             <span className="relative flex h-14 w-[65px] flex-shrink-0 items-center justify-center">
               <span className="block h-8 w-8 overflow-hidden rounded-[10px] ring-1 ring-white/15 shadow-lg shadow-blue-950/40 transition-transform duration-300 group-hover/sidebar:scale-105">
                 <Image src="/OIG.kjxVRTfiWRNi.jpg" alt="Timbas" width={32} height={32} className="object-cover" />

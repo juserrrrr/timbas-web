@@ -3,6 +3,7 @@
 import {
   clearDashboardAccess,
   getInFlight,
+  invalidateDashboardAccess,
   readSnapshot,
   setInFlight,
   writeSnapshot,
@@ -33,7 +34,7 @@ export function loadDashboardAccess(): Promise<DashboardAccess> {
       return access
     })
     .catch((error) => {
-      clearDashboardAccess()
+      invalidateDashboardAccess()
       throw error
     })
 

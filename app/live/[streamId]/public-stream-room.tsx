@@ -6,7 +6,7 @@ import { Radio } from "lucide-react"
 import { LoadingState } from "@/components/ui/loading-state"
 import { getToken } from "@/lib/auth"
 import { getLiveClientId, joinPublicStream, joinStream, type StreamSummary } from "@/lib/services/streaming"
-import { ViewerStage } from "@/app/dashboard/live/[streamId]/viewer-stage"
+import { ViewerStage } from "@/app/(dashboard)/streams/[streamId]/viewer-stage"
 
 interface WatchSession {
   peerId: string

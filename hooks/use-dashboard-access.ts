@@ -1,11 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useSyncExternalStore } from "react"
 import {
-  loadDashboardAccess,
-  readDashboardAccessSnapshot,
+  getAccess,
+  getServerAccess,
+  setAccess,
+  subscribeAccess,
   type DashboardAccess,
-} from "@/lib/services/dashboard-bootstrap"
+} from "@/lib/dashboard-access-store"
+import { loadDashboardAccess } from "@/lib/services/dashboard-bootstrap"
 
 const EMPTY: DashboardAccess = { role: "", permissions: [], features: [] }
 
@@ -15,22 +18,19 @@ const EMPTY: DashboardAccess = { role: "", permissions: [], features: [] }
  *
  * A diferença entre "ainda não sei" e "sei que está desligada" importa: tratar
  * o estado inicial como lista vazia fazia o menu nascer com tudo bloqueado e
- * destravar meio segundo depois. Com o snapshot da sessão anterior a navegação
- * já começa com a resposta certa na maior parte das vezes.
+ * destravar meio segundo depois.
+ *
+ * A resposta vive numa store única em vez de um useState por componente. Com
+ * estado local, trocar de rota remontava o gate, o valor voltava para null e a
+ * área de conteúdo apagava por um quadro antes da tela nova aparecer.
  */
 export function useDashboardAccess(): DashboardAccess | null {
-  const [access, setAccess] = useState<DashboardAccess | null>(null)
+  const access = useSyncExternalStore(subscribeAccess, getAccess, getServerAccess)
 
   useEffect(() => {
-    let active = true
-    const snapshot = readDashboardAccessSnapshot()
-    if (snapshot) setAccess(snapshot)
-
-    void loadDashboardAccess()
-      .then((fresh) => { if (active) setAccess(fresh) })
-      .catch(() => { if (active && !snapshot) setAccess(EMPTY) })
-
-    return () => { active = false }
+    void loadDashboardAccess().catch(() => {
+      if (!getAccess()) setAccess(EMPTY)
+    })
   }, [])
 
   return access

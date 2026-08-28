@@ -22,6 +22,7 @@ import {
   StatusPill,
   formatDateTime,
 } from "@/components/competitions/shared"
+import { NavigationLinkSignal } from "@/lib/navigation-context"
 import { CreateTournamentDialog } from "./create-tournament-dialog"
 
 const FILTERS: Array<{ id: string; label: string; statuses?: TournamentStatus[] }> = [
@@ -180,9 +181,10 @@ export function TournamentsClient({
             <Link
               key={tournament.id}
               href={`/tournaments/${tournament.id}`}
-              prefetch={false}
+              prefetch={true}
               className="text-left"
             >
+              <NavigationLinkSignal />
               <Card className="group relative flex h-full min-h-[390px] flex-col overflow-hidden rounded-[24px] border-white/[0.08] bg-[#090a0e] p-0 transition duration-300 hover:-translate-y-1 hover:border-blue-400/25 hover:shadow-2xl hover:shadow-blue-950/20">
                 <div className={`h-1 w-full ${tournament.status === "RUNNING" ? "bg-emerald-500" : tournament.status === "REGISTRATION" ? "bg-gradient-to-r from-blue-500 to-red-500" : tournament.status === "FINISHED" ? "bg-blue-500" : tournament.status === "CANCELLED" ? "bg-red-500" : "bg-gray-700"}`} />
                 <div className="flex flex-1 flex-col p-5">

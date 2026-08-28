@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { useLinkStatus } from "next/link"
 import { normalizeDashboardPathname } from "@/lib/navigation"
 
 type NavCtx = { navigate: (href: string) => void; setRouteLoading: (v: boolean) => void }
@@ -237,6 +238,19 @@ export function RouteLoadingSignal() {
       <PageSkeleton pathname={pathname} />
     </div>
   )
+}
+
+export function NavigationLinkSignal() {
+  const { pending } = useLinkStatus()
+  const { setRouteLoading } = useContext(NavigationContext)
+
+  useEffect(() => {
+    if (!pending) return
+    setRouteLoading(true)
+    return () => setRouteLoading(false)
+  }, [pending, setRouteLoading])
+
+  return null
 }
 
 export function useNavigation() {

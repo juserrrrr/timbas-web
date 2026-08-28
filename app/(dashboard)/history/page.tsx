@@ -6,6 +6,7 @@ import { getSession } from "@/lib/session"
 import { fetchMatchHistory, fetchPlayerDetailStats, fetchDuoStats } from "@/lib/services/leaderboard"
 import { gameModeLabel } from "@/lib/game-mode"
 import { HistoryPagination } from "./history-pagination"
+import { NavigationLinkSignal } from "@/lib/navigation-context"
 
 export const dynamic = "force-dynamic"
 
@@ -223,9 +224,10 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                         </Badge>
                         <Link
                           href={`/match/${match.id}`}
-                          prefetch={false}
+                          prefetch={true}
                           className="flex items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 text-xs font-bold text-yellow-400 transition-all hover:border-yellow-500/50 hover:bg-yellow-500/20"
                         >
+                          <NavigationLinkSignal />
                           <ExternalLink className="h-3 w-3" />
                           Ver Lobby
                         </Link>

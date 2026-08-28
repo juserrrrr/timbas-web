@@ -4,11 +4,11 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ClipboardList, Home, Lock, MoreHorizontal, Radio, Trophy, X } from "lucide-react"
-import { useNavigation } from "@/lib/navigation-context"
 import { BetaBadge } from "@/components/ui/beta-badge"
 import { ACCENTS, footerItemsFor, isNavItemActive, navGroupsFor, type NavItem } from "@/lib/navigation"
 import { useEnabledFeatures } from "@/hooks/use-enabled-features"
 import { useMyPermissions } from "@/hooks/use-my-permissions"
+import { NavigationLinkSignal } from "@/lib/navigation-context"
 
 const QUICK_HREFS = ["/dashboard", "/matches", "/tournaments", "/draft"]
 
@@ -20,19 +20,16 @@ const QUICK_ICONS: Record<string, typeof Home> = {
 }
 
 function BarItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
-  const { navigate } = useNavigation()
   const Icon = QUICK_ICONS[item.href] ?? item.icon
   const accent = ACCENTS[item.accent]
 
   return (
     <Link
       href={item.href}
-      onClick={(event) => {
-        event.preventDefault()
-        if (!isActive) navigate(item.href)
-      }}
+      prefetch={true}
       className={`relative mx-0.5 flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl py-1 transition-colors ${isActive ? "bg-white/[0.04]" : ""}`}
     >
+      <NavigationLinkSignal />
       {isActive && <span className={`absolute top-0 h-0.5 w-5 rounded-full ${accent.bar}`} />}
       <Icon className={`h-5 w-5 transition-colors ${isActive ? accent.text : "text-gray-500"}`} />
       <span className={`text-[10px] font-medium transition-colors ${isActive ? "text-white" : "text-gray-600"}`}>
@@ -45,7 +42,6 @@ function BarItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
 export function MobileBottomNav() {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
-  const { navigate } = useNavigation()
   const flags = useEnabledFeatures()
   const permissions = useMyPermissions()
 
@@ -98,15 +94,13 @@ export function MobileBottomNav() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      onClick={(event) => {
-                        event.preventDefault()
-                        if (!isActive) navigate(item.href)
-                        setOpen(false)
-                      }}
+                      prefetch={true}
+                      onClick={() => setOpen(false)}
                       className={`flex cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 transition-colors ${
                         isActive ? `${accent.bg} ${accent.text}` : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
                       }`}
                     >
+                      <NavigationLinkSignal />
                       <item.icon className={`mt-0.5 h-[18px] w-[18px] flex-shrink-0 ${item.locked ? "opacity-50" : ""}`} />
                       <span className="min-w-0">
                         <span className="flex items-center gap-1.5 text-sm font-semibold leading-tight">
