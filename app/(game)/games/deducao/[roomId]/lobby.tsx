@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Check, Copy, Lock, LogOut, Play, Send } from "lucide-react"
+import { decodeToken, getToken } from "@/lib/auth"
 import { toast } from "@/lib/toast"
 import { PlayerBadge } from "./badge"
 import type { Snapshot } from "./use-deducao-room"
@@ -51,11 +52,12 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
   const isHost = snapshot.hostId === me
   const missing = Math.max(0, minPlayers - snapshot.players.length)
   const notReady = snapshot.players.filter((player) => !player.ready && player.id !== snapshot.hostId).length
+  const canStartSolo = decodeToken(getToken() ?? "")?.role === "ADMIN"
   const [draft, setDraft] = useState("")
-  const chatEnd = useRef<HTMLDivElement>(null)
+  const chatList = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    chatEnd.current?.scrollIntoView({ block: "end" })
+    if (chatList.current) chatList.current.scrollTop = chatList.current.scrollHeight
   }, [snapshot.chat.length])
 
   const copyCode = async () => {
@@ -71,9 +73,9 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
   }
 
   return (
-    <div className="min-h-full bg-zinc-950 px-4 py-6 sm:px-6 lg:px-10">
-      <div className="mx-auto max-w-6xl">
-        <header className="flex flex-wrap items-start justify-between gap-4">
+    <div className="h-full overflow-y-auto bg-zinc-950 px-4 py-4 sm:px-6 lg:overflow-hidden lg:px-8 lg:py-5">
+      <div className="mx-auto flex min-h-full max-w-[1600px] flex-col lg:h-full lg:min-h-0">
+        <header className="flex shrink-0 flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-amber-300/70">
               Timbas Detetive
@@ -104,14 +106,14 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
           </div>
         </header>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-          <section>
+        <div className="mt-5 grid flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(0,1.2fr)_minmax(26rem,0.8fr)] xl:grid-cols-[minmax(0,1.25fr)_minmax(34rem,0.75fr)]">
+          <section className="min-h-0 lg:overflow-y-auto lg:pr-2">
             <div className="flex items-baseline justify-between">
               <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">Jogadores</h2>
               <span className="font-mono text-xs text-zinc-500">{snapshot.players.length}/12</span>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
               {snapshot.players.map((player) => (
                 <PlayerBadge
                   key={player.id}
@@ -142,7 +144,7 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
                 <button
                   type="button"
                   onClick={() => onSend("start")}
-                  disabled={missing > 0 || notReady > 0}
+                  disabled={(!canStartSolo && missing > 0) || notReady > 0}
                   className="cursor-pointer rounded-xl bg-amber-400 px-6 py-3 text-sm font-black uppercase tracking-wide text-zinc-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-500"
                 >
                   <Play className="mr-2 inline h-4 w-4" />
@@ -151,7 +153,9 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
               )}
 
               <p className="text-xs text-zinc-500">
-                {missing > 0
+                {canStartSolo && missing > 0
+                  ? "Você pode iniciar sozinho para testar."
+                  : missing > 0
                   ? `Faltam ${missing} para começar.`
                   : notReady > 0
                     ? `${notReady} ainda não marcaram pronto.`
@@ -162,13 +166,13 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
             </div>
           </section>
 
-          <aside className="space-y-6">
-            <section className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
+          <aside className="grid min-h-0 gap-4 lg:grid-rows-[auto_minmax(9rem,1fr)]">
+            <section className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
               <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">
                 Regras da partida
               </h2>
 
-              <div className="mt-4 space-y-4">
+              <div className="mt-3 grid gap-x-5 gap-y-3 lg:grid-cols-2">
                 {RULES.map((rule) => {
                   const raw = Number(snapshot.config[rule.key] ?? 0)
                   const shown = rule.unit === "s" && rule.key.endsWith("Ms") ? raw / 1000 : raw
@@ -189,14 +193,14 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
                         value={raw}
                         disabled={!isHost}
                         onChange={(event) => onSend("config", { [rule.key]: Number(event.target.value) })}
-                        className="mt-2 w-full cursor-pointer accent-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="mt-1 w-full cursor-pointer accent-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
                       />
-                      <p className="mt-1 text-[11px] leading-snug text-zinc-600">{rule.hint}</p>
+                      <p className="text-[10px] leading-snug text-zinc-600">{rule.hint}</p>
                     </div>
                   )
                 })}
 
-                <label className="flex cursor-pointer items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
+                <label className="flex cursor-pointer items-center justify-between gap-3 border-t border-white/[0.06] pt-3 lg:col-span-2">
                   <span>
                     <span className="block text-xs font-bold text-zinc-300">Detetive na sala</span>
                     <span className="mt-1 block text-[11px] text-zinc-600">
@@ -213,12 +217,12 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
                 </label>
               </div>
 
-              {!isHost && <p className="mt-4 text-[11px] text-zinc-600">Quem ajusta as regras é o anfitrião.</p>}
+              {!isHost && <p className="mt-3 text-[11px] text-zinc-600">Quem ajusta as regras é o anfitrião.</p>}
             </section>
 
-            <section className="flex h-72 flex-col rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+            <section className="flex h-64 min-h-0 flex-col rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 lg:h-auto">
               <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">Chat</h2>
-              <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+              <div ref={chatList} className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                 {snapshot.chat.map((message) => (
                   <p key={message.id} className="text-[13px] leading-snug">
                     {message.system ? (
@@ -233,7 +237,6 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
                     )}
                   </p>
                 ))}
-                <div ref={chatEnd} />
               </div>
               <div className="mt-3 flex gap-2">
                 <input

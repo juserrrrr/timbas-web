@@ -97,7 +97,7 @@ export default function DeducaoRoomPage() {
   if (room.snapshot.phase === "lobby") {
     return (
       <GameScreen>
-        <div className="h-full overflow-y-auto">
+        <div className="h-full overflow-hidden">
           <Lobby snapshot={room.snapshot} me={room.me} minPlayers={minPlayers} onSend={room.send} onLeave={leave} />
         </div>
       </GameScreen>
