@@ -8,6 +8,7 @@ import { BetaBadge } from "@/components/ui/beta-badge"
 import { ACCENTS, footerItemsFor, isNavItemActive, navGroupsFor, type NavItem } from "@/lib/navigation"
 import { useEnabledFeatures } from "@/hooks/use-enabled-features"
 import { useMyPermissions } from "@/hooks/use-my-permissions"
+import { useMyRole } from "@/hooks/use-my-role"
 import { NavigationLinkSignal } from "@/lib/navigation-context"
 
 const QUICK_HREFS = ["/dashboard", "/matches", "/tournaments", "/draft"]
@@ -44,13 +45,14 @@ export function MobileBottomNav() {
   const pathname = usePathname()
   const flags = useEnabledFeatures()
   const permissions = useMyPermissions()
+  const role = useMyRole()
 
   useEffect(() => {
     setOpen(false)
   }, [pathname])
 
-  const groups = navGroupsFor(flags, permissions)
-  const footerItems = footerItemsFor(flags, permissions)
+  const groups = navGroupsFor(flags, permissions, role)
+  const footerItems = footerItemsFor(flags, permissions, role)
   const allItems = [...groups.flatMap((group) => group.items), ...footerItems]
   const quickItems = QUICK_HREFS.map((href) => allItems.find((item) => item.href === href)).filter(
     (item): item is NavItem => Boolean(item),

@@ -8,12 +8,14 @@ import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { useEnabledFeatures } from "@/hooks/use-enabled-features"
 import { useMyPermissions } from "@/hooks/use-my-permissions"
+import { useMyRole } from "@/hooks/use-my-role"
 import { ALL_NAV_ITEMS, isNavItemActive, normalizeDashboardPathname } from "@/lib/navigation"
 
 export function DashboardAccessGate({ children }: { children: ReactNode }) {
   const pathname = normalizeDashboardPathname(usePathname())
   const flags = useEnabledFeatures()
   const permissions = useMyPermissions()
+  const role = useMyRole()
   const candidates = [...ALL_NAV_ITEMS].sort((left, right) => right.href.length - left.href.length)
   const item = candidates.find((candidate) => (
     candidate.href === "/dashboard"
@@ -26,7 +28,10 @@ export function DashboardAccessGate({ children }: { children: ReactNode }) {
     return <div className="flex min-h-[55vh] items-center justify-center"><Spinner className="size-6 text-blue-400" /></div>
   }
 
-  const featureLocked = Boolean(item.flag) && !flags.includes(item.flag!)
+  // Recurso marcado com adminBypass abre para o admin mesmo desligado, para ele
+  // conferir a tela antes de liberar. A própria página avisa que está assim.
+  const bypass = Boolean(item.adminBypass) && role === "ADMIN"
+  const featureLocked = !bypass && Boolean(item.flag) && !flags.includes(item.flag!)
   const permissionLocked = Boolean(item.permission) && !permissions.includes(item.permission!)
   if (!featureLocked && !permissionLocked) return children
 

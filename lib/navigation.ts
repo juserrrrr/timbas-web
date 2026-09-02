@@ -4,6 +4,7 @@ import {
   Gamepad2,
   History,
   Home,
+  Joystick,
   MonitorPlay,
   Settings,
   ShieldAlert,
@@ -18,6 +19,7 @@ import {
   FEATURE_DASHBOARD_CLASH,
   FEATURE_DASHBOARD_DRAFT,
   FEATURE_DASHBOARD_EA,
+  FEATURE_DASHBOARD_GAMES,
   FEATURE_DASHBOARD_HOME,
   FEATURE_DASHBOARD_LOL_PROFILE,
   FEATURE_DASHBOARD_LOL_VERIFY,
@@ -48,6 +50,10 @@ export type NavItem = {
   /// na lista, marcado como bloqueado, em vez de sumir do menu.
   flag?: string
   permission?: string
+  /// Recurso que o admin abre mesmo com a flag desligada, para conferir antes
+  /// de liberar para todo mundo. Só vale para a flag: permissão continua
+  /// valendo, e o admin já tem todas.
+  adminBypass?: boolean
   /// Preenchido em runtime por navGroupsFor: a flag do item está desligada.
   locked?: boolean
   lockedReason?: "feature" | "permission"
@@ -140,6 +146,23 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: "jogos",
+    title: "Jogos",
+    items: [
+      {
+        icon: Joystick,
+        label: "Jogos",
+        description: "Salas de jogos para jogar com a galera aqui mesmo",
+        href: "/games",
+        accent: "violet",
+        beta: true,
+        flag: FEATURE_DASHBOARD_GAMES,
+        permission: "dashboard.games",
+        adminBypass: true,
+      },
+    ],
+  },
+  {
     id: "lol",
     title: "League of Legends",
     items: [
@@ -196,8 +219,14 @@ export function dashboardShellKey(pathname: string): string {
 /// ele fica sempre visível, com cadeado, e a própria página explica o motivo.
 /// `flags` em null significa que a resposta da API ainda não chegou, e nesse
 /// caso nada é marcado: um cadeado que aparece e some é pior do que esperar.
-function navItemForAccess(item: NavItem, flags: string[] | null, permissions: string[] | null): NavItem {
-  const featureLocked = Boolean(flags) && Boolean(item.flag) && !flags!.includes(item.flag!)
+function navItemForAccess(
+  item: NavItem,
+  flags: string[] | null,
+  permissions: string[] | null,
+  role: string | null = null,
+): NavItem {
+  const bypass = Boolean(item.adminBypass) && role === "ADMIN"
+  const featureLocked = !bypass && Boolean(flags) && Boolean(item.flag) && !flags!.includes(item.flag!)
   const permissionLocked = Boolean(permissions) && Boolean(item.permission) && !permissions!.includes(item.permission!)
   return {
     ...item,
@@ -206,15 +235,23 @@ function navItemForAccess(item: NavItem, flags: string[] | null, permissions: st
   }
 }
 
-export function navGroupsFor(flags: string[] | null, permissions: string[] | null = null): NavGroup[] {
+export function navGroupsFor(
+  flags: string[] | null,
+  permissions: string[] | null = null,
+  role: string | null = null,
+): NavGroup[] {
   return NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.map((item) => navItemForAccess(item, flags, permissions)),
+    items: group.items.map((item) => navItemForAccess(item, flags, permissions, role)),
   }))
 }
 
-export function footerItemsFor(flags: string[] | null, permissions: string[] | null): NavItem[] {
-  return FOOTER_ITEMS.map((item) => navItemForAccess(item, flags, permissions))
+export function footerItemsFor(
+  flags: string[] | null,
+  permissions: string[] | null,
+  role: string | null = null,
+): NavItem[] {
+  return FOOTER_ITEMS.map((item) => navItemForAccess(item, flags, permissions, role))
 }
 
 export function isNavItemActive(

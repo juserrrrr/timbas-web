@@ -9,6 +9,7 @@
     "start": "next start -p 8080"
   },
   "dependencies": {
+    "@colyseus/sdk": "^0.18.2",
     "@fontsource/anton": "^5.3.0",
     "@fontsource/black-ops-one": "^5.3.0",
     "@fontsource/cinzel-decorative": "^5.3.0",
@@ -43,7 +44,10 @@
     "@radix-ui/react-toggle": "1.1.10",
     "@radix-ui/react-toggle-group": "1.1.11",
     "@radix-ui/react-tooltip": "1.2.8",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
     "@types/qrcode": "^1.5.6",
+    "@types/three": "^0.185.4",
     "@vercel/analytics": "latest",
     "autoprefixer": "^10.4.27",
     "babel-plugin-react-compiler": "^1.0.0",
@@ -70,6 +74,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
+    "three": "^0.185.1",
     "vaul": "^1.1.2",
     "zod": "4.3.6"
   },

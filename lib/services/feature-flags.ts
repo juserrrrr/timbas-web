@@ -21,6 +21,8 @@ export const FEATURE_DASHBOARD_CLASH = 'dashboard_clash'
 export const FEATURE_DASHBOARD_LOL_VERIFY = 'dashboard_lol_verify'
 export const FEATURE_DASHBOARD_LOL_PROFILE = 'dashboard_lol_profile'
 export const FEATURE_DASHBOARD_SETTINGS = 'dashboard_settings'
+export const FEATURE_DASHBOARD_GAMES = 'dashboard_games'
+export const FEATURE_GAME_DEDUCAO = 'game_deducao'
 
 export interface FeatureFlag {
   key: string

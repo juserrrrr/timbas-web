@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server'
 const CLEAN_DASHBOARD_ROOTS = new Set([
   'matches', 'match', 'history', 'stats', 'teams', 'versus', 'ranking',
   'tournaments', 'draft', 'ea-clubs', 'clash', 'verify', 'lol-profile',
-  'streams', 'profile', 'settings',
+  'streams', 'games', 'profile', 'settings',
 ])
 
 const LEGACY_DASHBOARD_ROOTS: Record<string, string> = {
@@ -94,6 +94,7 @@ export const config = {
     '/matches/:path*', '/match/:path*', '/history/:path*', '/stats/:path*',
     '/teams/:path*', '/versus/:path*', '/ranking/:path*', '/tournaments/:path*',
     '/draft/:path*', '/ea-clubs/:path*', '/clash/:path*', '/verify/:path*',
-    '/lol-profile/:path*', '/streams/:path*', '/profile/:path*', '/settings/:path*',
+    '/lol-profile/:path*', '/streams/:path*', '/games/:path*', '/profile/:path*',
+    '/settings/:path*',
   ],
 }
