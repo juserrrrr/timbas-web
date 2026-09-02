@@ -1,113 +1,76 @@
 "use client"
 
-import { CalendarClock, Gamepad2, GitBranch, Trophy, Users } from "lucide-react"
+import { BarChart3, CheckCircle2, GitBranch, ScanLine, ShieldCheck, Sparkles, Trophy } from "lucide-react"
+import { PlayerRatingCard } from "@/components/competitions/player-rating-card"
 import { useSequence } from "../motion"
 import { Frame, StorySection } from "../section"
 
-const FORMATS = ["Eliminação simples", "Eliminação dupla", "Pontos corridos", "Grupos + mata-mata", "Série MD5"]
-
-const SEMIS = [
-  { home: "Timbas FC", away: "Pé Frio", score: "3 x 1" },
-  { home: "Vila Nova", away: "Resenha FC", score: "2 x 0" },
+const AUTOMATION_STEPS = [
+  "Partidas criadas pela tabela",
+  "Jogo encontrado na EA",
+  "Placar e atletas importados",
+  "Chave e seleção atualizadas",
 ]
 
-function Slot({
-  name,
-  score,
-  state,
-}: {
-  name: string
-  score?: string
-  state: "idle" | "winner" | "loser"
-}) {
-  return (
-    <div
-      className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-all duration-500 ${
-        state === "winner"
-          ? "border-amber-400/40 bg-amber-400/[0.12]"
-          : state === "loser"
-            ? "border-white/[0.05] bg-black/20 opacity-45"
-            : "border-white/[0.07] bg-black/25"
-      }`}
-    >
-      <span className={`flex-1 truncate text-[11.5px] font-bold ${state === "winner" ? "text-amber-200" : "text-gray-300"}`}>
-        {name || "A definir"}
-      </span>
-      {score && <span className="font-mono text-[10.5px] tabular-nums text-gray-500">{score}</span>}
-    </div>
-  )
-}
+const FEATURED_PLAYERS = [
+  { playerName: "Nando", primaryPosition: "ST", averageRating: 10, craqueScore: 10, team: { name: "Timbas FC", logoUrl: null } },
+  { playerName: "DK", primaryPosition: "CAM", averageRating: 9.4, craqueScore: 9.72, team: { name: "Vila Nova", logoUrl: null } },
+  { playerName: "Rodrigo", primaryPosition: "CB", averageRating: 8.7, craqueScore: 9.05, team: { name: "Resenha FC", logoUrl: null } },
+]
 
-function Bracket() {
-  const { ref, step } = useSequence(6, 1150)
-  const format = FORMATS[step % FORMATS.length]
-
-  const semiDecided = (index: number) => step >= index + 1
-  const finalists = [semiDecided(0) ? SEMIS[0].home : "", semiDecided(1) ? SEMIS[1].home : ""]
-  const finalDecided = step >= 3
-  const champion = step >= 4
+function TournamentCenter() {
+  const { ref, step } = useSequence(AUTOMATION_STEPS.length, 1450)
 
   return (
     <div ref={ref}>
-      <Frame label="timbas.gg/tournaments" accent="amber">
+      <Frame label="copa timbas · central do campeonato" accent="amber">
         <div className="p-4 sm:p-5">
-          <div className="flex flex-wrap gap-1.5">
-            {FORMATS.map((option) => (
-              <span
-                key={option}
-                className={`rounded-md border px-2 py-1 text-[10px] font-bold transition-all duration-500 ${
-                  option === format
-                    ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
-                    : "border-white/[0.06] text-gray-600"
-                }`}
-              >
-                {option}
-              </span>
-            ))}
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-300">EA Sports FC · 8 clubes</p>
+              <h3 className="mt-1 text-base font-black text-white">Copa Pro Clubs</h3>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/[0.08] px-2.5 py-1 text-[8px] font-black uppercase tracking-wider text-emerald-300">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" /> Automático
+            </span>
           </div>
 
-          <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
-            <div className="space-y-4">
-              {SEMIS.map((match, index) => (
-                <div key={match.home} className="space-y-1.5">
-                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-gray-600">Semifinal {index + 1}</p>
-                  <Slot
-                    name={match.home}
-                    score={semiDecided(index) ? match.score.split(" x ")[0] : undefined}
-                    state={semiDecided(index) ? "winner" : "idle"}
-                  />
-                  <Slot
-                    name={match.away}
-                    score={semiDecided(index) ? match.score.split(" x ")[1] : undefined}
-                    state={semiDecided(index) ? "loser" : "idle"}
-                  />
+          <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/25 p-3.5">
+            <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-[0.14em] text-gray-600">
+              <span>Semifinal · encerrada</span>
+              <span>EA verificada</span>
+            </div>
+            <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <div><p className="truncate text-[12px] font-black text-white">Timbas FC</p><p className="mt-0.5 text-[9px] text-gray-600">Mandante</p></div>
+              <div className="rounded-lg border border-amber-300/20 bg-amber-300/[0.07] px-3 py-1.5 font-mono text-lg font-black tabular-nums text-amber-200">3 <span className="text-gray-700">×</span> 1</div>
+              <div className="text-right"><p className="truncate text-[12px] font-black text-white">Vila Nova</p><p className="mt-0.5 text-[9px] text-gray-600">Visitante</p></div>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-4 gap-1.5">
+            {AUTOMATION_STEPS.map((label, index) => {
+              const active = index <= step
+              return (
+                <div key={label} className={`rounded-lg border px-2 py-2 transition duration-500 ${active ? "border-emerald-400/25 bg-emerald-400/[0.07]" : "border-white/[0.06] bg-white/[0.015]"}`}>
+                  <CheckCircle2 className={`h-3.5 w-3.5 transition-colors ${active ? "text-emerald-300" : "text-gray-700"}`} />
+                  <p className={`mt-1.5 text-[7px] font-bold leading-tight transition-colors sm:text-[8px] ${active ? "text-gray-300" : "text-gray-700"}`}>{label}</p>
                 </div>
-              ))}
-            </div>
+              )
+            })}
+          </div>
 
-            <div className="flex h-full flex-col items-center justify-center">
-              <span className="h-24 w-px bg-white/[0.08]" />
-              <GitBranch className="my-1 h-3.5 w-3.5 rotate-90 text-gray-700" />
-              <span className="h-24 w-px bg-white/[0.08]" />
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.16em] text-fuchsia-300"><Sparkles className="h-3 w-3" /> Seleção do campeonato</p>
+              <p className="mt-0.5 text-[9px] text-gray-600">Posição real, nota até 10 e carta por faixa.</p>
             </div>
+            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[8px] font-black text-gray-500">4-3-3</span>
+          </div>
 
-            <div className="space-y-1.5">
-              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-gray-600">Final</p>
-              <Slot name={finalists[0]} score={finalDecided ? "2" : undefined} state={finalDecided ? "winner" : "idle"} />
-              <Slot name={finalists[1]} score={finalDecided ? "0" : undefined} state={finalDecided ? "loser" : "idle"} />
-
-              <div
-                className={`overflow-hidden transition-all duration-500 ${champion ? "mt-3 max-h-24 opacity-100" : "max-h-0 opacity-0"}`}
-              >
-                <div className="flex items-center gap-2 rounded-xl border border-amber-400/30 bg-gradient-to-br from-amber-400/[0.14] to-transparent px-3 py-2.5">
-                  <Trophy className="h-4 w-4 flex-shrink-0 text-amber-300" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[12px] font-black text-white">Timbas FC</span>
-                    <span className="block text-[10px] text-amber-300/80">campeão da Copa Timbas</span>
-                  </span>
-                </div>
-              </div>
-            </div>
+          <div className="mt-3 grid grid-cols-3 gap-2.5">
+            {FEATURED_PLAYERS.map((player) => (
+              <PlayerRatingCard key={player.playerName} player={player} position={player.primaryPosition} compact />
+            ))}
           </div>
         </div>
       </Frame>
@@ -119,33 +82,38 @@ export function TournamentsStory() {
   return (
     <StorySection
       id="campeonatos"
-      eyebrow="Campeonatos"
-      title="Chave montada, resultado lançado, campeão"
-      highlight="definido."
-      description="Crie o campeonato, abra as inscrições e deixe a plataforma cuidar do resto. Cada resultado empurra a chave sozinho, e todo mundo acompanha pelo mesmo link."
+      eyebrow="Campeonato de EA FC"
+      title="Do primeiro confronto ao 4-3-3, o campeonato"
+      highlight="anda sozinho."
+      description="O Timbas cria as partidas, procura cada jogo na EA, aplica o placar, avança a chave e transforma posição, nota, gols e assistências em uma seleção completa do campeonato."
       accent="amber"
       reverse
-      media={<Bracket />}
+      media={<TournamentCenter />}
       points={[
         {
           icon: GitBranch,
-          title: "Cinco formatos de disputa",
-          text: "Eliminação simples, eliminação dupla, pontos corridos, grupos com mata-mata e série melhor de 3, 5 ou 7.",
+          title: "Tabela e partidas automáticas",
+          text: "Grupos, pontos corridos ou mata-mata. O próximo confronto nasce assim que o anterior termina.",
         },
         {
-          icon: Gamepad2,
-          title: "Seis jogos na mesma casa",
-          text: "EA Sports FC, League of Legends, Valorant, Counter-Strike, Rocket League ou o que a galera inventar.",
+          icon: ScanLine,
+          title: "Placar buscado direto na EA",
+          text: "Os clubes jogam normalmente no Pro Clubs. O servidor encontra a partida certa e fecha o resultado.",
         },
         {
-          icon: Users,
-          title: "Time se inscreve sozinho",
-          text: "O capitão monta o elenco, entra na chave e a organização só aprova quando precisa.",
+          icon: BarChart3,
+          title: "Posição, nota e estatísticas reais",
+          text: "Cada atuação alimenta artilharia, assistências, índice do craque e a posição mais jogada do atleta.",
         },
         {
-          icon: CalendarClock,
-          title: "Janela de inscrição com hora marcada",
-          text: "As inscrições fecham no horário combinado e o campeonato começa sem ninguém correndo atrás.",
+          icon: Trophy,
+          title: "Seleção 4-3-3 e cards por nível",
+          text: "Os onze melhores aparecem no campo. Nota 10 vira ouro, 9+ ganha roxo e as faixas ficam mais simples ao cair.",
+        },
+        {
+          icon: ShieldCheck,
+          title: "Resultado com trilha de validação",
+          text: "Se a EA falhar, a organização ainda pode revisar a prova sem travar o andamento da competição.",
         },
       ]}
     />

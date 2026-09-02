@@ -10,9 +10,9 @@ import { Counter, Parallax, Reveal } from "./motion"
 import { DiscordLobby } from "./discord-lobby"
 
 const CAPABILITIES = [
-  { icon: Swords, value: "12", label: "comandos no Discord" },
   { icon: Trophy, value: "5", label: "formatos de chave" },
-  { icon: Gamepad2, value: "6", label: "jogos na competição" },
+  { icon: Gamepad2, value: "Auto", label: "placares buscados na EA" },
+  { icon: Swords, value: "11", label: "cards na seleção" },
 ]
 
 export function Hero() {
@@ -43,24 +43,24 @@ export function Hero() {
               {/* O bordão da galera abrindo a página, antes de qualquer explicação. */}
               <p className="mb-6 flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.24em] text-white sm:text-[13px]">
                 <span aria-hidden className="h-px w-8 flex-shrink-0 bg-gradient-to-r from-blue-400 to-red-400" />
-                É o Timbas, pai.
+                Campeonato de EA FC sem planilha
               </p>
             </Reveal>
 
             <Reveal delay={40}>
               <h1 className="font-display text-[clamp(2.6rem,7vw,4.6rem)] text-white">
-                Tudo que a sua galera joga,{" "}
+                Seu campeonato de EA FC anda sozinho.{" "}
                 <span className="bg-gradient-to-r from-blue-400 via-white to-red-400 bg-clip-text text-transparent">
-                  num lugar só.
+                  A resenha inteira fica aqui.
                 </span>
               </h1>
             </Reveal>
 
             <Reveal delay={80}>
               <p className="mt-6 max-w-[52ch] text-[16px] leading-relaxed text-gray-400">
-                Partida personalizada de LoL sorteada no Discord, campeonato de qualquer jogo com chave que anda
-                sozinha, liga draft de EA FC que busca o placar na própria EA, transmissão ao vivo para a galera
-                assistir e um ranking que nasce do histórico, não do achismo.
+                Crie grupos ou mata-mata, conecte os clubes e jogue. O Timbas encontra as partidas na EA, aplica o
+                placar, atualiza a chave e monta uma seleção 4-3-3 com posição, nota e cards por nível. Discord,
+                transmissão e ranking continuam juntos no mesmo lugar.
               </p>
             </Reveal>
 
@@ -71,8 +71,8 @@ export function Hero() {
                   size="lg"
                   className="group h-12 bg-blue-600 px-7 text-[15px] font-bold shadow-lg shadow-blue-600/25 hover:bg-blue-500"
                 >
-                  <Link href="/dashboard">
-                    Entrar com Discord
+                  <Link href="/tournaments">
+                    Ver meus campeonatos
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </Button>
@@ -82,7 +82,7 @@ export function Hero() {
                   variant="outline"
                   className="h-12 border-white/10 bg-white/[0.04] px-7 text-[15px] font-bold text-gray-300 backdrop-blur hover:bg-white/[0.08] hover:text-white"
                 >
-                  <a href="#tudo">Ver tudo que tem dentro</a>
+                  <a href="#campeonatos">Ver o campeonato automático</a>
                 </Button>
               </div>
             </Reveal>
@@ -129,8 +129,8 @@ export function Hero() {
               delay="1.6s"
               tone="border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
               icon={Timer}
-              title="Draft ao vivo"
-              detail="Fúria escolhe em 00:12"
+              title="Seleção atualizada"
+              detail="4-3-3 montado com notas da EA"
             />
             <FloatingChip
               className="-bottom-6 right-4 sm:right-0"

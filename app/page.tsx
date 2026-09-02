@@ -35,9 +35,9 @@ export default function HomePage() {
       <main>
         <Hero />
         <Overview />
-        <CustomMatchStory />
         <TournamentsStory />
         <EaAutoStory />
+        <CustomMatchStory />
         <DraftStory />
         <LiveStory />
         <RiftToolsStory />

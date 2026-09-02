@@ -22,18 +22,18 @@ const PILLARS: Array<{
   href: string
 }> = [
   {
+    icon: Trophy,
+    title: "Campeonato automático",
+    text: "Partidas, placares da EA, chave, estatísticas e seleção 4-3-3 no mesmo fluxo.",
+    accent: "amber",
+    href: "#campeonatos",
+  },
+  {
     icon: Swords,
     title: "Partida personalizada",
     text: "Sala no Discord, times sorteados e placar registrado sozinho.",
     accent: "blue",
     href: "#partidas",
-  },
-  {
-    icon: Trophy,
-    title: "Campeonatos",
-    text: "Chave de qualquer jogo, de eliminação simples a grupos e mata-mata.",
-    accent: "amber",
-    href: "#campeonatos",
   },
   {
     icon: Gamepad2,

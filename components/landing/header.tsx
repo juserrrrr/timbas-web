@@ -8,9 +8,9 @@ import { useActiveSection, useScrollProgress } from "./motion"
 
 const LINKS = [
   { id: "tudo", label: "O que tem" },
-  { id: "partidas", label: "Partidas" },
   { id: "campeonatos", label: "Campeonatos" },
   { id: "ea", label: "EA automático" },
+  { id: "partidas", label: "Partidas" },
   { id: "draft", label: "Draft" },
   { id: "bot", label: "Bot" },
 ]

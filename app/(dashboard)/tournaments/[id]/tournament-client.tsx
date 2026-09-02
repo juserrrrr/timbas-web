@@ -227,7 +227,7 @@ export function TournamentClient({
       tournament.access.teamIds.length > 0 && { id: "my-matches" as const, label: "Minhas partidas", icon: Play },
       { id: "matches" as const, label: "Partidas", icon: Swords },
       { id: "teams" as const, label: "Times", icon: Users },
-      tournament.game === "EA_FC" && { id: "ea-stats" as const, label: tournament.status === "FINISHED" ? "Premiações e estatísticas" : "Estatísticas EA", icon: BarChart3 },
+      tournament.game === "EA_FC" && { id: "ea-stats" as const, label: tournament.status === "FINISHED" ? "Seleção e premiações" : "Seleção e estatísticas", icon: BarChart3 },
       tournament.access.canModerate && {
         id: "proofs" as const,
         label: "Aprovações",
