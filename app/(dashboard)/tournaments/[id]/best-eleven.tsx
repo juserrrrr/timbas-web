@@ -33,9 +33,9 @@ export function BestEleven({ players }: { players: TournamentEaPlayerStats[] }) 
           <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">
             <Sparkles className="h-3.5 w-3.5" /> Seleção do campeonato
           </p>
-          <h3 className="mt-1 text-2xl font-black text-white">Os 11 da competição em um 4–3–3</h3>
+          <h3 className="mt-1 text-2xl font-black text-white">Os 11 da competição em um 4-3-3</h3>
           <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-gray-500">
-            A posição mais jogada vem das partidas sincronizadas com a EA. Em cada setor, o índice do campeonato decide quem entra.
+            A posição mais jogada vem das partidas sincronizadas com a EA. A maior nota média define cada posição; índice e jogos entram apenas no desempate.
           </p>
         </div>
         <span className="flex w-fit items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-400">

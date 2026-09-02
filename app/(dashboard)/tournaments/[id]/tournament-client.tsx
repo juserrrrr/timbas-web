@@ -15,6 +15,7 @@ import {
   Play,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
   Swords,
   Table2,
   Ticket,
@@ -49,6 +50,7 @@ import { StaffPanel } from "./staff-panel"
 import { StandingsView } from "./standings-view"
 import { TeamsPanel } from "./teams-panel"
 import { EaStatsView } from "./ea-stats-view"
+import { BestElevenView } from "./best-eleven-view"
 import { InvitesPanel } from "./invites-panel"
 import { matchTiming } from "@/lib/tournament-match-timing"
 import { brasiliaLocalToIso } from "@/lib/date-time"
@@ -71,7 +73,7 @@ function TournamentMetric({ label, value, icon, tone }: { label: string; value: 
   )
 }
 
-type TabId = "series" | "bracket" | "standings" | "my-matches" | "matches" | "teams" | "ea-stats" | "proofs" | "invites" | "staff"
+type TabId = "series" | "bracket" | "standings" | "my-matches" | "matches" | "teams" | "best-eleven" | "ea-stats" | "proofs" | "invites" | "staff"
 
 export function TournamentClient({
   tournamentId,
@@ -227,7 +229,8 @@ export function TournamentClient({
       tournament.access.teamIds.length > 0 && { id: "my-matches" as const, label: "Minhas partidas", icon: Play },
       { id: "matches" as const, label: "Partidas", icon: Swords },
       { id: "teams" as const, label: "Times", icon: Users },
-      tournament.game === "EA_FC" && { id: "ea-stats" as const, label: tournament.status === "FINISHED" ? "Seleção e premiações" : "Seleção e estatísticas", icon: BarChart3 },
+      tournament.game === "EA_FC" && { id: "best-eleven" as const, label: "Seleção do campeonato", icon: Sparkles },
+      tournament.game === "EA_FC" && { id: "ea-stats" as const, label: tournament.status === "FINISHED" ? "Premiações e estatísticas" : "Estatísticas EA", icon: BarChart3 },
       tournament.access.canModerate && {
         id: "proofs" as const,
         label: "Aprovações",
@@ -528,6 +531,7 @@ export function TournamentClient({
           {tab === "my-matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} onlyMine />}
           {tab === "matches" && <MatchesView tournament={tournament} onSelectMatch={setSelectedMatch} />}
           {tab === "teams" && <TeamsPanel tournament={tournament} onChanged={() => void load()} />}
+          {tab === "best-eleven" && <BestElevenView tournamentId={tournament.id} finished={tournament.status === "FINISHED"} />}
           {tab === "ea-stats" && <EaStatsView tournamentId={tournament.id} finished={tournament.status === "FINISHED"} />}
           {tab === "proofs" && <ProofReviewPanel tournamentId={tournament.id} scoreAudit={scoreAudit} onReviewed={() => void load()} onNotice={setNotice} />}
           {tab === "invites" && <InvitesPanel tournamentId={tournament.id} registrationOpen={tournament.status === "REGISTRATION"} />}

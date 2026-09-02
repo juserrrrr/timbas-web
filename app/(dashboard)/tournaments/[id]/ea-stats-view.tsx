@@ -20,7 +20,6 @@ import { LoadingState } from "@/components/ui/loading-state"
 import { renderChampionCard, type ChampionCardData } from "@/lib/champion-card-render"
 import { DEFAULT_CHAMPION_CARD_LAYOUT, type ChampionCardLayout } from "@/lib/champion-card-config"
 import { useSmartPolling } from "@/hooks/use-smart-polling"
-import { BestEleven } from "./best-eleven"
 
 const TAGS: Record<string, string> = {
   MVP: "MVP",
@@ -311,7 +310,6 @@ export function EaStatsView({ tournamentId, finished = false }: { tournamentId: 
         </div>
       )}
       <div className={`${awardsReady ? "content-enter" : "pointer-events-none opacity-0"} space-y-4`} aria-hidden={!awardsReady}>
-      {players.length > 0 && <BestEleven players={players} />}
       {(championCard || awards.length > 0) && <section className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.07] to-transparent p-4"><div className="mb-5"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">Premiação oficial</p><h3 className="mt-1 text-xl font-black text-white">Campeão e destaques individuais</h3><p className="mt-1 text-[11px] text-gray-400">A carta central celebra o campeão e todo jogador registrado pelo clube durante a campanha. As demais usam as estatísticas do campeonato inteiro, não somente da final.</p></div>{championCard && <div className="mb-8 border-b border-amber-400/15 pb-8"><div className="mb-3 flex items-center justify-center gap-2 text-amber-300"><Trophy className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-[0.22em]">Carta única do campeão</span></div><ChampionCardPreview champion={championCard} tournamentId={tournamentId} layout={championLayout} reveal={awardsReady} onRendered={markChampionRendered} /></div>}{awards.length > 0 && <div><p className="mb-4 text-center text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Destaques individuais</p><div className="grid gap-4 md:grid-cols-3">{awards.map((award, index) => <AwardCardPreview key={award.title} award={award} tournamentId={tournamentId} settings={awardSettings} index={index} reveal={awardsReady} onRendered={markAwardRendered} />)}</div></div>}</section>}
     {players.length > 0 && <Card className="overflow-hidden border-white/[0.07] bg-white/[0.025]">
       <div className="border-b border-white/[0.06] p-4">

@@ -80,8 +80,12 @@ function lineForPosition(position: string | null): FormationLine | null {
   return null
 }
 
-function playerScore(player: TournamentEaPlayerStats) {
-  return Math.min(10, player.craqueScore ?? player.averageRating ?? 0)
+function playerRating(player: TournamentEaPlayerStats) {
+  return Math.min(10, player.averageRating ?? 0)
+}
+
+function playerIndex(player: TournamentEaPlayerStats) {
+  return Math.min(10, player.craqueScore ?? 0)
 }
 
 export function buildBestEleven(players: TournamentEaPlayerStats[]): FormationSlot[] {
@@ -89,8 +93,9 @@ export function buildBestEleven(players: TournamentEaPlayerStats[]): FormationSl
     .filter((player) => player.ratedAppearances > 0)
     .sort(
       (a, b) =>
-        playerScore(b) - playerScore(a) ||
-        b.appearances - a.appearances ||
+        playerRating(b) - playerRating(a) ||
+        playerIndex(b) - playerIndex(a) ||
+        b.ratedAppearances - a.ratedAppearances ||
         a.playerName.localeCompare(b.playerName, "pt-BR"),
     )
   const available = new Set(ranked)

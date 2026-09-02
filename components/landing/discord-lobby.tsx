@@ -53,26 +53,26 @@ export function DiscordLobby() {
               <span>Fmt: Aleatório</span>
               <span>Modo: Online</span>
             </span>
-            <span className="mt-1 flex items-center justify-between font-bold">
-              <span className="text-blue-400">TimeAzul</span>
-              <span className="text-gray-600">&lt; EQP &gt;</span>
-              <span className="text-red-400">TimeVermelho</span>
+            <span className="mt-1 grid grid-cols-[minmax(0,1fr)_52px_minmax(0,1fr)] items-center font-bold">
+              <span className="truncate text-blue-400">TimeAzul</span>
+              <span className="text-center text-gray-600">&lt; EQP &gt;</span>
+              <span className="truncate text-right text-red-400">TimeVermelho</span>
             </span>
             {BLUE.map((blueName, index) => {
               const left = slot(index, blueName)
               const right = slot(index + 5, RED[index])
               return (
-                <span key={blueName} className="flex items-center justify-between">
+                <span key={blueName} className="grid grid-cols-[minmax(0,1fr)_52px_minmax(0,1fr)] items-center">
                   <span
-                    className={`w-[42%] truncate transition-colors duration-300 ${
+                    className={`truncate transition-colors duration-300 ${
                       left === "Vazio" ? "text-gray-600" : sorted ? "text-blue-300" : "text-gray-200"
                     }`}
                   >
                     {left}
                   </span>
-                  <span className="text-gray-700">&lt; VS &gt;</span>
+                  <span className="text-center text-gray-700">&lt; VS &gt;</span>
                   <span
-                    className={`w-[42%] truncate text-right transition-colors duration-300 ${
+                    className={`truncate text-right transition-colors duration-300 ${
                       right === "Vazio" ? "text-gray-600" : sorted ? "text-red-300" : "text-gray-200"
                     }`}
                   >

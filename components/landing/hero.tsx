@@ -8,11 +8,12 @@ import { getToken } from "@/lib/auth"
 import { getLandingData } from "@/lib/services/landing"
 import { Counter, Parallax, Reveal } from "./motion"
 import { DiscordLobby } from "./discord-lobby"
+import { HeroTournamentPreview } from "./hero-tournament-preview"
 
 const CAPABILITIES = [
+  { icon: Swords, value: "12", label: "comandos no Discord" },
   { icon: Trophy, value: "5", label: "formatos de chave" },
-  { icon: Gamepad2, value: "Auto", label: "placares buscados na EA" },
-  { icon: Swords, value: "11", label: "cards na seleção" },
+  { icon: Gamepad2, value: "6", label: "jogos na competição" },
 ]
 
 export function Hero() {
@@ -43,24 +44,24 @@ export function Hero() {
               {/* O bordão da galera abrindo a página, antes de qualquer explicação. */}
               <p className="mb-6 flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.24em] text-white sm:text-[13px]">
                 <span aria-hidden className="h-px w-8 flex-shrink-0 bg-gradient-to-r from-blue-400 to-red-400" />
-                Campeonato de EA FC sem planilha
+                É o Timbas, pai.
               </p>
             </Reveal>
 
             <Reveal delay={40}>
               <h1 className="font-display text-[clamp(2.6rem,7vw,4.6rem)] text-white">
-                Seu campeonato de EA FC anda sozinho.{" "}
+                Tudo que a sua galera joga,{" "}
                 <span className="bg-gradient-to-r from-blue-400 via-white to-red-400 bg-clip-text text-transparent">
-                  A resenha inteira fica aqui.
+                  num lugar só.
                 </span>
               </h1>
             </Reveal>
 
             <Reveal delay={80}>
               <p className="mt-6 max-w-[52ch] text-[16px] leading-relaxed text-gray-400">
-                Crie grupos ou mata-mata, conecte os clubes e jogue. O Timbas encontra as partidas na EA, aplica o
-                placar, atualiza a chave e monta uma seleção 4-3-3 com posição, nota e cards por nível. Discord,
-                transmissão e ranking continuam juntos no mesmo lugar.
+                Partida personalizada de LoL sorteada no Discord, campeonato de qualquer jogo com chave que anda
+                sozinha, liga draft de EA FC que busca o placar na própria EA, transmissão ao vivo para a galera
+                assistir e um ranking que nasce do histórico, não do achismo.
               </p>
             </Reveal>
 
@@ -71,8 +72,8 @@ export function Hero() {
                   size="lg"
                   className="group h-12 bg-blue-600 px-7 text-[15px] font-bold shadow-lg shadow-blue-600/25 hover:bg-blue-500"
                 >
-                  <Link href="/tournaments">
-                    Ver meus campeonatos
+                  <Link href="/dashboard">
+                    Entrar com Discord
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </Button>
@@ -82,7 +83,7 @@ export function Hero() {
                   variant="outline"
                   className="h-12 border-white/10 bg-white/[0.04] px-7 text-[15px] font-bold text-gray-300 backdrop-blur hover:bg-white/[0.08] hover:text-white"
                 >
-                  <a href="#campeonatos">Ver o campeonato automático</a>
+                  <a href="#tudo">Ver tudo que tem dentro</a>
                 </Button>
               </div>
             </Reveal>
@@ -111,7 +112,14 @@ export function Hero() {
           <div className="relative min-w-0">
             <Reveal delay={120} y={44}>
               <Parallax speed={0.05}>
-                <DiscordLobby />
+                <div className="relative mx-auto sm:min-h-[520px] sm:max-w-[820px] sm:[perspective:1500px] lg:-mr-16">
+                  <div className="relative z-20 w-full origin-left sm:absolute sm:left-0 sm:top-16 sm:w-[60%] sm:[transform:rotateY(8deg)_rotateX(1deg)_translateZ(24px)] sm:[transform-style:preserve-3d]">
+                    <DiscordLobby />
+                  </div>
+                  <div className="relative z-10 mt-5 ml-auto w-[94%] origin-right sm:absolute sm:right-0 sm:top-0 sm:mt-0 sm:w-[55%] sm:[transform:rotateY(-9deg)_rotateX(1deg)_translateZ(0)] sm:[transform-style:preserve-3d]">
+                    <HeroTournamentPreview />
+                  </div>
+                </div>
               </Parallax>
             </Reveal>
 
@@ -129,8 +137,8 @@ export function Hero() {
               delay="1.6s"
               tone="border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
               icon={Timer}
-              title="Seleção atualizada"
-              detail="4-3-3 montado com notas da EA"
+              title="Draft ao vivo"
+              detail="Fúria escolhe em 00:12"
             />
             <FloatingChip
               className="-bottom-6 right-4 sm:right-0"
