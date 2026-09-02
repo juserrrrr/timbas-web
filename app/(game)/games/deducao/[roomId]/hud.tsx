@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { AlertOctagon, Ghost, Hand, LogOut, Search, Siren, Skull, Wind } from "lucide-react"
+import { playGameSound, unlockGameAudio } from "@/lib/games/game-audio"
 import type { MapTaskSpot, OfficeMap } from "@/lib/services/games"
 import type { Quality, Targets } from "./match-types"
 import type { InputState } from "./scene/office-scene"
@@ -131,23 +132,36 @@ export function Hud({
               label={targets.kill ? `Matar ${targets.kill.name}` : "Matar"}
               icon={<Skull className="h-6 w-6" />}
               tone="perigo"
+              shortcut="Q"
               disabled={!targets.kill}
-              onClick={() => targets.kill && onSend("kill", { targetId: targets.kill.id })}
+              onClick={() => {
+                if (!targets.kill) return
+                playGameSound("kill")
+                onSend("kill", { targetId: targets.kill.id })
+              }}
             />
             <ActionButton
               label={mine?.inVent ? "Sair do duto" : "Duto"}
               icon={<Wind className="h-5 w-5" />}
               tone="neutro"
               small
+              shortcut="V"
               disabled={!targets.vent && !mine?.inVent}
-              onClick={() => onSend("vent", { ventId: mine?.inVent ? "" : targets.vent?.id })}
+              onClick={() => {
+                playGameSound("vent")
+                onSend("vent", { ventId: mine?.inVent ? "" : targets.vent?.id })
+              }}
             />
             <ActionButton
               label="Apagar a luz"
               icon={<AlertOctagon className="h-5 w-5" />}
               tone="neutro"
               small
-              onClick={() => onSend("sabotage")}
+              shortcut="F"
+              onClick={() => {
+                playGameSound("action")
+                onSend("sabotage")
+              }}
             />
           </>
         )}
@@ -157,7 +171,11 @@ export function Hud({
             label={`Reportar ${targets.corpse.name}`}
             icon={<Search className="h-6 w-6" />}
             tone="alerta"
-            onClick={() => onSend("report", { corpseId: targets.corpse!.id })}
+            shortcut="R"
+            onClick={() => {
+              playGameSound("action")
+              onSend("report", { corpseId: targets.corpse!.id })
+            }}
           />
         )}
 
@@ -166,7 +184,11 @@ export function Hud({
             label="Reunião de emergência"
             icon={<Siren className="h-6 w-6" />}
             tone="alerta"
-            onClick={() => onSend("emergency")}
+            shortcut="R"
+            onClick={() => {
+              playGameSound("action")
+              onSend("emergency")
+            }}
           />
         )}
 
@@ -174,8 +196,13 @@ export function Hud({
           label={targets.task ? "Fazer tarefa" : "Nada por perto"}
           icon={<Hand className="h-6 w-6" />}
           tone="principal"
+          shortcut="E"
           disabled={!targets.task}
-          onClick={() => targets.task && onOpenTask(targets.task)}
+          onClick={() => {
+            if (!targets.task) return
+            playGameSound("action")
+            onOpenTask(targets.task)
+          }}
         />
       </div>
 
@@ -214,6 +241,7 @@ function ActionButton({
   tone,
   disabled,
   small,
+  shortcut,
   onClick,
 }: {
   label: string
@@ -221,6 +249,7 @@ function ActionButton({
   tone: "principal" | "perigo" | "alerta" | "neutro"
   disabled?: boolean
   small?: boolean
+  shortcut?: string
   onClick: () => void
 }) {
   const tones = {
@@ -241,6 +270,11 @@ function ActionButton({
     >
       <span className={small ? "text-xs" : "text-sm"}>{icon}</span>
       <span className={`font-black uppercase tracking-wide ${small ? "text-[10px]" : "text-xs"}`}>{label}</span>
+      {shortcut && (
+        <kbd className="ml-1 rounded-md border border-current/20 bg-black/20 px-1.5 py-0.5 font-mono text-[9px] opacity-70">
+          {shortcut}
+        </kbd>
+      )}
     </button>
   )
 }
@@ -256,6 +290,7 @@ function TouchStick({ inputRef }: { inputRef: React.MutableRefObject<InputState>
     const onStart = (event: TouchEvent) => {
       const touch = event.changedTouches[0]
       if (touchId.current !== null || touch.clientX > window.innerWidth * 0.55) return
+      unlockGameAudio()
       touchId.current = touch.identifier
       setOrigin({ x: touch.clientX, y: touch.clientY })
     }

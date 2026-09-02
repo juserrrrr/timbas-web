@@ -35,10 +35,10 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
   const iVoted = meeting.voted.includes(me)
   const [inspected, setInspected] = useState<string | null>(null)
   const [draft, setDraft] = useState("")
-  const chatEnd = useRef<HTMLDivElement>(null)
+  const chatList = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    chatEnd.current?.scrollIntoView({ block: "end" })
+    if (chatList.current) chatList.current.scrollTop = chatList.current.scrollHeight
   }, [snapshot.chat.length])
 
   const sendChat = () => {
@@ -51,9 +51,9 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
   if (settled) return <Verdict snapshot={snapshot} />
 
   return (
-    <div className="pointer-events-auto absolute inset-0 z-20 overflow-y-auto bg-zinc-950/95 backdrop-blur-md">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <header className="text-center">
+    <div className="pointer-events-auto absolute inset-0 z-20 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(120,53,15,0.24),rgba(9,12,18,0.97)_48%)] backdrop-blur-xl lg:overflow-hidden">
+      <div className="mx-auto flex min-h-full max-w-[1500px] flex-col px-4 py-5 sm:px-6 lg:h-full lg:min-h-0 lg:px-8">
+        <header className="shrink-0 rounded-3xl border border-amber-300/10 bg-black/20 px-5 py-4 text-center shadow-2xl shadow-black/20">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.34em] text-amber-300/70">
             {voting ? "Votação aberta" : "Sala de reunião"}
           </p>
@@ -65,17 +65,17 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
               ? `${meeting.calledByName} encontrou e chamou todo mundo.`
               : `${meeting.calledByName} apertou o botão.`}
           </p>
-          <p className="mt-5 font-mono text-5xl font-black tabular-nums text-white">
+          <p className="mt-3 font-mono text-4xl font-black tabular-nums text-white">
             {String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}
           </p>
         </header>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-          <section>
+        <div className="mt-5 grid flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(0,1.45fr)_minmax(24rem,0.75fr)]">
+          <section className="min-h-0 lg:overflow-y-auto lg:pr-2">
             <p className="font-mono text-[10px] uppercase tracking-[0.26em] text-zinc-500">
               {voting ? "Escolha quem sai" : "Na reunião"}
             </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
               {snapshot.players.map((player) => (
                 <PlayerBadge
                   key={player.id}
@@ -121,9 +121,9 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
             )}
           </section>
 
-          <aside className="flex h-[26rem] flex-col rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+          <aside className="flex h-72 min-h-0 flex-col rounded-2xl border border-white/[0.1] bg-black/25 p-4 shadow-xl shadow-black/20 lg:h-auto">
             <p className="font-mono text-[10px] uppercase tracking-[0.26em] text-zinc-500">Discussão</p>
-            <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+            <div ref={chatList} className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
               {snapshot.chat.map((message) => (
                 <p key={message.id} className="text-[13px] leading-snug">
                   {message.system ? (
@@ -138,7 +138,6 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
                   )}
                 </p>
               ))}
-              <div ref={chatEnd} />
             </div>
             {alive ? (
               <div className="mt-3 flex gap-2">

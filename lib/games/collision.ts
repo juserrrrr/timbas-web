@@ -67,3 +67,33 @@ export function moveTowards(from: Vec2, to: Vec2, walls: WallBox[], radius = PLA
   }
   return current
 }
+
+function segmentHitsBox(from: Vec2, to: Vec2, box: WallBox): boolean {
+  const dx = to.x - from.x
+  const dz = to.z - from.z
+  let entry = 0
+  let exit = 1
+
+  for (const axis of ["x", "z"] as const) {
+    const origin = axis === "x" ? from.x : from.z
+    const delta = axis === "x" ? dx : dz
+    const min = axis === "x" ? box.minX : box.minZ
+    const max = axis === "x" ? box.maxX : box.maxZ
+
+    if (Math.abs(delta) < 1e-8) {
+      if (origin < min || origin > max) return false
+      continue
+    }
+
+    const first = (min - origin) / delta
+    const second = (max - origin) / delta
+    entry = Math.max(entry, Math.min(first, second))
+    exit = Math.min(exit, Math.max(first, second))
+    if (entry > exit) return false
+  }
+  return true
+}
+
+export function hasLineOfSight(from: Vec2, to: Vec2, walls: WallBox[]): boolean {
+  return !walls.some((wall) => segmentHitsBox(from, to, wall))
+}

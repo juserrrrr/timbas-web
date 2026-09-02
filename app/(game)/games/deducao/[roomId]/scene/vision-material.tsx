@@ -47,7 +47,7 @@ export function patchVision(material: THREE.Material) {
         `#include <dithering_fragment>
         float visionDist = distance(vVisionPos.xz, uFocus.xz);
         float visible = 1.0 - smoothstep(uInner, uOuter, visionDist);
-        gl_FragColor.rgb = mix(gl_FragColor.rgb * 0.05, gl_FragColor.rgb, visible);`,
+        gl_FragColor.rgb = mix(gl_FragColor.rgb * 0.012, gl_FragColor.rgb, visible);`,
       )
   }
   // Materiais com onBeforeCompile diferente precisam de programas diferentes, e

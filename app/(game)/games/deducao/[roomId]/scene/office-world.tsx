@@ -7,7 +7,7 @@ import type { OfficeMap } from "@/lib/services/games"
 import type { Quality } from "../match-types"
 import { useVisionMaterial } from "./vision-material"
 
-const WALL_HEIGHT = 1.35
+const WALL_HEIGHT = 2.15
 
 type Box = [w: number, h: number, d: number, x: number, y: number, z: number]
 
@@ -19,7 +19,7 @@ interface PropSpec {
 
 const PROPS: Record<string, PropSpec> = {
   desk: {
-    color: "#b6a184",
+    color: "#c09a70",
     boxes: [
       [1.7, 0.08, 0.85, 0, 0.74, 0],
       [0.1, 0.72, 0.75, -0.78, 0.36, 0],
@@ -28,7 +28,7 @@ const PROPS: Record<string, PropSpec> = {
     ],
   },
   chair: {
-    color: "#2f3644",
+    color: "#46536a",
     boxes: [
       [0.5, 0.08, 0.5, 0, 0.46, 0],
       [0.5, 0.55, 0.08, 0, 0.75, -0.22],
@@ -37,8 +37,8 @@ const PROPS: Record<string, PropSpec> = {
     ],
   },
   monitor: {
-    color: "#15181f",
-    emissive: "#2a4d7a",
+    color: "#202a38",
+    emissive: "#3b82f6",
     boxes: [
       [0.62, 0.38, 0.05, 0, 1.06, 0],
       [0.1, 0.18, 0.1, 0, 0.87, 0],
@@ -46,7 +46,7 @@ const PROPS: Record<string, PropSpec> = {
     ],
   },
   plant: {
-    color: "#3f6f4a",
+    color: "#4e8b5b",
     boxes: [
       [0.38, 0.36, 0.38, 0, 0.18, 0],
       [0.52, 0.62, 0.52, 0, 0.7, 0],
@@ -54,7 +54,7 @@ const PROPS: Record<string, PropSpec> = {
     ],
   },
   sofa: {
-    color: "#3c4658",
+    color: "#576984",
     boxes: [
       [2.0, 0.42, 0.9, 0, 0.28, 0],
       [2.0, 0.5, 0.24, 0, 0.68, -0.34],
@@ -63,14 +63,14 @@ const PROPS: Record<string, PropSpec> = {
     ],
   },
   counter: {
-    color: "#8c7a5f",
+    color: "#a78a65",
     boxes: [
       [4.2, 1.05, 0.9, 0, 0.52, 0],
       [4.5, 0.1, 1.1, 0, 1.08, 0],
     ],
   },
   meetingTable: {
-    color: "#7a6248",
+    color: "#9b744d",
     boxes: [
       [3.8, 0.12, 1.7, 0, 0.74, 0],
       [1.2, 0.7, 0.6, 0, 0.36, 0],
@@ -215,10 +215,10 @@ function Instances({
   )
 }
 
-export function OfficeWorld({ map, quality }: { map: OfficeMap; quality: Quality }) {
+export function OfficeWorld({ map, quality, blackout }: { map: OfficeMap; quality: Quality; blackout: boolean }) {
   const floorMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.95 })
-  const wallMaterial = useVisionMaterial({ color: "#565c6e", roughness: 0.85 })
-  const trimMaterial = useVisionMaterial({ color: "#20242e", roughness: 0.6 })
+  const wallMaterial = useVisionMaterial({ color: "#9ca8ba", roughness: 0.82 })
+  const trimMaterial = useVisionMaterial({ color: "#364154", roughness: 0.55, metalness: 0.08 })
 
   const floors = useMemo(
     () =>
@@ -284,11 +284,27 @@ export function OfficeWorld({ map, quality }: { map: OfficeMap; quality: Quality
     return [...byKind.entries()].map(([kind, transforms]) => ({ kind, transforms }))
   }, [map.props, quality])
 
+  const litRooms = useMemo(
+    () => (quality === "alto" ? map.rooms : map.rooms.filter((_, index) => index % 2 === 0)),
+    [map.rooms, quality],
+  )
+
   return (
     <group>
       <Instances geometry={floorGeometry} material={floorMaterial} transforms={floors} />
       <Instances geometry={wallGeometry} material={wallMaterial} transforms={walls} />
       <Instances geometry={trimGeometry} material={trimMaterial} transforms={trims} />
+      {quality !== "baixo" &&
+        litRooms.map((room) => (
+          <pointLight
+            key={room.id}
+            position={[room.rect.x + room.rect.w / 2, 3.6, room.rect.z + room.rect.d / 2]}
+            color={room.light}
+            intensity={blackout ? 0.02 : 0.72}
+            distance={Math.max(room.rect.w, room.rect.d) * 0.82}
+            decay={1.65}
+          />
+        ))}
       {propGroups.map((group) => (
         <PropKind key={group.kind} kind={group.kind} transforms={group.transforms} />
       ))}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { playGameSound, unlockGameAudio } from "@/lib/games/game-audio"
 import type { MapTaskSpot, OfficeMap } from "@/lib/services/games"
 import { EndScreen } from "./end-screen"
 import { Hud } from "./hud"
@@ -83,8 +84,34 @@ export function Match({
   const [quality, setQuality] = useState<Quality>("medio")
   const [intro, setIntro] = useState(false)
   const [doneTasks, setDoneTasks] = useState<string[]>([])
+  const previousBlackout = useRef(snapshot.blackout)
+  const previousPhase = useRef(snapshot.phase)
+  const previousAlive = useRef(snapshot.players.find((player) => player.id === me)?.alive ?? true)
+  const actions = useRef({ snapshot, targets, role, openTask, onSend })
+  actions.current = { snapshot, targets, role, openTask, onSend }
 
   useEffect(() => setQuality(guessQuality()), [])
+
+  useEffect(() => {
+    if (snapshot.blackout && !previousBlackout.current) playGameSound("blackout")
+    previousBlackout.current = snapshot.blackout
+  }, [snapshot.blackout])
+
+  useEffect(() => {
+    if (
+      snapshot.phase !== previousPhase.current &&
+      (snapshot.phase === "reuniao" || snapshot.phase === "votacao")
+    ) {
+      playGameSound("meeting")
+    }
+    previousPhase.current = snapshot.phase
+  }, [snapshot.phase])
+
+  useEffect(() => {
+    const alive = snapshot.players.find((player) => player.id === me)?.alive ?? true
+    if (!alive && previousAlive.current) playGameSound("kill")
+    previousAlive.current = alive
+  }, [snapshot.players, me])
 
   // A carta do papel entra na virada para a partida, não na chegada da
   // mensagem: numa segunda partida o papel pode ser o mesmo e o efeito não
@@ -112,12 +139,52 @@ export function Match({
     }
 
     const down = (event: KeyboardEvent) => {
-      if (!KEYS[event.code]) return
       const typing = document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA"
       if (typing) return
-      event.preventDefault()
-      pressed.current.add(event.code)
-      apply()
+      unlockGameAudio()
+
+      if (KEYS[event.code]) {
+        event.preventDefault()
+        pressed.current.add(event.code)
+        apply()
+        return
+      }
+
+      if (event.repeat) return
+      const current = actions.current
+      const mine = current.snapshot.players.find((player) => player.id === me)
+      const alive = mine?.alive ?? false
+      if (current.snapshot.phase !== "jogando" || current.openTask) return
+
+      if (event.code === "KeyE" && current.targets.task) {
+        event.preventDefault()
+        playGameSound("action")
+        current.onSend("task:begin", { spotId: current.targets.task.id })
+        setOpenTask(current.targets.task)
+      } else if (event.code === "KeyQ" && current.role === "assassino" && alive && current.targets.kill) {
+        event.preventDefault()
+        playGameSound("kill")
+        current.onSend("kill", { targetId: current.targets.kill.id })
+      } else if (event.code === "KeyV" && current.role === "assassino" && alive) {
+        const ventId = mine?.inVent ? "" : current.targets.vent?.id
+        if (ventId !== undefined) {
+          event.preventDefault()
+          playGameSound("vent")
+          current.onSend("vent", { ventId })
+        }
+      } else if (event.code === "KeyF" && current.role === "assassino" && alive) {
+        event.preventDefault()
+        playGameSound("action")
+        current.onSend("sabotage")
+      } else if (event.code === "KeyR" && alive && current.targets.corpse) {
+        event.preventDefault()
+        playGameSound("action")
+        current.onSend("report", { corpseId: current.targets.corpse.id })
+      } else if (event.code === "KeyR" && alive && current.targets.emergency && (mine?.emergenciesLeft ?? 0) > 0) {
+        event.preventDefault()
+        playGameSound("action")
+        current.onSend("emergency")
+      }
     }
     const up = (event: KeyboardEvent) => {
       pressed.current.delete(event.code)
@@ -137,7 +204,7 @@ export function Match({
       window.removeEventListener("keyup", up)
       window.removeEventListener("blur", blur)
     }
-  }, [])
+  }, [me])
 
   // A tarefa aberta fecha sozinha quando a reunião começa: ninguém termina o
   // cabeamento no meio de uma discussão.
@@ -191,6 +258,7 @@ export function Match({
           spot={openTask}
           onDone={() => {
             onSend("task:done", { spotId: openTask.id })
+            playGameSound("task")
             setDoneTasks((current) => [...current, openTask.id])
             setOpenTask(null)
           }}

@@ -63,6 +63,7 @@ export interface Snapshot {
   code: string
   private: boolean
   hostId: string
+  hostCanStartSolo: boolean
   phase: Phase
   tasksDone: number
   tasksTotal: number
@@ -164,6 +165,7 @@ function snapshotOf(state: any): Snapshot {
     code: state.code,
     private: state.private,
     hostId: state.hostId,
+    hostCanStartSolo: Boolean(state.hostCanStartSolo),
     phase: state.phase as Phase,
     tasksDone: state.tasksDone,
     tasksTotal: state.tasksTotal,
@@ -195,6 +197,7 @@ function snapshotOf(state: any): Snapshot {
       tasksPerPlayer: state.config.tasksPerPlayer,
       killCooldownMs: state.config.killCooldownMs,
       killRange: state.config.killRange,
+      visionRange: state.config.visionRange,
       meetingSeconds: state.config.meetingSeconds,
       voteSeconds: state.config.voteSeconds,
       revealRoleOnEject: state.config.revealRoleOnEject,

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Check, Copy, Lock, LogOut, Play, Send } from "lucide-react"
-import { decodeToken, getToken } from "@/lib/auth"
 import { toast } from "@/lib/toast"
 import { PlayerBadge } from "./badge"
 import type { Snapshot } from "./use-deducao-room"
@@ -26,6 +25,15 @@ const RULES: { key: string; label: string; hint: string; min: number; max: numbe
     max: 60000,
     step: 5000,
     unit: "s",
+  },
+  {
+    key: "visionRange",
+    label: "Campo de visão",
+    hint: "Distância máxima para enxergar outros jogadores",
+    min: 7,
+    max: 15,
+    step: 1,
+    unit: "m",
   },
   {
     key: "meetingSeconds",
@@ -52,7 +60,7 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
   const isHost = snapshot.hostId === me
   const missing = Math.max(0, minPlayers - snapshot.players.length)
   const notReady = snapshot.players.filter((player) => !player.ready && player.id !== snapshot.hostId).length
-  const canStartSolo = decodeToken(getToken() ?? "")?.role === "ADMIN"
+  const canStartSolo = snapshot.hostCanStartSolo
   const [draft, setDraft] = useState("")
   const chatList = useRef<HTMLDivElement>(null)
 
