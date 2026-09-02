@@ -6,10 +6,8 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, DoorOpen, Lock, Play, RefreshCw, Users } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
 import {
-  getGameCatalog,
   listDeducaoRooms,
   saveDeducaoRoomPassword,
-  type GameCatalog,
   type RoomSummary,
 } from "@/lib/services/games"
 import { toast } from "@/lib/toast"
@@ -26,7 +24,6 @@ const PHASE_LABEL: Record<string, string> = {
 
 export default function DeducaoPage() {
   const router = useRouter()
-  const [catalog, setCatalog] = useState<GameCatalog | null>(null)
   const [rooms, setRooms] = useState<RoomSummary[]>([])
   const [loadingRooms, setLoadingRooms] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -45,18 +42,12 @@ export default function DeducaoPage() {
   }, [])
 
   useEffect(() => {
-    void getGameCatalog()
-      .then(setCatalog)
-      .catch(() => setCatalog(null))
     void loadRooms()
     const timer = setInterval(() => {
       if (!document.hidden) void loadRooms()
     }, 8_000)
     return () => clearInterval(timer)
   }, [loadRooms])
-
-  const game = catalog?.games.find((item) => item.id === "deducao")
-  const canPlay = Boolean(game)
 
   const openRoom = (room: RoomSummary) => {
     if (room.private) {
@@ -141,7 +132,7 @@ export default function DeducaoPage() {
               <li key={room.roomId}>
                 <button
                   type="button"
-                  disabled={!canPlay || room.locked || room.phase !== "lobby"}
+                  disabled={room.locked || room.phase !== "lobby"}
                   onClick={() => openRoom(room)}
                   className="group flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-4 py-3 text-left transition hover:border-amber-400/30 hover:bg-amber-400/[0.04] disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -181,7 +172,7 @@ export default function DeducaoPage() {
             <button
               type="button"
               onClick={enterByCode}
-              disabled={!canPlay || code.length < 5}
+              disabled={code.length < 5}
               className="cursor-pointer rounded-xl border border-white/10 px-3 text-xs font-bold uppercase tracking-wide text-zinc-200 transition hover:border-amber-400/40 hover:text-amber-200 disabled:cursor-not-allowed disabled:text-zinc-600"
             >
               Entrar
@@ -196,7 +187,6 @@ export default function DeducaoPage() {
           </p>
           <button
             type="button"
-            disabled={!canPlay}
             onClick={() => setCreating(true)}
             className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-black uppercase tracking-wide text-zinc-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-500"
           >

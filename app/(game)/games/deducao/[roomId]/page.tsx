@@ -42,13 +42,13 @@ export default function DeducaoRoomPage() {
       .catch(() => setMap(null))
   }, [])
 
-  // A sala nasce com um id que só existe depois do aperto de mão. Trocar a URL
-  // aqui faz o link ficar compartilhável e sobreviver a um recarregamento.
+  // O fragmento deixa o id real na URL sem navegar para outro segmento. Trocar o
+  // parâmetro da rota desmontaria a tela e encerraria a sala recém-criada.
   useEffect(() => {
-    if (params.roomId === "nova" && room.roomId) {
-      router.replace(`/games/deducao/${room.roomId}`)
+    if (params.roomId === "nova" && room.roomId && window.location.hash !== `#${room.roomId}`) {
+      window.location.replace(`#${room.roomId}`)
     }
-  }, [params.roomId, room.roomId, router])
+  }, [params.roomId, room.roomId])
 
   const leave = () => {
     room.leave()
@@ -63,15 +63,13 @@ export default function DeducaoRoomPage() {
             <h1 className="font-display text-3xl uppercase tracking-tight text-white">Não deu para entrar</h1>
             <p className="mx-auto mt-3 max-w-sm text-sm text-zinc-400">{room.error}</p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              {params.roomId !== "nova" && (
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="cursor-pointer rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black uppercase tracking-wide text-zinc-950 transition hover:bg-amber-300"
-                >
-                  Tentar voltar
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="cursor-pointer rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black uppercase tracking-wide text-zinc-950 transition hover:bg-amber-300"
+              >
+                Tentar novamente
+              </button>
               <Link
                 href="/games"
                 className="rounded-xl border border-white/10 px-5 py-2.5 text-xs font-black uppercase tracking-wide text-zinc-200 transition hover:border-white/25"

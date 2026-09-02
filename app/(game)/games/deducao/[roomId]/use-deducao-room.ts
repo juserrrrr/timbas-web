@@ -206,7 +206,28 @@ function snapshotOf(state: any): Snapshot {
 }
 
 /// A reconexão do Colyseus usa um ticket diferente do ticket de entrada da API.
-const reconnectKey = (roomId: string) => `timbas_deducao_${roomId}`
+const reconnectKey = (roomId: string) => `timbas_deducao_v2_${roomId}`
+
+class RoomConnectionTimeout extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "RoomConnectionTimeout"
+  }
+}
+
+async function withConnectionTimeout<T>(request: Promise<T>, message: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      request,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new RoomConnectionTimeout(message)), 6_000)
+      }),
+    ])
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
+}
 
 function rememberReconnect(roomId: string, ticket: string) {
   try {
@@ -225,10 +246,13 @@ function forgetReconnect(roomId: string) {
 }
 
 async function enterRoom(client: Client, roomId: string, options: { name?: string; password?: string }): Promise<Room> {
-  if (roomId !== "nova") {
+  const hashRoomId = roomId === "nova" ? window.location.hash.slice(1) : ""
+  const targetRoomId = /^[A-Za-z0-9_-]+$/.test(hashRoomId) ? hashRoomId : roomId
+
+  if (targetRoomId !== "nova") {
     let saved: string | null = null
     try {
-      saved = window.sessionStorage.getItem(reconnectKey(roomId))
+      saved = window.sessionStorage.getItem(reconnectKey(targetRoomId))
     } catch {
       saved = null
     }
@@ -236,18 +260,37 @@ async function enterRoom(client: Client, roomId: string, options: { name?: strin
     // vem antes de gastar um bilhete de entrada.
     if (saved) {
       try {
-        return await client.reconnect(saved)
-      } catch {
-        forgetReconnect(roomId)
+        return await withConnectionTimeout(
+          client.reconnect(saved),
+          "A sala não respondeu. Volte para a lista e tente entrar novamente.",
+        )
+      } catch (problem) {
+        forgetReconnect(targetRoomId)
+        if (problem instanceof RoomConnectionTimeout) throw problem
       }
     }
   }
 
-  const password = options.password ?? getDeducaoRoomPassword(roomId)
+  const password = options.password ?? getDeducaoRoomPassword(targetRoomId)
   const { ticket } = await createGameTicket()
-  return roomId === "nova"
-    ? client.create("deducao", { ...options, password, ticket })
-    : client.joinById(roomId, { ...options, password, ticket })
+  const creating = targetRoomId === "nova"
+  const message = creating
+    ? "O servidor do jogo não respondeu. Tente criar a sala novamente."
+    : "Esta sala não respondeu. Volte para a lista e tente novamente."
+
+  try {
+    return await withConnectionTimeout(
+      creating
+        ? client.create("deducao", { ...options, password, ticket })
+        : client.joinById(targetRoomId, { ...options, password, ticket }),
+      message,
+    )
+  } catch (problem) {
+    if (problem instanceof Error && problem.message === "Failed to fetch") {
+      throw new Error(message)
+    }
+    throw problem
+  }
 }
 
 export function useDeducaoRoom({ roomId, name, password }: Options) {
@@ -296,7 +339,10 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
       teardownRef.current = setTimeout(() => {
         teardownRef.current = null
         goingRef.current = true
-        void roomRef.current?.leave(true)
+        // Em recarregamentos e quedas de navegação a conexão cai sem consentimento
+        // e o servidor guarda a vaga durante a partida. O botão Sair continua
+        // usando leave(true) e libera a vaga imediatamente.
+        void roomRef.current?.leave(false)
         roomRef.current = null
         connectingRef.current = false
       }, 0)
@@ -311,15 +357,15 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
 
       roomRef.current = room
       clearDeducaoRoomPassword(roomId)
-      // A volta depois de uma queda: a sala segura o lugar por 40 segundos, e
-      // entrar de novo pela porta da frente seria recusado porque a partida já
-      // começou. Este bilhete é o que devolve a pessoa ao mesmo boneco.
-      rememberReconnect(room.roomId, room.reconnectionToken)
       setRealRoomId(room.roomId)
       setStatus("pronto")
 
       room.onStateChange((state: any) => {
         const next = snapshotOf(state)
+        // No lobby uma queda remove a pessoa imediatamente, portanto o token de
+        // reconexão ainda não é válido. Ele só passa a existir durante a partida.
+        if (next.phase === "lobby") forgetReconnect(room.roomId)
+        else rememberReconnect(room.roomId, room.reconnectionToken)
         const signature = JSON.stringify(next)
         if (signature === signatureRef.current) return
         signatureRef.current = signature
