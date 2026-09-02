@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Client, type Room } from "@colyseus/sdk"
 import { getToken } from "@/lib/auth"
-import { gameServerUrl } from "@/lib/services/games"
+import { clearDeducaoRoomPassword, createGameTicket, gameServerUrl, getDeducaoRoomPassword } from "@/lib/services/games"
 
 export type Phase = "lobby" | "jogando" | "reuniao" | "votacao" | "fim"
 export type Role = "assassino" | "detetive" | "funcionario"
@@ -90,8 +90,19 @@ interface Options {
 }
 
 const EMPTY_MEETING: MeetingRow = {
-  open: false, reason: "", calledByName: "", victimName: "", voting: false, endsAt: 0,
-  voted: [], tally: [], skips: 0, ejectedId: "", ejectedName: "", ejectedRole: "", tie: false,
+  open: false,
+  reason: "",
+  calledByName: "",
+  victimName: "",
+  voting: false,
+  endsAt: 0,
+  voted: [],
+  tally: [],
+  skips: 0,
+  ejectedId: "",
+  ejectedName: "",
+  ejectedRole: "",
+  tie: false,
 }
 
 /// O estado de posição não passa por aqui de propósito. Ele muda vinte vezes por
@@ -103,9 +114,17 @@ function snapshotOf(state: any): Snapshot {
   const players: PlayerRow[] = []
   state.players.forEach((player: any) => {
     players.push({
-      id: player.id, name: player.name, avatar: player.avatar, color: player.color,
-      alive: player.alive, connected: player.connected, ready: player.ready, inVent: player.inVent,
-      tasksDone: player.tasksDone, tasksTotal: player.tasksTotal, emergenciesLeft: player.emergenciesLeft,
+      id: player.id,
+      name: player.name,
+      avatar: player.avatar,
+      color: player.color,
+      alive: player.alive,
+      connected: player.connected,
+      ready: player.ready,
+      inVent: player.inVent,
+      tasksDone: player.tasksDone,
+      tasksTotal: player.tasksTotal,
+      emergenciesLeft: player.emergenciesLeft,
     })
   })
 
@@ -117,16 +136,26 @@ function snapshotOf(state: any): Snapshot {
   const corpses: CorpseRow[] = []
   state.corpses.forEach((corpse: any) => {
     corpses.push({
-      id: corpse.id, playerId: corpse.playerId, name: corpse.name,
-      color: corpse.color, x: corpse.x, z: corpse.z, reported: corpse.reported,
+      id: corpse.id,
+      playerId: corpse.playerId,
+      name: corpse.name,
+      color: corpse.color,
+      x: corpse.x,
+      z: corpse.z,
+      reported: corpse.reported,
     })
   })
 
   const chat: ChatRow[] = []
   state.chat.forEach((message: any) => {
     chat.push({
-      id: message.id, from: message.from, name: message.name, color: message.color,
-      text: message.text, at: message.at, system: message.system,
+      id: message.id,
+      from: message.from,
+      name: message.name,
+      color: message.color,
+      text: message.text,
+      at: message.at,
+      system: message.system,
     })
   })
 
@@ -145,10 +174,19 @@ function snapshotOf(state: any): Snapshot {
     players,
     corpses,
     meeting: {
-      open: state.meeting.open, reason: state.meeting.reason, calledByName: state.meeting.calledByName,
-      victimName: state.meeting.victimName, voting: state.meeting.voting, endsAt: state.meeting.endsAt,
-      voted, tally, skips: state.meeting.skips, ejectedId: state.meeting.ejectedId,
-      ejectedName: state.meeting.ejectedName, ejectedRole: state.meeting.ejectedRole, tie: state.meeting.tie,
+      open: state.meeting.open,
+      reason: state.meeting.reason,
+      calledByName: state.meeting.calledByName,
+      victimName: state.meeting.victimName,
+      voting: state.meeting.voting,
+      endsAt: state.meeting.endsAt,
+      voted,
+      tally,
+      skips: state.meeting.skips,
+      ejectedId: state.meeting.ejectedId,
+      ejectedName: state.meeting.ejectedName,
+      ejectedRole: state.meeting.ejectedRole,
+      tie: state.meeting.tie,
     },
     chat,
     config: {
@@ -167,47 +205,49 @@ function snapshotOf(state: any): Snapshot {
   }
 }
 
-const ticketKey = (roomId: string) => `timbas_deducao_${roomId}`
+/// A reconexão do Colyseus usa um ticket diferente do ticket de entrada da API.
+const reconnectKey = (roomId: string) => `timbas_deducao_${roomId}`
 
-function rememberTicket(roomId: string, ticket: string) {
+function rememberReconnect(roomId: string, ticket: string) {
   try {
-    window.sessionStorage.setItem(ticketKey(roomId), ticket)
+    window.sessionStorage.setItem(reconnectKey(roomId), ticket)
   } catch {
     // Sem sessionStorage a pessoa só perde a volta automática depois da queda.
   }
 }
 
-function forgetTicket(roomId: string) {
+function forgetReconnect(roomId: string) {
   try {
-    window.sessionStorage.removeItem(ticketKey(roomId))
+    window.sessionStorage.removeItem(reconnectKey(roomId))
   } catch {
     // Nada a fazer: o bilhete expira sozinho em 40 segundos.
   }
 }
 
-async function enterRoom(
-  client: Client,
-  roomId: string,
-  options: { token: string; name?: string; password?: string },
-): Promise<Room> {
-  if (roomId === "nova") return client.create("deducao", options)
-
-  let ticket: string | null = null
-  try {
-    ticket = window.sessionStorage.getItem(ticketKey(roomId))
-  } catch {
-    ticket = null
-  }
-
-  if (ticket) {
+async function enterRoom(client: Client, roomId: string, options: { name?: string; password?: string }): Promise<Room> {
+  if (roomId !== "nova") {
+    let saved: string | null = null
     try {
-      return await client.reconnect(ticket)
+      saved = window.sessionStorage.getItem(reconnectKey(roomId))
     } catch {
-      // Bilhete velho ou vencido. Segue pela porta da frente.
-      forgetTicket(roomId)
+      saved = null
+    }
+    // A volta depois de uma queda não passa pela portaria de novo, então ela
+    // vem antes de gastar um bilhete de entrada.
+    if (saved) {
+      try {
+        return await client.reconnect(saved)
+      } catch {
+        forgetReconnect(roomId)
+      }
     }
   }
-  return client.joinById(roomId, options)
+
+  const password = options.password ?? getDeducaoRoomPassword(roomId)
+  const { ticket } = await createGameTicket()
+  return roomId === "nova"
+    ? client.create("deducao", { ...options, password, ticket })
+    : client.joinById(roomId, { ...options, password, ticket })
 }
 
 export function useDeducaoRoom({ roomId, name, password }: Options) {
@@ -244,8 +284,7 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
     if (roomRef.current || connectingRef.current) return () => scheduleTeardown()
     connectingRef.current = true
 
-    const token = getToken()
-    if (!token) {
+    if (!getToken()) {
       setError("Sua sessão expirou. Entre de novo para jogar.")
       setStatus("erro")
       return
@@ -264,17 +303,18 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
     }
 
     const connect = async () => {
-      const room = await enterRoom(client, roomId, { token, name, password })
+      const room = await enterRoom(client, roomId, { name, password })
       if (goingRef.current) {
         void room.leave(true)
         return
       }
 
       roomRef.current = room
+      clearDeducaoRoomPassword(roomId)
       // A volta depois de uma queda: a sala segura o lugar por 40 segundos, e
       // entrar de novo pela porta da frente seria recusado porque a partida já
       // começou. Este bilhete é o que devolve a pessoa ao mesmo boneco.
-      rememberTicket(room.roomId, room.reconnectionToken)
+      rememberReconnect(room.roomId, room.reconnectionToken)
       setRealRoomId(room.roomId)
       setStatus("pronto")
 
@@ -297,13 +337,22 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
       })
       room.onMessage("apagao", () => notice("perigo", "A luz caiu. Ninguém enxerga direito."))
       room.onMessage("investigacao", (payload: { status: string; name: string }) => {
-        if (payload.status === "anotado") notice("pista", `${payload.name} entrou na sua lista. A leitura sai na próxima reunião.`)
+        if (payload.status === "anotado")
+          notice("pista", `${payload.name} entrou na sua lista. A leitura sai na próxima reunião.`)
         else notice("pista", `Leitura de ${payload.name}: ${payload.status === "suspeito" ? "suspeito" : "limpo"}.`)
       })
       room.onMessage("chat:fantasma", (payload: { name: string; color: string; text: string; at: number }) => {
         setGhostChat((current) => [
           ...current.slice(-40),
-          { id: `${payload.at}-${payload.name}`, from: "", name: payload.name, color: payload.color, text: payload.text, at: payload.at, system: false },
+          {
+            id: `${payload.at}-${payload.name}`,
+            from: "",
+            name: payload.name,
+            color: payload.color,
+            text: payload.text,
+            at: payload.at,
+            system: false,
+          },
         ])
       })
       room.onMessage("erro", (text: string) => notice("aviso", text))
@@ -340,7 +389,7 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
 
   const leave = useCallback(() => {
     goingRef.current = true
-    if (roomRef.current) forgetTicket(roomRef.current.roomId)
+    if (roomRef.current) forgetReconnect(roomRef.current.roomId)
     void roomRef.current?.leave(true)
     roomRef.current = null
   }, [])
@@ -350,11 +399,21 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
   }, [])
 
   return {
-    status, error, snapshot, role, allies, myTasks, notices, ghostChat, finalRoles,
+    status,
+    error,
+    snapshot,
+    role,
+    allies,
+    myTasks,
+    notices,
+    ghostChat,
+    finalRoles,
     roomId: realRoomId,
     me: roomRef.current?.sessionId ?? "",
     roomRef,
-    send, leave, dismissNotice,
+    send,
+    leave,
+    dismissNotice,
     meeting: snapshot?.meeting ?? EMPTY_MEETING,
   }
 }

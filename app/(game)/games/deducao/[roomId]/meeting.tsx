@@ -12,7 +12,7 @@ interface Props {
   onSend: (type: string, payload?: unknown) => void
 }
 
-function useCountdown(endsAt: number) {
+function useMeetingCountdown(endsAt: number) {
   const [left, setLeft] = useState(() => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)))
 
   useEffect(() => {
@@ -27,7 +27,7 @@ function useCountdown(endsAt: number) {
 
 export function Meeting({ snapshot, me, role, onSend }: Props) {
   const meeting = snapshot.meeting
-  const seconds = useCountdown(meeting.endsAt)
+  const seconds = useMeetingCountdown(meeting.endsAt)
   const mine = snapshot.players.find((player) => player.id === me)
   const alive = mine?.alive ?? false
   const voting = snapshot.phase === "votacao" && meeting.voting
@@ -58,9 +58,7 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
             {voting ? "Votação aberta" : "Sala de reunião"}
           </p>
           <h1 className="font-display mt-2 text-3xl uppercase leading-none tracking-tight text-white sm:text-4xl">
-            {meeting.reason === "corpo"
-              ? `Corpo de ${meeting.victimName}`
-              : "Reunião de emergência"}
+            {meeting.reason === "corpo" ? `Corpo de ${meeting.victimName}` : "Reunião de emergência"}
           </h1>
           <p className="mt-2 text-sm text-zinc-500">
             {meeting.reason === "corpo"
@@ -75,7 +73,7 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <section>
             <p className="font-mono text-[10px] uppercase tracking-[0.26em] text-zinc-500">
-              {voting ? "Escolha um crachá" : "Quem está na mesa"}
+              {voting ? "Escolha quem sai" : "Na reunião"}
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {snapshot.players.map((player) => (
@@ -85,7 +83,7 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
                   you={player.id === me}
                   stamp={!player.alive ? "morto" : null}
                   selected={inspected === player.id}
-                  hint={meeting.voted.includes(player.id) ? "Já votou" : player.alive ? "Na mesa" : "Fora"}
+                  hint={meeting.voted.includes(player.id) ? "Já votou" : player.alive ? "Vivo" : "Morto"}
                   onClick={
                     voting && alive && player.alive && !iVoted
                       ? () => onSend("vote", { targetId: player.id })
@@ -118,7 +116,7 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
             {!voting && role === "detetive" && alive && (
               <p className="mt-4 flex items-center justify-center gap-2 text-center text-xs text-sky-300/80">
                 <Fingerprint className="h-3.5 w-3.5" />
-                Escolha um crachá para investigar. A leitura chega na próxima reunião.
+                Escolha alguém para investigar. O resultado chega na próxima reunião.
               </p>
             )}
           </section>
@@ -162,7 +160,7 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
               </div>
             ) : (
               <p className="mt-3 text-center text-[11px] text-zinc-600">
-                Fantasma não fala na reunião. Sua conversa é só com os outros mortos.
+                Quem morreu não fala na reunião. Sua conversa é só com os outros mortos.
               </p>
             )}
           </aside>
@@ -181,9 +179,9 @@ function Verdict({ snapshot }: { snapshot: Snapshot }) {
       <div className="text-center">
         {meeting.ejectedId && ejected ? (
           <>
-            <p className="font-mono text-[10px] uppercase tracking-[0.34em] text-red-400/70">Rescisão imediata</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.34em] text-red-400/70">Resultado da votação</p>
             <h2 className="font-display mt-3 text-4xl uppercase leading-none tracking-tight text-white sm:text-5xl">
-              {ejected.name} foi demitido
+              {ejected.name} foi expulso
             </h2>
             <p className="mt-4 text-sm text-zinc-400">
               {meeting.ejectedRole
@@ -193,11 +191,7 @@ function Verdict({ snapshot }: { snapshot: Snapshot }) {
                 : "Ninguém vai saber o que ele era."}
             </p>
             <div className="mx-auto mt-8 w-64">
-              <PlayerBadge
-                player={ejected}
-                role={meeting.ejectedRole || undefined}
-                stamp="demitido"
-              />
+              <PlayerBadge player={ejected} role={meeting.ejectedRole || undefined} stamp="demitido" />
             </div>
           </>
         ) : (
@@ -207,8 +201,7 @@ function Verdict({ snapshot }: { snapshot: Snapshot }) {
               {meeting.tie ? "Deu empate" : "Ninguém saiu"}
             </h2>
             <p className="mt-4 text-sm text-zinc-400">
-              {meeting.skips > 0 ? `${meeting.skips} pularam o voto. ` : ""}
-              O expediente continua.
+              {meeting.skips > 0 ? `${meeting.skips} pularam o voto. ` : ""}A partida continua.
             </p>
           </>
         )}

@@ -51,9 +51,7 @@ export function OfficeScene(props: Props) {
   )
 }
 
-function SceneContent({
-  map, snapshot, roomRef, me, role, allies, pendingTasks, quality, inputRef, onTargets,
-}: Props) {
+function SceneContent({ map, snapshot, roomRef, me, role, allies, pendingTasks, quality, inputRef, onTargets }: Props) {
   const { camera } = useThree()
   const local = useRef(new THREE.Vector2())
   const started = useRef(false)
@@ -93,7 +91,7 @@ function SceneContent({
         x: local.current.x + (input.x / length) * step,
         z: local.current.y + (input.z / length) * step,
       }
-      // Fantasma atravessa parede: para ele a colisão do escritório não conta.
+      // Jogador morto atravessa paredes.
       const next = alive ? moveTowards({ x: local.current.x, z: local.current.y }, wanted, walls) : wanted
       local.current.set(
         THREE.MathUtils.clamp(next.x, PLAYER_RADIUS, map.bounds.w - PLAYER_RADIUS),
@@ -114,12 +112,15 @@ function SceneContent({
     const now = performance.now()
     if (now - lastSent.current > SEND_EVERY_MS) {
       lastSent.current = now
-      roomRef.current?.send("move" as never, {
-        x: local.current.x,
-        z: local.current.y,
-        dir: heading.current,
-        moving,
-      } as never)
+      roomRef.current?.send(
+        "move" as never,
+        {
+          x: local.current.x,
+          z: local.current.y,
+          dir: heading.current,
+          moving,
+        } as never,
+      )
     }
 
     // Câmera isométrica presa no jogador, sem giro: quem está de frente para a
@@ -138,9 +139,17 @@ function SceneContent({
     }
 
     reportTargets({
-      state, me, map, myTaskSpots, role, allies, snapshot, walls,
+      state,
+      me,
+      map,
+      myTaskSpots,
+      role,
+      allies,
+      snapshot,
+      walls,
       position: { x: local.current.x, z: local.current.y },
-      onTargets, signature: targetSignature,
+      onTargets,
+      signature: targetSignature,
     })
   })
 
@@ -188,7 +197,13 @@ function SceneContent({
 // ── Atores ────────────────────────────────────────────────────────────────────
 
 function Actor({
-  player, roomRef, isMe, localRef, viewerAlive, ally, quality,
+  player,
+  roomRef,
+  isMe,
+  localRef,
+  viewerAlive,
+  ally,
+  quality,
 }: {
   player: Snapshot["players"][number]
   roomRef: React.MutableRefObject<Room | null>
@@ -224,7 +239,8 @@ function Actor({
     node.visible = !hidden && !live.inVent
 
     const facing = Math.atan2(Math.sin(live.dir), Math.cos(live.dir))
-    node.rotation.y += Math.atan2(Math.sin(facing - node.rotation.y), Math.cos(facing - node.rotation.y)) * Math.min(1, delta * 12)
+    node.rotation.y +=
+      Math.atan2(Math.sin(facing - node.rotation.y), Math.cos(facing - node.rotation.y)) * Math.min(1, delta * 12)
 
     // O passinho: o corpo sobe e desce quando anda, e para quando para.
     bob.current += live.moving ? delta * 11 : 0
@@ -284,13 +300,7 @@ function Corpse({ corpse }: { corpse: Snapshot["corpses"][number] }) {
 
 // ── Marcadores ────────────────────────────────────────────────────────────────
 
-function Markers({
-  map, spots, showVents,
-}: {
-  map: OfficeMap
-  spots: OfficeMap["taskSpots"]
-  showVents: boolean
-}) {
+function Markers({ map, spots, showVents }: { map: OfficeMap; spots: OfficeMap["taskSpots"]; showVents: boolean }) {
   const ring = useRef<THREE.Group>(null)
 
   useFrame(({ clock }) => {
@@ -330,7 +340,17 @@ function Markers({
 // ── O que dá para fazer daqui ─────────────────────────────────────────────────
 
 function reportTargets({
-  state, me, map, myTaskSpots, role, allies, snapshot, walls, position, onTargets, signature,
+  state,
+  me,
+  map,
+  myTaskSpots,
+  role,
+  allies,
+  snapshot,
+  walls,
+  position,
+  onTargets,
+  signature,
 }: {
   state: any
   me: string
@@ -347,7 +367,7 @@ function reportTargets({
   const task = myTaskSpots.find((spot) => distance(position, spot) <= TASK_RANGE) ?? null
   const corpse = snapshot.corpses.find((body) => !body.reported && distance(position, body) <= REPORT_RANGE) ?? null
   const emergency = distance(position, map.emergency) <= REPORT_RANGE
-  const vent = role === "assassino" ? map.vents.find((item) => distance(position, item) <= VENT_RANGE) ?? null : null
+  const vent = role === "assassino" ? (map.vents.find((item) => distance(position, item) <= VENT_RANGE) ?? null) : null
 
   let kill: { id: string; name: string } | null = null
   if (role === "assassino") {

@@ -4,15 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { X } from "lucide-react"
 import type { MapTaskSpot } from "@/lib/services/games"
 
-/**
- * As tarefas.
- *
- * Cada uma é curta de propósito, entre três e oito segundos: tempo suficiente
- * para a pessoa ficar de costas para a sala e alguém aproveitar. É esse
- * segundo de distração que faz o jogo funcionar, então nenhum minigame pode ser
- * difícil, só ocupado.
- */
-
 interface Props {
   spot: MapTaskSpot
   onDone: () => void
@@ -125,9 +116,7 @@ function KeypadGame({ onDone }: { onDone: () => void }) {
     <div>
       <p className="text-xs text-zinc-500">Digite a senha que apareceu na tela.</p>
       <p className="mt-3 text-center font-mono text-4xl font-black tracking-[0.4em] text-amber-300">{code}</p>
-      <p className="mt-2 text-center font-mono text-2xl tracking-[0.4em] text-zinc-600">
-        {typed.padEnd(4, "·")}
-      </p>
+      <p className="mt-2 text-center font-mono text-2xl tracking-[0.4em] text-zinc-600">{typed.padEnd(4, "·")}</p>
       <div className="mx-auto mt-5 grid max-w-56 grid-cols-3 gap-2">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", ""].map((key, index) => (
           <button

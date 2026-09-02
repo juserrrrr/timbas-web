@@ -1,5 +1,5 @@
 import { API_URL } from "../api-base"
-import { request } from "./http"
+import { post, request } from "./http"
 
 export interface GameSummary {
   id: string
@@ -8,23 +8,53 @@ export interface GameSummary {
   description: string
   players: string
   minutes: string
-  enabled: boolean
-  adminPreview: boolean
   href: string
 }
 
 export interface GameCatalog {
-  hubEnabled: boolean
-  adminPreview: boolean
   games: GameSummary[]
 }
 
-export interface MapRect { x: number; z: number; w: number; d: number }
-export interface WallBox { minX: number; minZ: number; maxX: number; maxZ: number }
-export interface MapRoom { id: string; name: string; rect: MapRect; floor: string; light: string }
-export interface MapProp { kind: string; x: number; z: number; rot: number }
-export interface MapTaskSpot { id: string; kind: string; room: string; label: string; x: number; z: number }
-export interface MapVent { id: string; room: string; x: number; z: number; links: string[] }
+export interface MapRect {
+  x: number
+  z: number
+  w: number
+  d: number
+}
+export interface WallBox {
+  minX: number
+  minZ: number
+  maxX: number
+  maxZ: number
+}
+export interface MapRoom {
+  id: string
+  name: string
+  rect: MapRect
+  floor: string
+  light: string
+}
+export interface MapProp {
+  kind: string
+  x: number
+  z: number
+  rot: number
+}
+export interface MapTaskSpot {
+  id: string
+  kind: string
+  room: string
+  label: string
+  x: number
+  z: number
+}
+export interface MapVent {
+  id: string
+  room: string
+  x: number
+  z: number
+  links: string[]
+}
 
 export interface OfficeMap {
   name: string
@@ -52,6 +82,38 @@ export interface RoomSummary {
   players: number
   maxPlayers: number
   locked: boolean
+}
+
+/// Entrada de uso único para abrir a conexão da sala. O WebSocket não leva o
+/// cookie de sessão, então é este bilhete que diz para a API quem está entrando.
+export function createGameTicket(): Promise<{ ticket: string }> {
+  return post<{ ticket: string }>("/games/deducao/ticket")
+}
+
+const roomPasswordKey = (roomId: string) => `timbas_deducao_password_${roomId}`
+
+export function saveDeducaoRoomPassword(roomId: string, password: string) {
+  try {
+    window.sessionStorage.setItem(roomPasswordKey(roomId), password)
+  } catch {
+    // O navegador pode bloquear o armazenamento em sessões privadas restritas.
+  }
+}
+
+export function getDeducaoRoomPassword(roomId: string): string | undefined {
+  try {
+    return window.sessionStorage.getItem(roomPasswordKey(roomId)) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function clearDeducaoRoomPassword(roomId: string) {
+  try {
+    window.sessionStorage.removeItem(roomPasswordKey(roomId))
+  } catch {
+    // Nenhuma senha foi guardada neste navegador.
+  }
 }
 
 export function listDeducaoRooms(): Promise<RoomSummary[]> {

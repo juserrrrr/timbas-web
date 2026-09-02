@@ -12,8 +12,6 @@ interface Props {
   onLeave: () => void
 }
 
-/// O fim da partida é onde os crachás finalmente viram do avesso: a mesma ficha
-/// que estava na mesa a partida inteira mostra o que a pessoa era.
 export function EndScreen({ snapshot, me, roles, onSend, onLeave }: Props) {
   const crewWon = snapshot.winner === "escritorio"
   const isHost = snapshot.hostId === me
@@ -25,12 +23,12 @@ export function EndScreen({ snapshot, me, roles, onSend, onLeave }: Props) {
           <p
             className={`font-mono text-[10px] font-bold uppercase tracking-[0.34em] ${crewWon ? "text-emerald-300/70" : "text-red-400/70"}`}
           >
-            Fim do expediente
+            Fim de jogo
           </p>
           <h1
             className={`font-display mt-3 text-5xl uppercase leading-[0.9] tracking-tight sm:text-6xl ${crewWon ? "text-emerald-300" : "text-red-400"}`}
           >
-            {crewWon ? "O escritório venceu" : "Os assassinos venceram"}
+            {crewWon ? "Os funcionários venceram" : "Os assassinos venceram"}
           </h1>
           <p className="mt-3 text-sm text-zinc-400">{snapshot.endReason}</p>
         </header>

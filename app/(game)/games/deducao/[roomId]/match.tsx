@@ -25,21 +25,25 @@ interface Props {
 }
 
 const KEYS: Record<string, [number, number]> = {
-  KeyW: [0, -1], ArrowUp: [0, -1],
-  KeyS: [0, 1], ArrowDown: [0, 1],
-  KeyA: [-1, 0], ArrowLeft: [-1, 0],
-  KeyD: [1, 0], ArrowRight: [1, 0],
+  KeyW: [0, -1],
+  ArrowUp: [0, -1],
+  KeyS: [0, 1],
+  ArrowDown: [0, 1],
+  KeyA: [-1, 0],
+  ArrowLeft: [-1, 0],
+  KeyD: [1, 0],
+  ArrowRight: [1, 0],
 }
 
 const ROLE_INTRO: Record<Role, { title: string; line: string; tone: string }> = {
   assassino: {
     title: "Você é o assassino",
-    line: "Trabalhe como todo mundo, mate quando ninguém estiver olhando e use os dutos.",
+    line: "Faça tarefas como todo mundo, mate quando ninguém estiver olhando e use os dutos para sumir.",
     tone: "text-red-400",
   },
   detetive: {
     title: "Você é o detetive",
-    line: "Na reunião, escolha alguém para investigar. A leitura sai na reunião seguinte.",
+    line: "Na reunião, escolha alguém para investigar. O resultado sai na reunião seguinte.",
     tone: "text-sky-300",
   },
   funcionario: {
@@ -60,7 +64,17 @@ function guessQuality(): Quality {
 }
 
 export function Match({
-  map, snapshot, roomRef, me, role, allies, myTasks, finalRoles, notices, onSend, onLeave,
+  map,
+  snapshot,
+  roomRef,
+  me,
+  role,
+  allies,
+  myTasks,
+  finalRoles,
+  notices,
+  onSend,
+  onLeave,
 }: Props) {
   const inputRef = useRef<InputState>({ x: 0, z: 0 })
   const pressed = useRef(new Set<string>())
@@ -72,7 +86,7 @@ export function Match({
 
   useEffect(() => setQuality(guessQuality()), [])
 
-  // A carta do papel entra na virada para o expediente, não na chegada da
+  // A carta do papel entra na virada para a partida, não na chegada da
   // mensagem: numa segunda partida o papel pode ser o mesmo e o efeito não
   // dispararia de novo.
   useEffect(() => {
@@ -134,10 +148,7 @@ export function Match({
   // O servidor sabe quais tarefas já foram, mas não manda a lista de volta para
   // não entregar de graça quem está trabalhando. Quem risca da lista é a própria
   // tela, no momento em que o minigame fecha.
-  const pendingTasks = useMemo(
-    () => myTasks.filter((id) => !doneTasks.includes(id)),
-    [myTasks, doneTasks],
-  )
+  const pendingTasks = useMemo(() => myTasks.filter((id) => !doneTasks.includes(id)), [myTasks, doneTasks])
 
   const inMeeting = snapshot.phase === "reuniao" || snapshot.phase === "votacao"
 
@@ -196,15 +207,13 @@ export function Match({
       {intro && role && (
         <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-black/80">
           <div className="px-8 text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.4em] text-zinc-500">
-              Crachá liberado
-            </p>
-            <h2 className={`font-display mt-4 text-5xl uppercase leading-[0.9] tracking-tight sm:text-6xl ${ROLE_INTRO[role].tone}`}>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.4em] text-zinc-500">Seu papel</p>
+            <h2
+              className={`font-display mt-4 text-5xl uppercase leading-[0.9] tracking-tight sm:text-6xl ${ROLE_INTRO[role].tone}`}
+            >
               {ROLE_INTRO[role].title}
             </h2>
-            <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-zinc-400">
-              {ROLE_INTRO[role].line}
-            </p>
+            <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-zinc-400">{ROLE_INTRO[role].line}</p>
           </div>
         </div>
       )}

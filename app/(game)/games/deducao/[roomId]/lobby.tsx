@@ -14,15 +14,37 @@ interface Props {
   onLeave: () => void
 }
 
-/// A regra que o anfitrião escolhe, com o texto que explica o efeito dela na
-/// partida em vez do nome do campo no servidor.
 const RULES: { key: string; label: string; hint: string; min: number; max: number; step: number; unit?: string }[] = [
-  { key: "killers", label: "Assassinos", hint: "Quantos entram na sala de faca na mão", min: 1, max: 3, step: 1 },
-  { key: "tasksPerPlayer", label: "Tarefas por pessoa", hint: "Quanto trabalho cada um leva para casa", min: 2, max: 8, step: 1 },
-  { key: "killCooldownMs", label: "Espera entre abates", hint: "Quanto o assassino aguenta sem matar", min: 10000, max: 60000, step: 5000, unit: "s" },
-  { key: "meetingSeconds", label: "Discussão", hint: "Tempo de conversa antes de votar", min: 15, max: 120, step: 5, unit: "s" },
+  { key: "killers", label: "Assassinos", hint: "Quantos a partida sorteia", min: 1, max: 3, step: 1 },
+  { key: "tasksPerPlayer", label: "Tarefas por jogador", hint: "Quantas cada um recebe", min: 2, max: 8, step: 1 },
+  {
+    key: "killCooldownMs",
+    label: "Tempo entre abates",
+    hint: "Quanto o assassino espera para matar de novo",
+    min: 10000,
+    max: 60000,
+    step: 5000,
+    unit: "s",
+  },
+  {
+    key: "meetingSeconds",
+    label: "Discussão",
+    hint: "Tempo de conversa antes de votar",
+    min: 15,
+    max: 120,
+    step: 5,
+    unit: "s",
+  },
   { key: "voteSeconds", label: "Votação", hint: "Tempo para escolher quem sai", min: 15, max: 120, step: 5, unit: "s" },
-  { key: "blackoutEverySeconds", label: "Apagão a cada", hint: "De quanto em quanto tempo a luz cai", min: 60, max: 600, step: 30, unit: "s" },
+  {
+    key: "blackoutEverySeconds",
+    label: "Apagão a cada",
+    hint: "De quanto em quanto tempo a luz apaga",
+    min: 60,
+    max: 600,
+    step: 30,
+    unit: "s",
+  },
 ]
 
 export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
@@ -38,7 +60,7 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
 
   const copyCode = async () => {
     await navigator.clipboard.writeText(snapshot.code)
-    toast.success("Código copiado. Cole no chat e chame a galera.")
+    toast.success("Código copiado.")
   }
 
   const sendChat = () => {
@@ -54,7 +76,7 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-amber-300/70">
-              Timbas Detetive · sala de espera
+              Timbas Detetive
             </p>
             <h1 className="font-display mt-2 flex items-center gap-3 text-3xl uppercase leading-none tracking-tight text-white sm:text-4xl">
               {snapshot.roomName}
@@ -85,9 +107,7 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
           <section>
             <div className="flex items-baseline justify-between">
-              <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">
-                Crachás na mesa
-              </h2>
+              <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">Jogadores</h2>
               <span className="font-mono text-xs text-zinc-500">{snapshot.players.length}/12</span>
             </div>
 
@@ -126,7 +146,7 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
                   className="cursor-pointer rounded-xl bg-amber-400 px-6 py-3 text-sm font-black uppercase tracking-wide text-zinc-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-500"
                 >
                   <Play className="mr-2 inline h-4 w-4" />
-                  Bater o ponto
+                  Começar partida
                 </button>
               )}
 
@@ -145,7 +165,7 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
           <aside className="space-y-6">
             <section className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
               <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">
-                Regras do expediente
+                Regras da partida
               </h2>
 
               <div className="mt-4 space-y-4">
@@ -180,7 +200,7 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
                   <span>
                     <span className="block text-xs font-bold text-zinc-300">Detetive na sala</span>
                     <span className="mt-1 block text-[11px] text-zinc-600">
-                      Alguém consegue uma leitura por reunião, com uma reunião de atraso
+                      Um jogador investiga alguém por reunião e recebe o resultado na seguinte
                     </span>
                   </span>
                   <input
@@ -193,13 +213,11 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
                 </label>
               </div>
 
-              {!isHost && (
-                <p className="mt-4 text-[11px] text-zinc-600">Quem ajusta as regras é o anfitrião.</p>
-              )}
+              {!isHost && <p className="mt-4 text-[11px] text-zinc-600">Quem ajusta as regras é o anfitrião.</p>}
             </section>
 
             <section className="flex h-72 flex-col rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
-              <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">Conversa</h2>
+              <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">Chat</h2>
               <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
                 {snapshot.chat.map((message) => (
                   <p key={message.id} className="text-[13px] leading-snug">

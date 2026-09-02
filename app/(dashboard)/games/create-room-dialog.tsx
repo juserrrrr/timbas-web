@@ -22,9 +22,9 @@ export function CreateRoomDialog({ open, onOpenChange, onConfirm }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="border-white/[0.08] bg-zinc-950 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl uppercase tracking-tight">Abrir uma sala</DialogTitle>
+          <DialogTitle className="font-display text-2xl uppercase tracking-tight">Criar sala</DialogTitle>
           <DialogDescription className="text-zinc-500">
-            Você entra como anfitrião e escolhe as regras antes de começar.
+            Você entra como anfitrião e ajusta as regras antes de começar.
           </DialogDescription>
         </DialogHeader>
 
@@ -36,7 +36,7 @@ export function CreateRoomDialog({ open, onOpenChange, onConfirm }: Props) {
             <input
               value={name}
               onChange={(event) => setName(event.target.value.slice(0, 32))}
-              placeholder="Expediente de sexta"
+              placeholder="Jogatina de sexta"
               className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none"
             />
           </label>
@@ -46,6 +46,8 @@ export function CreateRoomDialog({ open, onOpenChange, onConfirm }: Props) {
               Senha (opcional)
             </span>
             <input
+              type="password"
+              autoComplete="new-password"
               value={password}
               onChange={(event) => setPassword(event.target.value.slice(0, 24))}
               placeholder="Deixe vazio para sala aberta"
@@ -59,7 +61,7 @@ export function CreateRoomDialog({ open, onOpenChange, onConfirm }: Props) {
           onClick={confirm}
           className="mt-2 w-full cursor-pointer rounded-xl bg-amber-400 px-4 py-3 text-sm font-black uppercase tracking-wide text-zinc-950 transition hover:bg-amber-300"
         >
-          Abrir a sala
+          Criar sala
         </button>
       </DialogContent>
     </Dialog>

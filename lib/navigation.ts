@@ -152,7 +152,7 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         icon: Joystick,
         label: "Jogos",
-        description: "Salas de jogos para jogar com a galera aqui mesmo",
+        description: "Jogos multiplayer direto no navegador",
         href: "/games",
         accent: "violet",
         beta: true,

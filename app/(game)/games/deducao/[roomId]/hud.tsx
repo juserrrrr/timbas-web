@@ -30,8 +30,19 @@ const ROLE_COPY: Record<Role, { title: string; tone: string }> = {
 }
 
 export function Hud({
-  snapshot, map, me, role, pendingTasks, targets, notices, quality, onQuality,
-  onSend, onOpenTask, onLeave, inputRef,
+  snapshot,
+  map,
+  me,
+  role,
+  pendingTasks,
+  targets,
+  notices,
+  quality,
+  onQuality,
+  onSend,
+  onOpenTask,
+  onLeave,
+  inputRef,
 }: Props) {
   const mine = snapshot.players.find((player) => player.id === me)
   const alive = mine?.alive ?? true
@@ -44,15 +55,15 @@ export function Hud({
       {snapshot.blackout && (
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_18%,rgba(0,0,0,0.82)_78%)]">
           <p className="absolute left-1/2 top-6 -translate-x-1/2 font-mono text-[11px] font-bold uppercase tracking-[0.4em] text-red-400/80">
-            Sem energia
+            Luz apagada
           </p>
         </div>
       )}
 
-      {/* Barra do expediente. É o placar do time, então fica onde o olho bate primeiro. */}
+      {/* O progresso do time fica visível sem cobrir a área de jogo. */}
       <div className="absolute left-4 top-4 w-56 sm:left-6 sm:top-6 sm:w-72">
         <div className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400">
-          <span>Expediente</span>
+          <span>Tarefas do time</span>
           <span className="text-amber-300">
             {snapshot.tasksDone}/{snapshot.tasksTotal}
           </span>
@@ -65,7 +76,7 @@ export function Hud({
         </div>
         {role && (
           <p className={`mt-2 font-mono text-[10px] uppercase tracking-[0.22em] ${ROLE_COPY[role].tone}`}>
-            {alive ? ROLE_COPY[role].title : "Fantasma"}
+            {alive ? ROLE_COPY[role].title : "Morto"}
           </p>
         )}
       </div>
@@ -95,9 +106,7 @@ export function Hud({
       <div className="absolute bottom-24 left-4 w-56 sm:bottom-6 sm:left-6 sm:w-64">
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">Suas tarefas</p>
         <ul className="mt-2 space-y-1.5">
-          {spots.length === 0 && (
-            <li className="text-[11px] text-emerald-300/80">Tudo entregue. Agora é achar o assassino.</li>
-          )}
+          {spots.length === 0 && <li className="text-[11px] text-emerald-300/80">Suas tarefas acabaram.</li>}
           {spots.map((spot) => (
             <li
               key={spot.id}
@@ -173,7 +182,7 @@ export function Hud({
       {!alive && (
         <p className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/70 px-4 py-2 text-xs text-zinc-400">
           <Ghost className="h-3.5 w-3.5" />
-          Você virou fantasma. Continue as tarefas e não conte nada para os vivos.
+          Você morreu. Continue as tarefas, mas não conte nada para quem está vivo.
         </p>
       )}
 
@@ -200,7 +209,12 @@ export function Hud({
 }
 
 function ActionButton({
-  label, icon, tone, disabled, small, onClick,
+  label,
+  icon,
+  tone,
+  disabled,
+  small,
+  onClick,
 }: {
   label: string
   icon: React.ReactNode

@@ -3,16 +3,6 @@
 import { useEffect, useMemo } from "react"
 import * as THREE from "three"
 
-/**
- * A visão do jogador, feita no material em vez de no HTML por cima.
- *
- * O escritório inteiro é desenhado, mas cada fragmento escurece conforme se
- * afasta de quem está jogando. É isso que dá o clima e o que faz o apagão
- * doer: em vez de trocar cor de tudo, a gente encolhe dois números e a sala
- * some ao redor. Uma névoa comum não serviria, porque ela mede distância até a
- * câmera, e a câmera está lá em cima olhando o andar de fora.
- */
-
 export const visionUniforms = {
   uFocus: { value: new THREE.Vector3() },
   uInner: { value: 9 },

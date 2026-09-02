@@ -57,70 +57,57 @@ export default function DeducaoRoomPage() {
 
   if (room.status === "erro") {
     return (
-      <Shell>
+      <GameScreen>
         <div className="flex h-full items-center justify-center px-6 text-center">
-        <div>
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-red-400/70">
-            Porta fechada
-          </p>
-          <h1 className="font-display mt-3 text-3xl uppercase tracking-tight text-white">
-            Não deu para entrar
-          </h1>
-          <p className="mx-auto mt-3 max-w-sm text-sm text-zinc-400">{room.error}</p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            {params.roomId !== "nova" && (
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="cursor-pointer rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black uppercase tracking-wide text-zinc-950 transition hover:bg-amber-300"
+          <div>
+            <h1 className="font-display text-3xl uppercase tracking-tight text-white">Não deu para entrar</h1>
+            <p className="mx-auto mt-3 max-w-sm text-sm text-zinc-400">{room.error}</p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              {params.roomId !== "nova" && (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="cursor-pointer rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black uppercase tracking-wide text-zinc-950 transition hover:bg-amber-300"
+                >
+                  Tentar voltar
+                </button>
+              )}
+              <Link
+                href="/games"
+                className="rounded-xl border border-white/10 px-5 py-2.5 text-xs font-black uppercase tracking-wide text-zinc-200 transition hover:border-white/25"
               >
-                Tentar voltar
-              </button>
-            )}
-            <Link
-              href="/games"
-              className="rounded-xl border border-white/10 px-5 py-2.5 text-xs font-black uppercase tracking-wide text-zinc-200 transition hover:border-white/25"
-            >
-              Voltar para os jogos
-            </Link>
+                Voltar para os jogos
+              </Link>
+            </div>
           </div>
         </div>
-        </div>
-      </Shell>
+      </GameScreen>
     )
   }
 
   if (!room.snapshot || !map) {
     return (
-      <Shell>
+      <GameScreen>
         <div className="flex h-full flex-col items-center justify-center">
           <Spinner className="size-7 text-amber-300" />
-          <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.3em] text-zinc-500">
-            Batendo o ponto
-          </p>
+          <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.3em] text-zinc-500">Entrando na sala</p>
         </div>
-      </Shell>
+      </GameScreen>
     )
   }
 
   if (room.snapshot.phase === "lobby") {
     return (
-      <Shell>
+      <GameScreen>
         <div className="h-full overflow-y-auto">
-        <Lobby
-          snapshot={room.snapshot}
-          me={room.me}
-          minPlayers={minPlayers}
-          onSend={room.send}
-          onLeave={leave}
-        />
+          <Lobby snapshot={room.snapshot} me={room.me} minPlayers={minPlayers} onSend={room.send} onLeave={leave} />
         </div>
-      </Shell>
+      </GameScreen>
     )
   }
 
   return (
-    <Shell>
+    <GameScreen>
       <Match
         map={map}
         snapshot={room.snapshot}
@@ -134,13 +121,10 @@ export default function DeducaoRoomPage() {
         onSend={room.send}
         onLeave={leave}
       />
-    </Shell>
+    </GameScreen>
   )
 }
 
-/// A partida ocupa a tela inteira por cima da moldura do dashboard. A rota
-/// continua dentro do grupo protegido, então a portaria de acesso e a sessão
-/// valem sem nada duplicado aqui.
-function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="fixed inset-0 z-50 bg-zinc-950">{children}</div>
+function GameScreen({ children }: { children: React.ReactNode }) {
+  return <main className="h-[100dvh] overflow-hidden bg-zinc-950 text-white">{children}</main>
 }

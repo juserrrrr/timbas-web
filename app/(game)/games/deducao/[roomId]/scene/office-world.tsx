@@ -7,15 +7,6 @@ import type { OfficeMap } from "@/lib/services/games"
 import type { Quality } from "../match-types"
 import { useVisionMaterial } from "./vision-material"
 
-/**
- * O escritório em si: piso, paredes e mobília.
- *
- * Nada aqui é modelo baixado. Cada móvel é um punhado de caixas somadas numa
- * geometria só, e cada tipo de móvel vira uma InstancedMesh: o mapa inteiro sai
- * em pouco mais de vinte chamadas de desenho, que é o que faz isso rodar no
- * notebook da firma e no celular de quem chegou pelo link.
- */
-
 const WALL_HEIGHT = 1.35
 
 type Box = [w: number, h: number, d: number, x: number, y: number, z: number]
@@ -230,36 +221,35 @@ export function OfficeWorld({ map, quality }: { map: OfficeMap; quality: Quality
   const trimMaterial = useVisionMaterial({ color: "#20242e", roughness: 0.6 })
 
   const floors = useMemo(
-    () => map.rooms.map((room) => ({
-      x: room.rect.x + room.rect.w / 2,
-      z: room.rect.z + room.rect.d / 2,
-      rot: 0,
-      sx: room.rect.w,
-      sy: 1,
-      sz: room.rect.d,
-      color: room.floor,
-    })),
+    () =>
+      map.rooms.map((room) => ({
+        x: room.rect.x + room.rect.w / 2,
+        z: room.rect.z + room.rect.d / 2,
+        rot: 0,
+        sx: room.rect.w,
+        sy: 1,
+        sz: room.rect.d,
+        color: room.floor,
+      })),
     [map.rooms],
   )
 
   const walls = useMemo(
-    () => map.walls.map((wall) => ({
-      x: (wall.minX + wall.maxX) / 2,
-      z: (wall.minZ + wall.maxZ) / 2,
-      rot: 0,
-      sx: wall.maxX - wall.minX,
-      sy: WALL_HEIGHT,
-      sz: wall.maxZ - wall.minZ,
-    })),
+    () =>
+      map.walls.map((wall) => ({
+        x: (wall.minX + wall.maxX) / 2,
+        z: (wall.minZ + wall.maxZ) / 2,
+        rot: 0,
+        sx: wall.maxX - wall.minX,
+        sy: WALL_HEIGHT,
+        sz: wall.maxZ - wall.minZ,
+      })),
     [map.walls],
   )
 
   // O friso escuro no topo da parede dá a linha que separa uma sala da outra
   // quando a câmera olha de cima. Sem ele o escritório vira um labirinto chapado.
-  const trims = useMemo(
-    () => walls.map((wall) => ({ ...wall, sy: 1, sx: wall.sx + 0.1, sz: wall.sz + 0.1 })),
-    [walls],
-  )
+  const trims = useMemo(() => walls.map((wall) => ({ ...wall, sy: 1, sx: wall.sx + 0.1, sz: wall.sz + 0.1 })), [walls])
 
   const floorGeometry = useMemo(() => {
     const plane = new THREE.PlaneGeometry(1, 1)
