@@ -40,7 +40,16 @@ export interface MapRoom {
   kind: "sala" | "corredor" | "terraco"
   level?: number
   floor: string
-  finish?: "carpet" | "wood" | "server" | "terrazzo" | "pantry" | "concrete"
+  finish?:
+    | "carpet"
+    | "patternedCarpet"
+    | "wood"
+    | "parquet"
+    | "server"
+    | "terrazzo"
+    | "vinyl"
+    | "pantry"
+    | "concrete"
   light: string
   doors?: Array<{
     side: "north" | "south" | "east" | "west"

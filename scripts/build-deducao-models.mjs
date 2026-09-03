@@ -67,6 +67,16 @@ function cylinder(group, radiusTop, radiusBottom, height, position, finish, rota
   return mesh
 }
 
+function capsule(group, radius, length, position, finish, rotation = [0, 0, 0]) {
+  const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, 6, 18), finish)
+  mesh.position.set(...position)
+  mesh.rotation.set(...rotation)
+  mesh.castShadow = true
+  mesh.receiveShadow = true
+  group.add(mesh)
+  return mesh
+}
+
 function torus(group, radius, tube, position, finish, rotation = [Math.PI / 2, 0, 0]) {
   const mesh = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 10, 28), finish)
   mesh.position.set(...position)
@@ -120,16 +130,30 @@ function chair() {
 
 function sofa() {
   const group = new THREE.Group()
-  rounded(group, [2.02, 0.42, 0.88], [0, 0.31, 0], finishes.fabric, 0.12)
-  for (const x of [-0.48, 0.48]) {
-    rounded(group, [0.9, 0.18, 0.7], [x, 0.55, 0.1], finishes.fabric, 0.11)
-    rounded(group, [0.9, 0.5, 0.16], [x, 0.85, -0.3], finishes.fabric, 0.12, [-0.14, 0, 0])
+  rounded(group, [2.08, 0.36, 0.92], [0, 0.29, 0], finishes.fabric, 0.17)
+  const cushions = [
+    { x: -0.66, yaw: 0.16 },
+    { x: 0, yaw: 0 },
+    { x: 0.66, yaw: -0.16 },
+  ]
+  for (const cushion of cushions) {
+    const curve = Math.abs(cushion.x) * 0.08
+    rounded(group, [0.68, 0.2, 0.7], [cushion.x, 0.54, 0.09 + curve], finishes.fabric, 0.13, [0, cushion.yaw, 0])
+    rounded(
+      group,
+      [0.66, 0.55, 0.18],
+      [cushion.x, 0.87, -0.31 + curve],
+      finishes.fabric,
+      0.145,
+      [-0.13, cushion.yaw, 0],
+    )
   }
   for (const x of [-0.98, 0.98]) {
-    rounded(group, [0.24, 0.68, 0.9], [x, 0.55, 0], finishes.fabric, 0.11)
-    rounded(group, [0.12, 0.16, 0.12], [x * 0.82, 0.09, 0], finishes.darkMetal, 0.03)
+    capsule(group, 0.16, 0.52, [x, 0.62, 0.03], finishes.fabric, [Math.PI / 2, 0, 0])
+    rounded(group, [0.13, 0.15, 0.13], [x * 0.86, 0.08, 0.1], finishes.darkMetal, 0.045)
   }
-  rounded(group, [0.44, 0.38, 0.12], [-0.4, 0.82, -0.17], finishes.accentFabric, 0.09, [0, 0.12, -0.08])
+  rounded(group, [0.42, 0.38, 0.12], [-0.42, 0.83, -0.13], finishes.accentFabric, 0.1, [0, 0.15, -0.08])
+  rounded(group, [0.34, 0.31, 0.11], [0.38, 0.78, -0.16], finishes.accentFabric, 0.09, [0, -0.13, 0.05])
   return group
 }
 

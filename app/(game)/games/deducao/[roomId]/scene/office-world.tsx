@@ -259,6 +259,15 @@ function mix(from: string, to: string, amount: number): string {
   return `#${new THREE.Color(from).lerp(new THREE.Color(to), amount).getHexString()}`
 }
 
+function stableHash(value: string): number {
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
 function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = []
 
@@ -589,22 +598,31 @@ interface FloorPatch {
   finish: FloorFinish
   tint: string
   slab: number
+  offsetX: number
+  offsetY: number
+  rotation: number
 }
 
 const FLOOR_TEXTURE_PATHS: Record<FloorFinish, string> = {
   carpet: "/images/games/deducao/textures/carpet.png",
+  patternedCarpet: "/images/games/deducao/textures/lounge-carpet-v2.webp",
   wood: "/images/games/deducao/textures/wood.png",
+  parquet: "/images/games/deducao/textures/executive-parquet-v2.webp",
   server: "/images/games/deducao/textures/server-floor.png",
   terrazzo: "/images/games/deducao/textures/terrazzo.png",
+  vinyl: "/images/games/deducao/textures/corridor-vinyl-v2.webp",
   pantry: "/images/games/deducao/textures/pantry-tile.png",
   concrete: "/images/games/deducao/textures/concrete.png",
 }
 
 const FLOOR_ASSET_NAMES: Record<FloorFinish, string> = {
   carpet: "carpet",
+  patternedCarpet: "lounge-carpet-v2",
   wood: "wood",
+  parquet: "executive-parquet-v2",
   server: "server-floor",
   terrazzo: "terrazzo",
+  vinyl: "corridor-vinyl-v2",
   pantry: "pantry-tile",
   concrete: "concrete",
 }
@@ -679,18 +697,44 @@ function TexturedFloor({
     const normal = normalSource.clone()
     const roughness = roughnessSource.clone()
     clone.colorSpace = THREE.SRGBColorSpace
-    const tile = patch.finish === "wood" ? 4.2 : patch.finish === "server" ? 3.2 : 2.8
+    const tile =
+      patch.finish === "wood"
+        ? 4.2
+        : patch.finish === "parquet"
+          ? 3.7
+          : patch.finish === "patternedCarpet"
+            ? 5.2
+            : patch.finish === "vinyl"
+              ? 3.5
+              : patch.finish === "server"
+                ? 3.2
+                : 2.8
     for (const texture of [clone, normal, roughness]) {
       texture.wrapS = THREE.RepeatWrapping
       texture.wrapT = THREE.RepeatWrapping
       texture.repeat.set(patch.w / tile, patch.d / tile)
+      texture.center.set(0.5, 0.5)
+      texture.offset.set(patch.offsetX, patch.offsetY)
+      texture.rotation = patch.rotation
       texture.anisotropy = quality === "alto" ? gl.capabilities.getMaxAnisotropy() : quality === "medio" ? 8 : 2
       texture.minFilter = THREE.LinearMipmapLinearFilter
       texture.magFilter = THREE.LinearFilter
       texture.needsUpdate = true
     }
     return { color: clone, normal, roughness }
-  }, [gl, normalSource, patch.d, patch.finish, patch.w, quality, roughnessSource, source])
+  }, [
+    gl,
+    normalSource,
+    patch.d,
+    patch.finish,
+    patch.offsetX,
+    patch.offsetY,
+    patch.rotation,
+    patch.w,
+    quality,
+    roughnessSource,
+    source,
+  ])
 
   useEffect(
     () => () => {
@@ -710,10 +754,11 @@ function TexturedFloor({
         normalScale={new THREE.Vector2(0.38, 0.38)}
         roughnessMap={textures.roughness}
         color={patch.tint}
-        emissive="#eef5ff"
-        emissiveMap={textures.color}
-        emissiveIntensity={blackout ? 0 : 0.16}
-        roughness={patch.finish === "wood" ? 0.68 : patch.finish === "server" ? 0.58 : 0.9}
+        emissive="#dbe7f1"
+        emissiveIntensity={blackout ? 0 : 0.035}
+        roughness={
+          patch.finish === "wood" || patch.finish === "parquet" ? 0.68 : patch.finish === "server" ? 0.58 : 0.9
+        }
         metalness={patch.finish === "server" ? 0.16 : 0.01}
       />
     </mesh>
@@ -891,7 +936,7 @@ export function OfficeWorld({
     surface: "piso",
   })
   const wallMaterial = useVisionMaterial({
-    color: "#f4f0e8",
+    color: "#d8dde3",
     map: materialTextures.wall,
     normalMap: materialTextures.wallNormal,
     normalScale: 0.24,
@@ -901,13 +946,13 @@ export function OfficeWorld({
     surface: "parede",
   })
   const baseboardMaterial = useVisionMaterial({
-    color: "#68778c",
+    color: "#435268",
     roughness: 0.62,
     metalness: 0.08,
   })
   const trimMaterial = useVisionMaterial({ color: "#ffffff", unlit: true })
   const frameMaterial = useVisionMaterial({
-    color: "#8190a4",
+    color: "#5f6f84",
     roughness: 0.4,
     metalness: 0.28,
   })
@@ -932,9 +977,9 @@ export function OfficeWorld({
     vertexColors: true,
   })
   const ceilingMaterial = useVisionMaterial({
-    color: "#fffdf6",
-    emissive: "#fff6d8",
-    emissiveIntensity: blackout ? 0.02 : 1.75,
+    color: "#eef1f2",
+    emissive: "#fff0cf",
+    emissiveIntensity: blackout ? 0.02 : 0.72,
     roughness: 0.3,
   })
   const ceilingSlabMaterial = useVisionMaterial({
@@ -1059,21 +1104,33 @@ export function OfficeWorld({
     () =>
       map.rooms
         .filter((room) => (room.level ?? 0) === level)
-        .flatMap((room) =>
-          splitAroundHoles(room.rect, floorHoles).map((part) => ({
+        .flatMap((room) => {
+          const finish = room.finish ?? "terrazzo"
+          const variant = stableHash(room.id)
+          const baseTint =
+            finish === "wood" || finish === "parquet"
+              ? "#fff1dd"
+              : finish === "pantry"
+                ? "#e5fff4"
+                : finish === "server"
+                  ? "#e5f3ff"
+                  : finish === "patternedCarpet"
+                    ? "#e9fffb"
+                    : finish === "vinyl"
+                      ? "#edf5fa"
+                      : "#f1f3f5"
+          return splitAroundHoles(room.rect, floorHoles).map((part) => ({
             ...part,
-            finish: room.finish ?? "terrazzo",
-            tint:
-              (room.finish ?? "terrazzo") === "wood"
-                ? "#fff1dd"
-                : (room.finish ?? "terrazzo") === "pantry"
-                  ? "#e5fff4"
-                  : (room.finish ?? "terrazzo") === "server"
-                    ? "#e5f3ff"
-                    : "#f6f8fb",
+            finish,
+            tint: mix(baseTint, room.floor, 0.12),
             slab: room.kind === "corredor" ? SLAB_CORREDOR : SLAB_SALA,
-          })),
-        ),
+            offsetX: (variant % 11) / 11,
+            offsetY: (Math.floor(variant / 11) % 11) / 11,
+            rotation: ["carpet", "patternedCarpet", "terrazzo", "vinyl"].includes(finish)
+              ? (variant % 4) * (Math.PI / 2)
+              : 0,
+          }))
+        }),
     [floorHoles, level, map.rooms],
   )
   const ceilings = useMemo(
@@ -1111,8 +1168,8 @@ export function OfficeWorld({
             x: alongX ? room.rect.x + room.rect.w * fraction : room.rect.x + room.rect.w / 2,
             z: alongX ? room.rect.z + room.rect.d / 2 : room.rect.z + room.rect.d * fraction,
             color: `#${roomTone.getHexString()}`,
-            intensity: room.kind === "corredor" ? 46 : 39,
-            distance: THREE.MathUtils.clamp(Math.max(room.rect.w, room.rect.d) * 0.9, 12, 22),
+            intensity: room.kind === "corredor" ? 27 : 24,
+            distance: THREE.MathUtils.clamp(Math.max(room.rect.w, room.rect.d) * 0.72, 10, 18),
           }
         })
       })
@@ -1204,7 +1261,7 @@ export function OfficeWorld({
           sy: 1,
           sz: wall.maxZ - wall.minZ,
           accent: wall.accent ?? "#a5b4fc",
-          color: mix("#ede9e1", wall.accent ?? "#aab5c4", 0.12),
+          color: mix("#c7cdd5", wall.accent ?? "#8d9caf", 0.16),
           style: wall.style ?? "parede",
         })),
     [map.walls, level],
@@ -1273,7 +1330,7 @@ export function OfficeWorld({
             sx: door.width,
             sy: wallHeight - doorHeight,
             sz: 0.4,
-            color: mix("#ede9e1", room.light, 0.12),
+            color: mix("#c7cdd5", room.light, 0.16),
           })
         } else {
           doorFrames.push(
@@ -1313,7 +1370,7 @@ export function OfficeWorld({
             sx: 0.4,
             sy: wallHeight - doorHeight,
             sz: door.width,
-            color: mix("#ede9e1", room.light, 0.12),
+            color: mix("#c7cdd5", room.light, 0.16),
           })
         }
       }
@@ -1402,7 +1459,7 @@ export function OfficeWorld({
   const wallGeometry = useMemo(() => {
     const box = new THREE.BoxGeometry(1, 1, 1)
     box.translate(0, 0.5, 0)
-    shadeByFace(box, 1, 0.96, 0.78)
+    shadeByFace(box, 1, 0.87, 0.66)
     return box
   }, [])
 

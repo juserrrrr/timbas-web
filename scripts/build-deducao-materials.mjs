@@ -6,6 +6,9 @@ const directory = path.resolve("public/images/games/deducao/textures")
 const materials = [
   { name: "carpet", source: "carpet.png", normal: 2.2, roughness: 224 },
   { name: "concrete", source: "concrete.png", normal: 1.7, roughness: 204 },
+  { name: "corridor-vinyl-v2", source: "corridor-vinyl-v2.webp", normal: 1.65, roughness: 196 },
+  { name: "executive-parquet-v2", source: "executive-parquet-v2.webp", normal: 1.5, roughness: 168 },
+  { name: "lounge-carpet-v2", source: "lounge-carpet-v2.webp", normal: 2.25, roughness: 226 },
   { name: "pantry-tile", source: "pantry-tile.png", normal: 2.5, roughness: 172 },
   { name: "server-floor", source: "server-floor.png", normal: 2.0, roughness: 148 },
   { name: "terrazzo", source: "terrazzo.png", normal: 1.45, roughness: 194 },
