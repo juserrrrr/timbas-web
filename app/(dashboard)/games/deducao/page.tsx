@@ -7,7 +7,9 @@ import { ArrowLeft, DoorOpen, Lock, Play, RefreshCw, Users } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
 import {
   listDeducaoRooms,
+  listOfficeMaps,
   saveDeducaoRoomPassword,
+  type GameMapSummary,
   type RoomSummary,
 } from "@/lib/services/games"
 import { toast } from "@/lib/toast"
@@ -25,6 +27,7 @@ const PHASE_LABEL: Record<string, string> = {
 export default function DeducaoPage() {
   const router = useRouter()
   const [rooms, setRooms] = useState<RoomSummary[]>([])
+  const [maps, setMaps] = useState<GameMapSummary[]>([])
   const [loadingRooms, setLoadingRooms] = useState(true)
   const [creating, setCreating] = useState(false)
   const [privateRoom, setPrivateRoom] = useState<RoomSummary | null>(null)
@@ -33,7 +36,9 @@ export default function DeducaoPage() {
   const loadRooms = useCallback(async () => {
     setLoadingRooms(true)
     try {
-      setRooms(await listDeducaoRooms())
+      const [roomList, mapCatalog] = await Promise.all([listDeducaoRooms(), listOfficeMaps()])
+      setRooms(roomList)
+      setMaps(mapCatalog.maps)
     } catch {
       setRooms([])
     } finally {
@@ -66,8 +71,8 @@ export default function DeducaoPage() {
     openRoom(target)
   }
 
-  const createRoom = (input: { name: string; password: string }) => {
-    const params = new URLSearchParams({ nome: input.name })
+  const createRoom = (input: { name: string; password: string; mapId: string }) => {
+    const params = new URLSearchParams({ nome: input.name, mapa: input.mapId })
     if (input.password) saveDeducaoRoomPassword("nova", input.password)
     router.push(`/games/deducao/nova?${params.toString()}`)
   }
@@ -141,7 +146,7 @@ export default function DeducaoPage() {
                     <span className="block truncate text-sm font-bold text-white">{room.name}</span>
                     <span className="mt-0.5 block truncate text-[11px] text-zinc-500">
                       {room.host ? `Criada por ${room.host} · ` : ""}
-                      {PHASE_LABEL[room.phase] ?? room.phase}
+                      {PHASE_LABEL[room.phase] ?? room.phase} · {room.mapName}
                     </span>
                   </span>
                   {room.private && <Lock className="h-3.5 w-3.5 shrink-0 text-zinc-500" />}
@@ -188,6 +193,7 @@ export default function DeducaoPage() {
           <button
             type="button"
             onClick={() => setCreating(true)}
+            disabled={maps.length === 0}
             className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-black uppercase tracking-wide text-zinc-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-500"
           >
             <Play className="h-4 w-4" />
@@ -196,7 +202,7 @@ export default function DeducaoPage() {
         </aside>
       </section>
 
-      <CreateRoomDialog open={creating} onOpenChange={setCreating} onConfirm={createRoom} />
+      <CreateRoomDialog open={creating} maps={maps} onOpenChange={setCreating} onConfirm={createRoom} />
       <JoinRoomDialog
         room={privateRoom}
         onOpenChange={(open) => {

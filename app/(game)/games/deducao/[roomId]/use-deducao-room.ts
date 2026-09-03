@@ -62,6 +62,8 @@ export interface ChatRow {
 
 export interface Snapshot {
   roomName: string
+  mapId: string
+  mapName: string
   code: string
   private: boolean
   hostId: string
@@ -86,10 +88,13 @@ export interface Notice {
   text: string
 }
 
+const BLACKOUT_NOTICE = "A luz caiu. Ninguém enxerga direito."
+
 interface Options {
   roomId: string
   name?: string
   password?: string
+  mapId?: string
 }
 
 const EMPTY_MEETING: MeetingRow = {
@@ -166,6 +171,8 @@ function snapshotOf(state: any): Snapshot {
 
   return {
     roomName: state.roomName,
+    mapId: state.mapId || "original",
+    mapName: state.mapName || "Mapa original",
     code: state.code,
     private: state.private,
     hostId: state.hostId,
@@ -252,7 +259,11 @@ function forgetReconnect(roomId: string) {
   }
 }
 
-async function enterRoom(client: Client, roomId: string, options: { name?: string; password?: string }): Promise<Room> {
+async function enterRoom(
+  client: Client,
+  roomId: string,
+  options: { name?: string; password?: string; mapId?: string },
+): Promise<Room> {
   const hashRoomId = roomId === "nova" ? window.location.hash.slice(1) : ""
   const targetRoomId = /^[A-Za-z0-9_-]+$/.test(hashRoomId) ? hashRoomId : roomId
 
@@ -300,7 +311,7 @@ async function enterRoom(client: Client, roomId: string, options: { name?: strin
   }
 }
 
-export function useDeducaoRoom({ roomId, name, password }: Options) {
+export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
   const [status, setStatus] = useState<"conectando" | "pronto" | "erro">("conectando")
   const [error, setError] = useState("")
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
@@ -319,8 +330,17 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
   const signatureRef = useRef("")
 
   const notice = useCallback((kind: Notice["kind"], text: string) => {
-    setNotices((current) => [...current.slice(-3), { id: Date.now() + Math.random(), kind, text }])
+    const id = Date.now() + Math.random()
+    setNotices((current) => [...current.filter((item) => item.text !== text).slice(-2), { id, kind, text }])
+    window.setTimeout(() => {
+      setNotices((current) => current.filter((item) => item.id !== id))
+    }, 4_200)
   }, [])
+
+  useEffect(() => {
+    if (snapshot?.blackout !== false) return
+    setNotices((current) => current.filter((item) => item.text !== BLACKOUT_NOTICE))
+  }, [snapshot?.blackout])
 
   useEffect(() => {
     // Em desenvolvimento o React monta, desmonta e monta de novo na sequência.
@@ -356,7 +376,7 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
     }
 
     const connect = async () => {
-      const room = await enterRoom(client, roomId, { name, password })
+      const room = await enterRoom(client, roomId, { name, password, mapId })
       if (goingRef.current) {
         void room.leave(true)
         return
@@ -388,7 +408,7 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
       room.onMessage("morte", (payload: { by: string }) => {
         notice("perigo", `${payload.by} te pegou. Agora você observa e termina suas tarefas.`)
       })
-      room.onMessage("apagao", () => notice("perigo", "A luz caiu. Ninguém enxerga direito."))
+      room.onMessage("apagao", () => notice("perigo", BLACKOUT_NOTICE))
       room.onMessage("andar", (payload: { level: number }) =>
         notice("aviso", payload.level === 1 ? "Você chegou ao 2º andar." : "Você voltou ao térreo."),
       )
@@ -437,7 +457,7 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
     })
 
     return () => scheduleTeardown()
-  }, [roomId, name, password, notice])
+  }, [roomId, name, password, mapId, notice])
 
   const send = useCallback((type: string, payload?: unknown) => {
     roomRef.current?.send(type as never, payload as never)

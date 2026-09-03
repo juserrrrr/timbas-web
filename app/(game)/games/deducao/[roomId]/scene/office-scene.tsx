@@ -188,6 +188,10 @@ function SceneContent({
   const mineSnapshot = snapshot.players.find((player) => player.id === me)
   const currentLevel = mineSnapshot?.level ?? 0
   const inMeeting = snapshot.phase === "reuniao" || snapshot.phase === "votacao"
+  const renderedFloors = useMemo(
+    () => (map.rooms.some((room) => (room.level ?? 0) === 1) ? [0, 1] : [0]),
+    [map.rooms],
+  )
 
   // Duas listas, e a diferença importa: no armário você esbarra e some atrás
   // dele; na mesa você esbarra mas continua à vista.
@@ -498,7 +502,7 @@ function SceneContent({
         decay={2}
       />
 
-      {[0, 1].map((floor) => (
+      {renderedFloors.map((floor) => (
         <OfficeWorld
           key={floor}
           map={map}

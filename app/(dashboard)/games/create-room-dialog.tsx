@@ -1,20 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import type { GameMapSummary } from "@/lib/services/games"
 
 interface Props {
   open: boolean
+  maps: GameMapSummary[]
   onOpenChange: (open: boolean) => void
-  onConfirm: (input: { name: string; password: string }) => void
+  onConfirm: (input: { name: string; password: string; mapId: string }) => void
 }
 
-export function CreateRoomDialog({ open, onOpenChange, onConfirm }: Props) {
+export function CreateRoomDialog({ open, maps, onOpenChange, onConfirm }: Props) {
   const [name, setName] = useState("")
   const [password, setPassword] = useState("")
+  const [mapId, setMapId] = useState("original")
+
+  useEffect(() => {
+    if (!maps.some((map) => map.id === mapId)) setMapId(maps[0]?.id ?? "original")
+  }, [mapId, maps])
 
   const confirm = () => {
-    onConfirm({ name: name.trim() || "Sala do Timbas", password: password.trim() })
+    onConfirm({ name: name.trim() || "Sala do Timbas", password: password.trim(), mapId })
     onOpenChange(false)
   }
 
@@ -29,6 +36,26 @@ export function CreateRoomDialog({ open, onOpenChange, onConfirm }: Props) {
         </DialogHeader>
 
         <div className="space-y-4">
+          <label className="block">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">
+              Mapa da partida
+            </span>
+            <select
+              value={mapId}
+              onChange={(event) => setMapId(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white focus:outline-none"
+            >
+              {maps.map((map) => (
+                <option key={map.id} value={map.id}>
+                  {map.name}{map.original ? " (original)" : ""}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1.5 block text-[11px] text-zinc-600">
+              O mapa fica preso a esta sala, mesmo que outro seja editado depois.
+            </span>
+          </label>
+
           <label className="block">
             <span className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">
               Nome da sala

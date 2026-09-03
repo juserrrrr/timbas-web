@@ -11,7 +11,13 @@ import { useDeducaoRoom } from "./use-deducao-room"
 
 /// A partida carrega o Three.js inteiro. Fora daqui ninguém paga por isso, e
 /// nada disso renderiza no servidor porque a cena precisa de WebGL.
-const Match = dynamic(() => import("./match").then((module) => module.Match), {
+let matchModule: Promise<typeof import("./match")> | null = null
+const loadMatch = () => {
+  matchModule ??= import("./match")
+  return matchModule
+}
+
+const Match = dynamic(() => loadMatch().then((module) => module.Match), {
   ssr: false,
   loading: () => (
     <div className="flex h-full items-center justify-center bg-black">
@@ -31,16 +37,23 @@ export default function DeducaoRoomPage() {
     roomId: params.roomId,
     name: search.get("nome") ?? undefined,
     password: search.get("senha") ?? undefined,
+    mapId: search.get("mapa") ?? undefined,
   })
 
   useEffect(() => {
-    void getOfficeMap()
+    void loadMatch()
+  }, [])
+
+  useEffect(() => {
+    if (!room.snapshot?.mapId) return
+    setMap(null)
+    void getOfficeMap(room.snapshot.mapId)
       .then((payload) => {
         setMap(payload.map)
         setMinPlayers(payload.minPlayers)
       })
       .catch(() => setMap(null))
-  }, [])
+  }, [room.snapshot?.mapId])
 
   // O fragmento deixa o id real na URL sem navegar para outro segmento. Trocar o
   // parâmetro da rota desmontaria a tela e encerraria a sala recém-criada.

@@ -22,9 +22,12 @@ import { AdminHeader, AdminMetrics, InlineNotice, SectionCard } from "@/componen
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import {
+  createAdminOfficeMap,
+  deleteAdminOfficeMap,
   getAdminOfficeMap,
-  publishAdminOfficeMap,
-  resetAdminOfficeMap,
+  listAdminOfficeMaps,
+  updateAdminOfficeMap,
+  type GameMapSummary,
   type MapRoom,
   type MapTaskSpot,
   type OfficeMap,
@@ -46,6 +49,7 @@ const FINISHES: Array<{ value: NonNullable<MapRoom["finish"]>; label: string }> 
   { value: "grass", label: "Grama" },
   { value: "water", label: "Água/piscina" },
   { value: "sport", label: "Quadra esportiva" },
+  { value: "asphalt", label: "Asfalto" },
 ]
 const ROOM_COLORS: Record<NonNullable<MapRoom["finish"]>, string> = {
   vinyl: "#6387a3",
@@ -60,6 +64,7 @@ const ROOM_COLORS: Record<NonNullable<MapRoom["finish"]>, string> = {
   grass: "#4f8f47",
   water: "#26b9cf",
   sport: "#378a91",
+  asphalt: "#303337",
 }
 const TASK_KINDS = [
   { value: "cabos", label: "Consertar cabos" },
@@ -327,10 +332,13 @@ function repairPlayable(source: OfficeMap): OfficeMap {
     .map((seat) => ({ ...seat, dir: normalizeAngle(Number.isFinite(seat.dir) ? seat.dir : 0) }))
   map.meetingSeats = seats.length >= 4 ? seats : defaults.meetingSeats
   map.props = map.props.filter((prop) => usablePoint(prop))
-  map.vents = map.vents.filter((vent) => {
-    const room = roomById.get(vent.room)
+  const ventRooms = new Map(map.rooms.filter((room) => room.kind !== "agua").map((room) => [room.id, room]))
+  const validVents = map.vents.filter((vent) => {
+    const room = ventRooms.get(vent.room)
     return Boolean(room && pointInsideRoom(room, vent) && !pointInWater(map, vent))
   })
+  const validVentIds = new Set(validVents.map((vent) => vent.id))
+  map.vents = validVents.map((vent) => ({ ...vent, links: vent.links.filter((link) => validVentIds.has(link)) }))
   map.walls = []
   map.obstacles = []
   return map
@@ -502,7 +510,7 @@ async function fetchOsmArea(bounds: GeoBounds): Promise<OsmElement[]> {
     way["water"](${bbox});
     way["landuse"~"^(grass|recreation_ground|village_green)$"](${bbox});
     way["amenity"="parking"](${bbox});
-    way["highway"~"^(footway|path|pedestrian|service)$"](${bbox});
+    way["highway"~"^(primary|secondary|tertiary|unclassified|residential|living_street|service|pedestrian|footway|path)$"](${bbox});
   );out tags geom;`
   const endpoints = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
   let lastError: unknown = null
@@ -527,6 +535,50 @@ async function fetchOsmArea(bounds: GeoBounds): Promise<OsmElement[]> {
     }
   }
   throw lastError instanceof Error ? lastError : new Error("Não foi possível consultar os dados desta área.")
+}
+
+function generatedBuildingProps(
+  room: MapRoom,
+  tags: Record<string, string>,
+  index: number,
+): OfficeMap["props"] {
+  if (room.rect.w < 3.8 || room.rect.d < 3.4) return []
+  const props: OfficeMap["props"] = []
+  const put = (kind: string, xRatio: number, zRatio: number, rot = 0) => {
+    props.push({
+      kind,
+      x: round2(room.rect.x + room.rect.w * xRatio),
+      z: round2(room.rect.z + room.rect.d * zRatio),
+      rot,
+      level: room.level ?? 0,
+    })
+  }
+  const use = `${tags.building ?? ""} ${tags.amenity ?? ""} ${tags.shop ?? ""} ${tags.office ?? ""}`
+  const home = /house|residential|apartments|bungalow|detached/.test(use)
+  const commercial = Boolean(tags.shop) || /commercial|retail|supermarket/.test(use)
+  const institutional = /school|college|university|office|public|civic/.test(use)
+  const roomy = room.rect.w >= 7 && room.rect.d >= 5.5
+
+  if (home) {
+    put("sofa", 0.34, 0.52, index % 2 ? Math.PI / 2 : 0)
+    if (room.rect.w >= 5.5) put("kitchen", 0.69, 0.24, Math.PI)
+    put("plant", 0.78, 0.72, index % 3)
+  } else if (commercial) {
+    put("counter", 0.5, 0.3, 0)
+    if (roomy) put("shelf", 0.28, 0.7, Math.PI / 2)
+    put("vending", 0.78, 0.7, Math.PI)
+  } else if (institutional && roomy) {
+    put("meetingTable", 0.5, 0.5, index % 2 ? Math.PI / 2 : 0)
+    put("chair", 0.3, 0.5, Math.PI / 2)
+    put("chair", 0.7, 0.5, -Math.PI / 2)
+    put("whiteboard", 0.5, 0.18, 0)
+  } else {
+    put("desk", 0.42, 0.42, index % 2 ? Math.PI / 2 : 0)
+    put("chair", 0.42, 0.67, Math.PI)
+    put("monitor", 0.42, 0.4, index % 2 ? Math.PI / 2 : 0)
+    if (roomy) put(index % 3 === 0 ? "rack" : "locker", 0.78, 0.7, Math.PI)
+  }
+  return props
 }
 
 function mapFromOsm(
@@ -576,8 +628,9 @@ function mapFromOsm(
   const surfaces: MapRoom[] = []
   const waters: MapRoom[] = []
   const buildings: MapRoom[] = []
+  const generatedProps: OfficeMap["props"] = []
   let pathParts = 0
-  const counts = { construcoes: 0, agua: 0, campos: 0, caminhos: 0 }
+  const counts = { construcoes: 0, agua: 0, campos: 0, caminhos: 0, mobiliario: 0, inferidos: 0 }
 
   for (const element of elements.slice(0, 240)) {
     const geometry = (element.geometry ?? []).filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon))
@@ -585,23 +638,53 @@ function mapFromOsm(
     const points = geometry.map(project)
     const tags = element.tags ?? {}
     const id = `osm-${element.id}`
+    const featureCenter = geometry.reduce(
+      (center, point) => ({ lat: center.lat + point.lat / geometry.length, lon: center.lon + point.lon / geometry.length }),
+      { lat: 0, lon: 0 },
+    )
+    const centerInsideSelection =
+      featureCenter.lat >= geoBounds.south &&
+      featureCenter.lat <= geoBounds.north &&
+      featureCenter.lon >= geoBounds.west &&
+      featureCenter.lon <= geoBounds.east
+    if (!tags.highway && !centerInsideSelection) continue
 
     if (tags.building) {
       if (buildings.length >= 32) continue
       const rect = rectFrom(points)
       const doorWidth = Math.min(2.8, Math.max(1.2, rect.w - 0.4))
-      buildings.push(
-        room(
-          id,
-          tags.name || (tags.building === "house" ? "Casa" : "Construção"),
-          rect,
-          "sala",
-          tags.building === "house" ? "wood" : "terrazzo",
-          tags.building === "house" ? "#a98265" : "#87929d",
-          "#ffd38a",
-          [{ side: "south", at: Math.max(0, (rect.w - doorWidth) / 2), width: doorWidth }],
-        ),
+      const buildingIndex = buildings.length
+      const use = tags.building
+      const home = ["house", "residential", "apartments", "bungalow", "detached"].includes(use)
+      const names: Record<string, string> = {
+        house: "Casa",
+        residential: "Residência",
+        apartments: "Edifício residencial",
+        commercial: "Comércio",
+        retail: "Loja",
+        school: "Escola",
+        warehouse: "Galpão",
+        industrial: "Prédio industrial",
+      }
+      const finishes = home
+        ? (["wood", "parquet", "patternedCarpet"] as const)
+        : (["terrazzo", "vinyl", "concrete", "carpet"] as const)
+      const floors = home
+        ? ["#b57c56", "#b9936c", "#8e745f", "#c19a72"]
+        : ["#788896", "#687b8d", "#8a8178", "#677984", "#81758d"]
+      const lights = ["#ffd38a", "#8fe3ff", "#a7f3d0", "#f9a8d4", "#c4b5fd"]
+      const building = room(
+        id,
+        tags.name || names[use] || "Construção",
+        rect,
+        "sala",
+        finishes[buildingIndex % finishes.length],
+        floors[buildingIndex % floors.length],
+        lights[buildingIndex % lights.length],
+        [{ side: "south", at: Math.max(0, (rect.w - doorWidth) / 2), width: doorWidth }],
       )
+      buildings.push(building)
+      generatedProps.push(...generatedBuildingProps(building, tags, buildingIndex))
       counts.construcoes += 1
       continue
     }
@@ -626,19 +709,198 @@ function mapFromOsm(
     }
 
     if (tags.amenity === "parking") {
-      surfaces.push(room(id, tags.name || "Estacionamento", rectFrom(points), "externa", "concrete", "#69727c", "#dce7ee"))
+      const parking = room(id, tags.name || "Estacionamento", rectFrom(points), "externa", "concrete", "#505861", "#dce7ee")
+      surfaces.push(parking)
+      if (parking.rect.w >= 8 && parking.rect.d >= 7) {
+        const cars = Math.min(4, Math.max(1, Math.floor(parking.rect.w / 7)))
+        for (let car = 0; car < cars; car += 1) {
+          generatedProps.push({
+            kind: "car",
+            x: round2(parking.rect.x + ((car + 1) * parking.rect.w) / (cars + 1)),
+            z: round2(parking.rect.z + parking.rect.d * 0.52),
+            rot: car % 2 ? 0 : Math.PI,
+            level: 0,
+          })
+        }
+      }
       continue
     }
 
-    if (tags.highway && pathParts < 20) {
-      const thickness = Math.max(1, 1.7 * scale)
-      for (let index = 1; index < points.length && pathParts < 20; index += 1) {
-        const rect = rectFrom([points[index - 1], points[index]], thickness)
-        surfaces.push(room(`${id}-${index}`, tags.name || "Caminho", rect, "externa", "concrete", "#737b82", "#e8f0f4"))
-        pathParts += 1
-        counts.caminhos += 1
+    if (tags.highway && pathParts < 30) {
+      const walking = ["footway", "path", "pedestrian"].includes(tags.highway)
+      const lanes = Math.max(1, Number(tags.lanes) || 1)
+      const meters = Number(tags.width) || (walking ? 1.8 : tags.highway === "service" ? 4 : Math.min(8, lanes * 3.1 + 1.2))
+      const thickness = Math.max(walking ? 1.2 : 2.8, meters * scale)
+      for (let index = 1; index < points.length && pathParts < 30; index += 1) {
+        const from = points[index - 1]
+        const to = points[index]
+        const length = Math.hypot(to.x - from.x, to.z - from.z)
+        const steps = Math.max(1, Math.ceil(length / Math.max(1.8, thickness * 0.7)))
+        for (let step = 0; step < steps && pathParts < 30; step += 1) {
+          const ratio = (step + 0.5) / steps
+          const x = from.x + (to.x - from.x) * ratio
+          const z = from.z + (to.z - from.z) * ratio
+          const rect = rectFrom([
+            { x: x - thickness / 2, z: z - thickness / 2 },
+            { x: x + thickness / 2, z: z + thickness / 2 },
+          ])
+          surfaces.push(room(
+            `${id}-${index}-${step}`,
+            tags.name || (walking ? "Caminho" : "Rua"),
+            rect,
+            "externa",
+            walking ? "concrete" : "asphalt",
+            walking ? "#777d80" : "#252a31",
+            walking ? "#e8f0f4" : "#9da8b4",
+          ))
+          pathParts += 1
+          counts.caminhos += 1
+        }
       }
     }
+  }
+
+  if (buildings.length === 0) {
+    const innerW = Math.max(6, mapWidth - padding * 2)
+    const innerD = Math.max(6, mapDepth - padding * 2)
+    const roadDepth = Math.max(3, Math.min(5.5, innerD * 0.11))
+    const roadZ = padding + innerD * 0.48
+    surfaces.push(room(
+      "inferred-road-main",
+      "Rua de acesso",
+      { x: padding, z: roadZ, w: innerW, d: roadDepth },
+      "externa",
+      "asphalt",
+      "#252a31",
+      "#aab4bf",
+    ))
+    counts.caminhos += 1
+
+    const addBuilding = (
+      name: string,
+      xRatio: number,
+      z: number,
+      wRatio: number,
+      d: number,
+      tags: Record<string, string>,
+    ) => {
+      const x = round2(padding + innerW * xRatio)
+      const availableW = mapWidth - padding - x
+      const availableD = mapDepth - padding - z
+      if (availableW < 3.8 || availableD < 3.4) return
+      const rect = {
+        x,
+        z: round2(z),
+        w: round2(Math.min(availableW, Math.max(4, innerW * wRatio))),
+        d: round2(Math.min(availableD, Math.max(4, d))),
+      }
+      if (rect.w < 3.8 || rect.d < 3.4) return
+      const index = buildings.length
+      const doorWidth = Math.min(2.8, Math.max(1.4, rect.w * 0.22))
+      const building = room(
+        `inferred-building-${index + 1}`,
+        name,
+        rect,
+        "sala",
+        index % 3 === 0 ? "wood" : index % 3 === 1 ? "terrazzo" : "vinyl",
+        ["#b88761", "#73899b", "#8b796d", "#697d72"][index % 4],
+        ["#ffd38a", "#8fe3ff", "#a7f3d0", "#f9a8d4"][index % 4],
+        [{ side: "south", at: Math.max(0, (rect.w - doorWidth) / 2), width: doorWidth }],
+      )
+      buildings.push(building)
+      generatedProps.push(...generatedBuildingProps(building, tags, index))
+      counts.construcoes += 1
+    }
+
+    const topDepth = Math.max(5, roadZ - padding - 2)
+    const lowerZ = roadZ + roadDepth + 2
+    const lowerDepth = Math.max(5, mapDepth - padding - lowerZ)
+    addBuilding("Casa principal", 0.05, padding + 1, 0.25, topDepth, { building: "house" })
+    addBuilding("Casa de hóspedes", 0.37, padding + 2, 0.18, topDepth * 0.82, { building: "house" })
+    addBuilding("Administração", 0.66, padding + 1, 0.27, topDepth, { building: "office", office: "yes" })
+    addBuilding("Salão", 0.66, lowerZ + 1, 0.26, lowerDepth * 0.82, { building: "commercial" })
+
+    if (innerW >= 28 && lowerDepth >= 7) {
+      waters.push(room(
+        "inferred-pool",
+        "Piscina",
+        { x: round2(padding + innerW * 0.07), z: round2(lowerZ + 1), w: round2(innerW * 0.22), d: round2(lowerDepth * 0.72) },
+        "agua",
+        "water",
+        "#21b6d0",
+        "#8cf3ff",
+      ))
+      surfaces.push(room(
+        "inferred-field",
+        "Campo/quadra",
+        { x: round2(padding + innerW * 0.35), z: round2(lowerZ + 1), w: round2(innerW * 0.24), d: round2(lowerDepth * 0.72) },
+        "campo",
+        "sport",
+        "#3f8f91",
+        "#d7fff7",
+      ))
+      counts.agua += 1
+      counts.campos += 1
+    }
+    if (innerW >= 38) {
+      generatedProps.push(
+        { kind: "car", x: round2(padding + innerW * 0.28), z: round2(roadZ + roadDepth / 2), rot: Math.PI / 2, level: 0 },
+        { kind: "car", x: round2(padding + innerW * 0.53), z: round2(roadZ + roadDepth / 2), rot: -Math.PI / 2, level: 0 },
+        { kind: "cone", x: round2(padding + innerW * 0.45), z: round2(roadZ + roadDepth * 0.2), rot: 0, level: 0 },
+      )
+    }
+    counts.inferidos = buildings.length + waters.length + surfaces.length
+  } else if (pathParts === 0 && mapWidth >= 28 && mapDepth >= 22) {
+    surfaces.push(room(
+      "inferred-road-access",
+      "Via de acesso",
+      { x: padding, z: round2(mapDepth - padding - 4.5), w: mapWidth - padding * 2, d: 4.5 },
+      "externa",
+      "asphalt",
+      "#252a31",
+      "#aab4bf",
+    ))
+    counts.caminhos += 1
+    counts.inferidos += 1
+  }
+
+  const protectedRooms = [...buildings, ...waters, ...surfaces.filter((surface) => surface.kind === "campo")]
+  const freeOutdoorPoint = (x: number, z: number, margin = 0.8) =>
+    x >= padding + margin &&
+    x <= mapWidth - padding - margin &&
+    z >= padding + margin &&
+    z <= mapDepth - padding - margin &&
+    !protectedRooms.some((area) =>
+      x >= area.rect.x - margin &&
+      x <= area.rect.x + area.rect.w + margin &&
+      z >= area.rect.z - margin &&
+      z <= area.rect.z + area.rect.d + margin,
+    )
+
+  const landscapeCandidates = Array.from({ length: Math.min(14, Math.max(6, Math.floor(mapWidth / 18))) }, (_, index) => ({
+    x: padding + ((index + 1) * (mapWidth - padding * 2)) / (Math.min(14, Math.max(6, Math.floor(mapWidth / 18))) + 1),
+    z: index % 2 === 0 ? padding + 1.3 : mapDepth - padding - 1.3,
+  }))
+  for (const [index, point] of landscapeCandidates.entries()) {
+    if (!freeOutdoorPoint(point.x, point.z, 1.1)) continue
+    generatedProps.push({ kind: "tree", x: round2(point.x), z: round2(point.z), rot: index * 0.7, level: 0 })
+  }
+
+  const roadSurfaces = surfaces.filter((surface) => surface.finish === "asphalt")
+  for (const [index, road] of roadSurfaces.filter((_, roadIndex) => roadIndex % 5 === 0).slice(0, 12).entries()) {
+    const x = road.rect.x + road.rect.w + 0.75
+    const z = road.rect.z + road.rect.d / 2
+    if (!freeOutdoorPoint(x, z, 0.3)) continue
+    generatedProps.push({ kind: "streetLamp", x: round2(x), z: round2(z), rot: index % 2 ? Math.PI : 0, level: 0 })
+  }
+
+  for (const [index, area] of [...waters, ...surfaces.filter((surface) => surface.kind === "campo")].slice(0, 8).entries()) {
+    const candidates = [
+      { x: area.rect.x - 1.3, z: area.rect.z + area.rect.d / 2, rot: Math.PI / 2 },
+      { x: area.rect.x + area.rect.w + 1.3, z: area.rect.z + area.rect.d / 2, rot: -Math.PI / 2 },
+    ]
+    const spot = candidates.find((candidate) => freeOutdoorPoint(candidate.x, candidate.z, 0.35))
+    if (spot) generatedProps.push({ kind: "bench", x: round2(spot.x), z: round2(spot.z), rot: spot.rot + index * 0.01, level: 0 })
   }
 
   const base = newMap()
@@ -650,7 +912,8 @@ function mapFromOsm(
     ...waters,
     ...buildings,
   ].slice(0, 78)
-  base.props = []
+  base.props = generatedProps.slice(0, 220)
+  counts.mobiliario = base.props.length
   base.vents = []
   base.stairs = []
   base.source = {
@@ -668,6 +931,8 @@ const labelClass = "space-y-1 text-[10px] font-bold uppercase tracking-[0.12em] 
 
 export default function GameMapEditorPage() {
   const [map, setMap] = useState<OfficeMap | null>(null)
+  const [mapCatalog, setMapCatalog] = useState<GameMapSummary[]>([])
+  const [activeMapId, setActiveMapId] = useState<string | null>("original")
   const [level, setLevel] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -686,10 +951,11 @@ export default function GameMapEditorPage() {
   const planPan = useRef<ViewPanState | null>(null)
 
   useEffect(() => {
-    void getAdminOfficeMap()
-      .then(({ map: loaded }) => {
-        setMap(loaded)
-        setReferenceUrl(loaded.source?.referenceUrl ?? "")
+    void Promise.all([listAdminOfficeMaps(), getAdminOfficeMap("original")])
+      .then(([catalog, entry]) => {
+        setMapCatalog(catalog.maps)
+        setMap(entry.map)
+        setReferenceUrl(entry.map.source?.referenceUrl ?? "")
       })
       .catch((error) => toast.error("Não deu para abrir o criador", { description: error instanceof Error ? error.message : undefined }))
       .finally(() => setLoading(false))
@@ -722,6 +988,56 @@ export default function GameMapEditorPage() {
       },
     [map?.source?.latitude, map?.source?.longitude, referenceUrl],
   )
+
+  const openStoredMap = async (mapId: string) => {
+    setLoading(true)
+    try {
+      const entry = await getAdminOfficeMap(mapId)
+      setMap(entry.map)
+      setActiveMapId(entry.id)
+      setReferenceUrl(entry.map.source?.referenceUrl ?? "")
+      setPlanView(null)
+      setSelectedId(null)
+      setSelectedTaskId(null)
+    } catch (error) {
+      toast.error("Não deu para abrir o mapa", {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const refreshMapCatalog = async () => {
+    const catalog = await listAdminOfficeMaps()
+    setMapCatalog(catalog.maps)
+  }
+
+  const startNewMap = (source?: OfficeMap) => {
+    const next = source ? cloneMap(source) : newMap()
+    if (source) next.name = `Cópia de ${source.name}`.slice(0, 64)
+    setMap(next)
+    setActiveMapId(null)
+    setReferenceUrl(next.source?.referenceUrl ?? "")
+    setPlanView(null)
+    setSelectedId(null)
+    setSelectedTaskId(null)
+  }
+
+  const removeActiveMap = async () => {
+    if (!activeMapId || activeMapId === "original") return
+    if (!window.confirm("Remover este mapa da biblioteca? As salas já abertas precisam ser fechadas antes.")) return
+    try {
+      await deleteAdminOfficeMap(activeMapId)
+      await refreshMapCatalog()
+      await openStoredMap("original")
+      toast.success("Mapa removido")
+    } catch (error) {
+      toast.error("Não deu para remover o mapa", {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    }
+  }
 
   const updateMap = (recipe: (next: OfficeMap) => void) => {
     setMap((current) => {
@@ -943,9 +1259,15 @@ export default function GameMapEditorPage() {
     try {
       const repaired = repairPlayable(map)
       setMap(repaired)
-      const result = await publishAdminOfficeMap(repaired)
+      const result = activeMapId && activeMapId !== "original"
+        ? await updateAdminOfficeMap(activeMapId, repaired)
+        : await createAdminOfficeMap(repaired)
       setMap(result.map)
-      toast.success("Mapa publicado", { description: "Novas salas usarão esta versão." })
+      setActiveMapId(result.id)
+      await refreshMapCatalog()
+      toast.success(activeMapId && activeMapId !== "original" ? "Mapa atualizado" : "Mapa criado", {
+        description: "Ele já pode ser escolhido ao criar uma sala.",
+      })
     } catch (error) {
       toast.error("O mapa não foi publicado", { description: error instanceof Error ? error.message : undefined })
     } finally {
@@ -970,6 +1292,7 @@ export default function GameMapEditorPage() {
     try {
       const imported = JSON.parse(await file.text()) as OfficeMap
       setMap(imported)
+      setActiveMapId(null)
       setSelectedId(null)
       setSelectedTaskId(null)
       setPlanView(null)
@@ -986,6 +1309,7 @@ export default function GameMapEditorPage() {
       const polygons = polygonsFromGeoFile(await file.text(), file.name.toLowerCase().endsWith(".kml"))
       const imported = mapFromPolygons(polygons, realScale, map?.source?.label ?? "Local importado")
       setMap(imported)
+      setActiveMapId(null)
       setSelectedId(null)
       setSelectedTaskId(null)
       setPlanView(null)
@@ -998,22 +1322,29 @@ export default function GameMapEditorPage() {
   const generateRealArea = async (bounds: GeoBounds) => {
     setGeneratingArea(true)
     try {
-      const elements = await fetchOsmArea(bounds)
+      let elements: OsmElement[] = []
+      let usedProceduralFallback = false
+      try {
+        elements = await fetchOsmArea(bounds)
+      } catch {
+        usedProceduralFallback = true
+      }
       const generated = mapFromOsm(elements, bounds, realScale, safeHttpsUrl(referenceUrl) ?? "https://www.openstreetmap.org")
       setMap(repairPlayable(generated.map))
+      setActiveMapId(null)
       setLevel(0)
       setSelectedId(null)
       setSelectedTaskId(null)
       setPlanView(null)
       const total = Object.values(generated.counts).reduce((sum, value) => sum + value, 0)
       const summary = total > 0
-        ? `${generated.counts.construcoes} construções · ${generated.counts.agua} áreas de água · ${generated.counts.campos} campos · ${generated.counts.caminhos} caminhos`
+        ? `${generated.counts.construcoes} construções · ${generated.counts.agua} áreas de água · ${generated.counts.campos} campos · ${generated.counts.caminhos} trechos de rua · ${generated.counts.mobiliario} objetos${generated.counts.inferidos > 0 ? ` · ${generated.counts.inferidos} elementos completados automaticamente` : ""}`
         : "Nenhum objeto cartográfico encontrado; foi criado um terreno externo editável."
       setGenerationSummary(summary)
       toast.success("Cenário real gerado", {
         description:
           total > 0
-            ? `${summary}. Escala ${generated.scale.toFixed(2)}x.`
+            ? `${summary}. Escala ${generated.scale.toFixed(2)}x.${usedProceduralFallback ? " O serviço cartográfico não respondeu, então o cenário foi completado automaticamente." : ""}`
             : summary,
       })
     } catch (error) {
@@ -1033,6 +1364,8 @@ export default function GameMapEditorPage() {
   const compactGeneratedMap = map.bounds.w > 120 || map.rooms.length > 36
   const showPlantDetails = plantZoom >= (compactGeneratedMap ? 1.65 : 1)
   const availableTaskRooms = playableRooms(map)
+  const activeCatalogEntry = mapCatalog.find((entry) => entry.id === activeMapId)
+  const savesExistingMap = Boolean(activeMapId && activeMapId !== "original")
 
   return (
     <div className="space-y-6">
@@ -1046,11 +1379,60 @@ export default function GameMapEditorPage() {
           <>
             <Button variant="outline" onClick={exportMap}><Download className="mr-1.5 h-4 w-4" />Exportar</Button>
             <Button onClick={() => void publish()} disabled={saving} className="bg-cyan-500 text-black hover:bg-cyan-400">
-              {saving ? <Spinner className="mr-1.5 size-4" /> : <Save className="mr-1.5 h-4 w-4" />}Publicar mapa
+              {saving ? <Spinner className="mr-1.5 size-4" /> : <Save className="mr-1.5 h-4 w-4" />}
+              {savesExistingMap ? "Salvar mapa" : activeMapId === "original" ? "Criar cópia" : "Criar mapa"}
             </Button>
           </>
         }
       />
+
+      <SectionCard
+        icon={MapIcon}
+        title="Biblioteca de mapas"
+        description="O original fica sempre disponível. Mapas personalizados podem ser usados por salas diferentes."
+        accent="cyan"
+        bodyClassName="space-y-3"
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <label className={`${labelClass} min-w-0 flex-1`}>
+            Mapa aberto
+            <select
+              className={inputClass}
+              value={activeMapId ?? "draft"}
+              onChange={(event) => {
+                if (event.target.value !== "draft") void openStoredMap(event.target.value)
+              }}
+            >
+              {!activeMapId && <option value="draft">Novo mapa ainda não salvo</option>}
+              {mapCatalog.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}{entry.original ? " (original fixo)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => startNewMap()}>
+              <Plus className="mr-1.5 h-4 w-4" />Novo
+            </Button>
+            <Button variant="outline" onClick={() => startNewMap(map)}>
+              <WandSparkles className="mr-1.5 h-4 w-4" />Duplicar
+            </Button>
+            {savesExistingMap && (
+              <Button variant="outline" className="border-red-400/20 text-red-300" onClick={() => void removeActiveMap()}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+        <p className="text-[11px] text-gray-500">
+          {activeCatalogEntry?.original
+            ? "Você pode testar e alterar esta cópia na tela. Ao salvar, um novo mapa será criado e o original continuará intacto."
+            : savesExistingMap
+              ? "Salvar atualiza somente este mapa. Salas que usam outros mapas não são afetadas."
+              : "Defina o nome e salve para adicionar este mapa à biblioteca."}
+        </p>
+      </SectionCard>
 
       <AdminMetrics items={[
         { label: "Salas", value: map.rooms.length, icon: Box, accent: "cyan" },
@@ -1060,7 +1442,7 @@ export default function GameMapEditorPage() {
       ]} />
 
       <InlineNotice tone="info">
-        Publicar é bloqueado enquanto existir uma sala de jogo aberta. Assim ninguém recebe um desenho diferente das colisões do servidor.
+        Cada sala mantém o mapa escolhido quando foi criada. Um mapa personalizado só fica bloqueado para edição enquanto estiver sendo usado por uma sala aberta.
       </InlineNotice>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -1096,13 +1478,14 @@ export default function GameMapEditorPage() {
               {rooms.map((room) => {
                 const active = selectedId === room.id
                 const finish = room.finish ?? "terrazzo"
-                const showRoomName = active || showPlantDetails || (
+                const previewFill = room.finish === "asphalt" ? room.floor : ROOM_COLORS[finish]
+                const showRoomName = active || (showPlantDetails && room.kind !== "externa") || (
                   room.kind === "sala"
                   && room.rect.w >= map.bounds.w * 0.1
                   && room.rect.d >= map.bounds.d * 0.1
                 )
                 return <g key={room.id} onPointerDown={(event) => beginDrag(event, room, "move")} className="cursor-move">
-                  <rect x={room.rect.x} y={room.rect.z} width={room.rect.w} height={room.rect.d} rx={0.45} fill={ROOM_COLORS[finish]} fillOpacity={active ? 0.82 : 0.58} stroke={active ? "#67e8f9" : room.light} strokeWidth={active ? 0.34 : 0.18} />
+                  <rect x={room.rect.x} y={room.rect.z} width={room.rect.w} height={room.rect.d} rx={0.45} fill={previewFill} fillOpacity={active ? 0.82 : 0.58} stroke={active ? "#67e8f9" : room.light} strokeWidth={active ? 0.34 : 0.18} />
                   {(active || showPlantDetails) && (room.doors ?? []).map((door, index) => <line key={index} {...doorLine(room, door)} stroke="#facc15" strokeWidth={0.62 * markerScale} strokeLinecap="round" pointerEvents="none" />)}
                   {showRoomName && <text x={room.rect.x + room.rect.w / 2} y={room.rect.z + room.rect.d / 2} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize={Math.max(0.72 * markerScale, Math.min(1.6 * markerScale, room.rect.w / 7))} fontWeight="700" pointerEvents="none">{room.name}</text>}
                   {active && <rect x={room.rect.x + room.rect.w - 0.9} y={room.rect.z + room.rect.d - 0.9} width={0.9} height={0.9} rx={0.15} fill="#67e8f9" stroke="#031014" strokeWidth={0.15} className="cursor-nwse-resize" onPointerDown={(event) => beginDrag(event, room, "resize")} />}
@@ -1285,9 +1668,9 @@ export default function GameMapEditorPage() {
         <SectionCard icon={FileJson} title="Arquivo e manutenção" description="Leve o mapa para outro ambiente ou edite recursos avançados no JSON." accent="slate" bodyClassName="space-y-3">
           <div className="flex flex-wrap gap-2">
             <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-white/10 px-3 text-xs font-bold text-gray-300 hover:bg-white/[0.05]"><Upload className="mr-1.5 h-3.5 w-3.5" />Importar mapa<input type="file" accept="application/json,.json" className="hidden" onChange={(event) => void importMapFile(event.target.files?.[0])} /></label>
-            <Button variant="outline" size="sm" onClick={() => { const stored = window.localStorage.getItem(DRAFT_KEY); if (stored) { setMap(JSON.parse(stored)); setPlanView(null); setSelectedId(null); setSelectedTaskId(null); toast.success("Rascunho restaurado") } }}>Restaurar rascunho</Button>
-            <Button variant="outline" size="sm" onClick={() => { if (window.confirm("Começar um mapa novo?")) { setMap(newMap()); setPlanView(null); setSelectedId(null); setSelectedTaskId(null) } }}><Plus className="mr-1 h-3.5 w-3.5" />Novo</Button>
-            <Button variant="outline" size="sm" className="border-red-400/20 text-red-300" onClick={async () => { if (!window.confirm("Voltar ao mapa original do Timbas?")) return; try { const result = await resetAdminOfficeMap(); setMap(result.map); setPlanView(null); setSelectedId(null); setSelectedTaskId(null); toast.success("Mapa original restaurado") } catch (error) { toast.error("Não deu para restaurar", { description: error instanceof Error ? error.message : undefined }) } }}><RotateCcw className="mr-1 h-3.5 w-3.5" />Restaurar original</Button>
+            <Button variant="outline" size="sm" onClick={() => { const stored = window.localStorage.getItem(DRAFT_KEY); if (stored) { setMap(JSON.parse(stored)); setActiveMapId(null); setPlanView(null); setSelectedId(null); setSelectedTaskId(null); toast.success("Rascunho restaurado") } }}>Restaurar rascunho</Button>
+            <Button variant="outline" size="sm" onClick={() => { if (window.confirm("Começar um mapa novo?")) startNewMap() }}><Plus className="mr-1 h-3.5 w-3.5" />Novo</Button>
+            <Button variant="outline" size="sm" onClick={() => void openStoredMap("original")}><RotateCcw className="mr-1 h-3.5 w-3.5" />Abrir original</Button>
           </div>
           <details className="rounded-xl border border-white/[0.07] bg-black/20 p-3" onToggle={(event) => { if (event.currentTarget.open) setRawJson(JSON.stringify(map, null, 2)) }}><summary className="cursor-pointer text-xs font-black text-gray-300">Editor JSON avançado</summary><textarea value={rawJson} onChange={(event) => setRawJson(event.target.value)} className="mt-3 h-64 w-full rounded-lg border border-white/10 bg-black/40 p-3 font-mono text-[10px] text-gray-300 outline-none focus:border-cyan-400/40" /><Button size="sm" variant="outline" onClick={() => { try { setMap(JSON.parse(rawJson)); toast.success("JSON aplicado ao rascunho") } catch { toast.error("JSON inválido") } }}>Aplicar JSON</Button></details>
         </SectionCard>

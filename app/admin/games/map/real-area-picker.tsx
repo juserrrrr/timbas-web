@@ -85,14 +85,14 @@ export function RealAreaPicker({
   } | null>(null)
   const [size, setSize] = useState({ width: 800, height: 430 })
   const [center, setCenter] = useState({ latitude, longitude })
-  const [zoom, setZoom] = useState(19)
+  const [zoom, setZoom] = useState(18)
   const [mode, setMode] = useState<"pan" | "select">("select")
   const [baseLayer, setBaseLayer] = useState<"satellite" | "streets">("satellite")
   const [selection, setSelection] = useState(() => defaultSelection({ width: 800, height: 430 }))
 
   useEffect(() => {
     setCenter({ latitude, longitude })
-    setZoom(19)
+    setZoom(18)
     selectionTouched.current = false
     setSelection(defaultSelection(sizeRef.current))
   }, [latitude, longitude])
@@ -209,7 +209,8 @@ export function RealAreaPicker({
   }
 
   const changeZoom = (amount: number, anchor: Point = { x: size.width / 2, y: size.height / 2 }) => {
-    const nextZoom = Math.max(15, Math.min(20, zoom + amount))
+    const maximumZoom = baseLayer === "satellite" ? 18 : 20
+    const nextZoom = Math.max(15, Math.min(maximumZoom, zoom + amount))
     if (nextZoom === zoom) return
     const anchoredCoordinates = coordinatesFromWorld({ x: origin.x + anchor.x, y: origin.y + anchor.y }, zoom)
     const anchoredWorld = worldFromCoordinates(anchoredCoordinates.latitude, anchoredCoordinates.longitude, nextZoom)
@@ -292,7 +293,7 @@ export function RealAreaPicker({
         </div>
 
         <div className="pointer-events-auto absolute left-1/2 top-3 z-20 flex -translate-x-1/2 overflow-hidden rounded-xl border border-white/15 bg-black/75 p-1 backdrop-blur" onPointerDown={(event) => event.stopPropagation()}>
-          <button type="button" onClick={(event) => { event.stopPropagation(); setBaseLayer("satellite") }} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider ${baseLayer === "satellite" ? "bg-cyan-400 text-black" : "text-gray-300"}`}><Satellite className="h-3.5 w-3.5" />Satélite</button>
+          <button type="button" onClick={(event) => { event.stopPropagation(); setBaseLayer("satellite"); setZoom((current) => Math.min(18, current)) }} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider ${baseLayer === "satellite" ? "bg-cyan-400 text-black" : "text-gray-300"}`}><Satellite className="h-3.5 w-3.5" />Satélite</button>
           <button type="button" onClick={(event) => { event.stopPropagation(); setBaseLayer("streets") }} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider ${baseLayer === "streets" ? "bg-cyan-400 text-black" : "text-gray-300"}`}><MapIcon className="h-3.5 w-3.5" />Ruas</button>
         </div>
 

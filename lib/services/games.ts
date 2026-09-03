@@ -53,6 +53,7 @@ export interface MapRoom {
     | "grass"
     | "water"
     | "sport"
+    | "asphalt"
   light: string
   doors?: Array<{
     side: "north" | "south" | "east" | "west"
@@ -126,6 +127,8 @@ export function getGameCatalog(): Promise<GameCatalog> {
 export interface RoomSummary {
   roomId: string
   name: string
+  mapId: string
+  mapName: string
   code: string
   host: string
   phase: string
@@ -171,24 +174,49 @@ export function listDeducaoRooms(): Promise<RoomSummary[]> {
   return request<RoomSummary[]>("/games/deducao/rooms")
 }
 
-export function getOfficeMap(): Promise<{
+export interface GameMapSummary {
+  id: string
+  name: string
+  original: boolean
+  updatedAt: string | null
+}
+
+export interface GameMapEntry extends GameMapSummary {
+  map: OfficeMap
+}
+
+export function listOfficeMaps(): Promise<{ maps: GameMapSummary[] }> {
+  return request<{ maps: GameMapSummary[] }>("/games/deducao/maps")
+}
+
+export function getOfficeMap(mapId = "original"): Promise<{
   map: OfficeMap
   minPlayers: number
   maxPlayers: number
 }> {
-  return request<{ map: OfficeMap; minPlayers: number; maxPlayers: number }>("/games/deducao/map")
+  return request<{ map: OfficeMap; minPlayers: number; maxPlayers: number }>(
+    `/games/deducao/maps/${encodeURIComponent(mapId)}`,
+  )
 }
 
-export function getAdminOfficeMap(): Promise<{ map: OfficeMap }> {
-  return request<{ map: OfficeMap }>("/games/deducao/admin/map")
+export function listAdminOfficeMaps(): Promise<{ maps: GameMapSummary[] }> {
+  return request<{ maps: GameMapSummary[] }>("/games/deducao/admin/maps")
 }
 
-export function publishAdminOfficeMap(map: OfficeMap): Promise<{ map: OfficeMap }> {
-  return put<{ map: OfficeMap }>("/games/deducao/admin/map", { map })
+export function getAdminOfficeMap(mapId = "original"): Promise<GameMapEntry> {
+  return request<GameMapEntry>(`/games/deducao/admin/maps/${encodeURIComponent(mapId)}`)
 }
 
-export function resetAdminOfficeMap(): Promise<{ map: OfficeMap }> {
-  return remove<{ map: OfficeMap }>("/games/deducao/admin/map")
+export function createAdminOfficeMap(map: OfficeMap): Promise<GameMapEntry> {
+  return post<GameMapEntry>("/games/deducao/admin/maps", { map })
+}
+
+export function updateAdminOfficeMap(mapId: string, map: OfficeMap): Promise<GameMapEntry> {
+  return put<GameMapEntry>(`/games/deducao/admin/maps/${encodeURIComponent(mapId)}`, { map })
+}
+
+export function deleteAdminOfficeMap(mapId: string): Promise<{ ok: true }> {
+  return remove<{ ok: true }>(`/games/deducao/admin/maps/${encodeURIComponent(mapId)}`)
 }
 
 /// O jogo fala com a mesma API, na mesma porta, só que por WebSocket. Trocar o

@@ -83,6 +83,7 @@ export function Match({
   const [openTask, setOpenTask] = useState<MapTaskSpot | null>(null)
   const [quality, setQuality] = useState<Quality>("alto")
   const [intro, setIntro] = useState(false)
+  const [sceneReady, setSceneReady] = useState(false)
   const [doneTasks, setDoneTasks] = useState<string[]>([])
   const previousBlackout = useRef(snapshot.blackout)
   const previousPhase = useRef(snapshot.phase)
@@ -131,13 +132,24 @@ export function Match({
   // mensagem: numa segunda partida o papel pode ser o mesmo e o efeito não
   // dispararia de novo.
   useEffect(() => {
-    if (snapshot.phase !== "jogando") return
+    if (snapshot.phase !== "jogando" || !role) {
+      setIntro(false)
+      setSceneReady(false)
+      return
+    }
     pressed.current.clear()
     inputRef.current = { x: 0, z: 0, sprint: false }
     setIntro(true)
-    const timer = setTimeout(() => setIntro(false), 7500)
-    return () => clearTimeout(timer)
-  }, [snapshot.phase])
+    setSceneReady(false)
+    const warmup = window.setTimeout(() => setSceneReady(true), 300)
+    return () => window.clearTimeout(warmup)
+  }, [snapshot.phase, role])
+
+  useEffect(() => {
+    if (!sceneReady || snapshot.phase !== "jogando" || !role) return
+    const timer = window.setTimeout(() => setIntro(false), 7500)
+    return () => window.clearTimeout(timer)
+  }, [role, sceneReady, snapshot.phase])
 
   useEffect(() => setDoneTasks([]), [myTasks])
 
@@ -257,21 +269,23 @@ export function Match({
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
-      <OfficeScene
-        key={`office-${quality}`}
-        map={map}
-        snapshot={snapshot}
-        roomRef={roomRef}
-        me={me}
-        role={role}
-        allies={allies}
-        pendingTasks={pendingTasks}
-        quality={quality}
-        inputRef={inputRef}
-        lookRef={lookRef}
-        poseRef={poseRef}
-        onTargets={setTargets}
-      />
+      {sceneReady && (
+        <OfficeScene
+          key={`office-${quality}`}
+          map={map}
+          snapshot={snapshot}
+          roomRef={roomRef}
+          me={me}
+          role={role}
+          allies={allies}
+          pendingTasks={pendingTasks}
+          quality={quality}
+          inputRef={inputRef}
+          lookRef={lookRef}
+          poseRef={poseRef}
+          onTargets={setTargets}
+        />
+      )}
 
       <Hud
         snapshot={snapshot}

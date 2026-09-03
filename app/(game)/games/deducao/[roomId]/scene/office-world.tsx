@@ -205,6 +205,25 @@ const PROPS: Record<string, PropSpec> = {
       [1.15, 0.72, 0.38, 1.32, 1.85, -0.14, "#e5e8ed"],
     ],
   },
+  tree: {
+    color: "#4f8d50",
+    boxes: [],
+  },
+  streetLamp: {
+    color: "#4b5563",
+    emissive: "#ffd98c",
+    emissiveIntensity: 0.65,
+    boxes: [],
+  },
+  bench: {
+    color: "#8b6548",
+    boxes: [
+      [1.9, 0.14, 0.55, 0, 0.52, 0, "#a97650"],
+      [1.9, 0.5, 0.12, 0, 0.86, -0.24, "#916243", [-0.12, 0, 0]],
+      [0.12, 0.52, 0.12, -0.7, 0.26, 0, "#384454"],
+      [0.12, 0.52, 0.12, 0.7, 0.26, 0, "#384454"],
+    ],
+  },
 }
 
 /// O duto no chão: aro de metal, poço escuro e quatro palhetas por cima. Era um
@@ -513,6 +532,17 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
     box([0.18, 0.3, 0.035], [0.41, 1.35, 0.43], "#24354c", [0, 0, 0], 0.018)
     box([0.11, 0.055, 0.02], [0.41, 1.43, 0.455], "#6de3d0", [0, 0, 0], 0.008)
     box([0.56, 0.2, 0.04], [-0.08, 0.28, 0.44], "#0e1724", [0, 0, 0], 0.02)
+  } else if (kind === "tree") {
+    cylinder(0.18, 0.28, 2.35, [0, 1.18, 0], "#77583d", [0, 0, 0], 12)
+    sphere(0.95, [0, 2.55, 0], [1.05, 0.9, 1], "#4f9a57")
+    sphere(0.7, [-0.58, 2.35, 0.08], [1, 0.88, 1], "#5bab61")
+    sphere(0.72, [0.52, 2.42, -0.18], [1, 0.92, 1], "#438d4e")
+    sphere(0.62, [0.08, 2.35, 0.58], [1, 0.85, 1], "#67b76a")
+  } else if (kind === "streetLamp") {
+    cylinder(0.075, 0.1, 3.2, [0, 1.6, 0], "#465363", [0, 0, 0], 12)
+    cylinder(0.22, 0.3, 0.12, [0, 0.06, 0], "#34404f", [0, 0, 0], 12)
+    box([0.62, 0.09, 0.12], [0.24, 3.08, 0], "#465363", [0, 0, -0.12], 0.035)
+    sphere(0.19, [0.5, 2.98, 0], [1.2, 0.58, 1], "#ffe5a8")
   }
 
   const merged = mergeGeometries(parts, false)
@@ -622,6 +652,7 @@ const FLOOR_TEXTURE_PATHS: Record<FloorFinish, string> = {
   grass: "/images/games/deducao/textures/grass-v1.webp",
   water: "/images/games/deducao/textures/pool-water-v1.webp",
   sport: "/images/games/deducao/textures/sport-court-v1.webp",
+  asphalt: "/images/games/deducao/textures/asphalt-road-v1.webp",
 }
 
 const FLOOR_ASSET_NAMES: Record<FloorFinish, string> = {
@@ -637,6 +668,7 @@ const FLOOR_ASSET_NAMES: Record<FloorFinish, string> = {
   grass: "grass-v1",
   water: "pool-water-v1",
   sport: "sport-court-v1",
+  asphalt: "asphalt-road-v1",
 }
 
 const DETAILED_MODELS = {
@@ -649,6 +681,22 @@ const DETAILED_MODELS = {
 type DetailedModelKind = keyof typeof DETAILED_MODELS
 
 Object.values(DETAILED_MODELS).forEach((path) => useGLTF.preload(path))
+Object.values(FLOOR_TEXTURE_PATHS).forEach((path) => useTexture.preload(path))
+Object.values(FLOOR_ASSET_NAMES).forEach((name) => {
+  useTexture.preload(`/images/games/deducao/textures/${name}-normal.webp`)
+  useTexture.preload(`/images/games/deducao/textures/${name}-roughness.webp`)
+})
+;[
+  "/images/games/deducao/textures/wall-plaster.webp",
+  "/images/games/deducao/textures/wall-plaster-normal.webp",
+  "/images/games/deducao/textures/wall-plaster-roughness.webp",
+  "/images/games/deducao/textures/upholstery-v2.webp",
+  "/images/games/deducao/textures/upholstery-v2-normal.webp",
+  "/images/games/deducao/textures/upholstery-v2-roughness.webp",
+  "/images/games/deducao/textures/ceiling-acoustic.webp",
+  "/images/games/deducao/textures/ceiling-acoustic-normal.webp",
+  "/images/games/deducao/textures/ceiling-acoustic-roughness.webp",
+].forEach((path) => useTexture.preload(path))
 
 const FLOOR_FINISHES = Object.keys(FLOOR_TEXTURE_PATHS) as FloorFinish[]
 
@@ -1046,6 +1094,18 @@ export function OfficeWorld({
     roughness: 0.4,
     metalness: 0.28,
   })
+  const roofMaterial = useVisionMaterial({
+    color: "#ffffff",
+    roughness: 0.82,
+    vertexColors: true,
+  })
+  const windowMaterial = useVisionMaterial({
+    color: "#99d9f5",
+    emissive: "#397da3",
+    emissiveIntensity: blackout ? 0.015 : 0.2,
+    roughness: 0.18,
+    metalness: 0.16,
+  })
   const fixtureFrameMaterial = useVisionMaterial({
     color: "#c6d0dc",
     roughness: 0.3,
@@ -1167,8 +1227,11 @@ export function OfficeWorld({
         .flatMap((room) => {
           const finish = room.finish ?? "terrazzo"
           const variant = stableHash(room.id)
+          const roadSurface = room.kind === "externa" && finish === "asphalt"
           const baseTint =
-            finish === "grass"
+            roadSurface
+              ? "#76787b"
+              : finish === "grass"
               ? "#b8dda2"
               : finish === "water"
                 ? "#b7f3ff"
@@ -1188,7 +1251,7 @@ export function OfficeWorld({
           return splitAroundHoles(room.rect, floorHoles).map((part) => ({
             ...part,
             finish,
-            tint: mix(baseTint, room.floor, 0.12),
+            tint: mix(baseTint, room.floor, roadSurface ? 0.42 : finish === "concrete" ? 0.34 : 0.12),
             slab: room.kind === "corredor" || !isRoofed(room) ? SLAB_CORREDOR : SLAB_SALA,
             offsetX: (variant % 11) / 11,
             offsetY: (Math.floor(variant / 11) % 11) / 11,
@@ -1330,6 +1393,70 @@ export function OfficeWorld({
         })),
     [map.rooms, level],
   )
+
+  const generatedOutdoor = map.source?.label?.includes("cartográficos") ?? false
+  const { roofCaps, facadeWindows, entranceAwnings } = useMemo(() => {
+    if (!generatedOutdoor) return { roofCaps: [], facadeWindows: [], entranceAwnings: [] }
+    const roofColors = ["#7d6657", "#65717d", "#876f62", "#596d70", "#7f7463"]
+    const roofCaps: Placement[] = []
+    const facadeWindows: Placement[] = []
+    const entranceAwnings: Placement[] = []
+
+    for (const room of map.rooms.filter(
+      (candidate) =>
+        (candidate.level ?? 0) === level &&
+        candidate.kind === "sala" &&
+        candidate.rect.w >= 3.8 &&
+        candidate.rect.d >= 3.4,
+    )) {
+      const variant = stableHash(room.id)
+      roofCaps.push({
+        x: room.rect.x + room.rect.w / 2,
+        y: wallHeight + 0.12,
+        z: room.rect.z + room.rect.d / 2,
+        rot: 0,
+        sx: room.rect.w + 0.34,
+        sy: 0.24 + (variant % 3) * 0.05,
+        sz: room.rect.d + 0.34,
+        color: roofColors[variant % roofColors.length],
+      })
+
+      const horizontalWindows = Math.max(1, Math.min(5, Math.floor((room.rect.w - 1.2) / 2.8)))
+      const verticalWindows = Math.max(1, Math.min(4, Math.floor((room.rect.d - 1.2) / 2.8)))
+      for (let index = 0; index < horizontalWindows; index += 1) {
+        const x = room.rect.x + ((index + 1) * room.rect.w) / (horizontalWindows + 1)
+        facadeWindows.push(
+          { x, y: 1.72, z: room.rect.z - 0.215, rot: 0, sx: 1.18, sy: 1.08, sz: 0.055 },
+          { x, y: 1.72, z: room.rect.z + room.rect.d + 0.215, rot: 0, sx: 1.18, sy: 1.08, sz: 0.055 },
+        )
+      }
+      for (let index = 0; index < verticalWindows; index += 1) {
+        const z = room.rect.z + ((index + 1) * room.rect.d) / (verticalWindows + 1)
+        facadeWindows.push(
+          { x: room.rect.x - 0.215, y: 1.72, z, rot: 0, sx: 0.055, sy: 1.08, sz: 1.18 },
+          { x: room.rect.x + room.rect.w + 0.215, y: 1.72, z, rot: 0, sx: 0.055, sy: 1.08, sz: 1.18 },
+        )
+      }
+      for (const door of room.doors ?? []) {
+        if (door.side !== "south") continue
+        entranceAwnings.push({
+          x: room.rect.x + door.at + door.width / 2,
+          y: 2.78,
+          z: room.rect.z + room.rect.d + 0.42,
+          rot: 0,
+          sx: door.width + 0.55,
+          sy: 0.12,
+          sz: 0.92,
+          color: roofColors[(variant + 2) % roofColors.length],
+        })
+      }
+    }
+    return {
+      roofCaps: roofCaps.slice(0, 48),
+      facadeWindows: facadeWindows.slice(0, 240),
+      entranceAwnings: entranceAwnings.slice(0, 48),
+    }
+  }, [generatedOutdoor, level, map.rooms, wallHeight])
 
   const walls = useMemo(
     () =>
@@ -1620,6 +1747,9 @@ export function OfficeWorld({
       <Instances geometry={rugGeometry} material={serverAisleMaterial} transforms={serverAisles} shadows={false} />
       <Instances geometry={rugGeometry} material={serverLineMaterial} transforms={serverLines} shadows={false} />
       <Instances geometry={wallGeometry} material={wallMaterial} transforms={bodies} />
+      <Instances geometry={bandGeometry} material={roofMaterial} transforms={roofCaps} />
+      <Instances geometry={bandGeometry} material={windowMaterial} transforms={facadeWindows} shadows={false} />
+      <Instances geometry={bandGeometry} material={roofMaterial} transforms={entranceAwnings} />
       <Instances geometry={baseboardGeometry} material={baseboardMaterial} transforms={baseboards} shadows={false} />
       <Instances geometry={trimGeometry} material={trimMaterial} transforms={trims} shadows={false} />
       <Instances geometry={bandGeometry} material={frameMaterial} transforms={doorFrames} shadows={false} />
@@ -1654,7 +1784,7 @@ export function OfficeWorld({
         ))}
       {propGroups.map((group) => {
         const modelPath = DETAILED_MODELS[group.kind as DetailedModelKind]
-        return quality !== "baixo" && modelPath ? (
+        return quality !== "baixo" && modelPath && (!generatedOutdoor || map.props.length < 70) ? (
           <DetailedPropKind
             key={group.kind}
             kind={group.kind}

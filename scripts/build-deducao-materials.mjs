@@ -19,6 +19,7 @@ const materials = [
   { name: "grass-v1", source: "grass-v1.webp", normal: 2.3, roughness: 230 },
   { name: "pool-water-v1", source: "pool-water-v1.webp", normal: 0.8, roughness: 80 },
   { name: "sport-court-v1", source: "sport-court-v1.webp", normal: 1.2, roughness: 180 },
+  { name: "asphalt-road-v1", source: "asphalt-road-v1.webp", normal: 2.15, roughness: 218 },
 ]
 
 async function sourcePixels(source) {
