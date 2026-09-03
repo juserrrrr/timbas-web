@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Crosshair, Hand, Minus, Plus, ScanSearch } from "lucide-react"
+import { Crosshair, Hand, Map as MapIcon, Minus, Plus, Satellite, ScanSearch } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 
@@ -57,6 +57,12 @@ function areaMeters(bounds: GeoBounds) {
   }
 }
 
+function defaultSelection(size: { width: number; height: number }) {
+  const w = Math.min(320, size.width * 0.72)
+  const h = Math.min(220, size.height * 0.58)
+  return { x: (size.width - w) / 2, y: (size.height - h) / 2, w, h }
+}
+
 export function RealAreaPicker({
   latitude,
   longitude,
@@ -69,6 +75,8 @@ export function RealAreaPicker({
   onGenerate: (bounds: GeoBounds) => void
 }) {
   const container = useRef<HTMLDivElement>(null)
+  const selectionTouched = useRef(false)
+  const sizeRef = useRef({ width: 800, height: 430 })
   const gesture = useRef<{
     pointerId: number
     mode: "pan" | "select"
@@ -77,11 +85,17 @@ export function RealAreaPicker({
   } | null>(null)
   const [size, setSize] = useState({ width: 800, height: 430 })
   const [center, setCenter] = useState({ latitude, longitude })
-  const [zoom, setZoom] = useState(18)
+  const [zoom, setZoom] = useState(19)
   const [mode, setMode] = useState<"pan" | "select">("select")
-  const [selection, setSelection] = useState({ x: 170, y: 90, w: 460, h: 250 })
+  const [baseLayer, setBaseLayer] = useState<"satellite" | "streets">("satellite")
+  const [selection, setSelection] = useState(() => defaultSelection({ width: 800, height: 430 }))
 
-  useEffect(() => setCenter({ latitude, longitude }), [latitude, longitude])
+  useEffect(() => {
+    setCenter({ latitude, longitude })
+    setZoom(19)
+    selectionTouched.current = false
+    setSelection(defaultSelection(sizeRef.current))
+  }, [latitude, longitude])
 
   useEffect(() => {
     const node = container.current
@@ -89,13 +103,19 @@ export function RealAreaPicker({
     const observer = new ResizeObserver(([entry]) => {
       const width = Math.max(320, entry.contentRect.width)
       const height = Math.max(280, entry.contentRect.height)
+      sizeRef.current = { width, height }
       setSize({ width, height })
-      setSelection((current) => ({
-        x: Math.min(current.x, width - 40),
-        y: Math.min(current.y, height - 40),
-        w: Math.min(current.w, width - Math.min(current.x, width - 40)),
-        h: Math.min(current.h, height - Math.min(current.y, height - 40)),
-      }))
+      setSelection((current) => {
+        if (!selectionTouched.current) return defaultSelection({ width, height })
+        const x = Math.max(0, Math.min(current.x, width - 40))
+        const y = Math.max(0, Math.min(current.y, height - 40))
+        return {
+          x,
+          y,
+          w: Math.max(24, Math.min(current.w, width - x)),
+          h: Math.max(24, Math.min(current.h, height - y)),
+        }
+      })
     })
     observer.observe(node)
     return () => observer.disconnect()
@@ -103,6 +123,8 @@ export function RealAreaPicker({
 
   const centerWorld = worldFromCoordinates(center.latitude, center.longitude, zoom)
   const origin = { x: centerWorld.x - size.width / 2, y: centerWorld.y - size.height / 2 }
+  const linkedWorld = worldFromCoordinates(latitude, longitude, zoom)
+  const linkedPoint = { x: linkedWorld.x - origin.x, y: linkedWorld.y - origin.y }
   const tiles = useMemo(() => {
     const max = 2 ** zoom
     const firstX = Math.floor(origin.x / TILE_SIZE)
@@ -140,7 +162,7 @@ export function RealAreaPicker({
   }, [origin.x, origin.y, selection, zoom])
   const meters = areaMeters(selectedBounds)
 
-  const localPoint = (event: React.PointerEvent): Point => {
+  const localPoint = (event: { clientX: number; clientY: number }): Point => {
     const rect = container.current?.getBoundingClientRect()
     return {
       x: Math.max(0, Math.min(size.width, event.clientX - (rect?.left ?? 0))),
@@ -153,7 +175,10 @@ export function RealAreaPicker({
     const point = localPoint(event)
     gesture.current = { pointerId: event.pointerId, mode, start: point, center }
     event.currentTarget.setPointerCapture(event.pointerId)
-    if (mode === "select") setSelection({ x: point.x, y: point.y, w: 0, h: 0 })
+    if (mode === "select") {
+      selectionTouched.current = true
+      setSelection({ x: point.x, y: point.y, w: 0, h: 0 })
+    }
   }
 
   const move = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -183,7 +208,23 @@ export function RealAreaPicker({
     )
   }
 
-  const changeZoom = (amount: number) => setZoom((current) => Math.max(15, Math.min(20, current + amount)))
+  const changeZoom = (amount: number, anchor: Point = { x: size.width / 2, y: size.height / 2 }) => {
+    const nextZoom = Math.max(15, Math.min(20, zoom + amount))
+    if (nextZoom === zoom) return
+    const anchoredCoordinates = coordinatesFromWorld({ x: origin.x + anchor.x, y: origin.y + anchor.y }, zoom)
+    const anchoredWorld = worldFromCoordinates(anchoredCoordinates.latitude, anchoredCoordinates.longitude, nextZoom)
+    const nextCenterWorld = {
+      x: anchoredWorld.x - anchor.x + size.width / 2,
+      y: anchoredWorld.y - anchor.y + size.height / 2,
+    }
+    setCenter(coordinatesFromWorld(nextCenterWorld, nextZoom))
+    setZoom(nextZoom)
+  }
+
+  const tileUrl = (tile: { urlX: number; urlY: number }) =>
+    baseLayer === "satellite"
+      ? `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tile.urlY}/${tile.urlX}`
+      : `https://tile.openstreetmap.org/${zoom}/${tile.urlX}/${tile.urlY}.png`
 
   return (
     <div className="space-y-3">
@@ -196,7 +237,7 @@ export function RealAreaPicker({
         onPointerCancel={end}
         onWheel={(event) => {
           event.preventDefault()
-          changeZoom(event.deltaY < 0 ? 1 : -1)
+          changeZoom(event.deltaY < 0 ? 1 : -1, localPoint(event))
         }}
       >
         {tiles.map((tile) => (
@@ -204,7 +245,7 @@ export function RealAreaPicker({
           // download em lote nem persistência das imagens no mapa publicado.
           <img
             key={tile.key}
-            src={`https://tile.openstreetmap.org/${zoom}/${tile.urlX}/${tile.urlY}.png`}
+            src={tileUrl(tile)}
             alt=""
             draggable={false}
             className="pointer-events-none absolute h-64 w-64 max-w-none select-none"
@@ -218,7 +259,16 @@ export function RealAreaPicker({
           style={{ left: selection.x, top: selection.y, width: selection.w, height: selection.h }}
         />
 
-        <div className="pointer-events-auto absolute left-3 top-3 flex overflow-hidden rounded-xl border border-white/15 bg-black/75 p-1 backdrop-blur">
+        {linkedPoint.x >= 0 && linkedPoint.x <= size.width && linkedPoint.y >= 0 && linkedPoint.y <= size.height && (
+          <div
+            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
+            style={{ left: linkedPoint.x, top: linkedPoint.y }}
+          >
+            <span className="block size-4 rounded-full border-[3px] border-white bg-cyan-400 shadow-[0_0_0_5px_rgba(6,182,212,0.28),0_2px_8px_rgba(0,0,0,0.8)]" />
+          </div>
+        )}
+
+        <div className="pointer-events-auto absolute left-3 top-3 z-20 flex overflow-hidden rounded-xl border border-white/15 bg-black/75 p-1 backdrop-blur" onPointerDown={(event) => event.stopPropagation()}>
           <button
             type="button"
             onClick={(event) => {
@@ -241,27 +291,32 @@ export function RealAreaPicker({
           </button>
         </div>
 
-        <div className="pointer-events-auto absolute right-3 top-3 flex flex-col overflow-hidden rounded-xl border border-white/15 bg-black/75 backdrop-blur">
+        <div className="pointer-events-auto absolute left-1/2 top-3 z-20 flex -translate-x-1/2 overflow-hidden rounded-xl border border-white/15 bg-black/75 p-1 backdrop-blur" onPointerDown={(event) => event.stopPropagation()}>
+          <button type="button" onClick={(event) => { event.stopPropagation(); setBaseLayer("satellite") }} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider ${baseLayer === "satellite" ? "bg-cyan-400 text-black" : "text-gray-300"}`}><Satellite className="h-3.5 w-3.5" />Satélite</button>
+          <button type="button" onClick={(event) => { event.stopPropagation(); setBaseLayer("streets") }} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider ${baseLayer === "streets" ? "bg-cyan-400 text-black" : "text-gray-300"}`}><MapIcon className="h-3.5 w-3.5" />Ruas</button>
+        </div>
+
+        <div className="pointer-events-auto absolute right-3 top-3 z-20 flex flex-col overflow-hidden rounded-xl border border-white/15 bg-black/75 backdrop-blur" onPointerDown={(event) => event.stopPropagation()}>
           <button type="button" className="p-2.5 text-white hover:bg-white/10" onClick={(event) => { event.stopPropagation(); changeZoom(1) }} aria-label="Aproximar"><Plus className="h-4 w-4" /></button>
           <button type="button" className="border-t border-white/10 p-2.5 text-white hover:bg-white/10" onClick={(event) => { event.stopPropagation(); changeZoom(-1) }} aria-label="Afastar"><Minus className="h-4 w-4" /></button>
           <button type="button" className="border-t border-white/10 p-2.5 text-white hover:bg-white/10" onClick={(event) => { event.stopPropagation(); setCenter({ latitude, longitude }) }} aria-label="Voltar para a coordenada"><Crosshair className="h-4 w-4" /></button>
         </div>
 
         <a
-          href="https://www.openstreetmap.org/copyright"
+          href={baseLayer === "satellite" ? "https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9" : "https://www.openstreetmap.org/copyright"}
           target="_blank"
           rel="noreferrer"
           className="pointer-events-auto absolute bottom-1.5 right-2 rounded bg-white/85 px-1.5 py-0.5 text-[9px] font-semibold text-black"
           onPointerDown={(event) => event.stopPropagation()}
         >
-          © OpenStreetMap contributors
+          {baseLayer === "satellite" ? "Imagery © Esri, Maxar, Earthstar Geographics" : "© OpenStreetMap contributors"}
         </a>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] p-3">
         <div>
           <p className="text-xs font-black text-white">Área selecionada: {Math.round(meters.width)} × {Math.round(meters.depth)} m</p>
-          <p className="mt-1 text-[10px] text-gray-500">Use Mover para posicionar o local e Selecionar para redesenhar o recorte.</p>
+          <p className="mt-1 text-[10px] text-gray-500">O ponto azul é a coordenada do link · zoom {zoom}. Use Mover para posicionar e Selecionar para redesenhar.</p>
         </div>
         <Button
           size="sm"
