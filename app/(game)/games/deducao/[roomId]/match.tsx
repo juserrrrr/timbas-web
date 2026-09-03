@@ -54,15 +54,9 @@ const ROLE_INTRO: Record<Role, { title: string; line: string; tone: string }> = 
   },
 }
 
-/// A escolha automática de qualidade. Não dá para perguntar isso para quem só
-/// quer jogar, então a tela chuta pelo aparelho e deixa trocar depois no HUD.
-function guessQuality(): Quality {
-  if (typeof window === "undefined") return "medio"
-  const cores = navigator.hardwareConcurrency ?? 4
-  const touch = window.matchMedia("(pointer: coarse)").matches
-  if (touch || cores <= 4) return "baixo"
-  return cores >= 8 ? "alto" : "medio"
-}
+/// Alto é o padrão. A escolha manual fica guardada, e trocar recria a cena para
+/// que antialias, sombras e pós-processamento nunca compartilhem recursos velhos.
+const QUALITY_KEY = "timbas.deducao.graphics-quality"
 
 export function Match({
   map,
@@ -85,7 +79,7 @@ export function Match({
   const pressed = useRef(new Set<string>())
   const [targets, setTargets] = useState<Targets>(NO_TARGETS)
   const [openTask, setOpenTask] = useState<MapTaskSpot | null>(null)
-  const [quality, setQuality] = useState<Quality>("medio")
+  const [quality, setQuality] = useState<Quality>("alto")
   const [intro, setIntro] = useState(false)
   const [doneTasks, setDoneTasks] = useState<string[]>([])
   const previousBlackout = useRef(snapshot.blackout)
@@ -94,7 +88,24 @@ export function Match({
   const actions = useRef({ snapshot, targets, role, openTask, onSend, map })
   actions.current = { snapshot, targets, role, openTask, onSend, map }
 
-  useEffect(() => setQuality(guessQuality()), [])
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(QUALITY_KEY)
+      if (saved === "alto" || saved === "medio" || saved === "baixo") setQuality(saved)
+    } catch {
+      // Alto continua sendo o padrão quando o navegador bloqueia armazenamento.
+    }
+  }, [])
+
+  const chooseQuality = (next: Quality) => {
+    setTargets(NO_TARGETS)
+    setQuality(next)
+    try {
+      window.localStorage.setItem(QUALITY_KEY, next)
+    } catch {
+      // A troca vale para esta partida mesmo sem persistência.
+    }
+  }
 
   useEffect(() => {
     if (snapshot.blackout && !previousBlackout.current) playGameSound("blackout")
@@ -238,6 +249,7 @@ export function Match({
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
       <OfficeScene
+        key={`office-${quality}`}
         map={map}
         snapshot={snapshot}
         roomRef={roomRef}
@@ -261,7 +273,7 @@ export function Match({
         targets={targets}
         notices={notices}
         quality={quality}
-        onQuality={setQuality}
+        onQuality={chooseQuality}
         poseRef={poseRef}
         onSend={onSend}
         onOpenTask={(spot) => {

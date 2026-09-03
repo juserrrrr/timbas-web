@@ -106,7 +106,7 @@ export function OfficeScene(props: Props) {
         gl.setClearColor(VOID_COLOR)
         gl.outputColorSpace = THREE.SRGBColorSpace
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = quality === "alto" ? 1.12 : quality === "medio" ? 1.18 : 1.14
+        gl.toneMappingExposure = quality === "alto" ? 0.98 : quality === "medio" ? 1 : 1.02
         gl.shadowMap.type = THREE.PCFSoftShadowMap
       }}
     >
@@ -149,7 +149,7 @@ function ProceduralEnvironment({ quality, blackout }: { quality: Quality; blacko
   }, [enabled, gl, quality, scene])
 
   useFrame((_, delta) => {
-    const target = blackout ? 0.025 : quality === "alto" ? 0.65 : quality === "medio" ? 0.54 : 0
+    const target = blackout ? 0.025 : quality === "alto" ? 0.42 : quality === "medio" ? 0.34 : 0
     scene.environmentIntensity += (target - scene.environmentIntensity) * Math.min(1, delta * 3.5)
   })
 
@@ -165,7 +165,7 @@ function CinematicEffects({ blackout }: { blackout: boolean }) {
     ambientOcclusion.kernelRadius = 7
     ambientOcclusion.minDistance = 0.002
     ambientOcclusion.maxDistance = 0.105
-    const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.1, 0.24, 0.9)
+    const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.055, 0.2, 0.96)
     composer.addPass(render)
     composer.addPass(ambientOcclusion)
     composer.addPass(bloom)
@@ -179,9 +179,9 @@ function CinematicEffects({ blackout }: { blackout: boolean }) {
   }, [gl, pipeline, size.height, size.width])
 
   useEffect(() => {
-    pipeline.bloom.strength = blackout ? 0.24 : 0.1
-    pipeline.bloom.threshold = blackout ? 0.68 : 0.9
-    pipeline.ambientOcclusion.kernelRadius = blackout ? 4 : 8
+    pipeline.bloom.strength = blackout ? 0.18 : 0.055
+    pipeline.bloom.threshold = blackout ? 0.72 : 0.96
+    pipeline.ambientOcclusion.kernelRadius = blackout ? 5 : 10
   }, [blackout, pipeline])
 
   useEffect(
@@ -432,22 +432,22 @@ function SceneContent({
       sun.current.position.set(local.current.x - 14, visualY.current + 26, local.current.y - 10)
       sun.current.target.position.set(local.current.x, visualY.current, local.current.y)
       sun.current.target.updateMatrixWorld()
-      sun.current.intensity += ((dark ? 0.025 : 2.15) - sun.current.intensity) * Math.min(1, delta * 3)
+      sun.current.intensity += ((dark ? 0.025 : 1.5) - sun.current.intensity) * Math.min(1, delta * 3)
     }
     if (sky.current) {
-      const skyTarget = dark ? 0.025 : quality === "baixo" ? 1.05 : quality === "alto" ? 0.78 : 0.72
+      const skyTarget = dark ? 0.025 : quality === "baixo" ? 0.72 : quality === "alto" ? 0.48 : 0.44
       sky.current.intensity += (skyTarget - sky.current.intensity) * Math.min(1, delta * 3)
     }
     if (ambient.current) {
-      const ambientTarget = dark ? 0.018 : quality === "baixo" ? 0.56 : quality === "alto" ? 0.22 : 0.26
+      const ambientTarget = dark ? 0.018 : quality === "baixo" ? 0.38 : quality === "alto" ? 0.13 : 0.15
       ambient.current.intensity += (ambientTarget - ambient.current.intensity) * Math.min(1, delta * 3)
     }
     if (playerLight.current) {
       playerLight.current.position.set(local.current.x, visualY.current + EYE_HEIGHT + 0.25, local.current.y)
-      playerLight.current.intensity += ((dark ? 38 : 2.7) - playerLight.current.intensity) * Math.min(1, delta * 5)
-      playerLight.current.distance = dark ? activeVision * 1.7 : 8
+      playerLight.current.intensity += ((dark ? 38 : 1.15) - playerLight.current.intensity) * Math.min(1, delta * 5)
+      playerLight.current.distance = dark ? activeVision * 1.7 : 7
     }
-    const exposure = dark ? 0.88 : quality === "alto" ? 1.12 : quality === "medio" ? 1.18 : 1.14
+    const exposure = dark ? 0.88 : quality === "alto" ? 0.98 : quality === "medio" ? 1 : 1.02
     gl.toneMappingExposure += (exposure - gl.toneMappingExposure) * Math.min(1, delta * 3)
 
     if (onStairs) {
@@ -477,12 +477,12 @@ function SceneContent({
     <>
       <ProceduralEnvironment quality={quality} blackout={blackoutForViewer} />
       {quality === "alto" && <CinematicEffects blackout={blackoutForViewer} />}
-      <ambientLight ref={ambient} color="#edf5ff" intensity={0.24} />
-      <hemisphereLight ref={sky} args={["#fff7e9", "#71839d", 0.76]} />
+      <ambientLight ref={ambient} color="#e9f1fa" intensity={0.14} />
+      <hemisphereLight ref={sky} args={["#fff6e7", "#66768e", 0.46]} />
       <directionalLight
         ref={sun}
         color="#fff0d1"
-        intensity={2.15}
+        intensity={1.5}
         castShadow={quality !== "baixo"}
         shadow-mapSize={quality === "alto" ? [2048, 2048] : [1024, 1024]}
         shadow-camera-left={-20}
@@ -495,7 +495,7 @@ function SceneContent({
         shadow-normalBias={0.035}
         shadow-radius={quality === "alto" ? 3 : 1.5}
       />
-      <pointLight ref={playerLight} color="#f4f8ff" intensity={2.7} distance={8} decay={2} />
+      <pointLight ref={playerLight} color="#edf4ff" intensity={1.15} distance={7} decay={2} />
 
       {[0, 1].map((floor) => (
         <OfficeWorld

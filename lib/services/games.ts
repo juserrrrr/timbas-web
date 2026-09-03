@@ -1,5 +1,5 @@
 import { API_URL } from "../api-base"
-import { post, request } from "./http"
+import { post, put, remove, request } from "./http"
 
 export interface GameSummary {
   id: string
@@ -106,6 +106,14 @@ export interface OfficeMap {
   stairs: MapStair[]
   emergency: { x: number; z: number; level?: number }
   spawns: { x: number; z: number; level?: number }[]
+  meetingSeats: { x: number; z: number; level: number; dir: number }[]
+  source?: {
+    label?: string
+    referenceUrl?: string
+    latitude?: number
+    longitude?: number
+    gameUnitsPerMeter?: number
+  }
 }
 
 export function getGameCatalog(): Promise<GameCatalog> {
@@ -166,6 +174,18 @@ export function getOfficeMap(): Promise<{
   maxPlayers: number
 }> {
   return request<{ map: OfficeMap; minPlayers: number; maxPlayers: number }>("/games/deducao/map")
+}
+
+export function getAdminOfficeMap(): Promise<{ map: OfficeMap }> {
+  return request<{ map: OfficeMap }>("/games/deducao/admin/map")
+}
+
+export function publishAdminOfficeMap(map: OfficeMap): Promise<{ map: OfficeMap }> {
+  return put<{ map: OfficeMap }>("/games/deducao/admin/map", { map })
+}
+
+export function resetAdminOfficeMap(): Promise<{ map: OfficeMap }> {
+  return remove<{ map: OfficeMap }>("/games/deducao/admin/map")
 }
 
 /// O jogo fala com a mesma API, na mesma porta, só que por WebSocket. Trocar o

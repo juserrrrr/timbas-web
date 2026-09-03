@@ -47,6 +47,10 @@ export function patch<T>(path: string, payload: unknown): Promise<T> {
   return request<T>(path, { method: "PATCH", body: JSON.stringify(payload) })
 }
 
+export function put<T>(path: string, payload: unknown): Promise<T> {
+  return request<T>(path, { method: "PUT", body: JSON.stringify(payload) })
+}
+
 export function remove<T>(path: string): Promise<T> {
   return request<T>(path, { method: "DELETE" })
 }

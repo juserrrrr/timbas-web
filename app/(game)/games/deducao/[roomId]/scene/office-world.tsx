@@ -755,7 +755,7 @@ function TexturedFloor({
         roughnessMap={textures.roughness}
         color={patch.tint}
         emissive="#dbe7f1"
-        emissiveIntensity={blackout ? 0 : 0.035}
+        emissiveIntensity={blackout ? 0 : 0.01}
         roughness={
           patch.finish === "wood" || patch.finish === "parquet" ? 0.68 : patch.finish === "server" ? 0.58 : 0.9
         }
@@ -979,7 +979,7 @@ export function OfficeWorld({
   const ceilingMaterial = useVisionMaterial({
     color: "#eef1f2",
     emissive: "#fff0cf",
-    emissiveIntensity: blackout ? 0.02 : 0.72,
+    emissiveIntensity: blackout ? 0.02 : 0.32,
     roughness: 0.3,
   })
   const ceilingSlabMaterial = useVisionMaterial({
@@ -1168,8 +1168,8 @@ export function OfficeWorld({
             x: alongX ? room.rect.x + room.rect.w * fraction : room.rect.x + room.rect.w / 2,
             z: alongX ? room.rect.z + room.rect.d / 2 : room.rect.z + room.rect.d * fraction,
             color: `#${roomTone.getHexString()}`,
-            intensity: room.kind === "corredor" ? 27 : 24,
-            distance: THREE.MathUtils.clamp(Math.max(room.rect.w, room.rect.d) * 0.72, 10, 18),
+            intensity: room.kind === "corredor" ? 13 : 11,
+            distance: THREE.MathUtils.clamp(Math.max(room.rect.w, room.rect.d) * 0.62, 9, 15),
           }
         })
       })

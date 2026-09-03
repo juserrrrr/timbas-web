@@ -3,6 +3,7 @@ import {
   ClipboardList,
   FlaskConical,
   Gamepad2,
+  Map,
   LayoutDashboard,
   Radio,
   ShieldCheck,
@@ -120,6 +121,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     id: "ferramentas",
     title: "Ferramentas",
     items: [
+      {
+        icon: Map,
+        label: "Criador de mapas",
+        description: "Desenha e publica mapas do jogo",
+        href: "/admin/games/map",
+        accent: "sky",
+        permission: "games.manage",
+      },
       {
         icon: FlaskConical,
         label: "Laboratório",
