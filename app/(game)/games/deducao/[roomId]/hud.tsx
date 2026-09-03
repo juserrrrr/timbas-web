@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AlertOctagon, Eye, Ghost, Hand, LogOut, Map as MapIcon, Search, Siren, Skull, Video, Wind, X } from "lucide-react"
+import { AlertOctagon, Ghost, Hand, LogOut, Map as MapIcon, Search, Siren, Skull, Wind, X } from "lucide-react"
 import { playGameSound, unlockGameAudio } from "@/lib/games/game-audio"
 import type { MapTaskSpot, OfficeMap } from "@/lib/services/games"
-import type { Quality, Targets, View } from "./match-types"
+import type { Quality, Targets } from "./match-types"
 import type { InputState } from "./scene/office-scene"
 import { Minimap } from "./minimap"
 import type { Notice, Role, Snapshot } from "./use-deducao-room"
@@ -19,8 +19,6 @@ interface Props {
   notices: Notice[]
   quality: Quality
   onQuality: (quality: Quality) => void
-  view: View
-  onView: (view: View) => void
   poseRef: React.MutableRefObject<{ x: number; z: number; dir: number }>
   onSend: (type: string, payload?: unknown) => void
   onOpenTask: (spot: MapTaskSpot) => void
@@ -44,8 +42,6 @@ export function Hud({
   notices,
   quality,
   onQuality,
-  view,
-  onView,
   poseRef,
   onSend,
   onOpenTask,
@@ -60,9 +56,7 @@ export function Hud({
   const roomName = (id: string) => map.rooms.find((room) => room.id === id)?.name ?? id
   const floorName = mine?.level === 1 ? "2º andar" : "Térreo"
   const visibleNotices =
-    role === "assassino"
-      ? notices.filter((notice) => notice.text !== "A luz caiu. Ninguém enxerga direito.")
-      : notices
+    role === "assassino" ? notices.filter((notice) => notice.text !== "A luz caiu. Ninguém enxerga direito.") : notices
 
   // Dentro do duto, para onde dá para ir. O servidor sempre soube fazer a
   // viagem; faltava a tela oferecer o destino, e sem ela o duto era um buraco
@@ -122,42 +116,33 @@ export function Hud({
 
       <div className="pointer-events-auto absolute right-4 top-4 flex flex-col items-end gap-2 sm:right-6 sm:top-6">
         <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onView(view === "primeira" ? "isometrica" : "primeira")}
-          className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-sky-400/40 hover:text-sky-300"
-          aria-label={view === "primeira" ? "Ver de cima" : "Ver em primeira pessoa"}
-          title={`${view === "primeira" ? "Câmera de cima" : "Primeira pessoa"} (C)`}
-        >
-          {view === "primeira" ? <Video className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-        <button
-          type="button"
-          onClick={() => setMapaAberto((aberto) => !aberto)}
-          className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-amber-400/40 hover:text-amber-300"
-          aria-label="Abrir a planta"
-          title="Planta do escritório (M)"
-        >
-          <MapIcon className="h-4 w-4" />
-        </button>
-        <select
-          value={quality}
-          onChange={(event) => onQuality(event.target.value as Quality)}
-          className="cursor-pointer rounded-lg border border-white/10 bg-black/60 px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-300 focus:outline-none"
-          aria-label="Qualidade gráfica"
-        >
-          <option value="alto">Gráficos altos</option>
-          <option value="medio">Gráficos médios</option>
-          <option value="baixo">Gráficos leves</option>
-        </select>
-        <button
-          type="button"
-          onClick={onLeave}
-          className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-red-500/40 hover:text-red-300"
-          aria-label="Sair da partida"
-        >
-          <LogOut className="h-4 w-4" />
-        </button>
+          <button
+            type="button"
+            onClick={() => setMapaAberto((aberto) => !aberto)}
+            className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-amber-400/40 hover:text-amber-300"
+            aria-label="Abrir a planta"
+            title="Planta do escritório (M)"
+          >
+            <MapIcon className="h-4 w-4" />
+          </button>
+          <select
+            value={quality}
+            onChange={(event) => onQuality(event.target.value as Quality)}
+            className="cursor-pointer rounded-lg border border-white/10 bg-black/60 px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-300 focus:outline-none"
+            aria-label="Qualidade gráfica"
+          >
+            <option value="alto">Gráficos altos</option>
+            <option value="medio">Gráficos médios</option>
+            <option value="baixo">Gráficos leves</option>
+          </select>
+          <button
+            type="button"
+            onClick={onLeave}
+            className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-red-500/40 hover:text-red-300"
+            aria-label="Sair da partida"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Planta sempre à vista. Em primeira pessoa ela deixa de ser luxo: sem
@@ -455,7 +440,9 @@ function TouchStick({ inputRef }: { inputRef: React.MutableRefObject<InputState>
     >
       <span
         className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-400/70"
-        style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
+        style={{
+          transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))`,
+        }}
       />
     </div>
   )

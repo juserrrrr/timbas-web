@@ -51,9 +51,9 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
   if (settled) return <Verdict snapshot={snapshot} />
 
   return (
-    <div className="pointer-events-auto absolute inset-0 z-20 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(120,53,15,0.24),rgba(9,12,18,0.97)_48%)] backdrop-blur-xl lg:overflow-hidden">
-      <div className="mx-auto flex min-h-full max-w-[1500px] flex-col px-4 py-5 sm:px-6 lg:h-full lg:min-h-0 lg:px-8">
-        <header className="shrink-0 rounded-3xl border border-amber-300/10 bg-black/20 px-5 py-4 text-center shadow-2xl shadow-black/20">
+    <div className="pointer-events-auto absolute inset-0 z-20 overflow-y-auto bg-[radial-gradient(circle_at_center,transparent_12%,rgba(6,9,14,0.56)_100%)] backdrop-blur-[1px] lg:overflow-hidden">
+      <div className="flex min-h-full w-full flex-col px-4 py-5 sm:px-6 lg:h-full lg:min-h-0 lg:px-8">
+        <header className="mx-auto w-full max-w-2xl shrink-0 rounded-3xl border border-amber-300/15 bg-black/65 px-5 py-3 text-center shadow-2xl shadow-black/40 backdrop-blur-md">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.34em] text-amber-300/70">
             {voting ? "Votação aberta" : "Sala de reunião"}
           </p>
@@ -70,12 +70,12 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
           </p>
         </header>
 
-        <div className="mt-5 grid flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(0,1.45fr)_minmax(24rem,0.75fr)]">
-          <section className="min-h-0 lg:overflow-y-auto lg:pr-2">
+        <div className="mt-4 grid flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(20rem,30rem)_minmax(18rem,1fr)_minmax(20rem,27rem)]">
+          <section className="min-h-0 rounded-2xl border border-white/10 bg-black/60 p-4 shadow-2xl shadow-black/30 backdrop-blur-md lg:overflow-y-auto">
             <p className="font-mono text-[10px] uppercase tracking-[0.26em] text-zinc-500">
               {voting ? "Escolha quem sai" : "Na reunião"}
             </p>
-            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
               {snapshot.players.map((player) => (
                 <PlayerBadge
                   key={player.id}
@@ -121,7 +121,7 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
             )}
           </section>
 
-          <aside className="flex h-72 min-h-0 flex-col rounded-2xl border border-white/[0.1] bg-black/25 p-4 shadow-xl shadow-black/20 lg:h-auto">
+          <aside className="flex h-72 min-h-0 flex-col rounded-2xl border border-white/[0.1] bg-black/60 p-4 shadow-xl shadow-black/30 backdrop-blur-md lg:col-start-3 lg:h-auto">
             <p className="font-mono text-[10px] uppercase tracking-[0.26em] text-zinc-500">Discussão</p>
             <div ref={chatList} className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
               {snapshot.chat.map((message) => (

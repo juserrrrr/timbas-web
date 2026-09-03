@@ -5,7 +5,7 @@ import { playGameSound, unlockGameAudio } from "@/lib/games/game-audio"
 import type { MapTaskSpot, OfficeMap } from "@/lib/services/games"
 import { EndScreen } from "./end-screen"
 import { Hud } from "./hud"
-import { NO_TARGETS, type LookState, type Quality, type Targets, type View } from "./match-types"
+import { NO_TARGETS, type LookState, type Quality, type Targets } from "./match-types"
 import { Meeting } from "./meeting"
 import { TaskOverlay } from "./minigames"
 import { OfficeScene, type InputState } from "./scene/office-scene"
@@ -83,7 +83,6 @@ export function Match({
   const lookRef = useRef<LookState>({ yaw: 0, pitch: 0 })
   const poseRef = useRef({ x: 0, z: 0, dir: 0 })
   const pressed = useRef(new Set<string>())
-  const [view, setView] = useState<View>("primeira")
   const [targets, setTargets] = useState<Targets>(NO_TARGETS)
   const [openTask, setOpenTask] = useState<MapTaskSpot | null>(null)
   const [quality, setQuality] = useState<Quality>("medio")
@@ -103,10 +102,7 @@ export function Match({
   }, [snapshot.blackout])
 
   useEffect(() => {
-    if (
-      snapshot.phase !== previousPhase.current &&
-      (snapshot.phase === "reuniao" || snapshot.phase === "votacao")
-    ) {
+    if (snapshot.phase !== previousPhase.current && (snapshot.phase === "reuniao" || snapshot.phase === "votacao")) {
       playGameSound("meeting")
     }
     previousPhase.current = snapshot.phase
@@ -192,9 +188,6 @@ export function Match({
           playGameSound("vent")
           current.onSend("vent", { ventId: destino })
         }
-      } else if (event.code === "KeyC") {
-        event.preventDefault()
-        setView((atual) => (atual === "primeira" ? "isometrica" : "primeira"))
       } else if (event.code === "KeyF" && current.role === "assassino" && alive) {
         event.preventDefault()
         playGameSound("action")
@@ -253,7 +246,6 @@ export function Match({
         allies={allies}
         pendingTasks={pendingTasks}
         quality={quality}
-        view={view}
         inputRef={inputRef}
         lookRef={lookRef}
         poseRef={poseRef}
@@ -270,8 +262,6 @@ export function Match({
         notices={notices}
         quality={quality}
         onQuality={setQuality}
-        view={view}
-        onView={setView}
         poseRef={poseRef}
         onSend={onSend}
         onOpenTask={(spot) => {

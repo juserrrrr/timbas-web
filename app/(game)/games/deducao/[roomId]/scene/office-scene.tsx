@@ -9,7 +9,7 @@ import type { Room } from "@colyseus/sdk"
 import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/games/collision"
 import { playGameSound } from "@/lib/games/game-audio"
 import type { OfficeMap } from "@/lib/services/games"
-import { NO_TARGETS, type LookState, type Quality, type Targets, type View } from "../match-types"
+import { NO_TARGETS, type LookState, type Quality, type Targets } from "../match-types"
 import type { Role, Snapshot } from "../use-deducao-room"
 import { FLOOR_HEIGHT, OfficeWorld } from "./office-world"
 import { setVision, useVisionMaterial } from "./vision-material"
@@ -23,6 +23,7 @@ const EYE_HEIGHT = 1.62
 const PITCH_LIMIT = 1.05
 
 const WALK_SPEED = 4.6
+const STAIR_CLIMB_MS = 1300
 const SEND_EVERY_MS = 50
 const TASK_RANGE = 2.2
 const REPORT_RANGE = 2.6
@@ -42,7 +43,6 @@ interface Props {
   allies: string[]
   pendingTasks: string[]
   quality: Quality
-  view: View
   inputRef: React.MutableRefObject<InputState>
   lookRef: React.MutableRefObject<LookState>
   poseRef: React.MutableRefObject<{ x: number; z: number; dir: number }>
@@ -55,8 +55,12 @@ export function OfficeScene(props: Props) {
     <Canvas
       shadows={quality !== "baixo"}
       dpr={quality === "alto" ? [1, 2] : quality === "medio" ? [1, 1.5] : 1}
-      gl={{ antialias: quality !== "baixo", powerPreference: "high-performance", stencil: false }}
-      camera={{ fov: 40, near: 0.1, far: 130, position: [0, 14, 10.5] }}
+      gl={{
+        antialias: quality !== "baixo",
+        powerPreference: "high-performance",
+        stencil: false,
+      }}
+      camera={{ fov: 68, near: 0.05, far: 130, position: [0, EYE_HEIGHT, 0] }}
       onCreated={({ gl }) => {
         // O vazio em volta do escritório é um azul de fim de tarde, não preto:
         // ele precisa ler como ar em volta das lajes, e não como buraco.
@@ -107,8 +111,7 @@ function ProceduralEnvironment({ quality, blackout }: { quality: Quality; blacko
 
   useFrame((_, delta) => {
     const target = blackout ? 0.025 : quality === "alto" ? 0.58 : quality === "medio" ? 0.42 : 0
-    scene.environmentIntensity +=
-      (target - scene.environmentIntensity) * Math.min(1, delta * 3.5)
+    scene.environmentIntensity += (target - scene.environmentIntensity) * Math.min(1, delta * 3.5)
   })
 
   return null
@@ -123,7 +126,6 @@ function SceneContent({
   allies,
   pendingTasks,
   quality,
-  view,
   inputRef,
   lookRef,
   poseRef,
@@ -151,32 +153,28 @@ function SceneContent({
   const sky = useRef<THREE.HemisphereLight>(null)
   const ambient = useRef<THREE.AmbientLight>(null)
   const playerLight = useRef<THREE.PointLight>(null)
-  const cameraGoal = useRef(new THREE.Vector3())
   const lastLevel = useRef(-1)
+  const meetingCameraReady = useRef(false)
 
   const mineSnapshot = snapshot.players.find((player) => player.id === me)
   const currentLevel = mineSnapshot?.level ?? 0
+  const inMeeting = snapshot.phase === "reuniao" || snapshot.phase === "votacao"
 
   // Duas listas, e a diferença importa: no armário você esbarra e some atrás
   // dele; na mesa você esbarra mas continua à vista.
   const colliders = useMemo(
-    () =>
-      [...map.walls, ...map.obstacles].filter((box) => (box.level ?? 0) === currentLevel),
+    () => [...map.walls, ...map.obstacles].filter((box) => (box.level ?? 0) === currentLevel),
     [map.walls, map.obstacles, currentLevel],
   )
   const walls = useMemo(
     () =>
-      [
-        ...map.walls.filter((box) => box.style !== "guarda-corpo"),
-        ...map.obstacles.filter((box) => box.tall),
-      ].filter((box) => (box.level ?? 0) === currentLevel),
+      [...map.walls.filter((box) => box.style !== "guarda-corpo"), ...map.obstacles.filter((box) => box.tall)].filter(
+        (box) => (box.level ?? 0) === currentLevel,
+      ),
     [map.walls, map.obstacles, currentLevel],
   )
   const myTaskSpots = useMemo(
-    () =>
-      map.taskSpots.filter(
-        (spot) => pendingTasks.includes(spot.id) && (spot.level ?? 0) === currentLevel,
-      ),
+    () => map.taskSpots.filter((spot) => pendingTasks.includes(spot.id) && (spot.level ?? 0) === currentLevel),
     [map.taskSpots, pendingTasks, currentLevel],
   )
 
@@ -191,8 +189,12 @@ function SceneContent({
   // Olhar com o mouse. O clique tranca o ponteiro; o Esc destranca, e aí o
   // jogador volta a ter cursor para clicar nos botões do HUD.
   useEffect(() => {
-    if (view !== "primeira") return
     const canvas = gl.domElement
+
+    if (inMeeting) {
+      if (document.pointerLockElement === canvas) document.exitPointerLock()
+      return
+    }
 
     const pedirTrava = () => {
       if (document.pointerLockElement !== canvas) void canvas.requestPointerLock()
@@ -214,12 +216,12 @@ function SceneContent({
       document.removeEventListener("mousemove", mover)
       if (document.pointerLockElement === canvas) document.exitPointerLock()
     }
-  }, [gl, lookRef, view])
+  }, [gl, inMeeting, lookRef])
 
   // No celular não tem ponteiro para trancar: arrastar o dedo na metade direita
   // da tela vira o olhar, que é onde o polegar já está e onde não tem manche.
   useEffect(() => {
-    if (view !== "primeira") return
+    if (inMeeting) return
     const canvas = gl.domElement
     let ultimo: { id: number; x: number; y: number } | null = null
 
@@ -255,7 +257,7 @@ function SceneContent({
       canvas.removeEventListener("touchend", termina)
       canvas.removeEventListener("touchcancel", termina)
     }
-  }, [gl, lookRef, view])
+  }, [gl, inMeeting, lookRef])
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.1)
@@ -289,7 +291,7 @@ function SceneContent({
     const transition = stairTransition.current
     let onStairs = false
     if (transition) {
-      const progress = THREE.MathUtils.clamp((now - transition.startedAt) / 900, 0, 1)
+      const progress = THREE.MathUtils.clamp((now - transition.startedAt) / STAIR_CLIMB_MS, 0, 1)
       const eased = progress * progress * (3 - 2 * progress)
       local.current.set(
         THREE.MathUtils.lerp(transition.fromX, transition.toX, eased),
@@ -299,23 +301,13 @@ function SceneContent({
       onStairs = progress < 1
       const stairFacing = Math.atan2(transition.toX - transition.fromX, transition.toZ - transition.fromZ)
       heading.current = stairFacing
-      if (view === "primeira") {
-        const targetYaw = stairFacing - Math.PI
-        lookRef.current.yaw +=
-          Math.atan2(
-            Math.sin(targetYaw - lookRef.current.yaw),
-            Math.cos(targetYaw - lookRef.current.yaw),
-          ) * Math.min(1, delta * 4.5)
-        lookRef.current.pitch += (0 - lookRef.current.pitch) * Math.min(1, delta * 4.5)
-      }
       if (!onStairs) {
         stairTransition.current = null
         local.current.set(mine.x, mine.z)
         visualY.current = liveLevel * FLOOR_HEIGHT
       }
     } else {
-      visualY.current +=
-        (liveLevel * FLOOR_HEIGHT - visualY.current) * Math.min(1, delta * 10)
+      visualY.current += (liveLevel * FLOOR_HEIGHT - visualY.current) * Math.min(1, delta * 10)
     }
     climbing.current = onStairs
 
@@ -326,17 +318,14 @@ function SceneContent({
     if (moving) {
       const length = Math.hypot(input.x, input.z) || 1
       const step = WALK_SPEED * delta
-      // Na câmera de cima, W é o norte do escritório. Em primeira pessoa, W é
-      // para onde a cabeça aponta, senão andar vira quebra-cabeça.
+      // W segue a direção da cabeça. O jogo é sempre em primeira pessoa.
       let dirX = input.x / length
       let dirZ = input.z / length
-      if (view === "primeira") {
-        const yaw = lookRef.current.yaw
-        const frente = -dirZ
-        const lado = dirX
-        dirX = -Math.sin(yaw) * frente + Math.cos(yaw) * lado
-        dirZ = -Math.cos(yaw) * frente - Math.sin(yaw) * lado
-      }
+      const yaw = lookRef.current.yaw
+      const frente = -dirZ
+      const lado = dirX
+      dirX = -Math.sin(yaw) * frente + Math.cos(yaw) * lado
+      dirZ = -Math.cos(yaw) * frente - Math.sin(yaw) * lado
       const wanted = {
         x: local.current.x + dirX * step,
         z: local.current.y + dirZ * step,
@@ -349,11 +338,8 @@ function SceneContent({
       )
     }
 
-    // Quem manda no corpo é o olhar, em primeira pessoa, e o passo, na câmera de
-    // cima. Só no primeiro caso dá para andar de lado continuando de frente, e
-    // parado o corpo ainda gira: quem está atrás precisa ver você virar.
-    if (view === "primeira") heading.current = lookRef.current.yaw + Math.PI
-    else if (moving) heading.current = Math.atan2(input.x, input.z)
+    // O corpo acompanha o olhar mesmo parado: quem está atrás vê você virar.
+    heading.current = lookRef.current.yaw + Math.PI
 
     // O servidor é a verdade. Quando ele discorda muito, a tela salta; quando
     // discorda pouco, ela vai sendo puxada de volta sem ninguém perceber.
@@ -382,21 +368,19 @@ function SceneContent({
       )
     }
 
-    if (view === "primeira") {
-      // A câmera senta na cabeça do jogador, sem suavizar: atraso entre o passo
-      // e a imagem em primeira pessoa embrulha o estômago. Dentro do duto ela
-      // afunda, que é a única pista visual de que você está lá embaixo.
-      camera.position.set(local.current.x, visualY.current + EYE_HEIGHT - (inVent ? 1.15 : 0), local.current.y)
-      camera.rotation.order = "YXZ"
-      camera.rotation.set(lookRef.current.pitch, lookRef.current.yaw, 0)
-    } else {
-      // Câmera isométrica presa no jogador, sem giro: quem está de frente para a
-      // tela é sempre o norte do escritório, e ninguém se perde na virada.
-      cameraGoal.current.set(local.current.x, visualY.current + 14, local.current.y + 10.5)
-      camera.position.lerp(cameraGoal.current, 1 - Math.exp(-5 * delta))
-      camera.rotation.order = "XYZ"
-      camera.lookAt(local.current.x, visualY.current + 0.9, local.current.y - 1.6)
+    if (inMeeting && !meetingCameraReady.current) {
+      lookRef.current.yaw = Number(mine.dir ?? 0) - Math.PI
+      lookRef.current.pitch = -0.08
+      meetingCameraReady.current = true
     }
+    if (!inMeeting) meetingCameraReady.current = false
+
+    // A câmera fica na cabeça em todos os momentos. Dentro do duto ela afunda,
+    // que é a pista visual de que o jogador está sob o piso.
+    const seatedEye = inMeeting ? 1.22 : EYE_HEIGHT
+    camera.position.set(local.current.x, visualY.current + seatedEye - (inVent ? 1.15 : 0), local.current.y)
+    camera.rotation.order = "YXZ"
+    camera.rotation.set(lookRef.current.pitch, lookRef.current.yaw, 0)
 
     poseRef.current.x = local.current.x
     poseRef.current.z = local.current.y
@@ -472,13 +456,12 @@ function SceneContent({
       />
       <pointLight ref={playerLight} color="#e8f3ff" intensity={2.2} distance={7} decay={2} />
 
-      {(view === "primeira" || currentLevel === 1 ? [0, 1] : [0]).map((floor) => (
+      {[0, 1].map((floor) => (
         <OfficeWorld
           key={floor}
           map={map}
           quality={quality}
           blackout={blackoutForViewer}
-          view={view}
           level={floor}
           baseY={floor * FLOOR_HEIGHT}
           active={floor === currentLevel}
@@ -509,7 +492,8 @@ function SceneContent({
           viewerAlive={alive}
           ally={allies.includes(player.id)}
           quality={quality}
-          hideBody={player.id === me && view === "primeira"}
+          hideBody={player.id === me}
+          seated={inMeeting}
           walls={walls}
           visionRange={activeVision}
           blackout={blackoutForViewer}
@@ -549,6 +533,7 @@ function Actor({
   ally,
   quality,
   hideBody,
+  seated,
   walls,
   visionRange,
   blackout,
@@ -567,6 +552,7 @@ function Actor({
   /// Em primeira pessoa o próprio corpo sai de cena: câmera dentro da cabeça
   /// enxerga o miolo do crânio e nada mais.
   hideBody: boolean
+  seated: boolean
   walls: OfficeMap["walls"]
   visionRange: number
   blackout: boolean
@@ -586,9 +572,22 @@ function Actor({
 
   const tomBase = blackout ? "#6f7c8e" : player.color
   const tomMembro = useMemo(() => `#${new THREE.Color(tomBase).multiplyScalar(0.72).getHexString()}`, [tomBase])
-  const body = useVisionMaterial({ color: tomBase, roughness: 0.38, metalness: 0.06 })
-  const limbs = useVisionMaterial({ color: tomMembro, roughness: 0.45, metalness: 0.04 })
-  const visor = useVisionMaterial({ color: "#121a26", emissive: "#9fdcff", emissiveIntensity: 0.7, roughness: 0.15 })
+  const body = useVisionMaterial({
+    color: tomBase,
+    roughness: 0.38,
+    metalness: 0.06,
+  })
+  const limbs = useVisionMaterial({
+    color: tomMembro,
+    roughness: 0.45,
+    metalness: 0.04,
+  })
+  const visor = useVisionMaterial({
+    color: "#121a26",
+    emissive: "#9fdcff",
+    emissiveIntensity: 0.7,
+    roughness: 0.15,
+  })
 
   // Quem está vivo não vê fantasma. É a única informação que a tela esconde por
   // conta própria, e ela vale para todo mundo do mesmo jeito.
@@ -625,11 +624,7 @@ function Actor({
           hasLineOfSight({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z }, walls)))
     if (inSight) lastVisibleAt.current = performance.now()
     node.visible =
-      sameLevel &&
-      !hideBody &&
-      !hidden &&
-      !live.inVent &&
-      (inSight || performance.now() - lastVisibleAt.current < 120)
+      sameLevel && !hideBody && !hidden && !live.inVent && (inSight || performance.now() - lastVisibleAt.current < 120)
     if (label.current) label.current.style.visibility = node.visible ? "visible" : "hidden"
     if (!node.visible) return
 
@@ -640,7 +635,7 @@ function Actor({
 
     // Braço e perna andam em oposição, e a amplitude sobe e desce em rampa: o
     // boneco não pode travar a passada no meio quando o jogador solta a tecla.
-    const walking = Boolean(live.moving) || (isMe && climbingRef.current)
+    const walking = !seated && (Boolean(live.moving) || (isMe && climbingRef.current))
     passo.current += walking ? delta * 9 : 0
     balanco.current += ((walking ? 0.62 : 0) - balanco.current) * (1 - Math.exp(-9 * delta))
     const giro = Math.sin(passo.current) * balanco.current
@@ -650,8 +645,16 @@ function Actor({
     if (bracoDireito.current) bracoDireito.current.rotation.x = giro * 0.8
 
     if (bodyGroup.current) {
-      const sobe = Math.abs(Math.sin(passo.current)) * balanco.current * 0.07
+      const sobe = seated ? -0.43 : Math.abs(Math.sin(passo.current)) * balanco.current * 0.07
       bodyGroup.current.position.y += (sobe - bodyGroup.current.position.y) * (1 - Math.exp(-16 * delta))
+      bodyGroup.current.rotation.x +=
+        ((seated ? -0.08 : 0) - bodyGroup.current.rotation.x) * (1 - Math.exp(-12 * delta))
+    }
+    if (pernaEsquerda.current && seated) {
+      pernaEsquerda.current.rotation.x += (-1.25 - pernaEsquerda.current.rotation.x) * (1 - Math.exp(-12 * delta))
+    }
+    if (pernaDireita.current && seated) {
+      pernaDireita.current.rotation.x += (-1.25 - pernaDireita.current.rotation.x) * (1 - Math.exp(-12 * delta))
     }
   })
 
@@ -723,7 +726,10 @@ function Actor({
           <span
             ref={label}
             className={`whitespace-nowrap rounded-md px-1.5 py-0.5 text-[13px] font-black tracking-tight ${ghost ? "opacity-50" : ""}`}
-            style={{ color: blackout ? "#cbd5e1" : player.color, textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}
+            style={{
+              color: blackout ? "#cbd5e1" : player.color,
+              textShadow: "0 1px 3px rgba(0,0,0,0.9)",
+            }}
           >
             {player.name}
             {ally && !blackout && <span className="ml-1 text-red-400">◆</span>}
@@ -752,7 +758,10 @@ function Corpse({
   floorY: number
 }) {
   const group = useRef<THREE.Group>(null)
-  const material = useVisionMaterial({ color: blackout ? "#657180" : corpse.color, roughness: 0.7 })
+  const material = useVisionMaterial({
+    color: blackout ? "#657180" : corpse.color,
+    roughness: 0.7,
+  })
 
   useFrame(() => {
     if (!group.current) return
@@ -851,12 +860,14 @@ function Markers({
           este anel, que marca qual grelha dá para usar. */}
       {showVents && (
         <group ref={vents}>
-          {map.vents.filter((vent) => (vent.level ?? 0) === level).map((vent) => (
-            <mesh key={vent.id} position={[vent.x, 0.225, vent.z]} rotation-x={-Math.PI / 2}>
-              <ringGeometry args={[0.82, 0.88, 28]} />
-              <meshBasicMaterial color="#69d6ff" transparent opacity={0.5} depthWrite={false} />
-            </mesh>
-          ))}
+          {map.vents
+            .filter((vent) => (vent.level ?? 0) === level)
+            .map((vent) => (
+              <mesh key={vent.id} position={[vent.x, 0.225, vent.z]} rotation-x={-Math.PI / 2}>
+                <ringGeometry args={[0.82, 0.88, 28]} />
+                <meshBasicMaterial color="#69d6ff" transparent opacity={0.5} depthWrite={false} />
+              </mesh>
+            ))}
         </group>
       )}
     </>

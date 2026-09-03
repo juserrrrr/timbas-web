@@ -21,7 +21,11 @@ export function setVision(x: number, z: number, inner: number, outer: number) {
 /// sempre na mesma grade.
 export type Surface = "nenhuma" | "piso" | "parede"
 
-const SURFACE_CODE: Record<Surface, number> = { nenhuma: 0, piso: 1, parede: 2 }
+const SURFACE_CODE: Record<Surface, number> = {
+  nenhuma: 0,
+  piso: 1,
+  parede: 2,
+}
 
 export function patchVision(material: THREE.Material, surface: Surface = "nenhuma") {
   material.onBeforeCompile = (shader) => {
@@ -96,6 +100,7 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
 
 interface Params {
   color: string
+  map?: THREE.Texture
   emissive?: string
   emissiveIntensity?: number
   roughness?: number
@@ -114,6 +119,7 @@ interface Params {
 
 export function useVisionMaterial({
   color,
+  map,
   emissive,
   emissiveIntensity = 0,
   roughness = 0.85,
@@ -125,7 +131,14 @@ export function useVisionMaterial({
   opacity = 1,
 }: Params) {
   const material = useMemo(() => {
-    const shared = { color: new THREE.Color(color), vertexColors, transparent, opacity, depthWrite: !transparent }
+    const shared = {
+      color: new THREE.Color(color),
+      map,
+      vertexColors,
+      transparent,
+      opacity,
+      depthWrite: !transparent,
+    }
     const created = unlit
       ? new THREE.MeshBasicMaterial(shared)
       : new THREE.MeshStandardMaterial({
@@ -135,7 +148,19 @@ export function useVisionMaterial({
           ...(emissive ? { emissive: new THREE.Color(emissive), emissiveIntensity } : {}),
         })
     return patchVision(created, surface)
-  }, [color, emissive, emissiveIntensity, roughness, metalness, vertexColors, unlit, surface, transparent, opacity])
+  }, [
+    color,
+    map,
+    emissive,
+    emissiveIntensity,
+    roughness,
+    metalness,
+    vertexColors,
+    unlit,
+    surface,
+    transparent,
+    opacity,
+  ])
 
   useEffect(() => () => material.dispose(), [material])
   return material

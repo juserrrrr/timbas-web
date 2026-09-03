@@ -42,6 +42,11 @@ export interface MapRoom {
   floor: string
   finish?: "carpet" | "wood" | "server" | "terrazzo" | "pantry" | "concrete"
   light: string
+  doors?: Array<{
+    side: "north" | "south" | "east" | "west"
+    at: number
+    width: number
+  }>
 }
 export interface MapProp {
   kind: string
@@ -146,7 +151,11 @@ export function listDeducaoRooms(): Promise<RoomSummary[]> {
   return request<RoomSummary[]>("/games/deducao/rooms")
 }
 
-export function getOfficeMap(): Promise<{ map: OfficeMap; minPlayers: number; maxPlayers: number }> {
+export function getOfficeMap(): Promise<{
+  map: OfficeMap
+  minPlayers: number
+  maxPlayers: number
+}> {
   return request<{ map: OfficeMap; minPlayers: number; maxPlayers: number }>("/games/deducao/map")
 }
 

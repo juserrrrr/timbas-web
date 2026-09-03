@@ -7,67 +7,18 @@ import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js"
 import type { OfficeMap } from "@/lib/services/games"
-import type { Quality, View } from "../match-types"
+import type { Quality } from "../match-types"
 import { useVisionMaterial } from "./vision-material"
 
-/// A parede muda de altura conforme de onde se olha, e isso não é enfeite. Em
-/// primeira pessoa ela precisa passar dos olhos, senão o jogador enxerga por
-/// cima de tudo e o esconde-esconde acaba. Na câmera de cima ela precisa ficar
-/// na altura do peito, senão vira um muro que engole a sala. É a mesma parede
-/// nos dois casos para a colisão, só o desenho encolhe.
-const WALL_HEIGHT: Record<View, number> = { primeira: 3.2, isometrica: 2.15 }
+/// Pé-direito quase encostado na laje superior. O vão restante é estrutural,
+/// não um buraco por onde se enxerga o mapa inteiro.
+const WALL_HEIGHT = 4.02
 export const FLOOR_HEIGHT = 4.2
 const STAIR_RUN = 6
 const STAIR_WIDTH = 2.8
 const STAIR_STEPS = 18
 const TRIM_HEIGHT = 0.16
 const BASEBOARD_HEIGHT = 0.22
-
-/// Só entra janela em pano de parede grande. Em pedaço curto, ao lado de porta,
-/// ela sai espremida e parece defeito, e a passagem sobre o vazio fica fechada
-/// de propósito: ninguém deve ver de dentro da sala quem está atravessando.
-const WINDOW_MIN_WALL = 6
-/// Onde o vão começa e termina, em fração da altura da parede. Em primeira
-/// pessoa isso põe a janela na altura dos olhos, que é onde ela serve.
-const WINDOW_BOTTOM = 0.39
-const WINDOW_TOP = 0.81
-/// A ombreira de alvenaria que sobra em cada ponta do pano de parede.
-const JAMB_WIDTH = 1.0
-/// Largura de um vão e o pilar mínimo entre dois. Uma parede de vinte metros
-/// não leva uma vidraça de dezoito: leva cinco janelas com pilar entre elas, que
-/// é o que dá ritmo de prédio em vez de aquário.
-const BAY_WIDTH = 2.6
-const PIER_MIN = 1.0
-
-/// Onde ficam os vãos ao longo de um pano de parede, medidos da ponta dele.
-function bayspans(length: number): [number, number][] {
-  const usable = length - JAMB_WIDTH * 2
-  let count = Math.floor((usable + PIER_MIN) / (BAY_WIDTH + PIER_MIN))
-  if (count < 1) return []
-  let gap = count > 1 ? (usable - count * BAY_WIDTH) / (count - 1) : 0
-  if (count > 1 && gap < PIER_MIN) {
-    count -= 1
-    gap = count > 1 ? (usable - count * BAY_WIDTH) / (count - 1) : 0
-  }
-  const spans: [number, number][] = []
-  for (let index = 0; index < count; index += 1) {
-    const from = JAMB_WIDTH + index * (BAY_WIDTH + gap)
-    spans.push([from, from + BAY_WIDTH])
-  }
-  return spans
-}
-
-/// O que sobra de parede cheia entre um vão e outro.
-function solidSpans(length: number, bays: [number, number][]): [number, number][] {
-  const spans: [number, number][] = []
-  let cursor = 0
-  for (const [from, to] of bays) {
-    if (from > cursor) spans.push([cursor, from])
-    cursor = to
-  }
-  if (cursor < length) spans.push([cursor, length])
-  return spans
-}
 
 /// Espessura estrutural das lajes. No piso superior ela é recortada nos vãos
 /// das escadas para os dois andares formarem um prédio contínuo.
@@ -97,20 +48,20 @@ interface PropSpec {
 // O tampo claro sobre o pé escuro é o que separa um móvel de um bloco.
 const PROPS: Record<string, PropSpec> = {
   desk: {
-    color: "#e9edf3",
+    color: "#d9c3a5",
     boxes: [
-      [1.7, 0.08, 0.85, 0, 0.74, 0, "#f6f8fc"],
-      [0.1, 0.72, 0.75, -0.78, 0.36, 0, "#a7b3c5"],
-      [0.1, 0.72, 0.75, 0.78, 0.36, 0, "#a7b3c5"],
-      [1.5, 0.3, 0.06, 0, 0.5, -0.38, "#d8e0ea"],
+      [1.78, 0.075, 0.88, 0, 0.76, 0, "#d7b98e"],
+      [0.07, 0.72, 0.7, -0.78, 0.37, 0, "#3f4b5b"],
+      [0.07, 0.72, 0.7, 0.78, 0.37, 0, "#3f4b5b"],
+      [1.52, 0.08, 0.08, 0, 0.19, -0.34, "#566375"],
     ],
   },
   chair: {
-    color: "#5a6b86",
+    color: "#31435e",
     boxes: [
-      [0.5, 0.08, 0.5, 0, 0.46, 0, "#687894"],
-      [0.5, 0.55, 0.08, 0, 0.75, -0.22, "#5a6b86"],
-      [0.12, 0.4, 0.12, 0, 0.24, 0, "#9aa6b8"],
+      [0.54, 0.11, 0.52, 0, 0.5, 0.02, "#334a6b"],
+      [0.5, 0.6, 0.1, 0, 0.83, -0.22, "#2c4261", [-0.09, 0, 0]],
+      [0.1, 0.4, 0.1, 0, 0.27, 0, "#77859a"],
     ],
   },
   monitor: {
@@ -128,12 +79,12 @@ const PROPS: Record<string, PropSpec> = {
     boxes: [],
   },
   sofa: {
-    color: "#7d8ea8",
+    color: "#243b5a",
     boxes: [
-      [2.0, 0.42, 0.9, 0, 0.28, 0, "#8496af"],
-      [2.0, 0.5, 0.24, 0, 0.68, -0.34, "#7d8ea8"],
-      [0.22, 0.55, 0.9, -0.9, 0.55, 0, "#94a4bc"],
-      [0.22, 0.55, 0.9, 0.9, 0.55, 0, "#94a4bc"],
+      [1.92, 0.36, 0.82, 0, 0.3, 0, "#263f60"],
+      [1.88, 0.58, 0.2, 0, 0.72, -0.34, "#203754", [-0.1, 0, 0]],
+      [0.22, 0.62, 0.86, -0.92, 0.55, 0, "#2c496d"],
+      [0.22, 0.62, 0.86, 0.92, 0.55, 0, "#2c496d"],
     ],
   },
   counter: {
@@ -144,10 +95,20 @@ const PROPS: Record<string, PropSpec> = {
     ],
   },
   meetingTable: {
-    color: "#e9d7bd",
+    color: "#b98856",
     boxes: [
-      [3.8, 0.12, 1.7, 0, 0.74, 0, "#eddcc4"],
-      [1.2, 0.7, 0.6, 0, 0.36, 0, "#b99a76"],
+      [6.6, 0.14, 2.45, 0, 0.76, 0, "#b88755"],
+      [0.22, 0.7, 1.75, -2.35, 0.38, 0, "#3e4857"],
+      [0.22, 0.7, 1.75, 2.35, 0.38, 0, "#3e4857"],
+      [4.7, 0.1, 0.12, 0, 0.3, 0, "#556274"],
+    ],
+  },
+  cafeTable: {
+    color: "#d5b98f",
+    boxes: [
+      [1.35, 0.1, 1.35, 0, 0.74, 0, "#d5b98f"],
+      [0.14, 0.68, 0.14, 0, 0.36, 0, "#4a5565"],
+      [0.78, 0.07, 0.78, 0, 0.06, 0, "#4a5565"],
     ],
   },
   rack: {
@@ -234,6 +195,16 @@ const PROPS: Record<string, PropSpec> = {
       [0.75, 1.4, 0.05, 0, 1.15, 0.39, "#9ad6f7"],
     ],
   },
+  kitchen: {
+    color: "#d9dee6",
+    boxes: [
+      [4.2, 0.82, 0.68, 0, 0.41, 0, "#d7dce4"],
+      [4.34, 0.08, 0.78, 0, 0.86, 0.02, "#8896a7"],
+      [4.2, 0.58, 0.08, 0, 1.2, -0.32, "#b8c2cd"],
+      [1.15, 0.72, 0.38, -1.32, 1.85, -0.14, "#e5e8ed"],
+      [1.15, 0.72, 0.38, 1.32, 1.85, -0.14, "#e5e8ed"],
+    ],
+  },
 }
 
 /// O duto no chão: aro de metal, poço escuro e quatro palhetas por cima. Era um
@@ -314,7 +285,7 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
     tone: string,
     rotation: [number, number, number] = [0, 0, 0],
     radius = 0.035,
-  ) => add(new RoundedBoxGeometry(...size, 2, radius), tone, position, rotation)
+  ) => add(new RoundedBoxGeometry(...size, 4, radius), tone, position, rotation)
 
   const cylinder = (
     top: number,
@@ -361,7 +332,11 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
       box([0.42, 0.045, 0.065], [Math.cos(angle) * 0.18, 0.08, Math.sin(angle) * 0.18], "#707d91", [0, -angle, 0], 0.02)
       sphere(0.055, [Math.cos(angle) * 0.39, 0.06, Math.sin(angle) * 0.39], [1, 0.72, 1], "#273142")
     }
-    box([0.34, 0.14, 0.07], [0, 1.01, -0.22], "#72839e", [0, 0, 0], 0.06)
+    box([0.36, 0.16, 0.075], [0, 1.07, -0.2], "#3c567b", [-0.09, 0, 0], 0.065)
+    ;[-0.31, 0.31].forEach((x) => {
+      box([0.045, 0.32, 0.045], [x, 0.66, 0], "#6f7d90", [0, 0, 0], 0.015)
+      box([0.22, 0.045, 0.055], [x, 0.82, 0.04], "#46566d", [0, 0, 0], 0.02)
+    })
   } else if (kind === "monitor") {
     box([0.53, 0.29, 0.018], [0, 1.06, 0.036], "#62b8ff", [0, 0, 0], 0.012)
     sphere(0.018, [0, 1.235, 0.055], [1, 1, 0.55], "#b8e5ff")
@@ -387,11 +362,12 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
       sphere(0.22, [x, y, z], [0.48, 1.35, 0.28], index % 2 ? "#62bd7b" : "#3f9b61", [0, ry, rz]),
     )
   } else if (kind === "sofa") {
-    box([0.82, 0.12, 0.7], [-0.46, 0.52, 0.08], "#9cacbf", [0, 0, 0], 0.055)
-    box([0.82, 0.12, 0.7], [0.46, 0.52, 0.08], "#91a3ba", [0, 0, 0], 0.055)
-    box([0.84, 0.42, 0.11], [-0.46, 0.77, -0.29], "#8fa1b8", [-0.08, 0, 0], 0.06)
-    box([0.84, 0.42, 0.11], [0.46, 0.77, -0.29], "#8498b1", [-0.08, 0, 0], 0.06)
-    ;[-0.76, 0.76].forEach((x) => box([0.09, 0.16, 0.09], [x, 0.08, 0], "#56657b", [0, 0, 0], 0.025))
+    box([0.82, 0.16, 0.68], [-0.44, 0.5, 0.1], "#36577e", [0, 0, 0], 0.075)
+    box([0.82, 0.16, 0.68], [0.44, 0.5, 0.1], "#304f75", [0, 0, 0], 0.075)
+    box([0.82, 0.45, 0.13], [-0.44, 0.8, -0.26], "#2d4a6e", [-0.14, 0, 0], 0.075)
+    box([0.82, 0.45, 0.13], [0.44, 0.8, -0.26], "#294565", [-0.14, 0, 0], 0.075)
+    ;[-0.76, 0.76].forEach((x) => box([0.1, 0.18, 0.1], [x, 0.09, 0], "#293545", [0, 0, 0], 0.028))
+    box([0.4, 0.34, 0.11], [-0.42, 0.76, -0.16], "#b77d58", [0, 0.1, -0.08], 0.07)
   } else if (kind === "counter") {
     for (let index = 0; index < 11; index += 1) {
       box([0.055, 0.78, 0.035], [-1.9 + index * 0.38, 0.53, 0.475], index % 2 ? "#c5a783" : "#b9956e", [0, 0, 0], 0.016)
@@ -399,9 +375,16 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
     box([0.65, 0.34, 0.025], [0, 0.58, 0.51], "#2d6f8e", [0, 0, 0], 0.025)
     box([0.45, 0.045, 0.16], [0, 1.15, 0], "#63738b", [0, 0, 0], 0.018)
   } else if (kind === "meetingTable") {
-    cylinder(0.12, 0.12, 0.035, [0, 0.82, 0], "#273548", [0, 0, 0], 18)
-    torus(0.16, 0.018, [0, 0.825, 0], "#8190a4")
-    box([0.72, 0.045, 0.22], [0, 0.795, -0.45], "#c1a37e", [0, 0, 0], 0.025)
+    for (const x of [-1.65, 0, 1.65]) {
+      cylinder(0.1, 0.1, 0.035, [x, 0.84, 0], "#253142", [0, 0, 0], 20)
+      torus(0.145, 0.018, [x, 0.845, 0], "#8290a3")
+      box([0.48, 0.032, 0.14], [x, 0.835, -0.38], "#263346", [0, 0, 0], 0.02)
+    }
+    box([2.2, 0.022, 0.24], [0, 0.84, 0.78], "#c6a171", [0, 0, 0], 0.025)
+  } else if (kind === "cafeTable") {
+    cylinder(0.16, 0.16, 0.025, [0.25, 0.81, -0.2], "#f2eee8", [0, 0, 0], 20)
+    torus(0.12, 0.018, [0.37, 0.85, -0.2], "#f2eee8", [0, Math.PI / 2, 0])
+    cylinder(0.05, 0.045, 0.12, [-0.32, 0.84, 0.24], "#6e8461", [0, 0, 0], 16)
   } else if (kind === "rack") {
     for (let index = 0; index < 7; index += 1) {
       const y = 0.34 + index * 0.22
@@ -478,12 +461,38 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
     torus(0.14, 0.035, [0, 1.24, -0.08], "#8291a5", [0, 0, 0])
     cylinder(0.028, 0.028, 0.18, [0, 1.24, 0.055], "#8291a5", [Math.PI / 2, 0, 0], 10)
     ;[-0.52, 0.52].forEach((x) => box([0.025, 0.18, 0.025], [x, 0.48, 0.27], "#6f7e92", [0, 0, 0], 0.008))
+  } else if (kind === "kitchen") {
+    for (let cabinet = 0; cabinet < 4; cabinet += 1) {
+      const x = -1.55 + cabinet * 1.03
+      box([0.9, 0.64, 0.035], [x, 0.42, 0.36], cabinet % 2 ? "#cbd2db" : "#d7dce4", [0, 0, 0], 0.025)
+      cylinder(0.014, 0.014, 0.18, [x + 0.3, 0.46, 0.385], "#5d6b7c", [Math.PI / 2, 0, 0], 10)
+    }
+    box([1.05, 0.035, 0.46], [0.3, 0.91, 0.03], "#263342", [0, 0, 0], 0.08)
+    cylinder(0.3, 0.3, 0.035, [0.3, 0.925, 0.03], "#8795a5", [0, 0, 0], 24)
+    cylinder(0.035, 0.035, 0.36, [0.3, 1.08, -0.2], "#718094", [0, 0, 0], 14)
+    torus(0.16, 0.035, [0.3, 1.24, -0.07], "#718094", [0, 0, 0])
+    cylinder(0.025, 0.025, 0.18, [0.3, 1.24, 0.08], "#718094", [Math.PI / 2, 0, 0], 12)
+    for (let tile = 0; tile < 9; tile += 1) {
+      box([0.012, 0.48, 0.012], [-1.84 + tile * 0.46, 1.19, 0.374], "#8f9cab", [0, 0, 0], 0.004)
+    }
+    ;[-1.32, 1.32].forEach((x) => {
+      box([0.055, 0.48, 0.02], [x, 1.84, 0.07], "#adb7c3", [0, 0, 0], 0.012)
+      cylinder(0.013, 0.013, 0.2, [x + 0.36, 1.84, 0.075], "#5d6b7c", [Math.PI / 2, 0, 0], 10)
+    })
   } else if (kind === "vending") {
     box([0.77, 1.42, 0.035], [-0.08, 1.15, 0.405], "#142133", [0, 0, 0], 0.02)
     const products = ["#ef6b73", "#f4bb55", "#58c88c", "#62aaf5"]
     for (let row = 0; row < 4; row += 1) {
       for (let column = 0; column < 3; column += 1) {
-        cylinder(0.055, 0.055, 0.16, [-0.31 + column * 0.24, 0.72 + row * 0.29, 0.44], products[(row + column) % products.length], [0, 0, 0], 10)
+        cylinder(
+          0.055,
+          0.055,
+          0.16,
+          [-0.31 + column * 0.24, 0.72 + row * 0.29, 0.44],
+          products[(row + column) % products.length],
+          [0, 0, 0],
+          10,
+        )
       }
       box([0.7, 0.018, 0.04], [-0.08, 0.6 + row * 0.29, 0.44], "#8291a5", [0, 0, 0], 0.006)
     }
@@ -501,16 +510,18 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
 const STAIR_SPEC: PropSpec = {
   color: "#9ca7b6",
   boxes: [
-    ...Array.from({ length: STAIR_STEPS }, (_, index) =>
-      [
-        STAIR_WIDTH,
-        ((index + 1) * FLOOR_HEIGHT) / STAIR_STEPS,
-        STAIR_RUN / STAIR_STEPS + 0.035,
-        0,
-        ((index + 1) * FLOOR_HEIGHT) / STAIR_STEPS / 2,
-        STAIR_RUN / 2 - ((index + 0.5) * STAIR_RUN) / STAIR_STEPS,
-        index % 2 ? "#9aa6b5" : "#8794a5",
-      ] as Box,
+    ...Array.from(
+      { length: STAIR_STEPS },
+      (_, index) =>
+        [
+          STAIR_WIDTH,
+          ((index + 1) * FLOOR_HEIGHT) / STAIR_STEPS,
+          STAIR_RUN / STAIR_STEPS + 0.035,
+          0,
+          ((index + 1) * FLOOR_HEIGHT) / STAIR_STEPS / 2,
+          STAIR_RUN / 2 - ((index + 0.5) * STAIR_RUN) / STAIR_STEPS,
+          index % 2 ? "#9aa6b5" : "#8794a5",
+        ] as Box,
     ),
     ...[0, 5, 10, 15, 17].flatMap((index) => {
       const stepTop = ((index + 1) * FLOOR_HEIGHT) / STAIR_STEPS
@@ -622,15 +633,7 @@ function stairHole(stair: OfficeMap["stairs"][number]) {
   }
 }
 
-function TexturedFloor({
-  patch,
-  source,
-  quality,
-}: {
-  patch: FloorPatch
-  source: THREE.Texture
-  quality: Quality
-}) {
+function TexturedFloor({ patch, source, quality }: { patch: FloorPatch; source: THREE.Texture; quality: Quality }) {
   const gl = useThree((state) => state.gl)
   const texture = useMemo(() => {
     const clone = source.clone()
@@ -649,11 +652,7 @@ function TexturedFloor({
   useEffect(() => () => texture.dispose(), [texture])
 
   return (
-    <mesh
-      position={[patch.x + patch.w / 2, 0.018, patch.z + patch.d / 2]}
-      rotation-x={-Math.PI / 2}
-      receiveShadow
-    >
+    <mesh position={[patch.x + patch.w / 2, 0.018, patch.z + patch.d / 2]} rotation-x={-Math.PI / 2} receiveShadow>
       <planeGeometry args={[patch.w, patch.d]} />
       <meshStandardMaterial
         map={texture}
@@ -667,9 +666,10 @@ function TexturedFloor({
 
 function TexturedFloors({ patches, quality }: { patches: FloorPatch[]; quality: Quality }) {
   const loaded = useTexture(FLOOR_FINISHES.map((finish) => FLOOR_TEXTURE_PATHS[finish]))
-  const textures = Object.fromEntries(
-    FLOOR_FINISHES.map((finish, index) => [finish, loaded[index]]),
-  ) as Record<FloorFinish, THREE.Texture>
+  const textures = Object.fromEntries(FLOOR_FINISHES.map((finish, index) => [finish, loaded[index]])) as Record<
+    FloorFinish,
+    THREE.Texture
+  >
 
   return (
     <>
@@ -729,7 +729,6 @@ export function OfficeWorld({
   map,
   quality,
   blackout,
-  view,
   level,
   baseY = 0,
   active = true,
@@ -737,40 +736,92 @@ export function OfficeWorld({
   map: OfficeMap
   quality: Quality
   blackout: boolean
-  view: View
   level: number
   baseY?: number
   active?: boolean
 }) {
-  const wallHeight = WALL_HEIGHT[view]
-  const groundMaterial = useVisionMaterial({ color: "#253148", roughness: 0.98, surface: "piso" })
-  const plinthMaterial = useVisionMaterial({ color: "#39435c", roughness: 0.95, vertexColors: true })
-  const rugMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.99, surface: "piso" })
-  const wallMaterial = useVisionMaterial({ color: "#c4c9d0", roughness: 0.76, vertexColors: true, surface: "parede" })
-  const baseboardMaterial = useVisionMaterial({ color: "#b0bccd", roughness: 0.7, metalness: 0.05 })
-  const trimMaterial = useVisionMaterial({ color: "#ffffff", unlit: true })
-  // Vidro fosco, não vidraça limpa, e isso é regra de jogo antes de ser gosto:
-  // quem está do outro lado continua escondido pela parede na conta da linha de
-  // visão, então o vidro não pode deixar ninguém reconhecer uma silhueta ali.
-  // Ele entra luz e mostra o vazio lá fora, e para de entregar o resto.
-  const glassMaterial = useVisionMaterial({
-    color: "#cfe9f7",
-    emissive: "#6ba7cf",
-    emissiveIntensity: 0.22,
-    roughness: 0.4,
-    metalness: 0.15,
-    transparent: true,
-    opacity: 0.72,
+  const wallHeight = WALL_HEIGHT
+  const [wallSource, upholsterySource] = useTexture([
+    "/images/games/deducao/textures/wall-plaster.webp",
+    "/images/games/deducao/textures/upholstery.webp",
+  ])
+  const wallTexture = useMemo(() => {
+    const texture = wallSource.clone()
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(3, 2)
+    texture.anisotropy = quality === "alto" ? 16 : quality === "medio" ? 8 : 2
+    texture.needsUpdate = true
+    return texture
+  }, [quality, wallSource])
+  const upholsteryTexture = useMemo(() => {
+    const texture = upholsterySource.clone()
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(2.5, 2.5)
+    texture.anisotropy = quality === "alto" ? 16 : quality === "medio" ? 8 : 2
+    texture.needsUpdate = true
+    return texture
+  }, [quality, upholsterySource])
+  useEffect(
+    () => () => {
+      wallTexture.dispose()
+      upholsteryTexture.dispose()
+    },
+    [upholsteryTexture, wallTexture],
+  )
+  const groundMaterial = useVisionMaterial({
+    color: "#253148",
+    roughness: 0.98,
+    surface: "piso",
   })
-  const frameMaterial = useVisionMaterial({ color: "#8d9bb0", roughness: 0.45, metalness: 0.35 })
-  const ventMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.5, metalness: 0.4, vertexColors: true })
+  const plinthMaterial = useVisionMaterial({
+    color: "#39435c",
+    roughness: 0.95,
+    vertexColors: true,
+  })
+  const rugMaterial = useVisionMaterial({
+    color: "#ffffff",
+    roughness: 0.99,
+    surface: "piso",
+  })
+  const wallMaterial = useVisionMaterial({
+    color: "#d2cdc3",
+    map: wallTexture,
+    roughness: 0.88,
+    vertexColors: true,
+    surface: "parede",
+  })
+  const baseboardMaterial = useVisionMaterial({
+    color: "#3e4857",
+    roughness: 0.62,
+    metalness: 0.08,
+  })
+  const trimMaterial = useVisionMaterial({ color: "#ffffff", unlit: true })
+  const frameMaterial = useVisionMaterial({
+    color: "#465365",
+    roughness: 0.4,
+    metalness: 0.28,
+  })
+  const ventMaterial = useVisionMaterial({
+    color: "#ffffff",
+    roughness: 0.5,
+    metalness: 0.4,
+    vertexColors: true,
+  })
   const ceilingMaterial = useVisionMaterial({
     color: "#fff9e8",
     emissive: "#fff2c5",
     emissiveIntensity: blackout ? 0.02 : 1.35,
     roughness: 0.3,
   })
-  const ceilingSlabMaterial = useVisionMaterial({ color: "#747d8b", roughness: 0.9, surface: "piso" })
+  const ceilingSlabMaterial = useVisionMaterial({
+    color: "#747d8b",
+    roughness: 0.9,
+    surface: "piso",
+  })
   const serverAisleMaterial = useVisionMaterial({
     color: "#263b50",
     emissive: "#164e63",
@@ -786,17 +837,20 @@ export function OfficeWorld({
   })
 
   const ground = useMemo(
-    () => level === 0 ? [
-      {
-        x: map.bounds.x + map.bounds.w / 2,
-        y: -0.72,
-        z: map.bounds.z + map.bounds.d / 2,
-        rot: 0,
-        sx: map.bounds.w + 5,
-        sy: 0.22,
-        sz: map.bounds.d + 5,
-      },
-    ] : [],
+    () =>
+      level === 0
+        ? [
+            {
+              x: map.bounds.x + map.bounds.w / 2,
+              y: -0.72,
+              z: map.bounds.z + map.bounds.d / 2,
+              rot: 0,
+              sx: map.bounds.w + 5,
+              sy: 0.22,
+              sz: map.bounds.d + 5,
+            },
+          ]
+        : [],
     [level, map.bounds],
   )
 
@@ -890,12 +944,8 @@ export function OfficeWorld({
         return Array.from({ length: amount }, (_, index) => {
           const fraction = (index + 1) / (amount + 1)
           return {
-            x: alongX
-              ? room.rect.x + room.rect.w * fraction
-              : room.rect.x + room.rect.w / 2,
-            z: alongX
-              ? room.rect.z + room.rect.d / 2
-              : room.rect.z + room.rect.d * fraction,
+            x: alongX ? room.rect.x + room.rect.w * fraction : room.rect.x + room.rect.w / 2,
+            z: alongX ? room.rect.z + room.rect.d / 2 : room.rect.z + room.rect.d * fraction,
             color: `#${roomTone.getHexString()}`,
             intensity: room.kind === "corredor" ? 34 : 29,
             distance: THREE.MathUtils.clamp(Math.max(room.rect.w, room.rect.d) * 0.82, 10, 19),
@@ -907,10 +957,7 @@ export function OfficeWorld({
   const serverAisles = useMemo(
     () =>
       map.rooms
-        .filter(
-          (room) =>
-            (room.level ?? 0) === level && (room.id === "servidores" || room.id === "operacoes"),
-        )
+        .filter((room) => (room.level ?? 0) === level && (room.id === "servidores" || room.id === "operacoes"))
         .map((room) => ({
           x: room.rect.x + room.rect.w / 2,
           y: 0.026,
@@ -967,13 +1014,7 @@ export function OfficeWorld({
   const rugs = useMemo(
     () =>
       map.rooms
-        .filter(
-          (room) =>
-            (room.level ?? 0) === level &&
-            room.kind === "sala" &&
-            room.rect.w >= 11 &&
-            room.rect.d >= 11,
-        )
+        .filter((room) => (room.level ?? 0) === level && room.kind === "sala" && room.rect.w >= 11 && room.rect.d >= 11)
         .map((room) => ({
           x: room.rect.x + room.rect.w / 2,
           y: 0.012,
@@ -989,86 +1030,140 @@ export function OfficeWorld({
 
   const walls = useMemo(
     () =>
-      map.walls.filter((wall) => (wall.level ?? 0) === level).map((wall) => ({
-        x: (wall.minX + wall.maxX) / 2,
-        z: (wall.minZ + wall.maxZ) / 2,
-        rot: 0,
-        sx: wall.maxX - wall.minX,
-        sy: 1,
-        sz: wall.maxZ - wall.minZ,
-        accent: wall.accent ?? "#a5b4fc",
-        color: mix("#68717e", wall.accent ?? "#8b96a8", 0.16),
-        style: wall.style ?? "parede",
-      })),
+      map.walls
+        .filter((wall) => (wall.level ?? 0) === level)
+        .map((wall) => ({
+          x: (wall.minX + wall.maxX) / 2,
+          z: (wall.minZ + wall.maxZ) / 2,
+          rot: 0,
+          sx: wall.maxX - wall.minX,
+          sy: 1,
+          sz: wall.maxZ - wall.minZ,
+          accent: wall.accent ?? "#a5b4fc",
+          color: mix("#68717e", wall.accent ?? "#8b96a8", 0.16),
+          style: wall.style ?? "parede",
+        })),
     [map.walls, level],
   )
 
-  // A parede com janela é montada em pedaços: peitoril embaixo, verga em cima e
-  // um pilar cheio entre um vão e outro. O buraco fica aberto de verdade, com a
-  // espessura da parede aparecendo na borda. Desenhar o vidro por cima da parede
-  // inteira dava painel colado, não janela.
-  const { bodies, glass, frames } = useMemo(() => {
-    const bodies: Placement[] = []
-    const glass: Placement[] = []
-    const frames: Placement[] = []
-    const abaixo = wallHeight * WINDOW_BOTTOM
-    const acima = wallHeight * WINDOW_TOP
-    const meio = (abaixo + acima) / 2
+  const { bodies, doorFrames } = useMemo(() => {
+    const bodies: Placement[] = walls.map((wall) => ({
+      ...wall,
+      sy: wall.style === "guarda-corpo" ? 1.05 : wallHeight,
+    }))
+    const doorFrames: Placement[] = []
+    const seen = new Set<string>()
+    const doorHeight = 2.58
+    const frame = 0.12
+    const depth = 0.52
 
-    for (const wall of walls) {
-      const horizontal = wall.sx > wall.sz
-      const length = horizontal ? wall.sx : wall.sz
-      if (wall.style === "guarda-corpo") {
-        bodies.push({ ...wall, sy: 0.92 })
-        continue
-      }
-      const bays = length >= WINDOW_MIN_WALL ? bayspans(length) : []
+    for (const room of map.rooms.filter((candidate) => (candidate.level ?? 0) === level)) {
+      for (const door of room.doors ?? []) {
+        const horizontal = door.side === "north" || door.side === "south"
+        const centerX = horizontal
+          ? room.rect.x + door.at + door.width / 2
+          : room.rect.x + (door.side === "west" ? 0 : room.rect.w)
+        const centerZ = horizontal
+          ? room.rect.z + (door.side === "north" ? 0 : room.rect.d)
+          : room.rect.z + door.at + door.width / 2
+        const key = `${horizontal ? "h" : "v"}:${centerX.toFixed(2)}:${centerZ.toFixed(2)}`
+        if (seen.has(key)) continue
+        seen.add(key)
 
-      if (bays.length === 0) {
-        bodies.push({ ...wall, sy: wallHeight })
-        continue
-      }
-
-      // Peitoril e verga correm o pano inteiro; os pilares fecham o que sobra.
-      bodies.push({ ...wall, y: 0, sy: abaixo })
-      bodies.push({ ...wall, y: acima, sy: wallHeight - acima })
-
-      const origem = horizontal ? wall.x - length / 2 : wall.z - length / 2
-      const pedaco = (from: number, to: number, extra: Partial<Placement>): Placement => {
-        const centro = origem + (from + to) / 2
-        return {
-          ...wall,
-          x: horizontal ? centro : wall.x,
-          z: horizontal ? wall.z : centro,
-          sx: horizontal ? to - from : wall.sx,
-          sz: horizontal ? wall.sz : to - from,
-          ...extra,
+        const postOffset = door.width / 2 + frame / 2
+        if (horizontal) {
+          doorFrames.push(
+            {
+              x: centerX - postOffset,
+              y: doorHeight / 2,
+              z: centerZ,
+              rot: 0,
+              sx: frame,
+              sy: doorHeight,
+              sz: depth,
+            },
+            {
+              x: centerX + postOffset,
+              y: doorHeight / 2,
+              z: centerZ,
+              rot: 0,
+              sx: frame,
+              sy: doorHeight,
+              sz: depth,
+            },
+            {
+              x: centerX,
+              y: doorHeight,
+              z: centerZ,
+              rot: 0,
+              sx: door.width + frame * 2,
+              sy: frame,
+              sz: depth,
+            },
+          )
+          bodies.push({
+            x: centerX,
+            y: doorHeight,
+            z: centerZ,
+            rot: 0,
+            sx: door.width,
+            sy: wallHeight - doorHeight,
+            sz: 0.4,
+            color: mix("#68717e", room.light, 0.16),
+          })
+        } else {
+          doorFrames.push(
+            {
+              x: centerX,
+              y: doorHeight / 2,
+              z: centerZ - postOffset,
+              rot: 0,
+              sx: depth,
+              sy: doorHeight,
+              sz: frame,
+            },
+            {
+              x: centerX,
+              y: doorHeight / 2,
+              z: centerZ + postOffset,
+              rot: 0,
+              sx: depth,
+              sy: doorHeight,
+              sz: frame,
+            },
+            {
+              x: centerX,
+              y: doorHeight,
+              z: centerZ,
+              rot: 0,
+              sx: depth,
+              sy: frame,
+              sz: door.width + frame * 2,
+            },
+          )
+          bodies.push({
+            x: centerX,
+            y: doorHeight,
+            z: centerZ,
+            rot: 0,
+            sx: 0.4,
+            sy: wallHeight - doorHeight,
+            sz: door.width,
+            color: mix("#68717e", room.light, 0.16),
+          })
         }
       }
-
-      for (const [from, to] of solidSpans(length, bays)) {
-        bodies.push(pedaco(from, to, { y: 0, sy: wallHeight }))
-      }
-
-      for (const [from, to] of bays) {
-        const vidro = pedaco(from, to, { y: meio, sy: acima - abaixo })
-        // O vidro entra um pouco para dentro da parede, senão fica rente e
-        // some; o caixilho é que aparece rente à face.
-        glass.push({
-          ...vidro,
-          sx: horizontal ? vidro.sx : wall.sx - 0.16,
-          sz: horizontal ? wall.sz - 0.16 : vidro.sz,
-        })
-        frames.push(pedaco(from, to, { y: meio, sy: 0.07 }))
-        frames.push(pedaco(from, to, { y: abaixo + 0.03, sy: 0.06 }))
-        frames.push(pedaco(from, to, { y: acima - 0.03, sy: 0.06 }))
-      }
     }
-    return { bodies, glass, frames }
-  }, [walls, wallHeight])
+    return { bodies, doorFrames }
+  }, [level, map.rooms, wallHeight, walls])
 
   const baseboards = useMemo(
-    () => walls.map((wall) => ({ ...wall, sx: wall.sx + 0.08, sz: wall.sz + 0.08 })),
+    () =>
+      walls.map((wall) => ({
+        ...wall,
+        sx: wall.sx + 0.08,
+        sz: wall.sz + 0.08,
+      })),
     [walls],
   )
 
@@ -1087,10 +1182,7 @@ export function OfficeWorld({
   )
 
   const ventPlacements = useMemo(
-    () =>
-      map.vents
-        .filter((vent) => (vent.level ?? 0) === level)
-        .map((vent) => ({ x: vent.x, z: vent.z, rot: 0 })),
+    () => map.vents.filter((vent) => (vent.level ?? 0) === level).map((vent) => ({ x: vent.x, z: vent.z, rot: 0 })),
     [map.vents, level],
   )
 
@@ -1108,12 +1200,8 @@ export function OfficeWorld({
 
   const emergencyLights = useMemo(
     () => [
-      ...(map.stairs ?? [])
-        .filter((stair) => stair.level === level)
-        .map((stair) => ({ x: stair.x, z: stair.z })),
-      ...((map.emergency.level ?? 0) === level
-        ? [{ x: map.emergency.x, z: map.emergency.z }]
-        : []),
+      ...(map.stairs ?? []).filter((stair) => stair.level === level).map((stair) => ({ x: stair.x, z: stair.z })),
+      ...((map.emergency.level ?? 0) === level ? [{ x: map.emergency.x, z: map.emergency.z }] : []),
     ],
     [level, map.emergency, map.stairs],
   )
@@ -1207,7 +1295,10 @@ export function OfficeWorld({
       list.push({ x: item.x, z: item.z, rot: item.rot })
       byKind.set(item.kind, list)
     }
-    return [...byKind.entries()].map(([kind, transforms]) => ({ kind, transforms }))
+    return [...byKind.entries()].map(([kind, transforms]) => ({
+      kind,
+      transforms,
+    }))
   }, [map.props, quality, level])
 
   return (
@@ -1221,27 +1312,26 @@ export function OfficeWorld({
       <Instances geometry={wallGeometry} material={wallMaterial} transforms={bodies} />
       <Instances geometry={baseboardGeometry} material={baseboardMaterial} transforms={baseboards} shadows={false} />
       <Instances geometry={trimGeometry} material={trimMaterial} transforms={trims} shadows={false} />
-      <Instances geometry={bandGeometry} material={frameMaterial} transforms={frames} shadows={false} />
-      <Instances geometry={bandGeometry} material={glassMaterial} transforms={glass} shadows={false} />
+      <Instances geometry={bandGeometry} material={frameMaterial} transforms={doorFrames} shadows={false} />
       <Instances geometry={ventGeometry} material={ventMaterial} transforms={ventPlacements} shadows={false} />
       <Instances geometry={stairGeometry} material={ventMaterial} transforms={stairPlacements} />
-      {view === "primeira" && (
-        <Instances geometry={bandGeometry} material={ceilingSlabMaterial} transforms={ceilings} shadows={false} />
-      )}
-      {view === "primeira" && quality !== "baixo" && (
+      <Instances geometry={bandGeometry} material={ceilingSlabMaterial} transforms={ceilings} shadows={false} />
+      {quality !== "baixo" && (
         <Instances geometry={ceilingGeometry} material={ceilingMaterial} transforms={ceilingFixtures} shadows={false} />
       )}
-      {active && roomLights.map((light, index) => (
-        <pointLight
-          key={`room-light-${index}`}
-          position={[light.x, Math.max(2.8, wallHeight - 0.3), light.z]}
-          color={light.color}
-          intensity={blackout ? 0 : light.intensity}
-          distance={light.distance}
-          decay={2}
-        />
-      ))}
-      {active && quality !== "baixo" &&
+      {active &&
+        roomLights.map((light, index) => (
+          <pointLight
+            key={`room-light-${index}`}
+            position={[light.x, Math.max(2.8, wallHeight - 0.3), light.z]}
+            color={light.color}
+            intensity={blackout ? 0 : light.intensity}
+            distance={light.distance}
+            decay={2}
+          />
+        ))}
+      {active &&
+        quality !== "baixo" &&
         emergencyLights.map((light, index) => (
           <pointLight
             key={`emergency-light-${index}`}
@@ -1253,19 +1343,28 @@ export function OfficeWorld({
           />
         ))}
       {propGroups.map((group) => (
-        <PropKind key={group.kind} kind={group.kind} transforms={group.transforms} />
+        <PropKind key={group.kind} kind={group.kind} transforms={group.transforms} upholstery={upholsteryTexture} />
       ))}
     </group>
   )
 }
 
-function PropKind({ kind, transforms }: { kind: string; transforms: Placement[] }) {
+function PropKind({
+  kind,
+  transforms,
+  upholstery,
+}: {
+  kind: string
+  transforms: Placement[]
+  upholstery: THREE.Texture
+}) {
   const spec = PROPS[kind]
   const geometry = useMemo(() => geometryFor(kind, spec), [kind, spec])
   useEffect(() => () => geometry.dispose(), [geometry])
 
   const material = useVisionMaterial({
     color: "#ffffff",
+    map: kind === "sofa" || kind === "chair" ? upholstery : undefined,
     emissive: spec.emissive,
     emissiveIntensity: spec.emissive ? (spec.emissiveIntensity ?? 0.45) : 0,
     roughness: 0.72,

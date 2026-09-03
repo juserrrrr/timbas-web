@@ -2,12 +2,7 @@ import type { MapTaskSpot, MapVent } from "@/lib/services/games"
 
 export type Quality = "alto" | "medio" | "baixo"
 
-/// De onde se joga. Primeira pessoa é o padrão: é dela que vem o aperto de não
-/// saber quem está atrás de você. A câmera de cima fica como alternativa para
-/// quem passa mal com primeira pessoa e para achar o caminho.
-export type View = "primeira" | "isometrica"
-
-/// Para onde a cabeça está virada em primeira pessoa. Vive num ref porque muda
+/// Para onde a cabeça está virada. Vive num ref porque muda
 /// em todo movimento do mouse e não pode passar pelo React.
 export interface LookState {
   yaw: number
