@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
-import { useTexture } from "@react-three/drei"
+import { useGLTF, useTexture } from "@react-three/drei"
 import { useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
@@ -225,6 +225,11 @@ const VENT_SPEC: PropSpec = {
 /// com várias cores caber num material só e continuar valendo um desenho.
 function paint(geometry: THREE.BufferGeometry, hex: string) {
   const tone = new THREE.Color(hex)
+  const hsl = { h: 0, s: 0, l: 0 }
+  tone.getHSL(hsl)
+  // Dedução precisa de silhuetas limpas e cores vivas mesmo nas peças escuras.
+  // Levantar só a luminosidade preserva a identidade de cada objeto e o contraste.
+  tone.setHSL(hsl.h, Math.min(1, hsl.s * 1.04), Math.min(0.92, hsl.l + (1 - hsl.l) * 0.1))
   const count = geometry.attributes.position.count
   const colors = new Float32Array(count * 3)
   for (let index = 0; index < count; index += 1) {
@@ -595,6 +600,26 @@ const FLOOR_TEXTURE_PATHS: Record<FloorFinish, string> = {
   concrete: "/images/games/deducao/textures/concrete.png",
 }
 
+const FLOOR_ASSET_NAMES: Record<FloorFinish, string> = {
+  carpet: "carpet",
+  wood: "wood",
+  server: "server-floor",
+  terrazzo: "terrazzo",
+  pantry: "pantry-tile",
+  concrete: "concrete",
+}
+
+const DETAILED_MODELS = {
+  desk: "/models/games/deducao/desk.glb",
+  chair: "/models/games/deducao/office-chair.glb",
+  sofa: "/models/games/deducao/sofa.glb",
+  meetingTable: "/models/games/deducao/meeting-table.glb",
+} as const
+
+type DetailedModelKind = keyof typeof DETAILED_MODELS
+
+Object.values(DETAILED_MODELS).forEach((path) => useGLTF.preload(path))
+
 const FLOOR_FINISHES = Object.keys(FLOOR_TEXTURE_PATHS) as FloorFinish[]
 
 function splitAroundHoles(
@@ -633,30 +658,61 @@ function stairHole(stair: OfficeMap["stairs"][number]) {
   }
 }
 
-function TexturedFloor({ patch, source, quality }: { patch: FloorPatch; source: THREE.Texture; quality: Quality }) {
+function TexturedFloor({
+  patch,
+  source,
+  normalSource,
+  roughnessSource,
+  quality,
+  blackout,
+}: {
+  patch: FloorPatch
+  source: THREE.Texture
+  normalSource: THREE.Texture
+  roughnessSource: THREE.Texture
+  quality: Quality
+  blackout: boolean
+}) {
   const gl = useThree((state) => state.gl)
-  const texture = useMemo(() => {
+  const textures = useMemo(() => {
     const clone = source.clone()
+    const normal = normalSource.clone()
+    const roughness = roughnessSource.clone()
     clone.colorSpace = THREE.SRGBColorSpace
-    clone.wrapS = THREE.RepeatWrapping
-    clone.wrapT = THREE.RepeatWrapping
     const tile = patch.finish === "wood" ? 4.2 : patch.finish === "server" ? 3.2 : 2.8
-    clone.repeat.set(patch.w / tile, patch.d / tile)
-    clone.anisotropy = quality === "alto" ? gl.capabilities.getMaxAnisotropy() : quality === "medio" ? 8 : 2
-    clone.minFilter = THREE.LinearMipmapLinearFilter
-    clone.magFilter = THREE.LinearFilter
-    clone.needsUpdate = true
-    return clone
-  }, [gl, patch.d, patch.finish, patch.w, quality, source])
+    for (const texture of [clone, normal, roughness]) {
+      texture.wrapS = THREE.RepeatWrapping
+      texture.wrapT = THREE.RepeatWrapping
+      texture.repeat.set(patch.w / tile, patch.d / tile)
+      texture.anisotropy = quality === "alto" ? gl.capabilities.getMaxAnisotropy() : quality === "medio" ? 8 : 2
+      texture.minFilter = THREE.LinearMipmapLinearFilter
+      texture.magFilter = THREE.LinearFilter
+      texture.needsUpdate = true
+    }
+    return { color: clone, normal, roughness }
+  }, [gl, normalSource, patch.d, patch.finish, patch.w, quality, roughnessSource, source])
 
-  useEffect(() => () => texture.dispose(), [texture])
+  useEffect(
+    () => () => {
+      textures.color.dispose()
+      textures.normal.dispose()
+      textures.roughness.dispose()
+    },
+    [textures],
+  )
 
   return (
     <mesh position={[patch.x + patch.w / 2, 0.018, patch.z + patch.d / 2]} rotation-x={-Math.PI / 2} receiveShadow>
       <planeGeometry args={[patch.w, patch.d]} />
       <meshStandardMaterial
-        map={texture}
+        map={textures.color}
+        normalMap={textures.normal}
+        normalScale={new THREE.Vector2(0.38, 0.38)}
+        roughnessMap={textures.roughness}
         color={patch.tint}
+        emissive="#eef5ff"
+        emissiveMap={textures.color}
+        emissiveIntensity={blackout ? 0 : 0.16}
         roughness={patch.finish === "wood" ? 0.68 : patch.finish === "server" ? 0.58 : 0.9}
         metalness={patch.finish === "server" ? 0.16 : 0.01}
       />
@@ -664,12 +720,25 @@ function TexturedFloor({ patch, source, quality }: { patch: FloorPatch; source: 
   )
 }
 
-function TexturedFloors({ patches, quality }: { patches: FloorPatch[]; quality: Quality }) {
+function TexturedFloors({ patches, quality, blackout }: { patches: FloorPatch[]; quality: Quality; blackout: boolean }) {
   const loaded = useTexture(FLOOR_FINISHES.map((finish) => FLOOR_TEXTURE_PATHS[finish]))
+  const normals = useTexture(
+    FLOOR_FINISHES.map((finish) => `/images/games/deducao/textures/${FLOOR_ASSET_NAMES[finish]}-normal.webp`),
+  )
+  const roughness = useTexture(
+    FLOOR_FINISHES.map((finish) => `/images/games/deducao/textures/${FLOOR_ASSET_NAMES[finish]}-roughness.webp`),
+  )
   const textures = Object.fromEntries(FLOOR_FINISHES.map((finish, index) => [finish, loaded[index]])) as Record<
     FloorFinish,
     THREE.Texture
   >
+  const normalMaps = Object.fromEntries(FLOOR_FINISHES.map((finish, index) => [finish, normals[index]])) as Record<
+    FloorFinish,
+    THREE.Texture
+  >
+  const roughnessMaps = Object.fromEntries(
+    FLOOR_FINISHES.map((finish, index) => [finish, roughness[index]]),
+  ) as Record<FloorFinish, THREE.Texture>
 
   return (
     <>
@@ -678,7 +747,10 @@ function TexturedFloors({ patches, quality }: { patches: FloorPatch[]; quality: 
           key={`${patch.finish}-${patch.x}-${patch.z}-${index}`}
           patch={patch}
           source={textures[patch.finish]}
+          normalSource={normalMaps[patch.finish]}
+          roughnessSource={roughnessMaps[patch.finish]}
           quality={quality}
+          blackout={blackout}
         />
       ))}
     </>
@@ -741,44 +813,75 @@ export function OfficeWorld({
   active?: boolean
 }) {
   const wallHeight = WALL_HEIGHT
-  const [wallSource, upholsterySource] = useTexture([
+  const [
+    wallSource,
+    wallNormalSource,
+    wallRoughnessSource,
+    upholsterySource,
+    upholsteryNormalSource,
+    upholsteryRoughnessSource,
+    ceilingSource,
+    ceilingNormalSource,
+    ceilingRoughnessSource,
+  ] = useTexture([
     "/images/games/deducao/textures/wall-plaster.webp",
-    "/images/games/deducao/textures/upholstery.webp",
+    "/images/games/deducao/textures/wall-plaster-normal.webp",
+    "/images/games/deducao/textures/wall-plaster-roughness.webp",
+    "/images/games/deducao/textures/upholstery-v2.webp",
+    "/images/games/deducao/textures/upholstery-v2-normal.webp",
+    "/images/games/deducao/textures/upholstery-v2-roughness.webp",
+    "/images/games/deducao/textures/ceiling-acoustic.webp",
+    "/images/games/deducao/textures/ceiling-acoustic-normal.webp",
+    "/images/games/deducao/textures/ceiling-acoustic-roughness.webp",
   ])
-  const wallTexture = useMemo(() => {
-    const texture = wallSource.clone()
-    texture.colorSpace = THREE.SRGBColorSpace
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(3, 2)
-    texture.anisotropy = quality === "alto" ? 16 : quality === "medio" ? 8 : 2
-    texture.needsUpdate = true
-    return texture
-  }, [quality, wallSource])
-  const upholsteryTexture = useMemo(() => {
-    const texture = upholsterySource.clone()
-    texture.colorSpace = THREE.SRGBColorSpace
-    texture.wrapS = THREE.RepeatWrapping
-    texture.wrapT = THREE.RepeatWrapping
-    texture.repeat.set(2.5, 2.5)
-    texture.anisotropy = quality === "alto" ? 16 : quality === "medio" ? 8 : 2
-    texture.needsUpdate = true
-    return texture
-  }, [quality, upholsterySource])
+  const materialTextures = useMemo(() => {
+    const prepare = (source: THREE.Texture, repeatX: number, repeatY: number, color = false) => {
+      const texture = source.clone()
+      if (color) texture.colorSpace = THREE.SRGBColorSpace
+      texture.wrapS = THREE.RepeatWrapping
+      texture.wrapT = THREE.RepeatWrapping
+      texture.repeat.set(repeatX, repeatY)
+      texture.anisotropy = quality === "alto" ? 16 : quality === "medio" ? 8 : 2
+      texture.needsUpdate = true
+      return texture
+    }
+
+    return {
+      wall: prepare(wallSource, 3, 2, true),
+      wallNormal: prepare(wallNormalSource, 3, 2),
+      wallRoughness: prepare(wallRoughnessSource, 3, 2),
+      upholstery: prepare(upholsterySource, 2.5, 2.5, true),
+      upholsteryNormal: prepare(upholsteryNormalSource, 2.5, 2.5),
+      upholsteryRoughness: prepare(upholsteryRoughnessSource, 2.5, 2.5),
+      ceiling: prepare(ceilingSource, 7, 5, true),
+      ceilingNormal: prepare(ceilingNormalSource, 7, 5),
+      ceilingRoughness: prepare(ceilingRoughnessSource, 7, 5),
+    }
+  }, [
+    ceilingNormalSource,
+    ceilingRoughnessSource,
+    ceilingSource,
+    quality,
+    upholsteryNormalSource,
+    upholsteryRoughnessSource,
+    upholsterySource,
+    wallNormalSource,
+    wallRoughnessSource,
+    wallSource,
+  ])
   useEffect(
     () => () => {
-      wallTexture.dispose()
-      upholsteryTexture.dispose()
+      Object.values(materialTextures).forEach((texture) => texture.dispose())
     },
-    [upholsteryTexture, wallTexture],
+    [materialTextures],
   )
   const groundMaterial = useVisionMaterial({
-    color: "#253148",
+    color: "#637491",
     roughness: 0.98,
     surface: "piso",
   })
   const plinthMaterial = useVisionMaterial({
-    color: "#39435c",
+    color: "#75839a",
     roughness: 0.95,
     vertexColors: true,
   })
@@ -788,22 +891,39 @@ export function OfficeWorld({
     surface: "piso",
   })
   const wallMaterial = useVisionMaterial({
-    color: "#d2cdc3",
-    map: wallTexture,
-    roughness: 0.88,
+    color: "#f4f0e8",
+    map: materialTextures.wall,
+    normalMap: materialTextures.wallNormal,
+    normalScale: 0.24,
+    roughnessMap: materialTextures.wallRoughness,
+    roughness: 1,
     vertexColors: true,
     surface: "parede",
   })
   const baseboardMaterial = useVisionMaterial({
-    color: "#3e4857",
+    color: "#68778c",
     roughness: 0.62,
     metalness: 0.08,
   })
   const trimMaterial = useVisionMaterial({ color: "#ffffff", unlit: true })
   const frameMaterial = useVisionMaterial({
-    color: "#465365",
+    color: "#8190a4",
     roughness: 0.4,
     metalness: 0.28,
+  })
+  const fixtureFrameMaterial = useVisionMaterial({
+    color: "#c6d0dc",
+    roughness: 0.3,
+    metalness: 0.62,
+  })
+  const acousticPanelMaterial = useVisionMaterial({
+    color: "#ffffff",
+    map: materialTextures.upholstery,
+    normalMap: materialTextures.upholsteryNormal,
+    normalScale: 0.4,
+    roughnessMap: materialTextures.upholsteryRoughness,
+    roughness: 1,
+    vertexColors: true,
   })
   const ventMaterial = useVisionMaterial({
     color: "#ffffff",
@@ -812,20 +932,24 @@ export function OfficeWorld({
     vertexColors: true,
   })
   const ceilingMaterial = useVisionMaterial({
-    color: "#fff9e8",
-    emissive: "#fff2c5",
-    emissiveIntensity: blackout ? 0.02 : 1.35,
+    color: "#fffdf6",
+    emissive: "#fff6d8",
+    emissiveIntensity: blackout ? 0.02 : 1.75,
     roughness: 0.3,
   })
   const ceilingSlabMaterial = useVisionMaterial({
-    color: "#747d8b",
-    roughness: 0.9,
+    color: "#f5f2e9",
+    map: materialTextures.ceiling,
+    normalMap: materialTextures.ceilingNormal,
+    normalScale: 0.3,
+    roughnessMap: materialTextures.ceilingRoughness,
+    roughness: 1,
     surface: "piso",
   })
   const serverAisleMaterial = useVisionMaterial({
-    color: "#263b50",
-    emissive: "#164e63",
-    emissiveIntensity: 0.22,
+    color: "#4d6983",
+    emissive: "#246a82",
+    emissiveIntensity: blackout ? 0.02 : 0.28,
     roughness: 0.72,
     surface: "piso",
   })
@@ -891,6 +1015,39 @@ export function OfficeWorld({
         }),
     [ceilingHoles, map.rooms, wallHeight, level],
   )
+  const fixtureFrames = useMemo(
+    () =>
+      ceilingFixtures.map((fixture) => ({
+        ...fixture,
+        y: (fixture.y ?? 0) + 0.018,
+        sx: 1.12,
+        sy: 1.45,
+        sz: 1.2,
+      })),
+    [ceilingFixtures],
+  )
+
+  const acousticPanels = useMemo(
+    () =>
+      map.rooms
+        .filter(
+          (room) =>
+            (room.level ?? 0) === level && room.kind === "sala" && room.rect.w >= 16 && room.rect.d >= 10,
+        )
+        .flatMap((room) =>
+          [-1, 0, 1].map((offset) => ({
+            x: room.rect.x + room.rect.w / 2 + offset * 1.55,
+            y: 1.72,
+            z: room.rect.z + 0.225,
+            rot: 0,
+            sx: 1.32,
+            sy: 0.88,
+            sz: 1,
+            color: mix("#d8f4f3", room.light, 0.16 + (offset + 1) * 0.04),
+          })),
+        ),
+    [level, map.rooms],
+  )
   const floorHoles = useMemo(
     () =>
       (map.stairs ?? [])
@@ -906,7 +1063,14 @@ export function OfficeWorld({
           splitAroundHoles(room.rect, floorHoles).map((part) => ({
             ...part,
             finish: room.finish ?? "terrazzo",
-            tint: (room.finish ?? "terrazzo") === "terrazzo" ? "#d7dbe0" : "#ffffff",
+            tint:
+              (room.finish ?? "terrazzo") === "wood"
+                ? "#fff1dd"
+                : (room.finish ?? "terrazzo") === "pantry"
+                  ? "#e5fff4"
+                  : (room.finish ?? "terrazzo") === "server"
+                    ? "#e5f3ff"
+                    : "#f6f8fb",
             slab: room.kind === "corredor" ? SLAB_CORREDOR : SLAB_SALA,
           })),
         ),
@@ -939,7 +1103,7 @@ export function OfficeWorld({
         const area = room.rect.w * room.rect.d
         const amount = quality === "alto" ? (area >= 500 ? 3 : area >= 260 ? 2 : 1) : 1
         const alongX = room.rect.w >= room.rect.d
-        const roomTone = new THREE.Color("#fff4df").lerp(new THREE.Color(room.light), 0.28)
+        const roomTone = new THREE.Color("#fff8e9").lerp(new THREE.Color(room.light), 0.2)
 
         return Array.from({ length: amount }, (_, index) => {
           const fraction = (index + 1) / (amount + 1)
@@ -947,8 +1111,8 @@ export function OfficeWorld({
             x: alongX ? room.rect.x + room.rect.w * fraction : room.rect.x + room.rect.w / 2,
             z: alongX ? room.rect.z + room.rect.d / 2 : room.rect.z + room.rect.d * fraction,
             color: `#${roomTone.getHexString()}`,
-            intensity: room.kind === "corredor" ? 34 : 29,
-            distance: THREE.MathUtils.clamp(Math.max(room.rect.w, room.rect.d) * 0.82, 10, 19),
+            intensity: room.kind === "corredor" ? 46 : 39,
+            distance: THREE.MathUtils.clamp(Math.max(room.rect.w, room.rect.d) * 0.9, 12, 22),
           }
         })
       })
@@ -1023,7 +1187,7 @@ export function OfficeWorld({
           sx: room.rect.w - 5,
           sy: 1,
           sz: room.rect.d - 5,
-          color: mix(room.floor, room.light, 0.28),
+          color: mix(mix(room.floor, "#e9eff6", 0.48), room.light, 0.16),
         })),
     [map.rooms, level],
   )
@@ -1040,7 +1204,7 @@ export function OfficeWorld({
           sy: 1,
           sz: wall.maxZ - wall.minZ,
           accent: wall.accent ?? "#a5b4fc",
-          color: mix("#68717e", wall.accent ?? "#8b96a8", 0.16),
+          color: mix("#ede9e1", wall.accent ?? "#aab5c4", 0.12),
           style: wall.style ?? "parede",
         })),
     [map.walls, level],
@@ -1109,7 +1273,7 @@ export function OfficeWorld({
             sx: door.width,
             sy: wallHeight - doorHeight,
             sz: 0.4,
-            color: mix("#68717e", room.light, 0.16),
+            color: mix("#ede9e1", room.light, 0.12),
           })
         } else {
           doorFrames.push(
@@ -1149,7 +1313,7 @@ export function OfficeWorld({
             sx: 0.4,
             sy: wallHeight - doorHeight,
             sz: door.width,
-            color: mix("#68717e", room.light, 0.16),
+            color: mix("#ede9e1", room.light, 0.12),
           })
         }
       }
@@ -1217,6 +1381,9 @@ export function OfficeWorld({
     return box
   }, [])
 
+  const fixtureFrameGeometry = useMemo(() => new RoundedBoxGeometry(1.58, 0.075, 0.58, 2, 0.07), [])
+  const acousticPanelGeometry = useMemo(() => new RoundedBoxGeometry(1, 1, 0.065, 3, 0.04), [])
+
   const plinthGeometry = useMemo(() => {
     const box = new THREE.BoxGeometry(1, 1, 1)
     box.translate(0, -0.5, 0)
@@ -1235,7 +1402,7 @@ export function OfficeWorld({
   const wallGeometry = useMemo(() => {
     const box = new THREE.BoxGeometry(1, 1, 1)
     box.translate(0, 0.5, 0)
-    shadeByFace(box, 1, 0.9, 0.6)
+    shadeByFace(box, 1, 0.96, 0.78)
     return box
   }, [])
 
@@ -1260,6 +1427,8 @@ export function OfficeWorld({
     const geometries = [
       groundGeometry,
       ceilingGeometry,
+      fixtureFrameGeometry,
+      acousticPanelGeometry,
       plinthGeometry,
       rugGeometry,
       wallGeometry,
@@ -1273,6 +1442,8 @@ export function OfficeWorld({
   }, [
     groundGeometry,
     ceilingGeometry,
+    fixtureFrameGeometry,
+    acousticPanelGeometry,
     plinthGeometry,
     rugGeometry,
     wallGeometry,
@@ -1305,7 +1476,7 @@ export function OfficeWorld({
     <group position-y={baseY}>
       <Instances geometry={groundGeometry} material={groundMaterial} transforms={ground} shadows={false} />
       <Instances geometry={plinthGeometry} material={plinthMaterial} transforms={plinths} shadows={false} />
-      <TexturedFloors patches={floorPatches} quality={quality} />
+      <TexturedFloors patches={floorPatches} quality={quality} blackout={blackout} />
       <Instances geometry={rugGeometry} material={rugMaterial} transforms={rugs} shadows={false} />
       <Instances geometry={rugGeometry} material={serverAisleMaterial} transforms={serverAisles} shadows={false} />
       <Instances geometry={rugGeometry} material={serverLineMaterial} transforms={serverLines} shadows={false} />
@@ -1313,11 +1484,17 @@ export function OfficeWorld({
       <Instances geometry={baseboardGeometry} material={baseboardMaterial} transforms={baseboards} shadows={false} />
       <Instances geometry={trimGeometry} material={trimMaterial} transforms={trims} shadows={false} />
       <Instances geometry={bandGeometry} material={frameMaterial} transforms={doorFrames} shadows={false} />
+      {quality !== "baixo" && (
+        <Instances geometry={acousticPanelGeometry} material={acousticPanelMaterial} transforms={acousticPanels} />
+      )}
       <Instances geometry={ventGeometry} material={ventMaterial} transforms={ventPlacements} shadows={false} />
       <Instances geometry={stairGeometry} material={ventMaterial} transforms={stairPlacements} />
       <Instances geometry={bandGeometry} material={ceilingSlabMaterial} transforms={ceilings} shadows={false} />
       {quality !== "baixo" && (
-        <Instances geometry={ceilingGeometry} material={ceilingMaterial} transforms={ceilingFixtures} shadows={false} />
+        <>
+          <Instances geometry={fixtureFrameGeometry} material={fixtureFrameMaterial} transforms={fixtureFrames} />
+          <Instances geometry={ceilingGeometry} material={ceilingMaterial} transforms={ceilingFixtures} shadows={false} />
+        </>
       )}
       {active &&
         roomLights.map((light, index) => (
@@ -1342,21 +1519,113 @@ export function OfficeWorld({
             decay={2}
           />
         ))}
-      {propGroups.map((group) => (
-        <PropKind key={group.kind} kind={group.kind} transforms={group.transforms} upholstery={upholsteryTexture} />
-      ))}
+      {propGroups.map((group) => {
+        const modelPath = DETAILED_MODELS[group.kind as DetailedModelKind]
+        return quality !== "baixo" && modelPath ? (
+          <DetailedPropKind
+            key={group.kind}
+            kind={group.kind}
+            path={modelPath}
+            transforms={group.transforms}
+            upholstery={materialTextures.upholstery}
+            upholsteryNormal={materialTextures.upholsteryNormal}
+            upholsteryRoughness={materialTextures.upholsteryRoughness}
+          />
+        ) : (
+          <PropKind
+            key={group.kind}
+            kind={group.kind}
+            transforms={group.transforms}
+            upholstery={materialTextures.upholstery}
+            upholsteryNormal={materialTextures.upholsteryNormal}
+            upholsteryRoughness={materialTextures.upholsteryRoughness}
+          />
+        )
+      })}
     </group>
   )
+}
+
+function DetailedPropKind({
+  kind,
+  path,
+  transforms,
+  upholstery,
+  upholsteryNormal,
+  upholsteryRoughness,
+}: {
+  kind: string
+  path: string
+  transforms: Placement[]
+  upholstery: THREE.Texture
+  upholsteryNormal: THREE.Texture
+  upholsteryRoughness: THREE.Texture
+}) {
+  const { scene } = useGLTF(path)
+  const prepared = useMemo(() => {
+    const model = scene.clone(true)
+    model.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return
+      child.castShadow = true
+      child.receiveShadow = true
+      const source = Array.isArray(child.material) ? child.material : [child.material]
+      const materials = source.map((entry) => {
+        const next = entry.clone() as THREE.MeshStandardMaterial
+        next.envMapIntensity = 1.15
+        if (entry.name === "fabric") {
+          next.color.set("#ffffff")
+          next.map = upholstery
+          next.normalMap = upholsteryNormal
+          next.normalScale.setScalar(0.42)
+          next.roughnessMap = upholsteryRoughness
+          next.roughness = 1
+        }
+        return next
+      })
+      child.material = Array.isArray(child.material) ? materials : materials[0]
+    })
+    return model
+  }, [scene, upholstery, upholsteryNormal, upholsteryRoughness])
+
+  const objects = useMemo(
+    () =>
+      transforms.map((item, index) => {
+        const object = prepared.clone(true)
+        object.name = `${kind}-${index}`
+        object.position.set(item.x, item.y ?? 0, item.z)
+        object.rotation.set(0, item.rot, 0)
+        object.scale.set(item.sx ?? 1, item.sy ?? 1, item.sz ?? 1)
+        return object
+      }),
+    [kind, prepared, transforms],
+  )
+
+  useEffect(
+    () => () => {
+      prepared.traverse((child) => {
+        if (!(child instanceof THREE.Mesh)) return
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        materials.forEach((material) => material.dispose())
+      })
+    },
+    [prepared],
+  )
+
+  return <>{objects.map((object) => <primitive key={object.name} object={object} />)}</>
 }
 
 function PropKind({
   kind,
   transforms,
   upholstery,
+  upholsteryNormal,
+  upholsteryRoughness,
 }: {
   kind: string
   transforms: Placement[]
   upholstery: THREE.Texture
+  upholsteryNormal: THREE.Texture
+  upholsteryRoughness: THREE.Texture
 }) {
   const spec = PROPS[kind]
   const geometry = useMemo(() => geometryFor(kind, spec), [kind, spec])
@@ -1365,6 +1634,9 @@ function PropKind({
   const material = useVisionMaterial({
     color: "#ffffff",
     map: kind === "sofa" || kind === "chair" ? upholstery : undefined,
+    normalMap: kind === "sofa" || kind === "chair" ? upholsteryNormal : undefined,
+    normalScale: 0.35,
+    roughnessMap: kind === "sofa" || kind === "chair" ? upholsteryRoughness : undefined,
     emissive: spec.emissive,
     emissiveIntensity: spec.emissive ? (spec.emissiveIntensity ?? 0.45) : 0,
     roughness: 0.72,

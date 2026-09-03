@@ -5,6 +5,11 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { Html } from "@react-three/drei"
 import * as THREE from "three"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
+import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js"
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import type { Room } from "@colyseus/sdk"
 import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/games/collision"
 import { playGameSound } from "@/lib/games/game-audio"
@@ -14,7 +19,7 @@ import type { Role, Snapshot } from "../use-deducao-room"
 import { FLOOR_HEIGHT, OfficeWorld } from "./office-world"
 import { setVision, useVisionMaterial } from "./vision-material"
 
-const VOID_COLOR = "#3b4d6c"
+const VOID_COLOR = "#7892b8"
 
 /// Altura dos olhos. A câmera de primeira pessoa fica aqui, e é por isso que a
 /// parede precisa passar dos 2,5m: a 1,55m dava para ver o escritório inteiro
@@ -23,11 +28,45 @@ const EYE_HEIGHT = 1.62
 const PITCH_LIMIT = 1.05
 
 const WALK_SPEED = 4.6
-const STAIR_CLIMB_MS = 1300
 const SEND_EVERY_MS = 50
 const TASK_RANGE = 2.2
 const REPORT_RANGE = 2.6
 const VENT_RANGE = 1.8
+
+interface StairSample {
+  y: number
+  progress: number
+}
+
+/// A posição no corredor da escada é a própria posição vertical. Não existe
+/// animação disparada nem impulso: parar de andar conserva exatamente o degrau.
+function stairSampleAt(map: OfficeMap, x: number, z: number): StairSample | null {
+  let closest: (StairSample & { distance: number }) | null = null
+
+  for (const stair of map.stairs.filter((candidate) => candidate.targetLevel > candidate.level)) {
+    const dx = stair.targetX - stair.x
+    const dz = stair.targetZ - stair.z
+    const lengthSquared = dx * dx + dz * dz
+    const rawProgress = ((x - stair.x) * dx + (z - stair.z) * dz) / lengthSquared
+    if (rawProgress < -0.08 || rawProgress > 1.08) continue
+
+    const progress = THREE.MathUtils.clamp(rawProgress, 0, 1)
+    const projectedX = stair.x + dx * progress
+    const projectedZ = stair.z + dz * progress
+    const perpendicularDistance = Math.hypot(x - projectedX, z - projectedZ)
+    if (perpendicularDistance > 1.16) continue
+
+    if (!closest || perpendicularDistance < closest.distance) {
+      closest = {
+        y: stair.level * FLOOR_HEIGHT + progress * FLOOR_HEIGHT,
+        progress,
+        distance: perpendicularDistance,
+      }
+    }
+  }
+
+  return closest ? { y: closest.y, progress: closest.progress } : null
+}
 
 export interface InputState {
   x: number
@@ -67,7 +106,7 @@ export function OfficeScene(props: Props) {
         gl.setClearColor(VOID_COLOR)
         gl.outputColorSpace = THREE.SRGBColorSpace
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = 1.16
+        gl.toneMappingExposure = 1.42
         gl.shadowMap.type = THREE.PCFSoftShadowMap
       }}
     >
@@ -110,10 +149,51 @@ function ProceduralEnvironment({ quality, blackout }: { quality: Quality; blacko
   }, [enabled, gl, quality, scene])
 
   useFrame((_, delta) => {
-    const target = blackout ? 0.025 : quality === "alto" ? 0.58 : quality === "medio" ? 0.42 : 0
+    const target = blackout ? 0.025 : quality === "alto" ? 0.95 : quality === "medio" ? 0.72 : 0
     scene.environmentIntensity += (target - scene.environmentIntensity) * Math.min(1, delta * 3.5)
   })
 
+  return null
+}
+
+function CinematicEffects({ blackout }: { blackout: boolean }) {
+  const { gl, scene, camera, size } = useThree()
+  const pipeline = useMemo(() => {
+    const composer = new EffectComposer(gl)
+    const render = new RenderPass(scene, camera)
+    const ambientOcclusion = new SSAOPass(scene, camera, 1, 1, 24)
+    ambientOcclusion.kernelRadius = 7
+    ambientOcclusion.minDistance = 0.002
+    ambientOcclusion.maxDistance = 0.105
+    const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.18, 0.28, 0.82)
+    composer.addPass(render)
+    composer.addPass(ambientOcclusion)
+    composer.addPass(bloom)
+    composer.addPass(new OutputPass())
+    return { composer, ambientOcclusion, bloom }
+  }, [camera, gl, scene])
+
+  useEffect(() => {
+    pipeline.composer.setPixelRatio(Math.min(gl.getPixelRatio(), 1.5))
+    pipeline.composer.setSize(size.width, size.height)
+  }, [gl, pipeline, size.height, size.width])
+
+  useEffect(() => {
+    pipeline.bloom.strength = blackout ? 0.3 : 0.18
+    pipeline.bloom.threshold = blackout ? 0.62 : 0.8
+    pipeline.ambientOcclusion.kernelRadius = blackout ? 4 : 7
+  }, [blackout, pipeline])
+
+  useEffect(
+    () => () => {
+      ;(pipeline.ambientOcclusion as unknown as { dispose: () => void }).dispose()
+      pipeline.bloom.dispose()
+      pipeline.composer.dispose()
+    },
+    [pipeline],
+  )
+
+  useFrame((_, delta) => pipeline.composer.render(delta), 1)
   return null
 }
 
@@ -135,15 +215,6 @@ function SceneContent({
   const local = useRef(new THREE.Vector2())
   const visualY = useRef(0)
   const climbing = useRef(false)
-  const stairTransition = useRef<{
-    fromX: number
-    fromZ: number
-    fromY: number
-    toX: number
-    toZ: number
-    toY: number
-    startedAt: number
-  } | null>(null)
   const started = useRef(false)
   const lastSent = useRef(0)
   const lastStep = useRef(0)
@@ -153,7 +224,6 @@ function SceneContent({
   const sky = useRef<THREE.HemisphereLight>(null)
   const ambient = useRef<THREE.AmbientLight>(null)
   const playerLight = useRef<THREE.PointLight>(null)
-  const lastLevel = useRef(-1)
   const meetingCameraReady = useRef(false)
 
   const mineSnapshot = snapshot.players.find((player) => player.id === me)
@@ -269,49 +339,14 @@ function SceneContent({
     if (!started.current) {
       local.current.set(mine.x, mine.z)
       started.current = true
-      lastLevel.current = Number(mine.level ?? 0)
-      visualY.current = lastLevel.current * FLOOR_HEIGHT
+      visualY.current = Number(mine.level ?? 0) * FLOOR_HEIGHT
     }
 
     const liveLevel = Number(mine.level ?? 0)
-    if (liveLevel !== lastLevel.current) {
-      stairTransition.current = {
-        fromX: local.current.x,
-        fromZ: local.current.y,
-        fromY: visualY.current,
-        toX: mine.x,
-        toZ: mine.z,
-        toY: liveLevel * FLOOR_HEIGHT,
-        startedAt: now,
-      }
-      lastLevel.current = liveLevel
-      playGameSound("action")
-    }
+    const initialStair = stairSampleAt(map, local.current.x, local.current.y)
+    let onStairs = Boolean(initialStair && initialStair.progress > 0.015 && initialStair.progress < 0.985)
 
-    const transition = stairTransition.current
-    let onStairs = false
-    if (transition) {
-      const progress = THREE.MathUtils.clamp((now - transition.startedAt) / STAIR_CLIMB_MS, 0, 1)
-      const eased = progress * progress * (3 - 2 * progress)
-      local.current.set(
-        THREE.MathUtils.lerp(transition.fromX, transition.toX, eased),
-        THREE.MathUtils.lerp(transition.fromZ, transition.toZ, eased),
-      )
-      visualY.current = THREE.MathUtils.lerp(transition.fromY, transition.toY, eased)
-      onStairs = progress < 1
-      const stairFacing = Math.atan2(transition.toX - transition.fromX, transition.toZ - transition.fromZ)
-      heading.current = stairFacing
-      if (!onStairs) {
-        stairTransition.current = null
-        local.current.set(mine.x, mine.z)
-        visualY.current = liveLevel * FLOOR_HEIGHT
-      }
-    } else {
-      visualY.current += (liveLevel * FLOOR_HEIGHT - visualY.current) * Math.min(1, delta * 10)
-    }
-    climbing.current = onStairs
-
-    const canWalk = (snapshot.phase === "jogando" || snapshot.phase === "lobby") && !onStairs
+    const canWalk = snapshot.phase === "jogando" || snapshot.phase === "lobby"
     const input = inputRef.current
     const moving = canWalk && !inVent && (input.x !== 0 || input.z !== 0)
 
@@ -338,24 +373,29 @@ function SceneContent({
       )
     }
 
+    const stair = stairSampleAt(map, local.current.x, local.current.y)
+    onStairs = Boolean(stair && stair.progress > 0.015 && stair.progress < 0.985)
+    visualY.current = stair?.y ?? liveLevel * FLOOR_HEIGHT
+    climbing.current = onStairs && moving
+
     // O corpo acompanha o olhar mesmo parado: quem está atrás vê você virar.
     heading.current = lookRef.current.yaw + Math.PI
 
     // O servidor é a verdade. Quando ele discorda muito, a tela salta; quando
     // discorda pouco, ela vai sendo puxada de volta sem ninguém perceber.
     const drift = Math.hypot(mine.x - local.current.x, mine.z - local.current.y)
-    if (!onStairs && drift > 1.8) local.current.set(mine.x, mine.z)
-    else if (!onStairs && drift > 0.015) {
+    if (drift > 1.8) local.current.set(mine.x, mine.z)
+    else if (drift > 0.015) {
       const correction = 1 - Math.exp(-(moving ? 3.2 : 8) * delta)
       local.current.x += (mine.x - local.current.x) * correction
       local.current.y += (mine.z - local.current.y) * correction
     }
 
-    if ((moving || onStairs) && now - lastStep.current > 330) {
+    if (moving && now - lastStep.current > 330) {
       lastStep.current = now
       playGameSound("step")
     }
-    if (!onStairs && now - lastSent.current > SEND_EVERY_MS) {
+    if (now - lastSent.current > SEND_EVERY_MS) {
       lastSent.current = now
       roomRef.current?.send(
         "move" as never,
@@ -392,22 +432,22 @@ function SceneContent({
       sun.current.position.set(local.current.x - 14, visualY.current + 26, local.current.y - 10)
       sun.current.target.position.set(local.current.x, visualY.current, local.current.y)
       sun.current.target.updateMatrixWorld()
-      sun.current.intensity += ((dark ? 0.025 : 2.05) - sun.current.intensity) * Math.min(1, delta * 3)
+      sun.current.intensity += ((dark ? 0.025 : 3.15) - sun.current.intensity) * Math.min(1, delta * 3)
     }
     if (sky.current) {
-      const skyTarget = dark ? 0.025 : quality === "baixo" ? 0.95 : 0.62
+      const skyTarget = dark ? 0.025 : quality === "baixo" ? 1.3 : 1.12
       sky.current.intensity += (skyTarget - sky.current.intensity) * Math.min(1, delta * 3)
     }
     if (ambient.current) {
-      const ambientTarget = dark ? 0.018 : quality === "baixo" ? 0.52 : 0.16
+      const ambientTarget = dark ? 0.018 : quality === "baixo" ? 0.72 : 0.38
       ambient.current.intensity += (ambientTarget - ambient.current.intensity) * Math.min(1, delta * 3)
     }
     if (playerLight.current) {
       playerLight.current.position.set(local.current.x, visualY.current + EYE_HEIGHT + 0.25, local.current.y)
-      playerLight.current.intensity += ((dark ? 38 : 2.2) - playerLight.current.intensity) * Math.min(1, delta * 5)
-      playerLight.current.distance = dark ? activeVision * 1.7 : 7
+      playerLight.current.intensity += ((dark ? 38 : 4.8) - playerLight.current.intensity) * Math.min(1, delta * 5)
+      playerLight.current.distance = dark ? activeVision * 1.7 : 9
     }
-    const exposure = dark ? 0.88 : 1.16
+    const exposure = dark ? 0.88 : 1.42
     gl.toneMappingExposure += (exposure - gl.toneMappingExposure) * Math.min(1, delta * 3)
 
     if (onStairs) {
@@ -436,12 +476,13 @@ function SceneContent({
   return (
     <>
       <ProceduralEnvironment quality={quality} blackout={blackoutForViewer} />
-      <ambientLight ref={ambient} color="#dce8ff" intensity={0.16} />
-      <hemisphereLight ref={sky} args={["#f5f9ff", "#52627d", 0.62]} />
+      {quality === "alto" && <CinematicEffects blackout={blackoutForViewer} />}
+      <ambientLight ref={ambient} color="#edf5ff" intensity={0.38} />
+      <hemisphereLight ref={sky} args={["#fffaf0", "#91a7c6", 1.12]} />
       <directionalLight
         ref={sun}
-        color="#ffe7c2"
-        intensity={2.05}
+        color="#fff0d1"
+        intensity={3.15}
         castShadow={quality !== "baixo"}
         shadow-mapSize={quality === "alto" ? [2048, 2048] : [1024, 1024]}
         shadow-camera-left={-20}
@@ -454,7 +495,7 @@ function SceneContent({
         shadow-normalBias={0.035}
         shadow-radius={quality === "alto" ? 3 : 1.5}
       />
-      <pointLight ref={playerLight} color="#e8f3ff" intensity={2.2} distance={7} decay={2} />
+      <pointLight ref={playerLight} color="#f4f8ff" intensity={4.8} distance={9} decay={2} />
 
       {[0, 1].map((floor) => (
         <OfficeWorld
@@ -498,6 +539,7 @@ function SceneContent({
           visionRange={activeVision}
           blackout={blackoutForViewer}
           viewerLevel={currentLevel}
+          map={map}
         />
       ))}
 
@@ -512,7 +554,7 @@ function SceneContent({
             walls={walls}
             visionRange={activeVision}
             blackout={blackoutForViewer}
-            floorY={currentLevel * FLOOR_HEIGHT}
+            floorY={stairSampleAt(map, corpse.x, corpse.z)?.y ?? currentLevel * FLOOR_HEIGHT}
           />
         ))}
     </>
@@ -538,6 +580,7 @@ function Actor({
   visionRange,
   blackout,
   viewerLevel,
+  map,
 }: {
   player: Snapshot["players"][number]
   roomRef: React.MutableRefObject<Room | null>
@@ -557,6 +600,7 @@ function Actor({
   visionRange: number
   blackout: boolean
   viewerLevel: number
+  map: OfficeMap
 }) {
   const group = useRef<THREE.Group>(null)
   const bodyGroup = useRef<THREE.Group>(null)
@@ -603,7 +647,8 @@ function Actor({
     const delta = Math.min(rawDelta, 0.1)
     const targetX = isMe ? localRef.current.x : live.x
     const targetZ = isMe ? localRef.current.y : live.z
-    const targetY = isMe ? localYRef.current : Number(live.level ?? 0) * FLOOR_HEIGHT
+    const liveLevel = Number(live.level ?? 0)
+    const targetY = isMe ? localYRef.current : (stairSampleAt(map, live.x, live.z)?.y ?? liveLevel * FLOOR_HEIGHT)
     const pull = isMe ? 1 : 1 - Math.exp(-10 * delta)
 
     if (!placed.current) {
@@ -615,7 +660,7 @@ function Actor({
     node.position.x += (targetX - node.position.x) * pull
     node.position.y += (targetY - node.position.y) * pull
     node.position.z += (targetZ - node.position.z) * pull
-    const sameLevel = Number(live.level ?? 0) === viewerLevel
+    const sameLevel = liveLevel === viewerLevel || Math.abs(targetY - localYRef.current) < FLOOR_HEIGHT * 0.62
     const inSight =
       sameLevel &&
       (!viewerAlive ||

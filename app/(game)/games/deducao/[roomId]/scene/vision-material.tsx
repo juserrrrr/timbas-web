@@ -101,6 +101,9 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
 interface Params {
   color: string
   map?: THREE.Texture
+  normalMap?: THREE.Texture
+  normalScale?: number
+  roughnessMap?: THREE.Texture
   emissive?: string
   emissiveIntensity?: number
   roughness?: number
@@ -120,6 +123,9 @@ interface Params {
 export function useVisionMaterial({
   color,
   map,
+  normalMap,
+  normalScale = 1,
+  roughnessMap,
   emissive,
   emissiveIntensity = 0,
   roughness = 0.85,
@@ -144,13 +150,19 @@ export function useVisionMaterial({
       : new THREE.MeshStandardMaterial({
           ...shared,
           roughness,
+          roughnessMap,
           metalness,
+          normalMap,
+          normalScale: new THREE.Vector2(normalScale, normalScale),
           ...(emissive ? { emissive: new THREE.Color(emissive), emissiveIntensity } : {}),
         })
     return patchVision(created, surface)
   }, [
     color,
     map,
+    normalMap,
+    normalScale,
+    roughnessMap,
     emissive,
     emissiveIntensity,
     roughness,

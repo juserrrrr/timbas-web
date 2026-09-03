@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "assets:deducao": "node scripts/build-deducao-models.mjs && node scripts/build-deducao-materials.mjs",
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
