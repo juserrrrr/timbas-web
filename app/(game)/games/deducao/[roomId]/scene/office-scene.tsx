@@ -8,7 +8,6 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
-import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import type { Room } from "@colyseus/sdk"
 import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/games/collision"
@@ -28,6 +27,7 @@ const EYE_HEIGHT = 1.62
 const PITCH_LIMIT = 1.05
 
 const WALK_SPEED = 4.6
+const RUN_SPEED = 7.1
 const SEND_EVERY_MS = 50
 const TASK_RANGE = 2.2
 const REPORT_RANGE = 2.6
@@ -71,6 +71,7 @@ function stairSampleAt(map: OfficeMap, x: number, z: number): StairSample | null
 export interface InputState {
   x: number
   z: number
+  sprint: boolean
 }
 
 interface Props {
@@ -93,7 +94,7 @@ export function OfficeScene(props: Props) {
   return (
     <Canvas
       shadows={quality !== "baixo"}
-      dpr={quality === "alto" ? [1, 2] : quality === "medio" ? [1, 1.5] : 1}
+      dpr={quality === "alto" ? [1, 1.5] : quality === "medio" ? [1, 1.3] : 1}
       gl={{
         antialias: quality !== "baixo",
         powerPreference: "high-performance",
@@ -106,7 +107,7 @@ export function OfficeScene(props: Props) {
         gl.setClearColor(VOID_COLOR)
         gl.outputColorSpace = THREE.SRGBColorSpace
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = quality === "alto" ? 0.98 : quality === "medio" ? 1 : 1.02
+        gl.toneMappingExposure = quality === "alto" ? 0.92 : quality === "medio" ? 0.95 : 0.98
         gl.shadowMap.type = THREE.PCFSoftShadowMap
       }}
     >
@@ -161,32 +162,25 @@ function CinematicEffects({ blackout }: { blackout: boolean }) {
   const pipeline = useMemo(() => {
     const composer = new EffectComposer(gl)
     const render = new RenderPass(scene, camera)
-    const ambientOcclusion = new SSAOPass(scene, camera, 1, 1, 24)
-    ambientOcclusion.kernelRadius = 7
-    ambientOcclusion.minDistance = 0.002
-    ambientOcclusion.maxDistance = 0.105
-    const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.055, 0.2, 0.96)
+    const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.025, 0.16, 1.08)
     composer.addPass(render)
-    composer.addPass(ambientOcclusion)
     composer.addPass(bloom)
     composer.addPass(new OutputPass())
-    return { composer, ambientOcclusion, bloom }
+    return { composer, bloom }
   }, [camera, gl, scene])
 
   useEffect(() => {
-    pipeline.composer.setPixelRatio(Math.min(gl.getPixelRatio(), 1.5))
+    pipeline.composer.setPixelRatio(Math.min(gl.getPixelRatio(), 1.25))
     pipeline.composer.setSize(size.width, size.height)
   }, [gl, pipeline, size.height, size.width])
 
   useEffect(() => {
-    pipeline.bloom.strength = blackout ? 0.18 : 0.055
-    pipeline.bloom.threshold = blackout ? 0.72 : 0.96
-    pipeline.ambientOcclusion.kernelRadius = blackout ? 5 : 10
+    pipeline.bloom.strength = blackout ? 0.045 : 0.025
+    pipeline.bloom.threshold = blackout ? 0.94 : 1.08
   }, [blackout, pipeline])
 
   useEffect(
     () => () => {
-      ;(pipeline.ambientOcclusion as unknown as { dispose: () => void }).dispose()
       pipeline.bloom.dispose()
       pipeline.composer.dispose()
     },
@@ -213,6 +207,8 @@ function SceneContent({
 }: Props) {
   const { camera, gl } = useThree()
   const local = useRef(new THREE.Vector2())
+  const velocity = useRef(new THREE.Vector2())
+  const desiredVelocity = useRef(new THREE.Vector2())
   const visualY = useRef(0)
   const climbing = useRef(false)
   const started = useRef(false)
@@ -223,7 +219,8 @@ function SceneContent({
   const sun = useRef<THREE.DirectionalLight>(null)
   const sky = useRef<THREE.HemisphereLight>(null)
   const ambient = useRef<THREE.AmbientLight>(null)
-  const playerLight = useRef<THREE.PointLight>(null)
+  const flashlight = useRef<THREE.SpotLight>(null)
+  const flashlightTarget = useRef<THREE.Object3D>(null)
   const meetingCameraReady = useRef(false)
 
   const mineSnapshot = snapshot.players.find((player) => player.id === me)
@@ -348,11 +345,11 @@ function SceneContent({
 
     const canWalk = snapshot.phase === "jogando" || snapshot.phase === "lobby"
     const input = inputRef.current
-    const moving = canWalk && !inVent && (input.x !== 0 || input.z !== 0)
+    const hasInput = canWalk && !inVent && (input.x !== 0 || input.z !== 0)
+    const targetVelocity = desiredVelocity.current.set(0, 0)
 
-    if (moving) {
+    if (hasInput) {
       const length = Math.hypot(input.x, input.z) || 1
-      const step = WALK_SPEED * delta
       // W segue a direção da cabeça. O jogo é sempre em primeira pessoa.
       let dirX = input.x / length
       let dirZ = input.z / length
@@ -361,9 +358,23 @@ function SceneContent({
       const lado = dirX
       dirX = -Math.sin(yaw) * frente + Math.cos(yaw) * lado
       dirZ = -Math.cos(yaw) * frente - Math.sin(yaw) * lado
+      targetVelocity.set(dirX, dirZ).multiplyScalar(input.sprint ? RUN_SPEED : WALK_SPEED)
+    }
+
+    // Uma resposta curta preserva a precisão e elimina o tranco ao apertar ou
+    // soltar a tecla. A velocidade residual também faz a animação parar suave.
+    const response = hasInput ? 13 : 10
+    velocity.current.lerp(targetVelocity, 1 - Math.exp(-response * delta))
+    if (!hasInput && velocity.current.lengthSq() < 0.0025) velocity.current.set(0, 0)
+    const moving = velocity.current.lengthSq() > 0.0064
+    const running = (input.sprint && hasInput) || velocity.current.lengthSq() > (WALK_SPEED + 0.1) ** 2
+
+    if (moving) {
+      const beforeX = local.current.x
+      const beforeZ = local.current.y
       const wanted = {
-        x: local.current.x + dirX * step,
-        z: local.current.y + dirZ * step,
+        x: beforeX + velocity.current.x * delta,
+        z: beforeZ + velocity.current.y * delta,
       }
       // Jogador morto atravessa paredes.
       const next = alive ? moveTowards({ x: local.current.x, z: local.current.y }, wanted, colliders) : wanted
@@ -371,12 +382,12 @@ function SceneContent({
         THREE.MathUtils.clamp(next.x, map.bounds.x + PLAYER_RADIUS, map.bounds.x + map.bounds.w - PLAYER_RADIUS),
         THREE.MathUtils.clamp(next.z, map.bounds.z + PLAYER_RADIUS, map.bounds.z + map.bounds.d - PLAYER_RADIUS),
       )
-    }
 
-    const stair = stairSampleAt(map, local.current.x, local.current.y)
-    onStairs = Boolean(stair && stair.progress > 0.015 && stair.progress < 0.985)
-    visualY.current = stair?.y ?? liveLevel * FLOOR_HEIGHT
-    climbing.current = onStairs && moving
+      const actualX = local.current.x - beforeX
+      const actualZ = local.current.y - beforeZ
+      if (Math.abs(actualX) < Math.abs(velocity.current.x * delta) * 0.2) velocity.current.x *= 0.2
+      if (Math.abs(actualZ) < Math.abs(velocity.current.y * delta) * 0.2) velocity.current.y *= 0.2
+    }
 
     // O corpo acompanha o olhar mesmo parado: quem está atrás vê você virar.
     heading.current = lookRef.current.yaw + Math.PI
@@ -384,14 +395,23 @@ function SceneContent({
     // O servidor é a verdade. Quando ele discorda muito, a tela salta; quando
     // discorda pouco, ela vai sendo puxada de volta sem ninguém perceber.
     const drift = Math.hypot(mine.x - local.current.x, mine.z - local.current.y)
-    if (drift > 1.8) local.current.set(mine.x, mine.z)
-    else if (drift > 0.015) {
-      const correction = 1 - Math.exp(-(moving ? 3.2 : 8) * delta)
+    if (drift > 2.8) {
+      local.current.set(mine.x, mine.z)
+      velocity.current.set(0, 0)
+    } else if (drift > 0.06) {
+      const correction = 1 - Math.exp(-3.4 * delta)
       local.current.x += (mine.x - local.current.x) * correction
       local.current.y += (mine.z - local.current.y) * correction
     }
 
-    if (moving && now - lastStep.current > 330) {
+    // A altura usa a posição já reconciliada deste quadro. Assim a câmera não
+    // reaproveita um degrau antigo na troca de camada entre os pavimentos.
+    const stair = stairSampleAt(map, local.current.x, local.current.y)
+    onStairs = Boolean(stair && stair.progress > 0.015 && stair.progress < 0.985)
+    visualY.current = stair?.y ?? liveLevel * FLOOR_HEIGHT
+    climbing.current = onStairs && moving
+
+    if (moving && now - lastStep.current > (running ? 230 : 330)) {
       lastStep.current = now
       playGameSound("step")
     }
@@ -404,6 +424,7 @@ function SceneContent({
           z: local.current.y,
           dir: heading.current,
           moving,
+          sprint: running,
         } as never,
       )
     }
@@ -442,12 +463,22 @@ function SceneContent({
       const ambientTarget = dark ? 0.018 : quality === "baixo" ? 0.38 : quality === "alto" ? 0.13 : 0.15
       ambient.current.intensity += (ambientTarget - ambient.current.intensity) * Math.min(1, delta * 3)
     }
-    if (playerLight.current) {
-      playerLight.current.position.set(local.current.x, visualY.current + EYE_HEIGHT + 0.25, local.current.y)
-      playerLight.current.intensity += ((dark ? 38 : 1.15) - playerLight.current.intensity) * Math.min(1, delta * 5)
-      playerLight.current.distance = dark ? activeVision * 1.7 : 7
+    if (flashlight.current && flashlightTarget.current) {
+      const eyeY = visualY.current + EYE_HEIGHT
+      const forwardX = -Math.sin(lookRef.current.yaw) * Math.cos(lookRef.current.pitch)
+      const forwardY = Math.sin(lookRef.current.pitch)
+      const forwardZ = -Math.cos(lookRef.current.yaw) * Math.cos(lookRef.current.pitch)
+      flashlight.current.position.set(local.current.x, eyeY, local.current.y)
+      flashlightTarget.current.position.set(
+        local.current.x + forwardX * 7,
+        eyeY + forwardY * 7,
+        local.current.y + forwardZ * 7,
+      )
+      flashlight.current.target = flashlightTarget.current
+      flashlight.current.intensity += ((dark ? 24 : 0) - flashlight.current.intensity) * Math.min(1, delta * 7)
+      flashlight.current.distance = dark ? activeVision * 1.45 : 0
     }
-    const exposure = dark ? 0.88 : quality === "alto" ? 0.98 : quality === "medio" ? 1 : 1.02
+    const exposure = dark ? 0.84 : quality === "alto" ? 0.92 : quality === "medio" ? 0.95 : 0.98
     gl.toneMappingExposure += (exposure - gl.toneMappingExposure) * Math.min(1, delta * 3)
 
     if (onStairs) {
@@ -495,7 +526,16 @@ function SceneContent({
         shadow-normalBias={0.035}
         shadow-radius={quality === "alto" ? 3 : 1.5}
       />
-      <pointLight ref={playerLight} color="#edf4ff" intensity={1.15} distance={7} decay={2} />
+      <object3D ref={flashlightTarget} />
+      <spotLight
+        ref={flashlight}
+        color="#e8f2ff"
+        intensity={0}
+        distance={0}
+        angle={0.68}
+        penumbra={0.72}
+        decay={2}
+      />
 
       {[0, 1].map((floor) => (
         <OfficeWorld

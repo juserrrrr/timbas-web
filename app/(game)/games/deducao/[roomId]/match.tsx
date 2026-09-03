@@ -36,6 +36,8 @@ const KEYS: Record<string, [number, number]> = {
   ArrowRight: [1, 0],
 }
 
+const SPRINT_KEYS = new Set(["ShiftLeft", "ShiftRight"])
+
 const ROLE_INTRO: Record<Role, { title: string; line: string; tone: string }> = {
   assassino: {
     title: "Você é o assassino",
@@ -71,7 +73,7 @@ export function Match({
   onSend,
   onLeave,
 }: Props) {
-  const inputRef = useRef<InputState>({ x: 0, z: 0 })
+  const inputRef = useRef<InputState>({ x: 0, z: 0, sprint: false })
   // Olhar e posição vivem fora do React: mudam em todo quadro, e passar isso
   // por estado redesenharia o HUD sessenta vezes por segundo.
   const lookRef = useRef<LookState>({ yaw: 0, pitch: 0 })
@@ -147,7 +149,11 @@ export function Match({
         x += move[0]
         z += move[1]
       })
-      inputRef.current = { x, z }
+      inputRef.current = {
+        x,
+        z,
+        sprint: pressed.current.has("ShiftLeft") || pressed.current.has("ShiftRight"),
+      }
     }
 
     const down = (event: KeyboardEvent) => {
@@ -155,7 +161,7 @@ export function Match({
       if (typing) return
       unlockGameAudio()
 
-      if (KEYS[event.code]) {
+      if (KEYS[event.code] || SPRINT_KEYS.has(event.code)) {
         event.preventDefault()
         pressed.current.add(event.code)
         apply()

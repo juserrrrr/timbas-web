@@ -842,6 +842,30 @@ function Instances({
   )
 }
 
+function RoomSpotlight({ light, height, blackout }: { light: RoomLightSource; height: number; blackout: boolean }) {
+  const target = useMemo(() => {
+    const object = new THREE.Object3D()
+    object.position.set(light.x, 0.04, light.z)
+    return object
+  }, [light.x, light.z])
+
+  return (
+    <>
+      <primitive object={target} />
+      <spotLight
+        position={[light.x, height, light.z]}
+        target={target}
+        color={light.color}
+        intensity={blackout ? 0 : light.intensity}
+        distance={light.distance}
+        angle={0.72}
+        penumbra={0.82}
+        decay={2}
+      />
+    </>
+  )
+}
+
 export function OfficeWorld({
   map,
   quality,
@@ -961,15 +985,6 @@ export function OfficeWorld({
     roughness: 0.3,
     metalness: 0.62,
   })
-  const acousticPanelMaterial = useVisionMaterial({
-    color: "#ffffff",
-    map: materialTextures.upholstery,
-    normalMap: materialTextures.upholsteryNormal,
-    normalScale: 0.4,
-    roughnessMap: materialTextures.upholsteryRoughness,
-    roughness: 1,
-    vertexColors: true,
-  })
   const ventMaterial = useVisionMaterial({
     color: "#ffffff",
     roughness: 0.5,
@@ -979,7 +994,7 @@ export function OfficeWorld({
   const ceilingMaterial = useVisionMaterial({
     color: "#eef1f2",
     emissive: "#fff0cf",
-    emissiveIntensity: blackout ? 0.02 : 0.32,
+    emissiveIntensity: blackout ? 0.01 : 0.14,
     roughness: 0.3,
   })
   const ceilingSlabMaterial = useVisionMaterial({
@@ -1072,27 +1087,6 @@ export function OfficeWorld({
     [ceilingFixtures],
   )
 
-  const acousticPanels = useMemo(
-    () =>
-      map.rooms
-        .filter(
-          (room) =>
-            (room.level ?? 0) === level && room.kind === "sala" && room.rect.w >= 16 && room.rect.d >= 10,
-        )
-        .flatMap((room) =>
-          [-1, 0, 1].map((offset) => ({
-            x: room.rect.x + room.rect.w / 2 + offset * 1.55,
-            y: 1.72,
-            z: room.rect.z + 0.225,
-            rot: 0,
-            sx: 1.32,
-            sy: 0.88,
-            sz: 1,
-            color: mix("#d8f4f3", room.light, 0.16 + (offset + 1) * 0.04),
-          })),
-        ),
-    [level, map.rooms],
-  )
   const floorHoles = useMemo(
     () =>
       (map.stairs ?? [])
@@ -1158,22 +1152,30 @@ export function OfficeWorld({
       .filter((room) => (room.level ?? 0) === level && room.kind !== "terraco")
       .flatMap((room) => {
         const area = room.rect.w * room.rect.d
-        const amount = quality === "alto" ? (area >= 500 ? 3 : area >= 260 ? 2 : 1) : 1
-        const alongX = room.rect.w >= room.rect.d
+        const amount = quality === "alto" ? (area >= 430 ? 3 : area >= 220 ? 2 : 1) : 1
         const roomTone = new THREE.Color("#fff8e9").lerp(new THREE.Color(room.light), 0.2)
+        const fixtures = ceilingFixtures.filter(
+          (fixture) =>
+            fixture.x > room.rect.x &&
+            fixture.x < room.rect.x + room.rect.w &&
+            fixture.z > room.rect.z &&
+            fixture.z < room.rect.z + room.rect.d,
+        )
+        if (fixtures.length === 0) return []
 
-        return Array.from({ length: amount }, (_, index) => {
-          const fraction = (index + 1) / (amount + 1)
+        return Array.from({ length: Math.min(amount, fixtures.length) }, (_, index) => {
+          const fixtureIndex = Math.round(((index + 1) * (fixtures.length + 1)) / (Math.min(amount, fixtures.length) + 1) - 1)
+          const fixture = fixtures[THREE.MathUtils.clamp(fixtureIndex, 0, fixtures.length - 1)]
           return {
-            x: alongX ? room.rect.x + room.rect.w * fraction : room.rect.x + room.rect.w / 2,
-            z: alongX ? room.rect.z + room.rect.d / 2 : room.rect.z + room.rect.d * fraction,
+            x: fixture.x,
+            z: fixture.z,
             color: `#${roomTone.getHexString()}`,
-            intensity: room.kind === "corredor" ? 13 : 11,
-            distance: THREE.MathUtils.clamp(Math.max(room.rect.w, room.rect.d) * 0.62, 9, 15),
+            intensity: room.kind === "corredor" ? 9 : 8,
+            distance: 8.5,
           }
         })
       })
-  }, [map.rooms, quality, level])
+  }, [ceilingFixtures, map.rooms, quality, level])
 
   const serverAisles = useMemo(
     () =>
@@ -1275,8 +1277,8 @@ export function OfficeWorld({
     const doorFrames: Placement[] = []
     const seen = new Set<string>()
     const doorHeight = 2.58
-    const frame = 0.12
-    const depth = 0.52
+    const frame = 0.1
+    const depth = 0.48
 
     for (const room of map.rooms.filter((candidate) => (candidate.level ?? 0) === level)) {
       for (const door of room.doors ?? []) {
@@ -1291,30 +1293,33 @@ export function OfficeWorld({
         if (seen.has(key)) continue
         seen.add(key)
 
-        const postOffset = door.width / 2 + frame / 2
+        // O batente fica dentro do vão, sem ocupar o mesmo volume da parede.
+        // Isso evita z-fighting (o pontilhado/pisca-pisca visto nas portas).
+        const postOffset = door.width / 2 - frame / 2
+        const postHeight = doorHeight - frame
         if (horizontal) {
           doorFrames.push(
             {
               x: centerX - postOffset,
-              y: doorHeight / 2,
+              y: postHeight / 2,
               z: centerZ,
               rot: 0,
               sx: frame,
-              sy: doorHeight,
+              sy: postHeight,
               sz: depth,
             },
             {
               x: centerX + postOffset,
-              y: doorHeight / 2,
+              y: postHeight / 2,
               z: centerZ,
               rot: 0,
               sx: frame,
-              sy: doorHeight,
+              sy: postHeight,
               sz: depth,
             },
             {
               x: centerX,
-              y: doorHeight,
+              y: doorHeight - frame / 2,
               z: centerZ,
               rot: 0,
               sx: door.width + frame * 2,
@@ -1336,25 +1341,25 @@ export function OfficeWorld({
           doorFrames.push(
             {
               x: centerX,
-              y: doorHeight / 2,
+              y: postHeight / 2,
               z: centerZ - postOffset,
               rot: 0,
               sx: depth,
-              sy: doorHeight,
+              sy: postHeight,
               sz: frame,
             },
             {
               x: centerX,
-              y: doorHeight / 2,
+              y: postHeight / 2,
               z: centerZ + postOffset,
               rot: 0,
               sx: depth,
-              sy: doorHeight,
+              sy: postHeight,
               sz: frame,
             },
             {
               x: centerX,
-              y: doorHeight,
+              y: doorHeight - frame / 2,
               z: centerZ,
               rot: 0,
               sx: depth,
@@ -1439,7 +1444,6 @@ export function OfficeWorld({
   }, [])
 
   const fixtureFrameGeometry = useMemo(() => new RoundedBoxGeometry(1.58, 0.075, 0.58, 2, 0.07), [])
-  const acousticPanelGeometry = useMemo(() => new RoundedBoxGeometry(1, 1, 0.065, 3, 0.04), [])
 
   const plinthGeometry = useMemo(() => {
     const box = new THREE.BoxGeometry(1, 1, 1)
@@ -1485,7 +1489,6 @@ export function OfficeWorld({
       groundGeometry,
       ceilingGeometry,
       fixtureFrameGeometry,
-      acousticPanelGeometry,
       plinthGeometry,
       rugGeometry,
       wallGeometry,
@@ -1500,7 +1503,6 @@ export function OfficeWorld({
     groundGeometry,
     ceilingGeometry,
     fixtureFrameGeometry,
-    acousticPanelGeometry,
     plinthGeometry,
     rugGeometry,
     wallGeometry,
@@ -1541,9 +1543,6 @@ export function OfficeWorld({
       <Instances geometry={baseboardGeometry} material={baseboardMaterial} transforms={baseboards} shadows={false} />
       <Instances geometry={trimGeometry} material={trimMaterial} transforms={trims} shadows={false} />
       <Instances geometry={bandGeometry} material={frameMaterial} transforms={doorFrames} shadows={false} />
-      {quality !== "baixo" && (
-        <Instances geometry={acousticPanelGeometry} material={acousticPanelMaterial} transforms={acousticPanels} />
-      )}
       <Instances geometry={ventGeometry} material={ventMaterial} transforms={ventPlacements} shadows={false} />
       <Instances geometry={stairGeometry} material={ventMaterial} transforms={stairPlacements} />
       <Instances geometry={bandGeometry} material={ceilingSlabMaterial} transforms={ceilings} shadows={false} />
@@ -1555,13 +1554,11 @@ export function OfficeWorld({
       )}
       {active &&
         roomLights.map((light, index) => (
-          <pointLight
+          <RoomSpotlight
             key={`room-light-${index}`}
-            position={[light.x, Math.max(2.8, wallHeight - 0.3), light.z]}
-            color={light.color}
-            intensity={blackout ? 0 : light.intensity}
-            distance={light.distance}
-            decay={2}
+            light={light}
+            height={Math.max(2.8, wallHeight - 0.2)}
+            blackout={blackout}
           />
         ))}
       {active &&
