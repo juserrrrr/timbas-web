@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AlertOctagon, Ghost, Hand, LogOut, Search, Siren, Skull, Wind } from "lucide-react"
+import { AlertOctagon, Eye, Ghost, Hand, LogOut, Map as MapIcon, Search, Siren, Skull, Video, Wind, X } from "lucide-react"
 import { playGameSound, unlockGameAudio } from "@/lib/games/game-audio"
 import type { MapTaskSpot, OfficeMap } from "@/lib/services/games"
-import type { Quality, Targets } from "./match-types"
+import type { Quality, Targets, View } from "./match-types"
 import type { InputState } from "./scene/office-scene"
+import { Minimap } from "./minimap"
 import type { Notice, Role, Snapshot } from "./use-deducao-room"
 
 interface Props {
@@ -18,6 +19,9 @@ interface Props {
   notices: Notice[]
   quality: Quality
   onQuality: (quality: Quality) => void
+  view: View
+  onView: (view: View) => void
+  poseRef: React.MutableRefObject<{ x: number; z: number; dir: number }>
   onSend: (type: string, payload?: unknown) => void
   onOpenTask: (spot: MapTaskSpot) => void
   onLeave: () => void
@@ -40,16 +44,43 @@ export function Hud({
   notices,
   quality,
   onQuality,
+  view,
+  onView,
+  poseRef,
   onSend,
   onOpenTask,
   onLeave,
   inputRef,
 }: Props) {
+  const [mapaAberto, setMapaAberto] = useState(false)
   const mine = snapshot.players.find((player) => player.id === me)
   const alive = mine?.alive ?? true
   const progress = snapshot.tasksTotal > 0 ? snapshot.tasksDone / snapshot.tasksTotal : 0
   const spots = map.taskSpots.filter((spot) => pendingTasks.includes(spot.id))
   const roomName = (id: string) => map.rooms.find((room) => room.id === id)?.name ?? id
+
+  // Dentro do duto, para onde dá para ir. O servidor sempre soube fazer a
+  // viagem; faltava a tela oferecer o destino, e sem ela o duto era um buraco
+  // de mão única onde só dava para entrar e sair no mesmo lugar.
+  const ventAtual = mine?.inVent ? targets.vent : null
+  const destinos = (ventAtual?.links ?? [])
+    .map((id) => map.vents.find((vent) => vent.id === id))
+    .filter((vent): vent is NonNullable<typeof vent> => Boolean(vent))
+
+  useEffect(() => {
+    const tecla = (event: KeyboardEvent) => {
+      const digitando = document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA"
+      if (digitando || event.repeat) return
+      if (event.code === "KeyM" || event.code === "Tab") {
+        event.preventDefault()
+        setMapaAberto((aberto) => !aberto)
+      } else if (event.code === "Escape") {
+        setMapaAberto(false)
+      }
+    }
+    window.addEventListener("keydown", tecla)
+    return () => window.removeEventListener("keydown", tecla)
+  }, [])
 
   return (
     <div className="pointer-events-none absolute inset-0 select-none">
@@ -84,7 +115,26 @@ export function Hud({
         )}
       </div>
 
-      <div className="pointer-events-auto absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6">
+      <div className="pointer-events-auto absolute right-4 top-4 flex flex-col items-end gap-2 sm:right-6 sm:top-6">
+        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onView(view === "primeira" ? "isometrica" : "primeira")}
+          className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-sky-400/40 hover:text-sky-300"
+          aria-label={view === "primeira" ? "Ver de cima" : "Ver em primeira pessoa"}
+          title={`${view === "primeira" ? "Câmera de cima" : "Primeira pessoa"} (C)`}
+        >
+          {view === "primeira" ? <Video className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMapaAberto((aberto) => !aberto)}
+          className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-amber-400/40 hover:text-amber-300"
+          aria-label="Abrir a planta"
+          title="Planta do escritório (M)"
+        >
+          <MapIcon className="h-4 w-4" />
+        </button>
         <select
           value={quality}
           onChange={(event) => onQuality(event.target.value as Quality)}
@@ -103,6 +153,13 @@ export function Hud({
         >
           <LogOut className="h-4 w-4" />
         </button>
+        </div>
+
+        {/* Planta sempre à vista. Em primeira pessoa ela deixa de ser luxo: sem
+            ela ninguém acha a sala dos servidores num escritório de 95 metros. */}
+        <div className="hidden w-44 rounded-xl border border-white/10 bg-black/55 p-1.5 backdrop-blur-sm sm:block lg:w-56">
+          <Minimap map={map} spots={spots} role={role} poseRef={poseRef} />
+        </div>
       </div>
 
       {/* Lista de tarefas: o que falta e onde, sem abrir menu nenhum. */}
@@ -142,18 +199,48 @@ export function Hud({
                 onSend("kill", { targetId: targets.kill.id })
               }}
             />
-            <ActionButton
-              label={mine?.inVent ? "Sair do duto" : "Duto"}
-              icon={<Wind className="h-5 w-5" />}
-              tone="neutro"
-              small
-              shortcut="V"
-              disabled={!targets.vent && !mine?.inVent}
-              onClick={() => {
-                playGameSound("vent")
-                onSend("vent", { ventId: mine?.inVent ? "" : targets.vent?.id })
-              }}
-            />
+            {mine?.inVent ? (
+              <>
+                {destinos.map((vent, indice) => (
+                  <ActionButton
+                    key={vent.id}
+                    label={`Ir para ${roomName(vent.room)}`}
+                    icon={<Wind className="h-5 w-5" />}
+                    tone="neutro"
+                    small
+                    shortcut={String(indice + 1)}
+                    onClick={() => {
+                      playGameSound("vent")
+                      onSend("vent", { ventId: vent.id })
+                    }}
+                  />
+                ))}
+                <ActionButton
+                  label="Sair do duto"
+                  icon={<X className="h-5 w-5" />}
+                  tone="neutro"
+                  small
+                  shortcut="V"
+                  onClick={() => {
+                    playGameSound("vent")
+                    onSend("vent", { ventId: "" })
+                  }}
+                />
+              </>
+            ) : (
+              <ActionButton
+                label="Entrar no duto"
+                icon={<Wind className="h-5 w-5" />}
+                tone="neutro"
+                small
+                shortcut="V"
+                disabled={!targets.vent}
+                onClick={() => {
+                  playGameSound("vent")
+                  onSend("vent", { ventId: targets.vent?.id })
+                }}
+              />
+            )}
             <ActionButton
               label="Apagar a luz"
               icon={<AlertOctagon className="h-5 w-5" />}
@@ -207,6 +294,28 @@ export function Hud({
           }}
         />
       </div>
+
+      {mapaAberto && (
+        <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-zinc-950/80 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-400">{map.name}</p>
+              <button
+                type="button"
+                onClick={() => setMapaAberto(false)}
+                className="cursor-pointer rounded-lg border border-white/10 p-1.5 text-zinc-400 transition hover:text-white"
+                aria-label="Fechar a planta"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <Minimap map={map} spots={spots} role={role} poseRef={poseRef} grande />
+            <p className="mt-3 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+              Amarelo é tarefa sua, vermelho é o botão de emergência
+            </p>
+          </div>
+        </div>
+      )}
 
       {!alive && (
         <p className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/70 px-4 py-2 text-xs text-zinc-400">

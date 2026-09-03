@@ -5,15 +5,63 @@ import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js"
 import type { OfficeMap } from "@/lib/services/games"
-import type { Quality } from "../match-types"
+import type { Quality, View } from "../match-types"
 import { useVisionMaterial } from "./vision-material"
 
-/// Parede baixa de propósito: a câmera olha de cima e de longe, e parede alta
-/// vira um muro que engole a sala inteira. Na altura do peito ela ainda corta a
-/// passagem e a linha de visão, mas deixa o cômodo aberto para quem olha.
-const WALL_HEIGHT = 1.55
+/// A parede muda de altura conforme de onde se olha, e isso não é enfeite. Em
+/// primeira pessoa ela precisa passar dos olhos, senão o jogador enxerga por
+/// cima de tudo e o esconde-esconde acaba. Na câmera de cima ela precisa ficar
+/// na altura do peito, senão vira um muro que engole a sala. É a mesma parede
+/// nos dois casos para a colisão, só o desenho encolhe.
+const WALL_HEIGHT: Record<View, number> = { primeira: 2.75, isometrica: 1.55 }
 const TRIM_HEIGHT = 0.16
 const BASEBOARD_HEIGHT = 0.22
+
+/// Só entra janela em pano de parede grande. Em pedaço curto, ao lado de porta,
+/// ela sai espremida e parece defeito, e a passagem sobre o vazio fica fechada
+/// de propósito: ninguém deve ver de dentro da sala quem está atravessando.
+const WINDOW_MIN_WALL = 6
+/// Onde o vão começa e termina, em fração da altura da parede. Em primeira
+/// pessoa isso põe a janela na altura dos olhos, que é onde ela serve.
+const WINDOW_BOTTOM = 0.39
+const WINDOW_TOP = 0.81
+/// A ombreira de alvenaria que sobra em cada ponta do pano de parede.
+const JAMB_WIDTH = 1.0
+/// Largura de um vão e o pilar mínimo entre dois. Uma parede de vinte metros
+/// não leva uma vidraça de dezoito: leva cinco janelas com pilar entre elas, que
+/// é o que dá ritmo de prédio em vez de aquário.
+const BAY_WIDTH = 2.6
+const PIER_MIN = 1.0
+
+/// Onde ficam os vãos ao longo de um pano de parede, medidos da ponta dele.
+function bayspans(length: number): [number, number][] {
+  const usable = length - JAMB_WIDTH * 2
+  let count = Math.floor((usable + PIER_MIN) / (BAY_WIDTH + PIER_MIN))
+  if (count < 1) return []
+  let gap = count > 1 ? (usable - count * BAY_WIDTH) / (count - 1) : 0
+  if (count > 1 && gap < PIER_MIN) {
+    count -= 1
+    gap = count > 1 ? (usable - count * BAY_WIDTH) / (count - 1) : 0
+  }
+  const spans: [number, number][] = []
+  for (let index = 0; index < count; index += 1) {
+    const from = JAMB_WIDTH + index * (BAY_WIDTH + gap)
+    spans.push([from, from + BAY_WIDTH])
+  }
+  return spans
+}
+
+/// O que sobra de parede cheia entre um vão e outro.
+function solidSpans(length: number, bays: [number, number][]): [number, number][] {
+  const spans: [number, number][] = []
+  let cursor = 0
+  for (const [from, to] of bays) {
+    if (from > cursor) spans.push([cursor, from])
+    cursor = to
+  }
+  if (cursor < length) spans.push([cursor, length])
+  return spans
+}
 
 /// Cada sala é uma laje solta no vazio. A espessura é o que dá a ela cara de
 /// peça pousada em cima de nada, em vez de buraco recortado num chão infinito.
@@ -185,6 +233,20 @@ const PROPS: Record<string, PropSpec> = {
   },
 }
 
+/// O duto no chão: aro de metal, poço escuro e quatro palhetas por cima. Era um
+/// quadrado chapado, que não lia nem como buraco nem como grelha.
+const VENT_SPEC: PropSpec = {
+  color: "#8f9cb0",
+  boxes: [
+    [1.5, 0.12, 1.5, 0, 0.06, 0, "#94a2b6"],
+    [1.24, 0.1, 1.24, 0, 0.14, 0, "#0d1219"],
+    [1.16, 0.07, 0.16, 0, 0.2, -0.39, "#b6c2d3"],
+    [1.16, 0.07, 0.16, 0, 0.2, -0.13, "#b6c2d3"],
+    [1.16, 0.07, 0.16, 0, 0.2, 0.13, "#b6c2d3"],
+    [1.16, 0.07, 0.16, 0, 0.2, 0.39, "#b6c2d3"],
+  ],
+}
+
 /// Pinta a caixa inteira de uma cor só, por vértice. É o que deixa um móvel
 /// com várias cores caber num material só e continuar valendo um desenho.
 function paint(geometry: THREE.BufferGeometry, hex: string) {
@@ -281,13 +343,39 @@ function Instances({
   )
 }
 
-export function OfficeWorld({ map, quality, blackout }: { map: OfficeMap; quality: Quality; blackout: boolean }) {
-  const floorMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.94, vertexColors: true })
+export function OfficeWorld({
+  map,
+  quality,
+  blackout,
+  view,
+}: {
+  map: OfficeMap
+  quality: Quality
+  blackout: boolean
+  view: View
+}) {
+  const wallHeight = WALL_HEIGHT[view]
+  const floorMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.94, vertexColors: true, surface: "piso" })
   const plinthMaterial = useVisionMaterial({ color: "#39435c", roughness: 0.95, vertexColors: true })
-  const rugMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.99 })
-  const wallMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.76, vertexColors: true })
+  const rugMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.99, surface: "piso" })
+  const wallMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.76, vertexColors: true, surface: "parede" })
   const baseboardMaterial = useVisionMaterial({ color: "#b0bccd", roughness: 0.7, metalness: 0.05 })
   const trimMaterial = useVisionMaterial({ color: "#ffffff", unlit: true })
+  // Vidro fosco, não vidraça limpa, e isso é regra de jogo antes de ser gosto:
+  // quem está do outro lado continua escondido pela parede na conta da linha de
+  // visão, então o vidro não pode deixar ninguém reconhecer uma silhueta ali.
+  // Ele entra luz e mostra o vazio lá fora, e para de entregar o resto.
+  const glassMaterial = useVisionMaterial({
+    color: "#cfe9f7",
+    emissive: "#6ba7cf",
+    emissiveIntensity: 0.22,
+    roughness: 0.4,
+    metalness: 0.15,
+    transparent: true,
+    opacity: 0.72,
+  })
+  const frameMaterial = useVisionMaterial({ color: "#8d9bb0", roughness: 0.45, metalness: 0.35 })
+  const ventMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.5, metalness: 0.4, vertexColors: true })
 
   // O apagão não tem como apagar um material sem luz, então ele apaga a cor do
   // friso na mão. É a única coisa da cena que continua acesa no escuro.
@@ -359,6 +447,66 @@ export function OfficeWorld({ map, quality, blackout }: { map: OfficeMap; qualit
     [map.walls],
   )
 
+  // A parede com janela é montada em pedaços: peitoril embaixo, verga em cima e
+  // um pilar cheio entre um vão e outro. O buraco fica aberto de verdade, com a
+  // espessura da parede aparecendo na borda. Desenhar o vidro por cima da parede
+  // inteira dava painel colado, não janela.
+  const { bodies, glass, frames } = useMemo(() => {
+    const bodies: Placement[] = []
+    const glass: Placement[] = []
+    const frames: Placement[] = []
+    const abaixo = wallHeight * WINDOW_BOTTOM
+    const acima = wallHeight * WINDOW_TOP
+    const meio = (abaixo + acima) / 2
+
+    for (const wall of walls) {
+      const horizontal = wall.sx > wall.sz
+      const length = horizontal ? wall.sx : wall.sz
+      const bays = length >= WINDOW_MIN_WALL ? bayspans(length) : []
+
+      if (bays.length === 0) {
+        bodies.push({ ...wall, sy: wallHeight })
+        continue
+      }
+
+      // Peitoril e verga correm o pano inteiro; os pilares fecham o que sobra.
+      bodies.push({ ...wall, y: 0, sy: abaixo })
+      bodies.push({ ...wall, y: acima, sy: wallHeight - acima })
+
+      const origem = horizontal ? wall.x - length / 2 : wall.z - length / 2
+      const pedaco = (from: number, to: number, extra: Partial<Placement>): Placement => {
+        const centro = origem + (from + to) / 2
+        return {
+          ...wall,
+          x: horizontal ? centro : wall.x,
+          z: horizontal ? wall.z : centro,
+          sx: horizontal ? to - from : wall.sx,
+          sz: horizontal ? wall.sz : to - from,
+          ...extra,
+        }
+      }
+
+      for (const [from, to] of solidSpans(length, bays)) {
+        bodies.push(pedaco(from, to, { y: 0, sy: wallHeight }))
+      }
+
+      for (const [from, to] of bays) {
+        const vidro = pedaco(from, to, { y: meio, sy: acima - abaixo })
+        // O vidro entra um pouco para dentro da parede, senão fica rente e
+        // some; o caixilho é que aparece rente à face.
+        glass.push({
+          ...vidro,
+          sx: horizontal ? vidro.sx : wall.sx - 0.16,
+          sz: horizontal ? wall.sz - 0.16 : vidro.sz,
+        })
+        frames.push(pedaco(from, to, { y: meio, sy: 0.07 }))
+        frames.push(pedaco(from, to, { y: abaixo + 0.03, sy: 0.06 }))
+        frames.push(pedaco(from, to, { y: acima - 0.03, sy: 0.06 }))
+      }
+    }
+    return { bodies, glass, frames }
+  }, [walls, wallHeight])
+
   const baseboards = useMemo(
     () => walls.map((wall) => ({ ...wall, sx: wall.sx + 0.08, sz: wall.sz + 0.08 })),
     [walls],
@@ -367,8 +515,13 @@ export function OfficeWorld({ map, quality, blackout }: { map: OfficeMap; qualit
   // O friso aceso no alto da parede é o que diz de longe em que sala o jogador
   // está: cada cômodo tem a sua cor, e ela some junto com a luz no apagão.
   const trims = useMemo(
-    () => walls.map((wall) => ({ ...wall, sx: wall.sx + 0.12, sz: wall.sz + 0.12, color: wall.accent })),
-    [walls],
+    () => walls.map((wall) => ({ ...wall, y: wallHeight, sx: wall.sx + 0.12, sz: wall.sz + 0.12, color: wall.accent })),
+    [walls, wallHeight],
+  )
+
+  const ventPlacements = useMemo(
+    () => map.vents.map((vent) => ({ x: vent.x, z: vent.z, rot: 0 })),
+    [map.vents],
   )
 
   const slabGeometry = useMemo(() => {
@@ -391,12 +544,18 @@ export function OfficeWorld({ map, quality, blackout }: { map: OfficeMap; qualit
     return plane
   }, [])
 
+  // Altura 1 na geometria e a altura de verdade na escala da instância: trocar
+  // de câmera vira uma matriz nova, não uma geometria nova.
   const wallGeometry = useMemo(() => {
-    const box = new THREE.BoxGeometry(1, WALL_HEIGHT, 1)
-    box.translate(0, WALL_HEIGHT / 2, 0)
+    const box = new THREE.BoxGeometry(1, 1, 1)
+    box.translate(0, 0.5, 0)
     shadeByFace(box, 1, 0.9, 0.6)
     return box
   }, [])
+
+  const bandGeometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), [])
+
+  const ventGeometry = useMemo(() => geometryFor(VENT_SPEC), [])
 
   const baseboardGeometry = useMemo(() => {
     const box = new THREE.BoxGeometry(1, BASEBOARD_HEIGHT, 1)
@@ -406,14 +565,32 @@ export function OfficeWorld({ map, quality, blackout }: { map: OfficeMap; qualit
 
   const trimGeometry = useMemo(() => {
     const box = new THREE.BoxGeometry(1, TRIM_HEIGHT, 1)
-    box.translate(0, WALL_HEIGHT + TRIM_HEIGHT / 2, 0)
+    box.translate(0, TRIM_HEIGHT / 2, 0)
     return box
   }, [])
 
   useEffect(() => {
-    const geometries = [slabGeometry, plinthGeometry, rugGeometry, wallGeometry, baseboardGeometry, trimGeometry]
+    const geometries = [
+      slabGeometry,
+      plinthGeometry,
+      rugGeometry,
+      wallGeometry,
+      baseboardGeometry,
+      trimGeometry,
+      bandGeometry,
+      ventGeometry,
+    ]
     return () => geometries.forEach((geometry) => geometry.dispose())
-  }, [slabGeometry, plinthGeometry, rugGeometry, wallGeometry, baseboardGeometry, trimGeometry])
+  }, [
+    slabGeometry,
+    plinthGeometry,
+    rugGeometry,
+    wallGeometry,
+    baseboardGeometry,
+    trimGeometry,
+    bandGeometry,
+    ventGeometry,
+  ])
 
   const propGroups = useMemo(() => {
     const byKind = new Map<string, Placement[]>()
@@ -434,9 +611,12 @@ export function OfficeWorld({ map, quality, blackout }: { map: OfficeMap; qualit
       <Instances geometry={plinthGeometry} material={plinthMaterial} transforms={plinths} shadows={false} />
       <Instances geometry={slabGeometry} material={floorMaterial} transforms={floors} />
       <Instances geometry={rugGeometry} material={rugMaterial} transforms={rugs} shadows={false} />
-      <Instances geometry={wallGeometry} material={wallMaterial} transforms={walls} />
+      <Instances geometry={wallGeometry} material={wallMaterial} transforms={bodies} />
       <Instances geometry={baseboardGeometry} material={baseboardMaterial} transforms={baseboards} shadows={false} />
       <Instances geometry={trimGeometry} material={trimMaterial} transforms={trims} shadows={false} />
+      <Instances geometry={bandGeometry} material={frameMaterial} transforms={frames} shadows={false} />
+      <Instances geometry={bandGeometry} material={glassMaterial} transforms={glass} shadows={false} />
+      <Instances geometry={ventGeometry} material={ventMaterial} transforms={ventPlacements} shadows={false} />
       {propGroups.map((group) => (
         <PropKind key={group.kind} kind={group.kind} transforms={group.transforms} />
       ))}

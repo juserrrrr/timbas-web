@@ -15,11 +15,22 @@ export function setVision(x: number, z: number, inner: number, outer: number) {
   visionUniforms.uOuter.value += (outer - visionUniforms.uOuter.value) * 0.08
 }
 
-export function patchVision(material: THREE.Material) {
+/// Nenhuma superfície, piso ou parede. O desenho sai de conta feita em cima da
+/// posição no mundo, não de imagem: nada para baixar, nada para esticar quando a
+/// mesma peça é usada num tamanho diferente, e a emenda entre duas lajes cai
+/// sempre na mesma grade.
+export type Surface = "nenhuma" | "piso" | "parede"
+
+const SURFACE_CODE: Record<Surface, number> = { nenhuma: 0, piso: 1, parede: 2 }
+
+export function patchVision(material: THREE.Material, surface: Surface = "nenhuma") {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uFocus = visionUniforms.uFocus
     shader.uniforms.uInner = visionUniforms.uInner
     shader.uniforms.uOuter = visionUniforms.uOuter
+    // Este vai por material, não compartilhado: é ele que diz se a peça é chão
+    // ou parede.
+    shader.uniforms.uSurface = { value: SURFACE_CODE[surface] }
 
     shader.vertexShader = shader.vertexShader
       .replace("void main() {", "varying vec3 vVisionPos;\nvoid main() {")
@@ -44,11 +55,37 @@ export function patchVision(material: THREE.Material) {
         uniform vec3 uFocus;
         uniform float uInner;
         uniform float uOuter;
+        uniform float uSurface;
+
+        float timbasHash(vec2 cell) {
+          return fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+
         void main() {`,
       )
       .replace(
         "#include <dithering_fragment>",
         `#include <dithering_fragment>
+
+        // Piso: junta de placa a cada dois metros e um grão fino por cima, para
+        // a superfície parar de ser plástico liso. Parede: emenda de painel em
+        // pé e uma faixa de sujeira perto do rodapé.
+        if (uSurface > 0.5) {
+          vec2 cell = uSurface < 1.5 ? vVisionPos.xz : vec2(vVisionPos.x + vVisionPos.z, vVisionPos.y);
+          float tile = uSurface < 1.5 ? 2.0 : 1.6;
+          vec2 edge = abs(fract(cell / tile) - 0.5);
+          float groove = smoothstep(0.455, 0.5, max(edge.x, edge.y));
+          gl_FragColor.rgb *= 1.0 - groove * (uSurface < 1.5 ? 0.13 : 0.08);
+
+          float grain = timbasHash(floor(cell * 5.0));
+          gl_FragColor.rgb *= 0.965 + grain * 0.07;
+
+          if (uSurface > 1.5) {
+            float sujeira = 1.0 - smoothstep(0.0, 0.7, vVisionPos.y);
+            gl_FragColor.rgb *= 1.0 - sujeira * 0.12;
+          }
+        }
+
         float visionDist = distance(vVisionPos.xz, uFocus.xz);
         float visible = 1.0 - smoothstep(uInner, uOuter, visionDist);
         vec3 penumbra = gl_FragColor.rgb * 0.16 + vec3(0.055, 0.068, 0.098);
@@ -73,6 +110,10 @@ interface Params {
   /// Sem iluminação. Serve para o friso das salas, que precisa acender igual
   /// esteja onde estiver o sol.
   unlit?: boolean
+  /// Que desenho de superfície o shader aplica por cima da cor.
+  surface?: Surface
+  transparent?: boolean
+  opacity?: number
 }
 
 export function useVisionMaterial({
@@ -83,19 +124,22 @@ export function useVisionMaterial({
   metalness = 0,
   vertexColors = false,
   unlit = false,
+  surface = "nenhuma",
+  transparent = false,
+  opacity = 1,
 }: Params) {
   const material = useMemo(() => {
+    const shared = { color: new THREE.Color(color), vertexColors, transparent, opacity, depthWrite: !transparent }
     const created = unlit
-      ? new THREE.MeshBasicMaterial({ color: new THREE.Color(color), vertexColors })
+      ? new THREE.MeshBasicMaterial(shared)
       : new THREE.MeshStandardMaterial({
-          color: new THREE.Color(color),
+          ...shared,
           roughness,
           metalness,
-          vertexColors,
           ...(emissive ? { emissive: new THREE.Color(emissive), emissiveIntensity } : {}),
         })
-    return patchVision(created)
-  }, [color, emissive, emissiveIntensity, roughness, metalness, vertexColors, unlit])
+    return patchVision(created, surface)
+  }, [color, emissive, emissiveIntensity, roughness, metalness, vertexColors, unlit, surface, transparent, opacity])
 
   useEffect(() => () => material.dispose(), [material])
   return material

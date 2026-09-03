@@ -27,6 +27,9 @@ export interface WallBox {
   maxX: number
   maxZ: number
   accent?: string
+  /// Chega na altura dos olhos, então além de barrar o corpo também corta a
+  /// linha de visão. Mesa e sofá não.
+  tall?: boolean
 }
 export interface MapRoom {
   id: string
@@ -63,6 +66,9 @@ export interface OfficeMap {
   bounds: MapRect
   rooms: MapRoom[]
   walls: WallBox[]
+  /// A pegada dos móveis no chão. Separada das paredes porque nem todo móvel
+  /// corta a visão.
+  obstacles: WallBox[]
   props: MapProp[]
   taskSpots: MapTaskSpot[]
   vents: MapVent[]
