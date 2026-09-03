@@ -69,7 +69,7 @@ export function PlayerBadge({ player, role, host, you, hint, stamp, selected, on
       {stamp && (
         <span
           className={cn(
-            "pointer-events-none absolute -right-4 top-1/2 -translate-y-1/2 rotate-[-14deg] rounded border-2 px-3 py-1 font-mono text-[11px] font-black uppercase tracking-[0.18em]",
+            "pointer-events-none absolute right-3 top-3 rotate-[-10deg] rounded border-2 bg-zinc-950/80 px-2.5 py-1 font-mono text-[10px] font-black uppercase tracking-[0.16em]",
             stamp === "morto" ? "border-red-500/60 text-red-400/80" : "border-amber-400/60 text-amber-300/80",
           )}
         >

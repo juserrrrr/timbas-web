@@ -55,8 +55,7 @@ export function Hud({
   const spots = map.taskSpots.filter((spot) => pendingTasks.includes(spot.id))
   const roomName = (id: string) => map.rooms.find((room) => room.id === id)?.name ?? id
   const floorName = mine?.level === 1 ? "2º andar" : "Térreo"
-  const visibleNotices =
-    role === "assassino" ? notices.filter((notice) => notice.text !== "A luz caiu. Ninguém enxerga direito.") : notices
+  const visibleNotices = notices
 
   // Dentro do duto, para onde dá para ir. O servidor sempre soube fazer a
   // viagem; faltava a tela oferecer o destino, e sem ela o duto era um buraco
@@ -83,7 +82,7 @@ export function Hud({
 
   return (
     <div className="pointer-events-none absolute inset-0 select-none">
-      {snapshot.blackout && role !== "assassino" && (
+      {snapshot.blackout && (
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_18%,rgba(0,0,0,0.82)_78%)]">
           <p className="absolute left-1/2 top-6 -translate-x-1/2 font-mono text-[11px] font-bold uppercase tracking-[0.4em] text-red-400/80">
             Luz apagada

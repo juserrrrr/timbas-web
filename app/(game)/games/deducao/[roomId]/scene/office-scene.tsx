@@ -210,9 +210,9 @@ function SceneContent({
   const alive = mineSnapshot?.alive ?? true
   const inVent = mineSnapshot?.inVent ?? false
   const visionRange = Number(snapshot.config.visionRange ?? 13)
-  // No apagão o assassino enxerga igual. É ele quem apagou a luz, e é essa
-  // vantagem que faz valer a pena apagar.
-  const blackoutForViewer = snapshot.blackout && role !== "assassino"
+  // O apagão é físico e vale para todos. O assassino continua com as próprias
+  // ações, mas não recebe iluminação nem alcance de visão privilegiados.
+  const blackoutForViewer = snapshot.blackout
   const activeVision = blackoutForViewer ? Math.min(4.2, visionRange * 0.42) : visionRange
 
   // Olhar com o mouse. O clique tranca o ponteiro; o Esc destranca, e aí o
@@ -540,25 +540,24 @@ function SceneContent({
           walls={walls}
           visionRange={activeVision}
           blackout={blackoutForViewer}
-          viewerLevel={currentLevel}
           map={map}
         />
       ))}
 
-      {snapshot.corpses
-        .filter((corpse) => corpse.level === currentLevel)
-        .map((corpse) => (
-          <Corpse
-            key={corpse.id}
-            corpse={corpse}
-            localRef={local}
-            viewerAlive={alive}
-            walls={walls}
-            visionRange={activeVision}
-            blackout={blackoutForViewer}
-            floorY={stairSampleAt(map, corpse.x, corpse.z)?.y ?? currentLevel * FLOOR_HEIGHT}
-          />
-        ))}
+      {snapshot.corpses.map((corpse) => (
+        <Corpse
+          key={corpse.id}
+          corpse={corpse}
+          localRef={local}
+          localYRef={visualY}
+          viewerAlive={alive}
+          walls={walls}
+          visionRange={activeVision}
+          blackout={blackoutForViewer}
+          viewerLevel={currentLevel}
+          floorY={stairSampleAt(map, corpse.x, corpse.z)?.y ?? corpse.level * FLOOR_HEIGHT}
+        />
+      ))}
     </>
   )
 }
@@ -581,7 +580,6 @@ function Actor({
   walls,
   visionRange,
   blackout,
-  viewerLevel,
   map,
 }: {
   player: Snapshot["players"][number]
@@ -601,7 +599,6 @@ function Actor({
   walls: OfficeMap["walls"]
   visionRange: number
   blackout: boolean
-  viewerLevel: number
   map: OfficeMap
 }) {
   const group = useRef<THREE.Group>(null)
@@ -662,17 +659,20 @@ function Actor({
     node.position.x += (targetX - node.position.x) * pull
     node.position.y += (targetY - node.position.y) * pull
     node.position.z += (targetZ - node.position.z) * pull
-    const sameLevel = liveLevel === viewerLevel || Math.abs(targetY - localYRef.current) < FLOOR_HEIGHT * 0.62
+    const verticalGap = Math.abs(targetY - localYRef.current)
+    const sameLayer = verticalGap < FLOOR_HEIGHT * 0.62
+    const planarGap = distance({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z })
+    const spatialGap = Math.hypot(planarGap, verticalGap)
     const inSight =
-      sameLevel &&
-      (!viewerAlive ||
-        isMe ||
-        (distance({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z }) <= visionRange &&
-          hasLineOfSight({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z }, walls)))
+      !viewerAlive ||
+      isMe ||
+      (spatialGap <= visionRange &&
+        (!sameLayer || hasLineOfSight({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z }, walls)))
     if (inSight) lastVisibleAt.current = performance.now()
-    node.visible =
-      sameLevel && !hideBody && !hidden && !live.inVent && (inSight || performance.now() - lastVisibleAt.current < 120)
-    if (label.current) label.current.style.visibility = node.visible ? "visible" : "hidden"
+    node.visible = !hideBody && !hidden && !live.inVent && (inSight || performance.now() - lastVisibleAt.current < 120)
+    // O corpo dos outros andares é ocluído pela geometria 3D real. O nome não:
+    // por isso a etiqueta só aparece na mesma camada e nunca atravessa a laje.
+    if (label.current) label.current.style.visibility = node.visible && sameLayer ? "visible" : "hidden"
     if (!node.visible) return
 
     const rawFacing = isMe ? localHeadingRef.current : live.dir
@@ -790,18 +790,22 @@ function Actor({
 function Corpse({
   corpse,
   localRef,
+  localYRef,
   viewerAlive,
   walls,
   visionRange,
   blackout,
+  viewerLevel,
   floorY,
 }: {
   corpse: Snapshot["corpses"][number]
   localRef: React.MutableRefObject<THREE.Vector2>
+  localYRef: React.MutableRefObject<number>
   viewerAlive: boolean
   walls: OfficeMap["walls"]
   visionRange: number
   blackout: boolean
+  viewerLevel: number
   floorY: number
 }) {
   const group = useRef<THREE.Group>(null)
@@ -812,10 +816,13 @@ function Corpse({
 
   useFrame(() => {
     if (!group.current) return
+    const planarGap = distance({ x: localRef.current.x, z: localRef.current.y }, corpse)
+    const verticalGap = Math.abs(localYRef.current - floorY)
+    const sameLayer = corpse.level === viewerLevel || verticalGap < FLOOR_HEIGHT * 0.62
     group.current.visible =
       !viewerAlive ||
-      (distance({ x: localRef.current.x, z: localRef.current.y }, corpse) <= visionRange &&
-        hasLineOfSight({ x: localRef.current.x, z: localRef.current.y }, corpse, walls))
+      (Math.hypot(planarGap, verticalGap) <= visionRange &&
+        (!sameLayer || hasLineOfSight({ x: localRef.current.x, z: localRef.current.y }, corpse, walls)))
   })
 
   return (
