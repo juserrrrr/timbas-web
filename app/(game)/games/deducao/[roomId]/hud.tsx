@@ -121,7 +121,7 @@ export function Hud({
             onClick={() => setMapaAberto((aberto) => !aberto)}
             className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-amber-400/40 hover:text-amber-300"
             aria-label="Abrir a planta"
-            title="Planta do escritório (M)"
+            title="Mapa da partida (M)"
           >
             <MapIcon className="h-4 w-4" />
           </button>
@@ -145,8 +145,8 @@ export function Hud({
           </button>
         </div>
 
-        {/* Planta sempre à vista. Em primeira pessoa ela deixa de ser luxo: sem
-            ela ninguém acha a sala dos servidores num escritório de 95 metros. */}
+        {/* O mapa fica sempre à vista para orientar tanto cenários internos
+            quanto casas, campos e áreas abertas geradas pelo criador. */}
         <div className="hidden w-44 rounded-xl border border-white/10 bg-black/55 p-1.5 backdrop-blur-sm sm:block lg:w-56">
           <Minimap map={map} spots={spots} role={role} poseRef={poseRef} />
         </div>

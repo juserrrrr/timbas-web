@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from "react"
 import { useGLTF, useTexture } from "@react-three/drei"
-import { useThree } from "@react-three/fiber"
+import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js"
@@ -589,6 +589,11 @@ interface RoomLightSource {
 }
 
 type FloorFinish = NonNullable<OfficeMap["rooms"][number]["finish"]>
+type MapRoom = OfficeMap["rooms"][number]
+
+function isRoofed(room: MapRoom) {
+  return room.kind === "sala" || room.kind === "corredor"
+}
 
 interface FloorPatch {
   x: number
@@ -601,6 +606,7 @@ interface FloorPatch {
   offsetX: number
   offsetY: number
   rotation: number
+  elevation: number
 }
 
 const FLOOR_TEXTURE_PATHS: Record<FloorFinish, string> = {
@@ -613,6 +619,9 @@ const FLOOR_TEXTURE_PATHS: Record<FloorFinish, string> = {
   vinyl: "/images/games/deducao/textures/corridor-vinyl-v2.webp",
   pantry: "/images/games/deducao/textures/pantry-tile.png",
   concrete: "/images/games/deducao/textures/concrete.png",
+  grass: "/images/games/deducao/textures/grass-v1.webp",
+  water: "/images/games/deducao/textures/pool-water-v1.webp",
+  sport: "/images/games/deducao/textures/sport-court-v1.webp",
 }
 
 const FLOOR_ASSET_NAMES: Record<FloorFinish, string> = {
@@ -625,6 +634,9 @@ const FLOOR_ASSET_NAMES: Record<FloorFinish, string> = {
   vinyl: "corridor-vinyl-v2",
   pantry: "pantry-tile",
   concrete: "concrete",
+  grass: "grass-v1",
+  water: "pool-water-v1",
+  sport: "sport-court-v1",
 }
 
 const DETAILED_MODELS = {
@@ -708,7 +720,13 @@ function TexturedFloor({
               ? 3.5
               : patch.finish === "server"
                 ? 3.2
-                : 2.8
+                : patch.finish === "grass"
+                  ? 3.6
+                  : patch.finish === "water"
+                    ? 5.5
+                    : patch.finish === "sport"
+                      ? 8
+                      : 2.8
     for (const texture of [clone, normal, roughness]) {
       texture.wrapS = THREE.RepeatWrapping
       texture.wrapT = THREE.RepeatWrapping
@@ -746,20 +764,30 @@ function TexturedFloor({
   )
 
   return (
-    <mesh position={[patch.x + patch.w / 2, 0.018, patch.z + patch.d / 2]} rotation-x={-Math.PI / 2} receiveShadow>
+    <mesh
+      position={[patch.x + patch.w / 2, patch.elevation, patch.z + patch.d / 2]}
+      rotation-x={-Math.PI / 2}
+      receiveShadow
+    >
       <planeGeometry args={[patch.w, patch.d]} />
       <meshStandardMaterial
         map={textures.color}
         normalMap={textures.normal}
-        normalScale={new THREE.Vector2(0.38, 0.38)}
+        normalScale={new THREE.Vector2(patch.finish === "water" ? 0.08 : patch.finish === "grass" ? 0.5 : 0.38, patch.finish === "water" ? 0.08 : patch.finish === "grass" ? 0.5 : 0.38)}
         roughnessMap={textures.roughness}
         color={patch.tint}
         emissive="#dbe7f1"
         emissiveIntensity={blackout ? 0 : 0.01}
         roughness={
-          patch.finish === "wood" || patch.finish === "parquet" ? 0.68 : patch.finish === "server" ? 0.58 : 0.9
+          patch.finish === "water"
+            ? 0.22
+            : patch.finish === "wood" || patch.finish === "parquet"
+              ? 0.68
+              : patch.finish === "server"
+                ? 0.58
+                : 0.9
         }
-        metalness={patch.finish === "server" ? 0.16 : 0.01}
+        metalness={patch.finish === "water" ? 0.08 : patch.finish === "server" ? 0.16 : 0.01}
       />
     </mesh>
   )
@@ -842,26 +870,62 @@ function Instances({
   )
 }
 
-function RoomSpotlight({ light, height, blackout }: { light: RoomLightSource; height: number; blackout: boolean }) {
-  const target = useMemo(() => {
-    const object = new THREE.Object3D()
-    object.position.set(light.x, 0.04, light.z)
-    return object
-  }, [light.x, light.z])
+function LocalRoomLights({
+  lights,
+  height,
+  blackout,
+  focusRef,
+}: {
+  lights: RoomLightSource[]
+  height: number
+  blackout: boolean
+  focusRef: MutableRefObject<THREE.Vector2>
+}) {
+  const refs = useRef<Array<THREE.SpotLight | null>>([])
+  const nextSearch = useRef(0)
+  const selected = useRef<RoomLightSource[]>([])
+  const targets = useMemo(() => Array.from({ length: 4 }, () => new THREE.Object3D()), [])
+
+  useFrame(({ clock }, delta) => {
+    if (clock.elapsedTime >= nextSearch.current) {
+      nextSearch.current = clock.elapsedTime + 0.2
+      selected.current = [...lights]
+        .sort(
+          (left, right) =>
+            (left.x - focusRef.current.x) ** 2 + (left.z - focusRef.current.y) ** 2 -
+            ((right.x - focusRef.current.x) ** 2 + (right.z - focusRef.current.y) ** 2),
+        )
+        .slice(0, targets.length)
+    }
+
+    refs.current.forEach((light, index) => {
+      if (!light) return
+      const source = selected.current[index]
+      light.visible = Boolean(source)
+      if (!source) return
+      light.position.set(source.x, height, source.z)
+      light.color.set(source.color)
+      light.distance = source.distance
+      light.intensity += ((blackout ? 0 : source.intensity) - light.intensity) * Math.min(1, delta * 8)
+      targets[index].position.set(source.x, 0.04, source.z)
+      light.target = targets[index]
+    })
+  })
 
   return (
     <>
-      <primitive object={target} />
-      <spotLight
-        position={[light.x, height, light.z]}
-        target={target}
-        color={light.color}
-        intensity={blackout ? 0 : light.intensity}
-        distance={light.distance}
-        angle={0.72}
-        penumbra={0.82}
-        decay={2}
-      />
+      {targets.map((target, index) => <primitive key={`light-target-${index}`} object={target} />)}
+      {targets.map((target, index) => (
+        <spotLight
+          key={`local-light-${index}`}
+          ref={(light) => { refs.current[index] = light }}
+          target={target}
+          intensity={0}
+          angle={0.72}
+          penumbra={0.82}
+          decay={2}
+        />
+      ))}
     </>
   )
 }
@@ -873,6 +937,7 @@ export function OfficeWorld({
   level,
   baseY = 0,
   active = true,
+  focusRef,
 }: {
   map: OfficeMap
   quality: Quality
@@ -880,6 +945,7 @@ export function OfficeWorld({
   level: number
   baseY?: number
   active?: boolean
+  focusRef: MutableRefObject<THREE.Vector2>
 }) {
   const wallHeight = WALL_HEIGHT
   const [
@@ -1047,7 +1113,7 @@ export function OfficeWorld({
   const ceilingFixtures = useMemo(
     () =>
       map.rooms
-        .filter((room) => (room.level ?? 0) === level && room.kind !== "terraco")
+        .filter((room) => (room.level ?? 0) === level && isRoofed(room))
         .flatMap((room) => {
           const columns = Math.max(1, Math.floor((room.rect.w - 3) / 6))
           const rows = Math.max(1, Math.floor((room.rect.d - 3) / 7))
@@ -1102,7 +1168,13 @@ export function OfficeWorld({
           const finish = room.finish ?? "terrazzo"
           const variant = stableHash(room.id)
           const baseTint =
-            finish === "wood" || finish === "parquet"
+            finish === "grass"
+              ? "#b8dda2"
+              : finish === "water"
+                ? "#b7f3ff"
+                : finish === "sport"
+                  ? "#d8eef1"
+                  : finish === "wood" || finish === "parquet"
               ? "#fff1dd"
               : finish === "pantry"
                 ? "#e5fff4"
@@ -1117,12 +1189,20 @@ export function OfficeWorld({
             ...part,
             finish,
             tint: mix(baseTint, room.floor, 0.12),
-            slab: room.kind === "corredor" ? SLAB_CORREDOR : SLAB_SALA,
+            slab: room.kind === "corredor" || !isRoofed(room) ? SLAB_CORREDOR : SLAB_SALA,
             offsetX: (variant % 11) / 11,
             offsetY: (Math.floor(variant / 11) % 11) / 11,
             rotation: ["carpet", "patternedCarpet", "terrazzo", "vinyl"].includes(finish)
               ? (variant % 4) * (Math.PI / 2)
               : 0,
+            elevation:
+              room.kind === "agua"
+                ? 0.052
+                : room.kind === "campo"
+                  ? 0.042
+                  : room.kind === "externa"
+                    ? 0.018
+                    : 0.032,
           }))
         }),
     [floorHoles, level, map.rooms],
@@ -1130,7 +1210,7 @@ export function OfficeWorld({
   const ceilings = useMemo(
     () =>
       map.rooms
-        .filter((room) => (room.level ?? 0) === level && room.kind !== "terraco")
+        .filter((room) => (room.level ?? 0) === level && isRoofed(room))
         .flatMap((room) =>
           splitAroundHoles(room.rect, ceilingHoles).map((part) => ({
             x: part.x + part.w / 2,
@@ -1149,7 +1229,7 @@ export function OfficeWorld({
     if (quality === "baixo") return []
 
     return map.rooms
-      .filter((room) => (room.level ?? 0) === level && room.kind !== "terraco")
+      .filter((room) => (room.level ?? 0) === level && isRoofed(room))
       .flatMap((room) => {
         const area = room.rect.w * room.rect.d
         const amount = quality === "alto" ? (area >= 430 ? 3 : area >= 220 ? 2 : 1) : 1
@@ -1552,15 +1632,14 @@ export function OfficeWorld({
           <Instances geometry={ceilingGeometry} material={ceilingMaterial} transforms={ceilingFixtures} shadows={false} />
         </>
       )}
-      {active &&
-        roomLights.map((light, index) => (
-          <RoomSpotlight
-            key={`room-light-${index}`}
-            light={light}
-            height={Math.max(2.8, wallHeight - 0.2)}
-            blackout={blackout}
-          />
-        ))}
+      {active && (
+        <LocalRoomLights
+          lights={roomLights}
+          height={Math.max(2.8, wallHeight - 0.2)}
+          blackout={blackout}
+          focusRef={focusRef}
+        />
+      )}
       {active &&
         quality !== "baixo" &&
         emergencyLights.map((light, index) => (

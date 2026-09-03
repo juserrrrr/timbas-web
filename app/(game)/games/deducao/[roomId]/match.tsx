@@ -87,8 +87,8 @@ export function Match({
   const previousBlackout = useRef(snapshot.blackout)
   const previousPhase = useRef(snapshot.phase)
   const previousAlive = useRef(snapshot.players.find((player) => player.id === me)?.alive ?? true)
-  const actions = useRef({ snapshot, targets, role, openTask, onSend, map })
-  actions.current = { snapshot, targets, role, openTask, onSend, map }
+  const actions = useRef({ snapshot, targets, role, openTask, onSend, map, intro })
+  actions.current = { snapshot, targets, role, openTask, onSend, map, intro }
 
   useEffect(() => {
     try {
@@ -132,8 +132,10 @@ export function Match({
   // dispararia de novo.
   useEffect(() => {
     if (snapshot.phase !== "jogando") return
+    pressed.current.clear()
+    inputRef.current = { x: 0, z: 0, sprint: false }
     setIntro(true)
-    const timer = setTimeout(() => setIntro(false), 4500)
+    const timer = setTimeout(() => setIntro(false), 7500)
     return () => clearTimeout(timer)
   }, [snapshot.phase])
 
@@ -163,6 +165,7 @@ export function Match({
 
       if (KEYS[event.code] || SPRINT_KEYS.has(event.code)) {
         event.preventDefault()
+        if (actions.current.intro) return
         pressed.current.add(event.code)
         apply()
         return

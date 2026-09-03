@@ -37,7 +37,7 @@ export interface MapRoom {
   id: string
   name: string
   rect: MapRect
-  kind: "sala" | "corredor" | "terraco"
+  kind: "sala" | "corredor" | "terraco" | "externa" | "agua" | "campo"
   level?: number
   floor: string
   finish?:
@@ -50,6 +50,9 @@ export interface MapRoom {
     | "vinyl"
     | "pantry"
     | "concrete"
+    | "grass"
+    | "water"
+    | "sport"
   light: string
   doors?: Array<{
     side: "north" | "south" | "east" | "west"

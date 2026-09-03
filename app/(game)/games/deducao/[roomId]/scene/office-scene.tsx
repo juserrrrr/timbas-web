@@ -5,10 +5,6 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { Html } from "@react-three/drei"
 import * as THREE from "three"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
-import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
-import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import type { Room } from "@colyseus/sdk"
 import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/games/collision"
 import { playGameSound } from "@/lib/games/game-audio"
@@ -94,7 +90,7 @@ export function OfficeScene(props: Props) {
   return (
     <Canvas
       shadows={quality !== "baixo"}
-      dpr={quality === "alto" ? [1, 1.5] : quality === "medio" ? [1, 1.3] : 1}
+      dpr={quality === "alto" ? [1, 1.35] : quality === "medio" ? [1, 1.2] : 1}
       gl={{
         antialias: quality !== "baixo",
         powerPreference: "high-performance",
@@ -154,40 +150,6 @@ function ProceduralEnvironment({ quality, blackout }: { quality: Quality; blacko
     scene.environmentIntensity += (target - scene.environmentIntensity) * Math.min(1, delta * 3.5)
   })
 
-  return null
-}
-
-function CinematicEffects({ blackout }: { blackout: boolean }) {
-  const { gl, scene, camera, size } = useThree()
-  const pipeline = useMemo(() => {
-    const composer = new EffectComposer(gl)
-    const render = new RenderPass(scene, camera)
-    const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.025, 0.16, 1.08)
-    composer.addPass(render)
-    composer.addPass(bloom)
-    composer.addPass(new OutputPass())
-    return { composer, bloom }
-  }, [camera, gl, scene])
-
-  useEffect(() => {
-    pipeline.composer.setPixelRatio(Math.min(gl.getPixelRatio(), 1.25))
-    pipeline.composer.setSize(size.width, size.height)
-  }, [gl, pipeline, size.height, size.width])
-
-  useEffect(() => {
-    pipeline.bloom.strength = blackout ? 0.045 : 0.025
-    pipeline.bloom.threshold = blackout ? 0.94 : 1.08
-  }, [blackout, pipeline])
-
-  useEffect(
-    () => () => {
-      pipeline.bloom.dispose()
-      pipeline.composer.dispose()
-    },
-    [pipeline],
-  )
-
-  useFrame((_, delta) => pipeline.composer.render(delta), 1)
   return null
 }
 
@@ -507,7 +469,6 @@ function SceneContent({
   return (
     <>
       <ProceduralEnvironment quality={quality} blackout={blackoutForViewer} />
-      {quality === "alto" && <CinematicEffects blackout={blackoutForViewer} />}
       <ambientLight ref={ambient} color="#e9f1fa" intensity={0.14} />
       <hemisphereLight ref={sky} args={["#fff6e7", "#66768e", 0.46]} />
       <directionalLight
@@ -515,7 +476,7 @@ function SceneContent({
         color="#fff0d1"
         intensity={1.5}
         castShadow={quality !== "baixo"}
-        shadow-mapSize={quality === "alto" ? [2048, 2048] : [1024, 1024]}
+        shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-20}
         shadow-camera-right={20}
         shadow-camera-top={20}
@@ -546,6 +507,7 @@ function SceneContent({
           level={floor}
           baseY={floor * FLOOR_HEIGHT}
           active={floor === currentLevel}
+          focusRef={local}
         />
       ))}
       <group position-y={currentLevel * FLOOR_HEIGHT}>
@@ -806,7 +768,7 @@ function Actor({
 
       {/* Nome no duto entregaria o assassino escondido, então a plaquinha some
           junto com o corpo. */}
-      {!hidden && !player.inVent && (
+      {!blackout && !hidden && !player.inVent && (
         <Html position={[0, 2.1, 0]} center distanceFactor={17} pointerEvents="none" zIndexRange={[10, 0]}>
           <span
             ref={label}

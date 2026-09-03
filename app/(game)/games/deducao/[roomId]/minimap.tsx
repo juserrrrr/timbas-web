@@ -16,6 +16,15 @@ interface Props {
   grande?: boolean
 }
 
+function roomFill(room: OfficeMap["rooms"][number]) {
+  if (room.kind === "agua") return "#1689a6"
+  if (room.kind === "campo") return room.finish === "sport" ? "#287d78" : "#507f45"
+  if (room.kind === "externa") return room.finish === "grass" ? "#426d3c" : "#69727c"
+  if (room.kind === "terraco") return "#8b7968"
+  if (room.kind === "corredor") return "#5b6780"
+  return "#8f9cb4"
+}
+
 export function Minimap({ map, spots, role, poseRef, grande = false }: Props) {
   const marker = useRef<SVGGElement>(null)
 
@@ -43,7 +52,7 @@ export function Minimap({ map, spots, role, poseRef, grande = false }: Props) {
       viewBox={`${bounds.x - 2} ${bounds.z - 2} ${bounds.w + 4} ${bounds.d + 4}`}
       className="h-full w-full"
       role="img"
-      aria-label="Planta do escritório"
+      aria-label="Mapa da partida"
     >
       {map.rooms.map((room) => (
         <rect
@@ -53,7 +62,7 @@ export function Minimap({ map, spots, role, poseRef, grande = false }: Props) {
           width={room.rect.w}
           height={room.rect.d}
           rx={room.kind === "corredor" ? 0.6 : 1.4}
-          fill={room.kind === "corredor" ? "#5b6780" : "#8f9cb4"}
+          fill={roomFill(room)}
           stroke={room.light}
           strokeWidth={room.kind === "corredor" ? 0.35 : 0.6}
           opacity={room.kind === "corredor" ? 0.75 : 0.95}
@@ -62,7 +71,7 @@ export function Minimap({ map, spots, role, poseRef, grande = false }: Props) {
 
       {grande &&
         map.rooms
-          .filter((room) => room.kind === "sala")
+          .filter((room) => room.kind !== "corredor" && room.kind !== "externa")
           .map((room) => (
             <text
               key={room.id}

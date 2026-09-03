@@ -16,6 +16,9 @@ const materials = [
   { name: "wall-plaster", source: "wall-plaster.webp", normal: 1.15, roughness: 218 },
   { name: "upholstery-v2", source: "upholstery-v2.webp", normal: 2.7, roughness: 232 },
   { name: "ceiling-acoustic", source: "ceiling-acoustic.webp", normal: 1.8, roughness: 224 },
+  { name: "grass-v1", source: "grass-v1.webp", normal: 2.3, roughness: 230 },
+  { name: "pool-water-v1", source: "pool-water-v1.webp", normal: 0.8, roughness: 80 },
+  { name: "sport-court-v1", source: "sport-court-v1.webp", normal: 1.2, roughness: 180 },
 ]
 
 async function sourcePixels(source) {

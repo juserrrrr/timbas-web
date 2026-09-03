@@ -28,6 +28,7 @@ import {
   type OfficeMap,
 } from "@/lib/services/games"
 import { toast } from "@/lib/toast"
+import { RealAreaPicker, type GeoBounds } from "./real-area-picker"
 
 const DRAFT_KEY = "timbas.deducao.map-draft.v1"
 const FINISHES: Array<{ value: NonNullable<MapRoom["finish"]>; label: string }> = [
@@ -40,6 +41,9 @@ const FINISHES: Array<{ value: NonNullable<MapRoom["finish"]>; label: string }> 
   { value: "server", label: "Piso técnico" },
   { value: "pantry", label: "Cerâmica" },
   { value: "concrete", label: "Concreto" },
+  { value: "grass", label: "Grama" },
+  { value: "water", label: "Água/piscina" },
+  { value: "sport", label: "Quadra esportiva" },
 ]
 const ROOM_COLORS: Record<NonNullable<MapRoom["finish"]>, string> = {
   vinyl: "#6387a3",
@@ -51,6 +55,9 @@ const ROOM_COLORS: Record<NonNullable<MapRoom["finish"]>, string> = {
   server: "#397895",
   pantry: "#5a9479",
   concrete: "#747b84",
+  grass: "#4f8f47",
+  water: "#26b9cf",
+  sport: "#378a91",
 }
 
 type DragState = {
@@ -97,24 +104,56 @@ function pointInside(map: OfficeMap, point: { x: number; z: number; level?: numb
   )
 }
 
+function pointInWater(map: OfficeMap, point: { x: number; z: number; level?: number }) {
+  return map.rooms.some(
+    (room) =>
+      room.kind === "agua" &&
+      (room.level ?? 0) === (point.level ?? 0) &&
+      point.x >= room.rect.x &&
+      point.x <= room.rect.x + room.rect.w &&
+      point.z >= room.rect.z &&
+      point.z <= room.rect.z + room.rect.d,
+  )
+}
+
+function safePoint(map: OfficeMap, room: MapRoom, xRatio = 0.5, zRatio = 0.5) {
+  const ratios = [
+    [xRatio, zRatio],
+    [0.25, 0.25],
+    [0.75, 0.25],
+    [0.25, 0.75],
+    [0.75, 0.75],
+    [0.5, 0.25],
+    [0.5, 0.75],
+  ]
+  for (const [rx, rz] of ratios) {
+    const point = {
+      x: snap(room.rect.x + room.rect.w * rx),
+      z: snap(room.rect.z + room.rect.d * rz),
+      level: room.level ?? 0,
+    }
+    if (!pointInWater(map, point)) return point
+  }
+  return { x: snap(room.rect.x + 1), z: snap(room.rect.z + 1), level: room.level ?? 0 }
+}
+
 function preparePlayable(source: OfficeMap): OfficeMap {
   const map = cloneMap(source)
-  const rooms = map.rooms.filter((room) => room.kind !== "terraco")
+  const rooms = map.rooms.filter((room) => room.kind !== "terraco" && room.kind !== "agua")
   const ground = rooms.filter((room) => (room.level ?? 0) === 0)
-  const meetingRoom = [...ground].sort((a, b) => b.rect.w * b.rect.d - a.rect.w * a.rect.d)[0]
+  const purposeBuilt = ground.filter((room) => room.kind === "sala" || room.kind === "campo")
+  const meetingRoom = [...(purposeBuilt.length > 0 ? purposeBuilt : ground)].sort(
+    (a, b) => b.rect.w * b.rect.d - a.rect.w * a.rect.d,
+  )[0]
   if (!meetingRoom) return map
 
-  const center = {
-    x: meetingRoom.rect.x + meetingRoom.rect.w / 2,
-    z: meetingRoom.rect.z + meetingRoom.rect.d / 2,
-    level: 0,
-  }
+  const center = safePoint(map, meetingRoom)
   const spacing = Math.max(0.9, Math.min(1.5, Math.min(meetingRoom.rect.w, meetingRoom.rect.d) / 7))
   const candidates = Array.from({ length: 12 }, (_, index) => ({
     x: snap(center.x + (index % 4 - 1.5) * spacing),
     z: snap(center.z + (Math.floor(index / 4) - 1) * spacing),
     level: 0,
-  })).filter((point) => pointInside(map, point))
+  })).filter((point) => pointInside(map, point) && !pointInWater(map, point))
   map.spawns = candidates.length >= 4 ? candidates : [{ ...center }, { ...center }, { ...center }, { ...center }]
   map.emergency = center
 
@@ -127,21 +166,23 @@ function preparePlayable(source: OfficeMap): OfficeMap {
       level: 0,
       dir: angle + Math.PI / 2,
     }
-  }).filter((point) => pointInside(map, point))
+  }).filter((point) => pointInside(map, point) && !pointInWater(map, point))
   while (map.meetingSeats.length < 4) map.meetingSeats.push({ ...center, dir: 0 })
 
-  const taskRooms = rooms.length > 0 ? rooms : [meetingRoom]
+  const preferredTaskRooms = rooms.filter((room) => room.kind === "sala" || room.kind === "campo")
+  const taskRooms = preferredTaskRooms.length > 0 ? preferredTaskRooms : rooms.length > 0 ? rooms : [meetingRoom]
   const taskKinds = ["cabos", "senha", "arquivo", "estoque", "cafe", "impressora", "rack"]
   map.taskSpots = Array.from({ length: Math.max(4, Math.min(16, taskRooms.length * 2)) }, (_, index) => {
     const room = taskRooms[index % taskRooms.length]
     const lane = Math.floor(index / taskRooms.length)
+    const point = safePoint(map, room, lane % 2 === 0 ? 0.38 : 0.62, lane % 2 === 0 ? 0.42 : 0.58)
     return {
       id: `tarefa-${index + 1}`,
       kind: taskKinds[index % taskKinds.length],
       room: room.id,
       label: `Tarefa em ${room.name}`,
-      x: snap(room.rect.x + room.rect.w * (lane % 2 === 0 ? 0.38 : 0.62)),
-      z: snap(room.rect.z + room.rect.d * (lane % 2 === 0 ? 0.42 : 0.58)),
+      x: point.x,
+      z: point.z,
       level: room.level ?? 0,
     }
   })
@@ -183,8 +224,22 @@ function newMap(): OfficeMap {
 }
 
 function coordinatesFromGoogleUrl(value: string) {
-  const match = value.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) ?? value.match(/[?&](?:q|query)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
-  return match ? { latitude: Number(match[1]), longitude: Number(match[2]) } : null
+  const normalized = value.replace(/\+/g, " ")
+  let decoded = normalized
+  try {
+    decoded = decodeURIComponent(normalized)
+  } catch {
+    // Um link incompleto pode conter "%" enquanto ainda está sendo colado.
+  }
+  const match =
+    decoded.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) ??
+    decoded.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/) ??
+    decoded.match(/[?&](?:q|query)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) ??
+    decoded.match(/\/maps\/(?:search|place)\/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/)
+  if (!match) return null
+  const latitude = Number(match[1])
+  const longitude = Number(match[2])
+  return Math.abs(latitude) <= 85.05112878 && Math.abs(longitude) <= 180 ? { latitude, longitude } : null
 }
 
 function safeHttpsUrl(value: string): string | null {
@@ -284,43 +339,185 @@ function mapFromPolygons(polygons: Array<Array<[number, number]>>, scale: number
   return preparePlayable(base)
 }
 
-function resizeMap(source: OfficeMap, width: number, depth: number): OfficeMap {
-  const map = cloneMap(source)
-  const previous = map.bounds
-  const nextWidth = Math.max(10, Math.min(250, snap(width)))
-  const nextDepth = Math.max(10, Math.min(250, snap(depth)))
-  const scaleX = nextWidth / previous.w
-  const scaleZ = nextDepth / previous.d
-  const movePoint = <T extends { x: number; z: number }>(point: T): T => ({
-    ...point,
-    x: snap(previous.x + (point.x - previous.x) * scaleX),
-    z: snap(previous.z + (point.z - previous.z) * scaleZ),
+interface OsmElement {
+  type: "way"
+  id: number
+  tags?: Record<string, string>
+  geometry?: Array<{ lat: number; lon: number }>
+}
+
+interface OsmResponse {
+  elements?: OsmElement[]
+}
+
+async function fetchOsmArea(bounds: GeoBounds): Promise<OsmElement[]> {
+  const bbox = `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`
+  const query = `[out:json][timeout:25];(
+    way["building"](${bbox});
+    way["leisure"~"^(swimming_pool|pitch|playground|garden|park)$"](${bbox});
+    way["natural"="water"](${bbox});
+    way["water"](${bbox});
+    way["landuse"~"^(grass|recreation_ground|village_green)$"](${bbox});
+    way["amenity"="parking"](${bbox});
+    way["highway"~"^(footway|path|pedestrian|service)$"](${bbox});
+  );out tags geom;`
+  const endpoints = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
+  let lastError: unknown = null
+
+  for (const endpoint of endpoints) {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 32_000)
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body: new URLSearchParams({ data: query }),
+        signal: controller.signal,
+      })
+      if (!response.ok) throw new Error(`Serviço cartográfico respondeu ${response.status}.`)
+      const payload = (await response.json()) as OsmResponse
+      return (payload.elements ?? []).filter((item) => item.type === "way" && (item.geometry?.length ?? 0) >= 2)
+    } catch (error) {
+      lastError = error
+    } finally {
+      window.clearTimeout(timeout)
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Não foi possível consultar os dados desta área.")
+}
+
+function mapFromOsm(
+  elements: OsmElement[],
+  geoBounds: GeoBounds,
+  requestedScale: number,
+  referenceUrl: string,
+): { map: OfficeMap; scale: number; counts: Record<string, number> } {
+  const centerLatitude = (geoBounds.north + geoBounds.south) / 2
+  const centerLongitude = (geoBounds.east + geoBounds.west) / 2
+  const metersWide = Math.abs(geoBounds.east - geoBounds.west) * 111_320 * Math.cos((centerLatitude * Math.PI) / 180)
+  const metersDeep = Math.abs(geoBounds.north - geoBounds.south) * 110_540
+  const desiredScale = Number.isFinite(requestedScale) ? requestedScale : 0.7
+  const scale = Math.max(0.05, Math.min(4, desiredScale, 242 / Math.max(metersWide, metersDeep)))
+  const padding = 3
+  const mapWidth = Math.max(12, snap(metersWide * scale + padding * 2))
+  const mapDepth = Math.max(12, snap(metersDeep * scale + padding * 2))
+  const project = ({ lat, lon }: { lat: number; lon: number }) => ({
+    x: (lon - geoBounds.west) * 111_320 * Math.cos((centerLatitude * Math.PI) / 180) * scale + padding,
+    z: (geoBounds.north - lat) * 110_540 * scale + padding,
   })
-  map.rooms = map.rooms.map((room) => ({
-    ...room,
-    rect: {
-      x: snap(previous.x + (room.rect.x - previous.x) * scaleX),
-      z: snap(previous.z + (room.rect.z - previous.z) * scaleZ),
-      w: Math.max(2, snap(room.rect.w * scaleX)),
-      d: Math.max(2, snap(room.rect.d * scaleZ)),
-    },
-  }))
-  map.props = map.props.map(movePoint)
-  map.taskSpots = map.taskSpots.map(movePoint)
-  map.vents = map.vents.map(movePoint)
-  map.spawns = map.spawns.map(movePoint)
-  map.meetingSeats = map.meetingSeats.map(movePoint)
-  map.emergency = movePoint(map.emergency)
-  map.stairs = map.stairs.map((stair) => ({
-    ...movePoint(stair),
-    targetX: snap(previous.x + (stair.targetX - previous.x) * scaleX),
-    targetZ: snap(previous.z + (stair.targetZ - previous.z) * scaleZ),
-  }))
-  map.bounds.w = nextWidth
-  map.bounds.d = nextDepth
-  map.walls = []
-  map.obstacles = []
-  return map
+  const rectFrom = (points: Array<{ x: number; z: number }>, extra = 0) => {
+    const left = Math.min(...points.map((point) => point.x)) - extra
+    const right = Math.max(...points.map((point) => point.x)) + extra
+    const top = Math.min(...points.map((point) => point.z)) - extra
+    const bottom = Math.max(...points.map((point) => point.z)) + extra
+    const x = Math.max(0, Math.min(mapWidth - 2, snap(left)))
+    const z = Math.max(0, Math.min(mapDepth - 2, snap(top)))
+    return {
+      x,
+      z,
+      w: Math.max(2, Math.min(mapWidth - x, snap(Math.min(mapWidth, right) - x))),
+      d: Math.max(2, Math.min(mapDepth - z, snap(Math.min(mapDepth, bottom) - z))),
+    }
+  }
+  const room = (
+    id: string,
+    name: string,
+    rect: MapRoom["rect"],
+    kind: MapRoom["kind"],
+    finish: NonNullable<MapRoom["finish"]>,
+    floor: string,
+    light: string,
+    doors: MapRoom["doors"] = [],
+  ): MapRoom => ({ id, name, rect, kind, level: 0, finish, floor, light, doors })
+
+  const surfaces: MapRoom[] = []
+  const waters: MapRoom[] = []
+  const buildings: MapRoom[] = []
+  let pathParts = 0
+  const counts = { construcoes: 0, agua: 0, campos: 0, caminhos: 0 }
+
+  for (const element of elements.slice(0, 240)) {
+    const geometry = (element.geometry ?? []).filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon))
+    if (geometry.length < 2) continue
+    const points = geometry.map(project)
+    const tags = element.tags ?? {}
+    const id = `osm-${element.id}`
+
+    if (tags.building) {
+      if (buildings.length >= 32) continue
+      const rect = rectFrom(points)
+      const doorWidth = Math.min(2.8, Math.max(1.2, rect.w - 0.4))
+      buildings.push(
+        room(
+          id,
+          tags.name || (tags.building === "house" ? "Casa" : "Construção"),
+          rect,
+          "sala",
+          tags.building === "house" ? "wood" : "terrazzo",
+          tags.building === "house" ? "#a98265" : "#87929d",
+          "#ffd38a",
+          [{ side: "south", at: Math.max(0, (rect.w - doorWidth) / 2), width: doorWidth }],
+        ),
+      )
+      counts.construcoes += 1
+      continue
+    }
+
+    if (tags.leisure === "swimming_pool" || tags.natural === "water" || tags.water) {
+      if (waters.length >= 12) continue
+      waters.push(room(id, tags.name || "Piscina/água", rectFrom(points), "agua", "water", "#21b6d0", "#8cf3ff"))
+      counts.agua += 1
+      continue
+    }
+
+    if (tags.leisure === "pitch") {
+      surfaces.push(room(id, tags.name || "Campo/quadra", rectFrom(points), "campo", "sport", "#3f8f91", "#d7fff7"))
+      counts.campos += 1
+      continue
+    }
+
+    if (["grass", "recreation_ground", "village_green"].includes(tags.landuse) || ["garden", "park", "playground"].includes(tags.leisure)) {
+      surfaces.push(room(id, tags.name || "Área verde", rectFrom(points), "campo", "grass", "#57924d", "#dfffcf"))
+      counts.campos += 1
+      continue
+    }
+
+    if (tags.amenity === "parking") {
+      surfaces.push(room(id, tags.name || "Estacionamento", rectFrom(points), "externa", "concrete", "#69727c", "#dce7ee"))
+      continue
+    }
+
+    if (tags.highway && pathParts < 20) {
+      const thickness = Math.max(1, 1.7 * scale)
+      for (let index = 1; index < points.length && pathParts < 20; index += 1) {
+        const rect = rectFrom([points[index - 1], points[index]], thickness)
+        surfaces.push(room(`${id}-${index}`, tags.name || "Caminho", rect, "externa", "concrete", "#737b82", "#e8f0f4"))
+        pathParts += 1
+        counts.caminhos += 1
+      }
+    }
+  }
+
+  const base = newMap()
+  base.name = `Local real ${centerLatitude.toFixed(5)}, ${centerLongitude.toFixed(5)}`
+  base.bounds = { x: 0, z: 0, w: mapWidth, d: mapDepth }
+  base.rooms = [
+    room("area-externa", "Área externa", { x: padding, z: padding, w: mapWidth - padding * 2, d: mapDepth - padding * 2 }, "externa", "grass", "#528d4c", "#d8f6cf"),
+    ...surfaces.slice(0, 30),
+    ...waters,
+    ...buildings,
+  ].slice(0, 78)
+  base.props = []
+  base.vents = []
+  base.stairs = []
+  base.source = {
+    label: "Área gerada de dados cartográficos do OpenStreetMap",
+    referenceUrl,
+    latitude: centerLatitude,
+    longitude: centerLongitude,
+    gameUnitsPerMeter: scale,
+  }
+  return { map: preparePlayable(base), scale, counts }
 }
 
 const inputClass = "h-9 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-white outline-none transition focus:border-cyan-400/50"
@@ -332,10 +529,9 @@ export default function GameMapEditorPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [generatingArea, setGeneratingArea] = useState(false)
   const [referenceImage, setReferenceImage] = useState<string | null>(null)
   const [referenceOpacity, setReferenceOpacity] = useState(0.45)
-  const [realWidth, setRealWidth] = useState(80)
-  const [realDepth, setRealDepth] = useState(60)
   const [realScale, setRealScale] = useState(0.7)
   const [referenceUrl, setReferenceUrl] = useState("")
   const [rawJson, setRawJson] = useState("")
@@ -368,6 +564,14 @@ export default function GameMapEditorPage() {
 
   const rooms = useMemo(() => map?.rooms.filter((room) => (room.level ?? 0) === level) ?? [], [level, map])
   const selected = map?.rooms.find((room) => room.id === selectedId) ?? null
+  const referenceCoordinates = useMemo(
+    () =>
+      coordinatesFromGoogleUrl(referenceUrl) ?? {
+        latitude: map?.source?.latitude ?? -12.597991,
+        longitude: map?.source?.longitude ?? -38.961055,
+      },
+    [map?.source?.latitude, map?.source?.longitude, referenceUrl],
+  )
 
   const updateMap = (recipe: (next: OfficeMap) => void) => {
     setMap((current) => {
@@ -537,6 +741,30 @@ export default function GameMapEditorPage() {
     }
   }
 
+  const generateRealArea = async (bounds: GeoBounds) => {
+    setGeneratingArea(true)
+    try {
+      const elements = await fetchOsmArea(bounds)
+      const generated = mapFromOsm(elements, bounds, realScale, safeHttpsUrl(referenceUrl) ?? "https://www.openstreetmap.org")
+      setMap(generated.map)
+      setLevel(0)
+      setSelectedId(null)
+      const total = Object.values(generated.counts).reduce((sum, value) => sum + value, 0)
+      toast.success("Cenário real gerado", {
+        description:
+          total > 0
+            ? `${generated.counts.construcoes} construções, ${generated.counts.agua} áreas de água, ${generated.counts.campos} campos e ${generated.counts.caminhos} trechos de caminho. Escala ${generated.scale.toFixed(2)}x.`
+            : "A área não tinha elementos mapeados; foi criado o terreno externo para você editar.",
+      })
+    } catch (error) {
+      toast.error("Não deu para gerar o cenário", {
+        description: error instanceof Error ? error.message : "Tente selecionar uma área menor.",
+      })
+    } finally {
+      setGeneratingArea(false)
+    }
+  }
+
   if (loading) return <div className="flex min-h-[55vh] items-center justify-center"><Spinner className="size-6 text-cyan-400" /></div>
   if (!map) return <InlineNotice tone="danger">Você não tem acesso ao criador ou a API não respondeu.</InlineNotice>
 
@@ -623,7 +851,7 @@ export default function GameMapEditorPage() {
                 {(["x", "z", "w", "d"] as const).map((field) => <label key={field} className={labelClass}>{field.toUpperCase()}<input type="number" step="0.5" min={field === "w" || field === "d" ? 2 : undefined} className={inputClass} value={selected.rect[field]} onChange={(event) => updateRoom({ rect: { ...selected.rect, [field]: Number(event.target.value) } })} /></label>)}
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <label className={labelClass}>Tipo<select className={inputClass} value={selected.kind} onChange={(event) => updateRoom({ kind: event.target.value as MapRoom["kind"] })}><option value="sala">Sala</option><option value="corredor">Corredor</option><option value="terraco">Terraço</option></select></label>
+                <label className={labelClass}>Tipo<select className={inputClass} value={selected.kind} onChange={(event) => updateRoom({ kind: event.target.value as MapRoom["kind"] })}><option value="sala">Construção/sala</option><option value="corredor">Corredor interno</option><option value="terraco">Terraço elevado</option><option value="externa">Área externa</option><option value="agua">Piscina/água</option><option value="campo">Campo/quadra</option></select></label>
                 <label className={labelClass}>Piso<select className={inputClass} value={selected.finish} onChange={(event) => updateRoom({ finish: event.target.value as MapRoom["finish"] })}>{FINISHES.map((finish) => <option key={finish.value} value={finish.value}>{finish.label}</option>)}</select></label>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -653,18 +881,29 @@ export default function GameMapEditorPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <SectionCard icon={MapPinned} title="Local real" description="Use uma planta, KML ou GeoJSON como referência e converta metros para a escala do jogo." accent="emerald" bodyClassName="space-y-3">
-          <label className={labelClass}>Link completo do Google Maps<input className={inputClass} placeholder="https://www.google.com/maps/.../@-23.5,-46.6,..." value={referenceUrl} onChange={(event) => setReferenceUrl(event.target.value)} /></label>
-          <div className="grid grid-cols-3 gap-2"><label className={labelClass}>Largura real<input type="number" className={inputClass} value={realWidth} onChange={(event) => setRealWidth(Number(event.target.value))} /></label><label className={labelClass}>Profundidade real<input type="number" className={inputClass} value={realDepth} onChange={(event) => setRealDepth(Number(event.target.value))} /></label><label className={labelClass}>Escala<input type="number" step="0.05" min="0.05" max="4" className={inputClass} value={realScale} onChange={(event) => setRealScale(Number(event.target.value))} /></label></div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => { const coords = coordinatesFromGoogleUrl(referenceUrl); setMap((current) => { if (!current) return current; const next = resizeMap(current, realWidth * realScale, realDepth * realScale); next.source = { ...next.source, referenceUrl: safeHttpsUrl(referenceUrl) ?? undefined, gameUnitsPerMeter: realScale, ...(coords ?? {}) }; return next }); toast.success("Escala aplicada") }}><MapPinned className="mr-1 h-3.5 w-3.5" />Aplicar escala</Button>
-            {safeHttpsUrl(referenceUrl) && <Button size="sm" variant="outline" asChild><a href={safeHttpsUrl(referenceUrl) ?? undefined} target="_blank" rel="noreferrer"><ExternalLink className="mr-1 h-3.5 w-3.5" />Abrir referência</a></Button>}
-            <label className="inline-flex h-8 cursor-pointer items-center rounded-md border border-white/10 px-3 text-xs font-bold text-gray-300 hover:bg-white/[0.05]"><ImagePlus className="mr-1.5 h-3.5 w-3.5" />Imagem local<input type="file" accept="image/*" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file && file.size <= 12 * 1024 * 1024) setReferenceImage(URL.createObjectURL(file)); else if (file) toast.error("A imagem pode ter no máximo 12 MB.") }} /></label>
-            <label className="inline-flex h-8 cursor-pointer items-center rounded-md border border-white/10 px-3 text-xs font-bold text-gray-300 hover:bg-white/[0.05]"><Upload className="mr-1.5 h-3.5 w-3.5" />KML/GeoJSON<input type="file" accept=".kml,.geojson,application/geo+json" className="hidden" onChange={(event) => void importGeoFile(event.target.files?.[0])} /></label>
-          </div>
-          {referenceImage && <label className={labelClass}>Opacidade da referência<input type="range" min="0.1" max="0.9" step="0.05" value={referenceOpacity} onChange={(event) => setReferenceOpacity(Number(event.target.value))} className="w-full accent-cyan-400" /></label>}
-          <p className="text-[11px] leading-relaxed text-gray-600">A imagem fica somente neste navegador e não é publicada. KML/GeoJSON vira retângulos editáveis na escala escolhida; contornos irregulares são aproximados pelo formato suportado pelo jogo.</p>
-        </SectionCard>
+        <div className="xl:col-span-2">
+          <SectionCard icon={MapPinned} title="Gerar cenário de um local real" description="Cole a localização, selecione a área diretamente no mapa e converta construções, piscina, campos e caminhos para o jogo." accent="emerald" bodyClassName="space-y-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px_auto] lg:items-end">
+              <label className={labelClass}>Link completo do Google Maps<input className={inputClass} placeholder="https://www.google.com/maps/.../@-12.59,-38.96,..." value={referenceUrl} onChange={(event) => setReferenceUrl(event.target.value)} /></label>
+              <label className={labelClass}>Escala do jogo<input type="number" step="0.05" min="0.05" max="4" className={inputClass} value={realScale} onChange={(event) => setRealScale(Number(event.target.value))} /></label>
+              {safeHttpsUrl(referenceUrl) && <Button size="sm" variant="outline" asChild><a href={safeHttpsUrl(referenceUrl) ?? undefined} target="_blank" rel="noreferrer"><ExternalLink className="mr-1 h-3.5 w-3.5" />Abrir no Google</a></Button>}
+            </div>
+
+            <RealAreaPicker
+              latitude={referenceCoordinates.latitude}
+              longitude={referenceCoordinates.longitude}
+              busy={generatingArea}
+              onGenerate={(bounds) => void generateRealArea(bounds)}
+            />
+
+            <div className="flex flex-wrap gap-2 border-t border-white/[0.07] pt-4">
+              <label className="inline-flex h-8 cursor-pointer items-center rounded-md border border-white/10 px-3 text-xs font-bold text-gray-300 hover:bg-white/[0.05]"><ImagePlus className="mr-1.5 h-3.5 w-3.5" />Usar planta como fundo<input type="file" accept="image/*" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file && file.size <= 12 * 1024 * 1024) setReferenceImage(URL.createObjectURL(file)); else if (file) toast.error("A imagem pode ter no máximo 12 MB.") }} /></label>
+              <label className="inline-flex h-8 cursor-pointer items-center rounded-md border border-white/10 px-3 text-xs font-bold text-gray-300 hover:bg-white/[0.05]"><Upload className="mr-1.5 h-3.5 w-3.5" />Importar KML/GeoJSON<input type="file" accept=".kml,.geojson,application/geo+json" className="hidden" onChange={(event) => void importGeoFile(event.target.files?.[0])} /></label>
+            </div>
+            {referenceImage && <label className={labelClass}>Opacidade da planta<input type="range" min="0.1" max="0.9" step="0.05" value={referenceOpacity} onChange={(event) => setReferenceOpacity(Number(event.target.value))} className="w-full accent-cyan-400" /></label>}
+            <p className="text-[11px] leading-relaxed text-gray-500">O link do Google posiciona o seletor. A geometria jogável vem dos dados abertos do OpenStreetMap e vira objetos editáveis; nenhuma imagem de satélite é copiada para o jogo.</p>
+          </SectionCard>
+        </div>
 
         <SectionCard icon={FileJson} title="Arquivo e manutenção" description="Leve o mapa para outro ambiente ou edite recursos avançados no JSON." accent="slate" bodyClassName="space-y-3">
           <div className="flex flex-wrap gap-2">
