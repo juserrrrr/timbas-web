@@ -44,10 +44,9 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
         #endif`,
       )
 
-    // Fora do alcance o cenário não apaga: ele afunda numa penumbra azulada e
-    // continua legível como silhueta. Quem some de verdade é gente, e disso
-    // quem cuida é a cena, escondendo o boneco. Apagar o escritório inteiro só
-    // fazia o jogador andar às cegas sem esconder informação nenhuma.
+    // O cenário inteiro permanece legível. Alcance e paredes continuam
+    // decidindo quem pode ver outro jogador, mas não pintam o prédio de preto.
+    // No apagão a escuridão vem das luzes físicas desligadas.
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "void main() {",
@@ -86,10 +85,7 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
           }
         }
 
-        float visionDist = distance(vVisionPos.xz, uFocus.xz);
-        float visible = 1.0 - smoothstep(uInner, uOuter, visionDist);
-        vec3 penumbra = gl_FragColor.rgb * 0.24 + vec3(0.065, 0.082, 0.118);
-        gl_FragColor.rgb = mix(penumbra, gl_FragColor.rgb, visible);`,
+        gl_FragColor.rgb = max(gl_FragColor.rgb, vec3(0.012));`,
       )
   }
   // Materiais com onBeforeCompile diferente precisam de programas diferentes, e

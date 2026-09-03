@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
+import { useTexture } from "@react-three/drei"
+import { useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js"
@@ -13,7 +15,11 @@ import { useVisionMaterial } from "./vision-material"
 /// cima de tudo e o esconde-esconde acaba. Na câmera de cima ela precisa ficar
 /// na altura do peito, senão vira um muro que engole a sala. É a mesma parede
 /// nos dois casos para a colisão, só o desenho encolhe.
-const WALL_HEIGHT: Record<View, number> = { primeira: 3.2, isometrica: 1.55 }
+const WALL_HEIGHT: Record<View, number> = { primeira: 3.2, isometrica: 2.15 }
+export const FLOOR_HEIGHT = 4.2
+const STAIR_RUN = 6
+const STAIR_WIDTH = 2.8
+const STAIR_STEPS = 18
 const TRIM_HEIGHT = 0.16
 const BASEBOARD_HEIGHT = 0.22
 
@@ -63,13 +69,22 @@ function solidSpans(length: number, bays: [number, number][]): [number, number][
   return spans
 }
 
-/// Cada sala é uma laje solta no vazio. A espessura é o que dá a ela cara de
-/// peça pousada em cima de nada, em vez de buraco recortado num chão infinito.
+/// Espessura estrutural das lajes. No piso superior ela é recortada nos vãos
+/// das escadas para os dois andares formarem um prédio contínuo.
 const SLAB_SALA = 0.6
 const SLAB_CORREDOR = 0.36
 const PLINTH_OVERHANG = 0.5
 
-type Box = [w: number, h: number, d: number, x: number, y: number, z: number, tone?: string]
+type Box = [
+  w: number,
+  h: number,
+  d: number,
+  x: number,
+  y: number,
+  z: number,
+  tone?: string,
+  rotation?: [number, number, number],
+]
 
 interface PropSpec {
   color: string
@@ -327,8 +342,8 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
     rotation: [number, number, number] = [Math.PI / 2, 0, 0],
   ) => add(new THREE.TorusGeometry(radius, tube, 8, 18), tone, position, rotation)
 
-  for (const [w, h, d, x, y, z, tone] of spec.boxes) {
-    box([w, h, d], [x, y, z], tone ?? spec.color)
+  for (const [w, h, d, x, y, z, tone, rotation] of spec.boxes) {
+    box([w, h, d], [x, y, z], tone ?? spec.color, rotation)
   }
 
   if (kind === "desk") {
@@ -484,21 +499,48 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
 }
 
 const STAIR_SPEC: PropSpec = {
-  color: "#c8d1dc",
+  color: "#9ca7b6",
   boxes: [
-    [0.08, 1.45, 3.8, -1.45, 0.78, 0, "#65758a"],
-    [0.08, 1.45, 3.8, 1.45, 0.78, 0, "#65758a"],
-    ...Array.from({ length: 9 }, (_, index) =>
+    ...Array.from({ length: STAIR_STEPS }, (_, index) =>
       [
-        2.8,
-        0.16 + index * 0.16,
-        0.42,
+        STAIR_WIDTH,
+        ((index + 1) * FLOOR_HEIGHT) / STAIR_STEPS,
+        STAIR_RUN / STAIR_STEPS + 0.035,
         0,
-        (0.16 + index * 0.16) / 2,
-        1.68 - index * 0.42,
-        index % 2 ? "#d5dce5" : "#c6d0dc",
+        ((index + 1) * FLOOR_HEIGHT) / STAIR_STEPS / 2,
+        STAIR_RUN / 2 - ((index + 0.5) * STAIR_RUN) / STAIR_STEPS,
+        index % 2 ? "#9aa6b5" : "#8794a5",
       ] as Box,
     ),
+    ...[0, 5, 10, 15, 17].flatMap((index) => {
+      const stepTop = ((index + 1) * FLOOR_HEIGHT) / STAIR_STEPS
+      const z = STAIR_RUN / 2 - ((index + 0.5) * STAIR_RUN) / STAIR_STEPS
+      return [
+        [0.075, 1.05, 0.075, -STAIR_WIDTH / 2, stepTop + 0.525, z, "#586576"],
+        [0.075, 1.05, 0.075, STAIR_WIDTH / 2, stepTop + 0.525, z, "#586576"],
+      ] as Box[]
+    }),
+    [
+      0.085,
+      0.085,
+      Math.hypot(STAIR_RUN, FLOOR_HEIGHT),
+      -STAIR_WIDTH / 2,
+      FLOOR_HEIGHT / 2 + 1.02,
+      0,
+      "#c4cbd4",
+      [Math.atan2(FLOOR_HEIGHT, STAIR_RUN), 0, 0],
+    ],
+    [
+      0.085,
+      0.085,
+      Math.hypot(STAIR_RUN, FLOOR_HEIGHT),
+      STAIR_WIDTH / 2,
+      FLOOR_HEIGHT / 2 + 1.02,
+      0,
+      "#c4cbd4",
+      [Math.atan2(FLOOR_HEIGHT, STAIR_RUN), 0, 0],
+    ],
+    [STAIR_WIDTH, 1.05, 0.075, 0, FLOOR_HEIGHT + 0.525, STAIR_RUN / 2, "#586576"],
   ],
 }
 
@@ -519,6 +561,128 @@ interface RoomLightSource {
   color: string
   intensity: number
   distance: number
+}
+
+type FloorFinish = NonNullable<OfficeMap["rooms"][number]["finish"]>
+
+interface FloorPatch {
+  x: number
+  z: number
+  w: number
+  d: number
+  finish: FloorFinish
+  tint: string
+  slab: number
+}
+
+const FLOOR_TEXTURE_PATHS: Record<FloorFinish, string> = {
+  carpet: "/images/games/deducao/textures/carpet.png",
+  wood: "/images/games/deducao/textures/wood.png",
+  server: "/images/games/deducao/textures/server-floor.png",
+  terrazzo: "/images/games/deducao/textures/terrazzo.png",
+  pantry: "/images/games/deducao/textures/pantry-tile.png",
+  concrete: "/images/games/deducao/textures/concrete.png",
+}
+
+const FLOOR_FINISHES = Object.keys(FLOOR_TEXTURE_PATHS) as FloorFinish[]
+
+function splitAroundHoles(
+  rect: { x: number; z: number; w: number; d: number },
+  holes: Array<{ x: number; z: number; w: number; d: number }>,
+) {
+  let pieces = [rect]
+  for (const hole of holes) {
+    pieces = pieces.flatMap((piece) => {
+      const left = Math.max(piece.x, hole.x)
+      const right = Math.min(piece.x + piece.w, hole.x + hole.w)
+      const top = Math.max(piece.z, hole.z)
+      const bottom = Math.min(piece.z + piece.d, hole.z + hole.d)
+      if (left >= right || top >= bottom) return [piece]
+
+      return [
+        { x: piece.x, z: piece.z, w: piece.w, d: top - piece.z },
+        { x: piece.x, z: bottom, w: piece.w, d: piece.z + piece.d - bottom },
+        { x: piece.x, z: top, w: left - piece.x, d: bottom - top },
+        { x: right, z: top, w: piece.x + piece.w - right, d: bottom - top },
+      ].filter((part) => part.w > 0.04 && part.d > 0.04)
+    })
+  }
+  return pieces
+}
+
+function stairHole(stair: OfficeMap["stairs"][number]) {
+  const vertical = Math.abs(stair.targetZ - stair.z) >= Math.abs(stair.targetX - stair.x)
+  const side = STAIR_WIDTH / 2 + 0.28
+  const end = 0.38
+  return {
+    x: Math.min(stair.x, stair.targetX) - (vertical ? side : end),
+    z: Math.min(stair.z, stair.targetZ) - (vertical ? end : side),
+    w: Math.abs(stair.targetX - stair.x) + (vertical ? side * 2 : end * 2),
+    d: Math.abs(stair.targetZ - stair.z) + (vertical ? end * 2 : side * 2),
+  }
+}
+
+function TexturedFloor({
+  patch,
+  source,
+  quality,
+}: {
+  patch: FloorPatch
+  source: THREE.Texture
+  quality: Quality
+}) {
+  const gl = useThree((state) => state.gl)
+  const texture = useMemo(() => {
+    const clone = source.clone()
+    clone.colorSpace = THREE.SRGBColorSpace
+    clone.wrapS = THREE.RepeatWrapping
+    clone.wrapT = THREE.RepeatWrapping
+    const tile = patch.finish === "wood" ? 4.2 : patch.finish === "server" ? 3.2 : 2.8
+    clone.repeat.set(patch.w / tile, patch.d / tile)
+    clone.anisotropy = quality === "alto" ? gl.capabilities.getMaxAnisotropy() : quality === "medio" ? 8 : 2
+    clone.minFilter = THREE.LinearMipmapLinearFilter
+    clone.magFilter = THREE.LinearFilter
+    clone.needsUpdate = true
+    return clone
+  }, [gl, patch.d, patch.finish, patch.w, quality, source])
+
+  useEffect(() => () => texture.dispose(), [texture])
+
+  return (
+    <mesh
+      position={[patch.x + patch.w / 2, 0.018, patch.z + patch.d / 2]}
+      rotation-x={-Math.PI / 2}
+      receiveShadow
+    >
+      <planeGeometry args={[patch.w, patch.d]} />
+      <meshStandardMaterial
+        map={texture}
+        color={patch.tint}
+        roughness={patch.finish === "wood" ? 0.68 : patch.finish === "server" ? 0.58 : 0.9}
+        metalness={patch.finish === "server" ? 0.16 : 0.01}
+      />
+    </mesh>
+  )
+}
+
+function TexturedFloors({ patches, quality }: { patches: FloorPatch[]; quality: Quality }) {
+  const loaded = useTexture(FLOOR_FINISHES.map((finish) => FLOOR_TEXTURE_PATHS[finish]))
+  const textures = Object.fromEntries(
+    FLOOR_FINISHES.map((finish, index) => [finish, loaded[index]]),
+  ) as Record<FloorFinish, THREE.Texture>
+
+  return (
+    <>
+      {patches.map((patch, index) => (
+        <TexturedFloor
+          key={`${patch.finish}-${patch.x}-${patch.z}-${index}`}
+          patch={patch}
+          source={textures[patch.finish]}
+          quality={quality}
+        />
+      ))}
+    </>
+  )
 }
 
 function Instances({
@@ -567,19 +731,22 @@ export function OfficeWorld({
   blackout,
   view,
   level,
+  baseY = 0,
+  active = true,
 }: {
   map: OfficeMap
   quality: Quality
   blackout: boolean
   view: View
   level: number
+  baseY?: number
+  active?: boolean
 }) {
   const wallHeight = WALL_HEIGHT[view]
   const groundMaterial = useVisionMaterial({ color: "#253148", roughness: 0.98, surface: "piso" })
-  const floorMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.94, vertexColors: true, surface: "piso" })
   const plinthMaterial = useVisionMaterial({ color: "#39435c", roughness: 0.95, vertexColors: true })
   const rugMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.99, surface: "piso" })
-  const wallMaterial = useVisionMaterial({ color: "#ffffff", roughness: 0.76, vertexColors: true, surface: "parede" })
+  const wallMaterial = useVisionMaterial({ color: "#c4c9d0", roughness: 0.76, vertexColors: true, surface: "parede" })
   const baseboardMaterial = useVisionMaterial({ color: "#b0bccd", roughness: 0.7, metalness: 0.05 })
   const trimMaterial = useVisionMaterial({ color: "#ffffff", unlit: true })
   // Vidro fosco, não vidraça limpa, e isso é regra de jogo antes de ser gosto:
@@ -603,7 +770,7 @@ export function OfficeWorld({
     emissiveIntensity: blackout ? 0.02 : 1.35,
     roughness: 0.3,
   })
-  const ceilingSlabMaterial = useVisionMaterial({ color: "#e8edf4", roughness: 0.9, surface: "piso" })
+  const ceilingSlabMaterial = useVisionMaterial({ color: "#747d8b", roughness: 0.9, surface: "piso" })
   const serverAisleMaterial = useVisionMaterial({
     color: "#263b50",
     emissive: "#164e63",
@@ -619,7 +786,7 @@ export function OfficeWorld({
   })
 
   const ground = useMemo(
-    () => [
+    () => level === 0 ? [
       {
         x: map.bounds.x + map.bounds.w / 2,
         y: -0.72,
@@ -629,9 +796,15 @@ export function OfficeWorld({
         sy: 0.22,
         sz: map.bounds.d + 5,
       },
-    ],
-    [map.bounds],
+    ] : [],
+    [level, map.bounds],
   )
+
+  const ascendingStairs = useMemo(
+    () => (map.stairs ?? []).filter((stair) => stair.level === level && stair.targetLevel > stair.level),
+    [level, map.stairs],
+  )
+  const ceilingHoles = useMemo(() => ascendingStairs.map(stairHole), [ascendingStairs])
 
   const ceilingFixtures = useMemo(
     () =>
@@ -651,23 +824,56 @@ export function OfficeWorld({
               })
             }
           }
-          return fixtures
+          return fixtures.filter(
+            (fixture) =>
+              !ceilingHoles.some(
+                (hole) =>
+                  fixture.x >= hole.x &&
+                  fixture.x <= hole.x + hole.w &&
+                  fixture.z >= hole.z &&
+                  fixture.z <= hole.z + hole.d,
+              ),
+          )
         }),
-    [map.rooms, wallHeight, level],
+    [ceilingHoles, map.rooms, wallHeight, level],
   )
-
+  const floorHoles = useMemo(
+    () =>
+      (map.stairs ?? [])
+        .filter((stair) => stair.targetLevel === level && stair.targetLevel > stair.level)
+        .map(stairHole),
+    [level, map.stairs],
+  )
+  const floorPatches = useMemo<FloorPatch[]>(
+    () =>
+      map.rooms
+        .filter((room) => (room.level ?? 0) === level)
+        .flatMap((room) =>
+          splitAroundHoles(room.rect, floorHoles).map((part) => ({
+            ...part,
+            finish: room.finish ?? "terrazzo",
+            tint: (room.finish ?? "terrazzo") === "terrazzo" ? "#d7dbe0" : "#ffffff",
+            slab: room.kind === "corredor" ? SLAB_CORREDOR : SLAB_SALA,
+          })),
+        ),
+    [floorHoles, level, map.rooms],
+  )
   const ceilings = useMemo(
     () =>
-      map.rooms.filter((room) => (room.level ?? 0) === level && room.kind !== "terraco").map((room) => ({
-        x: room.rect.x + room.rect.w / 2,
-        y: wallHeight + 0.06,
-        z: room.rect.z + room.rect.d / 2,
-        rot: 0,
-        sx: room.rect.w,
-        sy: 0.12,
-        sz: room.rect.d,
-      })),
-    [map.rooms, wallHeight, level],
+      map.rooms
+        .filter((room) => (room.level ?? 0) === level && room.kind !== "terraco")
+        .flatMap((room) =>
+          splitAroundHoles(room.rect, ceilingHoles).map((part) => ({
+            x: part.x + part.w / 2,
+            y: wallHeight + 0.06,
+            z: part.z + part.d / 2,
+            rot: 0,
+            sx: part.w,
+            sy: 0.12,
+            sz: part.d,
+          })),
+        ),
+    [ceilingHoles, map.rooms, wallHeight, level],
   )
 
   const roomLights = useMemo<RoomLightSource[]>(() => {
@@ -740,34 +946,20 @@ export function OfficeWorld({
     ;(trimMaterial as THREE.MeshBasicMaterial).color.setScalar(target)
   }, [trimMaterial, blackout])
 
-  const floors = useMemo(
-    () =>
-      map.rooms.filter((room) => (room.level ?? 0) === level).map((room) => ({
-        x: room.rect.x + room.rect.w / 2,
-        z: room.rect.z + room.rect.d / 2,
-        rot: 0,
-        sx: room.rect.w,
-        sy: room.kind === "corredor" ? SLAB_CORREDOR : SLAB_SALA,
-        sz: room.rect.d,
-        color: room.floor,
-      })),
-    [map.rooms, level],
-  )
-
-  // A base escura que aparece só nas bordas da laje: é ela que faz a sala
-  // parecer pousada no vazio em vez de recortada nele.
+  // A base escura fica por baixo do piso texturizado. No andar superior ela
+  // também respeita o vão da escada, então nenhum degrau atravessa a laje.
   const plinths = useMemo(
     () =>
-      map.rooms.filter((room) => (room.level ?? 0) === level).map((room) => ({
-        x: room.rect.x + room.rect.w / 2,
-        y: -0.18,
-        z: room.rect.z + room.rect.d / 2,
+      floorPatches.map((patch) => ({
+        x: patch.x + patch.w / 2,
+        y: level === 0 ? -0.18 : -0.04,
+        z: patch.z + patch.d / 2,
         rot: 0,
-        sx: room.rect.w + PLINTH_OVERHANG * 2,
-        sy: (room.kind === "corredor" ? SLAB_CORREDOR : SLAB_SALA) + 0.75,
-        sz: room.rect.d + PLINTH_OVERHANG * 2,
+        sx: patch.w + (level === 0 ? PLINTH_OVERHANG * 2 : 0),
+        sy: level === 0 ? patch.slab + 0.75 : 0.22,
+        sz: patch.d + (level === 0 ? PLINTH_OVERHANG * 2 : 0),
       })),
-    [map.rooms, level],
+    [floorPatches, level],
   )
 
   // Um tapete no meio das salas grandes. Sem ele o miolo do cômodo é um vazio
@@ -805,6 +997,7 @@ export function OfficeWorld({
         sy: 1,
         sz: wall.maxZ - wall.minZ,
         accent: wall.accent ?? "#a5b4fc",
+        color: mix("#68717e", wall.accent ?? "#8b96a8", 0.16),
         style: wall.style ?? "parede",
       })),
     [map.walls, level],
@@ -904,8 +1097,12 @@ export function OfficeWorld({
   const stairPlacements = useMemo(
     () =>
       (map.stairs ?? [])
-        .filter((stair) => stair.level === level)
-        .map((stair) => ({ x: stair.x, z: stair.z, rot: stair.rot })),
+        .filter((stair) => stair.level === level && stair.targetLevel > stair.level)
+        .map((stair) => ({
+          x: (stair.x + stair.targetX) / 2,
+          z: (stair.z + stair.targetZ) / 2,
+          rot: Math.atan2(stair.x - stair.targetX, stair.z - stair.targetZ),
+        })),
     [map.stairs, level],
   )
 
@@ -920,13 +1117,6 @@ export function OfficeWorld({
     ],
     [level, map.emergency, map.stairs],
   )
-
-  const slabGeometry = useMemo(() => {
-    const box = new THREE.BoxGeometry(1, 1, 1)
-    box.translate(0, -0.5, 0)
-    shadeByFace(box, 1, 0.7, 0.36)
-    return box
-  }, [])
 
   const groundGeometry = useMemo(() => {
     const box = new THREE.BoxGeometry(1, 1, 1)
@@ -980,7 +1170,6 @@ export function OfficeWorld({
 
   useEffect(() => {
     const geometries = [
-      slabGeometry,
       groundGeometry,
       ceilingGeometry,
       plinthGeometry,
@@ -994,7 +1183,6 @@ export function OfficeWorld({
     ]
     return () => geometries.forEach((geometry) => geometry.dispose())
   }, [
-    slabGeometry,
     groundGeometry,
     ceilingGeometry,
     plinthGeometry,
@@ -1023,10 +1211,10 @@ export function OfficeWorld({
   }, [map.props, quality, level])
 
   return (
-    <group>
+    <group position-y={baseY}>
       <Instances geometry={groundGeometry} material={groundMaterial} transforms={ground} shadows={false} />
       <Instances geometry={plinthGeometry} material={plinthMaterial} transforms={plinths} shadows={false} />
-      <Instances geometry={slabGeometry} material={floorMaterial} transforms={floors} />
+      <TexturedFloors patches={floorPatches} quality={quality} />
       <Instances geometry={rugGeometry} material={rugMaterial} transforms={rugs} shadows={false} />
       <Instances geometry={rugGeometry} material={serverAisleMaterial} transforms={serverAisles} shadows={false} />
       <Instances geometry={rugGeometry} material={serverLineMaterial} transforms={serverLines} shadows={false} />
@@ -1043,7 +1231,7 @@ export function OfficeWorld({
       {view === "primeira" && quality !== "baixo" && (
         <Instances geometry={ceilingGeometry} material={ceilingMaterial} transforms={ceilingFixtures} shadows={false} />
       )}
-      {roomLights.map((light, index) => (
+      {active && roomLights.map((light, index) => (
         <pointLight
           key={`room-light-${index}`}
           position={[light.x, Math.max(2.8, wallHeight - 0.3), light.z]}
@@ -1053,7 +1241,7 @@ export function OfficeWorld({
           decay={2}
         />
       ))}
-      {quality !== "baixo" &&
+      {active && quality !== "baixo" &&
         emergencyLights.map((light, index) => (
           <pointLight
             key={`emergency-light-${index}`}

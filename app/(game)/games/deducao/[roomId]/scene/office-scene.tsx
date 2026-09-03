@@ -9,9 +9,9 @@ import type { Room } from "@colyseus/sdk"
 import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/games/collision"
 import { playGameSound } from "@/lib/games/game-audio"
 import type { OfficeMap } from "@/lib/services/games"
-import type { LookState, Quality, Targets, View } from "../match-types"
+import { NO_TARGETS, type LookState, type Quality, type Targets, type View } from "../match-types"
 import type { Role, Snapshot } from "../use-deducao-room"
-import { OfficeWorld } from "./office-world"
+import { FLOOR_HEIGHT, OfficeWorld } from "./office-world"
 import { setVision, useVisionMaterial } from "./vision-material"
 
 const VOID_COLOR = "#3b4d6c"
@@ -131,6 +131,17 @@ function SceneContent({
 }: Props) {
   const { camera, gl } = useThree()
   const local = useRef(new THREE.Vector2())
+  const visualY = useRef(0)
+  const climbing = useRef(false)
+  const stairTransition = useRef<{
+    fromX: number
+    fromZ: number
+    fromY: number
+    toX: number
+    toZ: number
+    toY: number
+    startedAt: number
+  } | null>(null)
   const started = useRef(false)
   const lastSent = useRef(0)
   const lastStep = useRef(0)
@@ -248,6 +259,7 @@ function SceneContent({
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.1)
+    const now = performance.now()
     const state = roomRef.current?.state as any
     const mine = state?.players?.get?.(me)
     if (!mine) return
@@ -256,16 +268,58 @@ function SceneContent({
       local.current.set(mine.x, mine.z)
       started.current = true
       lastLevel.current = Number(mine.level ?? 0)
+      visualY.current = lastLevel.current * FLOOR_HEIGHT
     }
 
     const liveLevel = Number(mine.level ?? 0)
     if (liveLevel !== lastLevel.current) {
-      local.current.set(mine.x, mine.z)
+      stairTransition.current = {
+        fromX: local.current.x,
+        fromZ: local.current.y,
+        fromY: visualY.current,
+        toX: mine.x,
+        toZ: mine.z,
+        toY: liveLevel * FLOOR_HEIGHT,
+        startedAt: now,
+      }
       lastLevel.current = liveLevel
       playGameSound("action")
     }
 
-    const canWalk = snapshot.phase === "jogando" || snapshot.phase === "lobby"
+    const transition = stairTransition.current
+    let onStairs = false
+    if (transition) {
+      const progress = THREE.MathUtils.clamp((now - transition.startedAt) / 900, 0, 1)
+      const eased = progress * progress * (3 - 2 * progress)
+      local.current.set(
+        THREE.MathUtils.lerp(transition.fromX, transition.toX, eased),
+        THREE.MathUtils.lerp(transition.fromZ, transition.toZ, eased),
+      )
+      visualY.current = THREE.MathUtils.lerp(transition.fromY, transition.toY, eased)
+      onStairs = progress < 1
+      const stairFacing = Math.atan2(transition.toX - transition.fromX, transition.toZ - transition.fromZ)
+      heading.current = stairFacing
+      if (view === "primeira") {
+        const targetYaw = stairFacing - Math.PI
+        lookRef.current.yaw +=
+          Math.atan2(
+            Math.sin(targetYaw - lookRef.current.yaw),
+            Math.cos(targetYaw - lookRef.current.yaw),
+          ) * Math.min(1, delta * 4.5)
+        lookRef.current.pitch += (0 - lookRef.current.pitch) * Math.min(1, delta * 4.5)
+      }
+      if (!onStairs) {
+        stairTransition.current = null
+        local.current.set(mine.x, mine.z)
+        visualY.current = liveLevel * FLOOR_HEIGHT
+      }
+    } else {
+      visualY.current +=
+        (liveLevel * FLOOR_HEIGHT - visualY.current) * Math.min(1, delta * 10)
+    }
+    climbing.current = onStairs
+
+    const canWalk = (snapshot.phase === "jogando" || snapshot.phase === "lobby") && !onStairs
     const input = inputRef.current
     const moving = canWalk && !inVent && (input.x !== 0 || input.z !== 0)
 
@@ -304,19 +358,18 @@ function SceneContent({
     // O servidor é a verdade. Quando ele discorda muito, a tela salta; quando
     // discorda pouco, ela vai sendo puxada de volta sem ninguém perceber.
     const drift = Math.hypot(mine.x - local.current.x, mine.z - local.current.y)
-    if (drift > 1.8) local.current.set(mine.x, mine.z)
-    else if (drift > 0.015) {
+    if (!onStairs && drift > 1.8) local.current.set(mine.x, mine.z)
+    else if (!onStairs && drift > 0.015) {
       const correction = 1 - Math.exp(-(moving ? 3.2 : 8) * delta)
       local.current.x += (mine.x - local.current.x) * correction
       local.current.y += (mine.z - local.current.y) * correction
     }
 
-    const now = performance.now()
-    if (moving && now - lastStep.current > 330) {
+    if ((moving || onStairs) && now - lastStep.current > 330) {
       lastStep.current = now
       playGameSound("step")
     }
-    if (now - lastSent.current > SEND_EVERY_MS) {
+    if (!onStairs && now - lastSent.current > SEND_EVERY_MS) {
       lastSent.current = now
       roomRef.current?.send(
         "move" as never,
@@ -333,16 +386,16 @@ function SceneContent({
       // A câmera senta na cabeça do jogador, sem suavizar: atraso entre o passo
       // e a imagem em primeira pessoa embrulha o estômago. Dentro do duto ela
       // afunda, que é a única pista visual de que você está lá embaixo.
-      camera.position.set(local.current.x, EYE_HEIGHT - (inVent ? 1.15 : 0), local.current.y)
+      camera.position.set(local.current.x, visualY.current + EYE_HEIGHT - (inVent ? 1.15 : 0), local.current.y)
       camera.rotation.order = "YXZ"
       camera.rotation.set(lookRef.current.pitch, lookRef.current.yaw, 0)
     } else {
       // Câmera isométrica presa no jogador, sem giro: quem está de frente para a
       // tela é sempre o norte do escritório, e ninguém se perde na virada.
-      cameraGoal.current.set(local.current.x, 14, local.current.y + 10.5)
+      cameraGoal.current.set(local.current.x, visualY.current + 14, local.current.y + 10.5)
       camera.position.lerp(cameraGoal.current, 1 - Math.exp(-5 * delta))
       camera.rotation.order = "XYZ"
-      camera.lookAt(local.current.x, 0.9, local.current.y - 1.6)
+      camera.lookAt(local.current.x, visualY.current + 0.9, local.current.y - 1.6)
     }
 
     poseRef.current.x = local.current.x
@@ -352,8 +405,8 @@ function SceneContent({
     const dark = blackoutForViewer
     setVision(local.current.x, local.current.y, activeVision * 0.68, activeVision)
     if (sun.current) {
-      sun.current.position.set(local.current.x - 14, 26, local.current.y - 10)
-      sun.current.target.position.set(local.current.x, 0, local.current.y)
+      sun.current.position.set(local.current.x - 14, visualY.current + 26, local.current.y - 10)
+      sun.current.target.position.set(local.current.x, visualY.current, local.current.y)
       sun.current.target.updateMatrixWorld()
       sun.current.intensity += ((dark ? 0.025 : 2.05) - sun.current.intensity) * Math.min(1, delta * 3)
     }
@@ -366,32 +419,38 @@ function SceneContent({
       ambient.current.intensity += (ambientTarget - ambient.current.intensity) * Math.min(1, delta * 3)
     }
     if (playerLight.current) {
-      playerLight.current.position.set(local.current.x, EYE_HEIGHT + 0.25, local.current.y)
+      playerLight.current.position.set(local.current.x, visualY.current + EYE_HEIGHT + 0.25, local.current.y)
       playerLight.current.intensity += ((dark ? 38 : 2.2) - playerLight.current.intensity) * Math.min(1, delta * 5)
       playerLight.current.distance = dark ? activeVision * 1.7 : 7
     }
     const exposure = dark ? 0.88 : 1.16
     gl.toneMappingExposure += (exposure - gl.toneMappingExposure) * Math.min(1, delta * 3)
 
-    reportTargets({
-      state,
-      me,
-      map,
-      myTaskSpots,
-      role,
-      allies,
-      snapshot,
-      walls,
-      level: currentLevel,
-      position: { x: local.current.x, z: local.current.y },
-      onTargets,
-      signature: targetSignature,
-    })
+    if (onStairs) {
+      if (targetSignature.current !== "stairs") {
+        targetSignature.current = "stairs"
+        onTargets(NO_TARGETS)
+      }
+    } else {
+      reportTargets({
+        state,
+        me,
+        map,
+        myTaskSpots,
+        role,
+        allies,
+        snapshot,
+        walls,
+        level: currentLevel,
+        position: { x: local.current.x, z: local.current.y },
+        onTargets,
+        signature: targetSignature,
+      })
+    }
   })
 
   return (
     <>
-      <fog attach="fog" args={[VOID_COLOR, 38, 100]} />
       <ProceduralEnvironment quality={quality} blackout={blackoutForViewer} />
       <ambientLight ref={ambient} color="#dce8ff" intensity={0.16} />
       <hemisphereLight ref={sky} args={["#f5f9ff", "#52627d", 0.62]} />
@@ -413,22 +472,29 @@ function SceneContent({
       />
       <pointLight ref={playerLight} color="#e8f3ff" intensity={2.2} distance={7} decay={2} />
 
-      <OfficeWorld
-        map={map}
-        quality={quality}
-        blackout={blackoutForViewer}
-        view={view}
-        level={currentLevel}
-      />
-      <Markers
-        map={map}
-        spots={myTaskSpots}
-        showVents={role === "assassino"}
-        localRef={local}
-        walls={walls}
-        visionRange={activeVision}
-        level={currentLevel}
-      />
+      {(view === "primeira" || currentLevel === 1 ? [0, 1] : [0]).map((floor) => (
+        <OfficeWorld
+          key={floor}
+          map={map}
+          quality={quality}
+          blackout={blackoutForViewer}
+          view={view}
+          level={floor}
+          baseY={floor * FLOOR_HEIGHT}
+          active={floor === currentLevel}
+        />
+      ))}
+      <group position-y={currentLevel * FLOOR_HEIGHT}>
+        <Markers
+          map={map}
+          spots={myTaskSpots}
+          showVents={role === "assassino"}
+          localRef={local}
+          walls={walls}
+          visionRange={activeVision}
+          level={currentLevel}
+        />
+      </group>
 
       {snapshot.players.map((player) => (
         <Actor
@@ -437,6 +503,8 @@ function SceneContent({
           roomRef={roomRef}
           isMe={player.id === me}
           localRef={local}
+          localYRef={visualY}
+          climbingRef={climbing}
           localHeadingRef={heading}
           viewerAlive={alive}
           ally={allies.includes(player.id)}
@@ -460,6 +528,7 @@ function SceneContent({
             walls={walls}
             visionRange={activeVision}
             blackout={blackoutForViewer}
+            floorY={currentLevel * FLOOR_HEIGHT}
           />
         ))}
     </>
@@ -473,6 +542,8 @@ function Actor({
   roomRef,
   isMe,
   localRef,
+  localYRef,
+  climbingRef,
   localHeadingRef,
   viewerAlive,
   ally,
@@ -487,6 +558,8 @@ function Actor({
   roomRef: React.MutableRefObject<Room | null>
   isMe: boolean
   localRef: React.MutableRefObject<THREE.Vector2>
+  localYRef: React.MutableRefObject<number>
+  climbingRef: React.MutableRefObject<boolean>
   localHeadingRef: React.MutableRefObject<number>
   viewerAlive: boolean
   ally: boolean
@@ -531,15 +604,17 @@ function Actor({
     const delta = Math.min(rawDelta, 0.1)
     const targetX = isMe ? localRef.current.x : live.x
     const targetZ = isMe ? localRef.current.y : live.z
+    const targetY = isMe ? localYRef.current : Number(live.level ?? 0) * FLOOR_HEIGHT
     const pull = isMe ? 1 : 1 - Math.exp(-10 * delta)
 
     if (!placed.current) {
-      node.position.set(targetX, 0, targetZ)
+      node.position.set(targetX, targetY, targetZ)
       node.rotation.y = isMe ? localHeadingRef.current : live.dir
       placed.current = true
     }
 
     node.position.x += (targetX - node.position.x) * pull
+    node.position.y += (targetY - node.position.y) * pull
     node.position.z += (targetZ - node.position.z) * pull
     const sameLevel = Number(live.level ?? 0) === viewerLevel
     const inSight =
@@ -565,8 +640,9 @@ function Actor({
 
     // Braço e perna andam em oposição, e a amplitude sobe e desce em rampa: o
     // boneco não pode travar a passada no meio quando o jogador solta a tecla.
-    passo.current += live.moving ? delta * 9 : 0
-    balanco.current += ((live.moving ? 0.62 : 0) - balanco.current) * (1 - Math.exp(-9 * delta))
+    const walking = Boolean(live.moving) || (isMe && climbingRef.current)
+    passo.current += walking ? delta * 9 : 0
+    balanco.current += ((walking ? 0.62 : 0) - balanco.current) * (1 - Math.exp(-9 * delta))
     const giro = Math.sin(passo.current) * balanco.current
     if (pernaEsquerda.current) pernaEsquerda.current.rotation.x = giro
     if (pernaDireita.current) pernaDireita.current.rotation.x = -giro
@@ -665,6 +741,7 @@ function Corpse({
   walls,
   visionRange,
   blackout,
+  floorY,
 }: {
   corpse: Snapshot["corpses"][number]
   localRef: React.MutableRefObject<THREE.Vector2>
@@ -672,6 +749,7 @@ function Corpse({
   walls: OfficeMap["walls"]
   visionRange: number
   blackout: boolean
+  floorY: number
 }) {
   const group = useRef<THREE.Group>(null)
   const material = useVisionMaterial({ color: blackout ? "#657180" : corpse.color, roughness: 0.7 })
@@ -685,7 +763,7 @@ function Corpse({
   })
 
   return (
-    <group ref={group} position={[corpse.x, 0, corpse.z]}>
+    <group ref={group} position={[corpse.x, floorY, corpse.z]}>
       <mesh rotation={[Math.PI / 2, 0, 0.6]} position={[0, 0.3, 0]} material={material}>
         <capsuleGeometry args={[0.32, 0.42, 4, 8]} />
       </mesh>

@@ -40,6 +40,7 @@ export interface MapRoom {
   kind: "sala" | "corredor" | "terraco"
   level?: number
   floor: string
+  finish?: "carpet" | "wood" | "server" | "terrazzo" | "pantry" | "concrete"
   light: string
 }
 export interface MapProp {
