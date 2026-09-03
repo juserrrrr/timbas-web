@@ -26,11 +26,13 @@ export interface WallBox {
   minZ: number
   maxX: number
   maxZ: number
+  accent?: string
 }
 export interface MapRoom {
   id: string
   name: string
   rect: MapRect
+  kind: "sala" | "corredor"
   floor: string
   light: string
 }

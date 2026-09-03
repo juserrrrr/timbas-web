@@ -33,6 +33,10 @@ export function patchVision(material: THREE.Material) {
         #endif`,
       )
 
+    // Fora do alcance o cenário não apaga: ele afunda numa penumbra azulada e
+    // continua legível como silhueta. Quem some de verdade é gente, e disso
+    // quem cuida é a cena, escondendo o boneco. Apagar o escritório inteiro só
+    // fazia o jogador andar às cegas sem esconder informação nenhuma.
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "void main() {",
@@ -47,7 +51,8 @@ export function patchVision(material: THREE.Material) {
         `#include <dithering_fragment>
         float visionDist = distance(vVisionPos.xz, uFocus.xz);
         float visible = 1.0 - smoothstep(uInner, uOuter, visionDist);
-        gl_FragColor.rgb = mix(gl_FragColor.rgb * 0.012, gl_FragColor.rgb, visible);`,
+        vec3 penumbra = gl_FragColor.rgb * 0.16 + vec3(0.055, 0.068, 0.098);
+        gl_FragColor.rgb = mix(penumbra, gl_FragColor.rgb, visible);`,
       )
   }
   // Materiais com onBeforeCompile diferente precisam de programas diferentes, e
@@ -62,18 +67,35 @@ interface Params {
   emissiveIntensity?: number
   roughness?: number
   metalness?: number
+  /// Cor por vértice: é assim que um móvel inteiro cabe num material só, com o
+  /// tampo claro e o pé escuro, sem virar uma peça de cor chapada.
+  vertexColors?: boolean
+  /// Sem iluminação. Serve para o friso das salas, que precisa acender igual
+  /// esteja onde estiver o sol.
+  unlit?: boolean
 }
 
-export function useVisionMaterial({ color, emissive, emissiveIntensity = 0, roughness = 0.85, metalness = 0 }: Params) {
+export function useVisionMaterial({
+  color,
+  emissive,
+  emissiveIntensity = 0,
+  roughness = 0.85,
+  metalness = 0,
+  vertexColors = false,
+  unlit = false,
+}: Params) {
   const material = useMemo(() => {
-    const created = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(color),
-      roughness,
-      metalness,
-      ...(emissive ? { emissive: new THREE.Color(emissive), emissiveIntensity } : {}),
-    })
+    const created = unlit
+      ? new THREE.MeshBasicMaterial({ color: new THREE.Color(color), vertexColors })
+      : new THREE.MeshStandardMaterial({
+          color: new THREE.Color(color),
+          roughness,
+          metalness,
+          vertexColors,
+          ...(emissive ? { emissive: new THREE.Color(emissive), emissiveIntensity } : {}),
+        })
     return patchVision(created)
-  }, [color, emissive, emissiveIntensity, roughness, metalness])
+  }, [color, emissive, emissiveIntensity, roughness, metalness, vertexColors, unlit])
 
   useEffect(() => () => material.dispose(), [material])
   return material

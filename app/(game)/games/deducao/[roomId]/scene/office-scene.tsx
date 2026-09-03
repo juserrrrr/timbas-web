@@ -13,6 +13,8 @@ import type { Role, Snapshot } from "../use-deducao-room"
 import { OfficeWorld } from "./office-world"
 import { setVision, useVisionMaterial } from "./vision-material"
 
+const VOID_COLOR = "#2a3450"
+
 const WALK_SPEED = 4.6
 const SEND_EVERY_MS = 50
 const TASK_RANGE = 2.2
@@ -44,12 +46,14 @@ export function OfficeScene(props: Props) {
       shadows={quality !== "baixo"}
       dpr={quality === "alto" ? [1, 1.75] : quality === "medio" ? [1, 1.25] : 1}
       gl={{ antialias: quality === "alto", powerPreference: "high-performance" }}
-      camera={{ fov: 42, near: 0.1, far: 90, position: [0, 11.5, 8.5] }}
+      camera={{ fov: 40, near: 0.1, far: 130, position: [0, 14, 10.5] }}
       onCreated={({ gl }) => {
-        gl.setClearColor("#101722")
+        // O vazio em volta do escritório é um azul de fim de tarde, não preto:
+        // ele precisa ler como ar em volta das lajes, e não como buraco.
+        gl.setClearColor(VOID_COLOR)
         gl.outputColorSpace = THREE.SRGBColorSpace
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = 1.18
+        gl.toneMappingExposure = 1.05
         gl.shadowMap.type = THREE.PCFSoftShadowMap
       }}
     >
@@ -79,7 +83,7 @@ function SceneContent({ map, snapshot, roomRef, me, role, allies, pendingTasks, 
 
   const alive = snapshot.players.find((player) => player.id === me)?.alive ?? true
   const inVent = snapshot.players.find((player) => player.id === me)?.inVent ?? false
-  const visionRange = Number(snapshot.config.visionRange ?? 11)
+  const visionRange = Number(snapshot.config.visionRange ?? 13)
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.1)
@@ -106,8 +110,8 @@ function SceneContent({ map, snapshot, roomRef, me, role, allies, pendingTasks, 
       // Jogador morto atravessa paredes.
       const next = alive ? moveTowards({ x: local.current.x, z: local.current.y }, wanted, walls) : wanted
       local.current.set(
-        THREE.MathUtils.clamp(next.x, PLAYER_RADIUS, map.bounds.w - PLAYER_RADIUS),
-        THREE.MathUtils.clamp(next.z, PLAYER_RADIUS, map.bounds.d - PLAYER_RADIUS),
+        THREE.MathUtils.clamp(next.x, map.bounds.x + PLAYER_RADIUS, map.bounds.x + map.bounds.w - PLAYER_RADIUS),
+        THREE.MathUtils.clamp(next.z, map.bounds.z + PLAYER_RADIUS, map.bounds.z + map.bounds.d - PLAYER_RADIUS),
       )
       heading.current = Math.atan2(input.x, input.z)
     }
@@ -142,9 +146,9 @@ function SceneContent({ map, snapshot, roomRef, me, role, allies, pendingTasks, 
 
     // Câmera isométrica presa no jogador, sem giro: quem está de frente para a
     // tela é sempre o norte do escritório, e ninguém se perde na virada.
-    cameraGoal.current.set(local.current.x, 11.5, local.current.y + 8.5)
+    cameraGoal.current.set(local.current.x, 14, local.current.y + 10.5)
     camera.position.lerp(cameraGoal.current, 1 - Math.exp(-5 * delta))
-    camera.lookAt(local.current.x, 0.85, local.current.y - 1.4)
+    camera.lookAt(local.current.x, 0.9, local.current.y - 1.6)
 
     const dark = snapshot.blackout
     const activeVision = dark ? Math.min(4.2, visionRange * 0.42) : visionRange
@@ -153,10 +157,10 @@ function SceneContent({ map, snapshot, roomRef, me, role, allies, pendingTasks, 
       sun.current.position.set(local.current.x - 14, 26, local.current.y - 10)
       sun.current.target.position.set(local.current.x, 0, local.current.y)
       sun.current.target.updateMatrixWorld()
-      sun.current.intensity += ((dark ? 0.08 : 1.45) - sun.current.intensity) * Math.min(1, delta * 3)
+      sun.current.intensity += ((dark ? 0.06 : 1.3) - sun.current.intensity) * Math.min(1, delta * 3)
     }
     if (sky.current) {
-      sky.current.intensity += ((dark ? 0.06 : 0.72) - sky.current.intensity) * Math.min(1, delta * 3)
+      sky.current.intensity += ((dark ? 0.05 : 1.15) - sky.current.intensity) * Math.min(1, delta * 3)
     }
     if (playerLight.current) {
       playerLight.current.position.set(local.current.x, 3.2, local.current.y)
@@ -181,12 +185,13 @@ function SceneContent({ map, snapshot, roomRef, me, role, allies, pendingTasks, 
 
   return (
     <>
-      <fog attach="fog" args={["#101722", 18, 48]} />
-      <hemisphereLight ref={sky} args={["#f6f8ff", "#536174", 0.72]} />
+      <fog attach="fog" args={[VOID_COLOR, 34, 92]} />
+      <ambientLight color="#d5def2" intensity={0.38} />
+      <hemisphereLight ref={sky} args={["#ffffff", "#61708f", 1.15]} />
       <directionalLight
         ref={sun}
-        color="#ffd8a8"
-        intensity={1.45}
+        color="#fff2df"
+        intensity={1.3}
         castShadow={quality !== "baixo"}
         shadow-mapSize={quality === "alto" ? [2048, 2048] : [1024, 1024]}
         shadow-camera-left={-22}
@@ -197,7 +202,7 @@ function SceneContent({ map, snapshot, roomRef, me, role, allies, pendingTasks, 
         shadow-camera-far={70}
         shadow-bias={-0.0012}
       />
-      <pointLight ref={playerLight} color="#dce9ff" intensity={0.45} distance={8} decay={1.7} />
+      <pointLight ref={playerLight} color="#e8f1ff" intensity={0.45} distance={8} decay={1.7} />
 
       <OfficeWorld map={map} quality={quality} blackout={snapshot.blackout} />
       <Markers
@@ -274,8 +279,8 @@ function Actor({
   const bob = useRef(0)
   const placed = useRef(false)
   const lastVisibleAt = useRef(0)
-  const body = useVisionMaterial({ color: blackout ? "#657180" : player.color, roughness: 0.48, metalness: 0.04 })
-  const visor = useVisionMaterial({ color: "#0e1218", emissive: "#7dd3fc", emissiveIntensity: 0.5, roughness: 0.2 })
+  const body = useVisionMaterial({ color: blackout ? "#6f7c8e" : player.color, roughness: 0.38, metalness: 0.06 })
+  const visor = useVisionMaterial({ color: "#121a26", emissive: "#9fdcff", emissiveIntensity: 0.7, roughness: 0.15 })
 
   // Quem está vivo não vê fantasma. É a única informação que a tela esconde por
   // conta própria, e ela vale para todo mundo do mesmo jeito.
@@ -341,7 +346,7 @@ function Actor({
 
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.03, 0]}>
         <circleGeometry args={[0.42, 16]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.28} />
+        <meshBasicMaterial color="#101728" transparent opacity={0.22} />
       </mesh>
 
       {/* Nome no duto entregaria o assassino escondido, então a plaquinha some

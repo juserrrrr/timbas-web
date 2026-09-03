@@ -61,8 +61,10 @@ export function Hud({
         </div>
       )}
 
-      {/* O progresso do time fica visível sem cobrir a área de jogo. */}
-      <div className="absolute left-4 top-4 w-56 sm:left-6 sm:top-6 sm:w-72">
+      {/* O progresso do time fica visível sem cobrir a área de jogo. O painel
+          escuro é o que segura o texto legível agora que o chão do escritório é
+          claro. */}
+      <div className="absolute left-4 top-4 w-56 rounded-2xl border border-white/10 bg-black/45 p-3 backdrop-blur-sm sm:left-6 sm:top-6 sm:w-72">
         <div className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400">
           <span>Tarefas do time</span>
           <span className="text-amber-300">
@@ -104,8 +106,8 @@ export function Hud({
       </div>
 
       {/* Lista de tarefas: o que falta e onde, sem abrir menu nenhum. */}
-      <div className="absolute bottom-24 left-4 w-56 sm:bottom-6 sm:left-6 sm:w-64">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">Suas tarefas</p>
+      <div className="absolute bottom-24 left-4 w-56 rounded-2xl border border-white/10 bg-black/45 p-3 backdrop-blur-sm sm:bottom-6 sm:left-6 sm:w-64">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400">Suas tarefas</p>
         <ul className="mt-2 space-y-1.5">
           {spots.length === 0 && <li className="text-[11px] text-emerald-300/80">Suas tarefas acabaram.</li>}
           {spots.map((spot) => (
@@ -114,7 +116,7 @@ export function Hud({
               className={`rounded-lg border px-2.5 py-1.5 text-[11px] leading-tight transition ${
                 targets.task?.id === spot.id
                   ? "border-amber-400/50 bg-amber-400/10 text-amber-200"
-                  : "border-white/[0.07] bg-black/40 text-zinc-400"
+                  : "border-white/10 bg-white/[0.06] text-zinc-300"
               }`}
             >
               <span className="block font-semibold">{spot.label}</span>
