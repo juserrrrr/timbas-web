@@ -317,7 +317,7 @@ export function Hud({
 
       {alive && (
         <p className="absolute bottom-5 left-1/2 hidden -translate-x-1/2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-400 backdrop-blur-sm md:block">
-          WASD mover · Shift correr · M mapa
+          WASD mover · Shift correr · Espaço pular · C agachar · M mapa
         </p>
       )}
 
@@ -412,7 +412,7 @@ function TouchStick({ inputRef }: { inputRef: React.MutableRefObject<InputState>
         const knobX = Math.cos(angle) * length
         const knobY = Math.sin(angle) * length
         setKnob({ x: knobX, y: knobY })
-        inputRef.current = { x: knobX / 56, z: knobY / 56, sprint: false }
+        inputRef.current = { ...inputRef.current, x: knobX / 56, z: knobY / 56, sprint: false }
       }
     }
     const onEnd = (event: TouchEvent) => {
@@ -421,7 +421,7 @@ function TouchStick({ inputRef }: { inputRef: React.MutableRefObject<InputState>
         touchId.current = null
         setOrigin(null)
         setKnob({ x: 0, y: 0 })
-        inputRef.current = { x: 0, z: 0, sprint: false }
+        inputRef.current = { ...inputRef.current, x: 0, z: 0, sprint: false }
       }
     }
 

@@ -32,6 +32,8 @@ const VENT_RANGE = 1.8
 interface StairSample {
   y: number
   progress: number
+  level: number
+  targetLevel: number
 }
 
 /// A posição no corredor da escada é a própria posição vertical. Não existe
@@ -56,18 +58,24 @@ function stairSampleAt(map: OfficeMap, x: number, z: number): StairSample | null
       closest = {
         y: stair.level * FLOOR_HEIGHT + progress * FLOOR_HEIGHT,
         progress,
+        level: stair.level,
+        targetLevel: stair.targetLevel,
         distance: perpendicularDistance,
       }
     }
   }
 
-  return closest ? { y: closest.y, progress: closest.progress } : null
+  return closest
+    ? { y: closest.y, progress: closest.progress, level: closest.level, targetLevel: closest.targetLevel }
+    : null
 }
 
 export interface InputState {
   x: number
   z: number
   sprint: boolean
+  crouch: boolean
+  jumpSerial: number
 }
 
 interface Props {
@@ -172,6 +180,12 @@ function SceneContent({
   const velocity = useRef(new THREE.Vector2())
   const desiredVelocity = useRef(new THREE.Vector2())
   const visualY = useRef(0)
+  const visualLevel = useRef(0)
+  const stairExitGraceUntil = useRef(0)
+  const eyeHeight = useRef(EYE_HEIGHT)
+  const jumpHeight = useRef(0)
+  const jumpVelocity = useRef(0)
+  const handledJump = useRef(0)
   const climbing = useRef(false)
   const started = useRef(false)
   const lastSent = useRef(0)
@@ -199,6 +213,10 @@ function SceneContent({
     () => [...map.walls, ...map.obstacles].filter((box) => (box.level ?? 0) === currentLevel),
     [map.walls, map.obstacles, currentLevel],
   )
+  const collidersByLevel = useMemo(() => {
+    const all = [...map.walls, ...map.obstacles]
+    return new Map([0, 1].map((floor) => [floor, all.filter((box) => (box.level ?? 0) === floor)]))
+  }, [map.obstacles, map.walls])
   const walls = useMemo(
     () =>
       [...map.walls.filter((box) => box.style !== "guarda-corpo"), ...map.obstacles.filter((box) => box.tall)].filter(
@@ -302,12 +320,19 @@ function SceneContent({
     if (!started.current) {
       local.current.set(mine.x, mine.z)
       started.current = true
-      visualY.current = Number(mine.level ?? 0) * FLOOR_HEIGHT
+      visualLevel.current = Number(mine.level ?? 0)
+      visualY.current = visualLevel.current * FLOOR_HEIGHT
     }
 
     const liveLevel = Number(mine.level ?? 0)
     const initialStair = stairSampleAt(map, local.current.x, local.current.y)
     let onStairs = Boolean(initialStair && initialStair.progress > 0.015 && initialStair.progress < 0.985)
+    if (initialStair) {
+      visualLevel.current = initialStair.progress >= 0.5 ? initialStair.targetLevel : initialStair.level
+      stairExitGraceUntil.current = now + 500
+    } else if (now >= stairExitGraceUntil.current) {
+      visualLevel.current = liveLevel
+    }
 
     const canWalk = snapshot.phase === "jogando" || snapshot.phase === "lobby"
     const input = inputRef.current
@@ -324,7 +349,8 @@ function SceneContent({
       const lado = dirX
       dirX = -Math.sin(yaw) * frente + Math.cos(yaw) * lado
       dirZ = -Math.cos(yaw) * frente - Math.sin(yaw) * lado
-      targetVelocity.set(dirX, dirZ).multiplyScalar(input.sprint ? RUN_SPEED : WALK_SPEED)
+      const speed = input.crouch ? WALK_SPEED * 0.52 : input.sprint ? RUN_SPEED : WALK_SPEED
+      targetVelocity.set(dirX, dirZ).multiplyScalar(speed)
     }
 
     // Uma resposta curta preserva a precisão e elimina o tranco ao apertar ou
@@ -333,7 +359,7 @@ function SceneContent({
     velocity.current.lerp(targetVelocity, 1 - Math.exp(-response * delta))
     if (!hasInput && velocity.current.lengthSq() < 0.0025) velocity.current.set(0, 0)
     const moving = velocity.current.lengthSq() > 0.0064
-    const running = (input.sprint && hasInput) || velocity.current.lengthSq() > (WALK_SPEED + 0.1) ** 2
+    const running = !input.crouch && ((input.sprint && hasInput) || velocity.current.lengthSq() > (WALK_SPEED + 0.1) ** 2)
 
     if (moving) {
       const beforeX = local.current.x
@@ -343,7 +369,8 @@ function SceneContent({
         z: beforeZ + velocity.current.y * delta,
       }
       // Jogador morto atravessa paredes.
-      const next = alive ? moveTowards({ x: local.current.x, z: local.current.y }, wanted, colliders) : wanted
+      const movementColliders = collidersByLevel.get(visualLevel.current) ?? colliders
+      const next = alive ? moveTowards({ x: local.current.x, z: local.current.y }, wanted, movementColliders) : wanted
       local.current.set(
         THREE.MathUtils.clamp(next.x, map.bounds.x + PLAYER_RADIUS, map.bounds.x + map.bounds.w - PLAYER_RADIUS),
         THREE.MathUtils.clamp(next.z, map.bounds.z + PLAYER_RADIUS, map.bounds.z + map.bounds.d - PLAYER_RADIUS),
@@ -374,8 +401,28 @@ function SceneContent({
     // reaproveita um degrau antigo na troca de camada entre os pavimentos.
     const stair = stairSampleAt(map, local.current.x, local.current.y)
     onStairs = Boolean(stair && stair.progress > 0.015 && stair.progress < 0.985)
-    visualY.current = stair?.y ?? liveLevel * FLOOR_HEIGHT
+    if (stair) {
+      visualLevel.current = stair.progress >= 0.5 ? stair.targetLevel : stair.level
+      stairExitGraceUntil.current = now + 500
+      visualY.current = stair.y
+    } else {
+      if (now >= stairExitGraceUntil.current) visualLevel.current = liveLevel
+      visualY.current = visualLevel.current * FLOOR_HEIGHT
+    }
     climbing.current = onStairs && moving
+
+    if (input.jumpSerial !== handledJump.current) {
+      handledJump.current = input.jumpSerial
+      if (!inMeeting && !inVent && !onStairs && jumpHeight.current <= 0.001) jumpVelocity.current = 5.25
+    }
+    if (jumpVelocity.current !== 0 || jumpHeight.current > 0) {
+      jumpVelocity.current -= 15.5 * delta
+      jumpHeight.current = Math.max(0, jumpHeight.current + jumpVelocity.current * delta)
+      if (jumpHeight.current === 0 && jumpVelocity.current < 0) jumpVelocity.current = 0
+    }
+    const crouching = input.crouch && !inMeeting && !inVent && !onStairs && jumpHeight.current === 0
+    const targetEyeHeight = inMeeting ? 1.22 : crouching ? 1.08 : EYE_HEIGHT
+    eyeHeight.current += (targetEyeHeight - eyeHeight.current) * (1 - Math.exp(-14 * delta))
 
     if (moving && now - lastStep.current > (running ? 230 : 330)) {
       lastStep.current = now
@@ -391,6 +438,8 @@ function SceneContent({
           dir: heading.current,
           moving,
           sprint: running,
+          crouching,
+          airborne: jumpHeight.current > 0.02,
         } as never,
       )
     }
@@ -404,8 +453,11 @@ function SceneContent({
 
     // A câmera fica na cabeça em todos os momentos. Dentro do duto ela afunda,
     // que é a pista visual de que o jogador está sob o piso.
-    const seatedEye = inMeeting ? 1.22 : EYE_HEIGHT
-    camera.position.set(local.current.x, visualY.current + seatedEye - (inVent ? 1.15 : 0), local.current.y)
+    camera.position.set(
+      local.current.x,
+      visualY.current + eyeHeight.current + jumpHeight.current - (inVent ? 1.15 : 0),
+      local.current.y,
+    )
     camera.rotation.order = "YXZ"
     camera.rotation.set(lookRef.current.pitch, lookRef.current.yaw, 0)
 
@@ -414,7 +466,7 @@ function SceneContent({
     poseRef.current.dir = heading.current
 
     const dark = blackoutForViewer
-    setVision(local.current.x, local.current.y, activeVision * 0.68, activeVision)
+    setVision(local.current.x, local.current.y, activeVision * 0.68, activeVision, blackoutForViewer)
     if (sun.current) {
       sun.current.position.set(local.current.x - 14, visualY.current + 26, local.current.y - 10)
       sun.current.target.position.set(local.current.x, visualY.current, local.current.y)
@@ -696,7 +748,15 @@ function Actor({
     if (bracoDireito.current) bracoDireito.current.rotation.x = giro * 0.8
 
     if (bodyGroup.current) {
-      const sobe = seated ? -0.43 : Math.abs(Math.sin(passo.current)) * balanco.current * 0.07
+      const crouching = Boolean(live.crouching)
+      const airborne = Boolean(live.airborne)
+      const sobe = seated
+        ? -0.43
+        : airborne
+          ? 0.38
+          : crouching
+            ? -0.42
+            : Math.abs(Math.sin(passo.current)) * balanco.current * 0.07
       bodyGroup.current.position.y += (sobe - bodyGroup.current.position.y) * (1 - Math.exp(-16 * delta))
       bodyGroup.current.rotation.x +=
         ((seated ? -0.08 : 0) - bodyGroup.current.rotation.x) * (1 - Math.exp(-12 * delta))

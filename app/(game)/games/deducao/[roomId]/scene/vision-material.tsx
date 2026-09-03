@@ -7,12 +7,14 @@ export const visionUniforms = {
   uFocus: { value: new THREE.Vector3() },
   uInner: { value: 9 },
   uOuter: { value: 17 },
+  uBlackout: { value: 0 },
 }
 
-export function setVision(x: number, z: number, inner: number, outer: number) {
+export function setVision(x: number, z: number, inner: number, outer: number, blackout: boolean) {
   visionUniforms.uFocus.value.set(x, 0, z)
   visionUniforms.uInner.value += (inner - visionUniforms.uInner.value) * 0.08
   visionUniforms.uOuter.value += (outer - visionUniforms.uOuter.value) * 0.08
+  visionUniforms.uBlackout.value += ((blackout ? 1 : 0) - visionUniforms.uBlackout.value) * 0.12
 }
 
 /// Nenhuma superfície, piso ou parede. O desenho sai de conta feita em cima da
@@ -32,6 +34,7 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
     shader.uniforms.uFocus = visionUniforms.uFocus
     shader.uniforms.uInner = visionUniforms.uInner
     shader.uniforms.uOuter = visionUniforms.uOuter
+    shader.uniforms.uBlackout = visionUniforms.uBlackout
     // Este vai por material, não compartilhado: é ele que diz se a peça é chão
     // ou parede.
     shader.uniforms.uSurface = { value: SURFACE_CODE[surface] }
@@ -58,6 +61,7 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
         uniform vec3 uFocus;
         uniform float uInner;
         uniform float uOuter;
+        uniform float uBlackout;
         uniform float uSurface;
 
         float timbasHash(vec2 cell) {
@@ -87,6 +91,17 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
             float sujeira = 1.0 - smoothstep(0.0, 0.7, vVisionPos.y);
             gl_FragColor.rgb *= 1.0 - sujeira * 0.12;
           }
+        }
+
+        // No apagão, a distância de visão vale para a cena inteira: paredes,
+        // móveis, chão e jogadores próximos continuam legíveis, enquanto tudo
+        // fora do alcance some suavemente. A luz direcional do olhar preserva
+        // volume e sombra dentro desse círculo, em vez de virar uma tela preta.
+        if (uBlackout > 0.001) {
+          float distanceFromPlayer = distance(vVisionPos.xz, uFocus.xz);
+          float visibility = 1.0 - smoothstep(uInner, uOuter, distanceFromPlayer);
+          float darkness = mix(1.0, mix(0.018, 1.0, visibility), uBlackout);
+          gl_FragColor.rgb *= darkness;
         }
 
         gl_FragColor.rgb = max(gl_FragColor.rgb, vec3(0.012));`,

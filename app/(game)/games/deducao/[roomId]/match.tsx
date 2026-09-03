@@ -37,6 +37,7 @@ const KEYS: Record<string, [number, number]> = {
 }
 
 const SPRINT_KEYS = new Set(["ShiftLeft", "ShiftRight"])
+const CROUCH_KEYS = new Set(["ControlLeft", "ControlRight", "KeyC"])
 
 const ROLE_INTRO: Record<Role, { title: string; line: string; tone: string }> = {
   assassino: {
@@ -73,7 +74,7 @@ export function Match({
   onSend,
   onLeave,
 }: Props) {
-  const inputRef = useRef<InputState>({ x: 0, z: 0, sprint: false })
+  const inputRef = useRef<InputState>({ x: 0, z: 0, sprint: false, crouch: false, jumpSerial: 0 })
   // Olhar e posição vivem fora do React: mudam em todo quadro, e passar isso
   // por estado redesenharia o HUD sessenta vezes por segundo.
   const lookRef = useRef<LookState>({ yaw: 0, pitch: 0 })
@@ -138,7 +139,7 @@ export function Match({
       return
     }
     pressed.current.clear()
-    inputRef.current = { x: 0, z: 0, sprint: false }
+    inputRef.current = { x: 0, z: 0, sprint: false, crouch: false, jumpSerial: inputRef.current.jumpSerial }
     setIntro(true)
     setSceneReady(false)
     const warmup = window.setTimeout(() => setSceneReady(true), 300)
@@ -167,6 +168,8 @@ export function Match({
         x,
         z,
         sprint: pressed.current.has("ShiftLeft") || pressed.current.has("ShiftRight"),
+        crouch: pressed.current.has("ControlLeft") || pressed.current.has("ControlRight") || pressed.current.has("KeyC"),
+        jumpSerial: inputRef.current.jumpSerial,
       }
     }
 
@@ -175,11 +178,18 @@ export function Match({
       if (typing) return
       unlockGameAudio()
 
-      if (KEYS[event.code] || SPRINT_KEYS.has(event.code)) {
+      if (KEYS[event.code] || SPRINT_KEYS.has(event.code) || CROUCH_KEYS.has(event.code)) {
         event.preventDefault()
         if (actions.current.intro) return
         pressed.current.add(event.code)
         apply()
+        return
+      }
+
+      if (event.code === "Space") {
+        event.preventDefault()
+        if (actions.current.intro || actions.current.openTask || event.repeat) return
+        inputRef.current = { ...inputRef.current, jumpSerial: inputRef.current.jumpSerial + 1 }
         return
       }
 

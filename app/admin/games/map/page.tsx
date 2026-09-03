@@ -600,6 +600,38 @@ function mapFromOsm(
     x: (lon - geoBounds.west) * 111_320 * Math.cos((centerLatitude * Math.PI) / 180) * scale + padding,
     z: (geoBounds.north - lat) * 110_540 * scale + padding,
   })
+  const clipSegmentToMap = (from: { x: number; z: number }, to: { x: number; z: number }) => {
+    const minX = padding
+    const maxX = mapWidth - padding
+    const minZ = padding
+    const maxZ = mapDepth - padding
+    const dx = to.x - from.x
+    const dz = to.z - from.z
+    let start = 0
+    let end = 1
+    const clip = (direction: number, distance: number) => {
+      if (direction === 0) return distance >= 0
+      const ratio = distance / direction
+      if (direction < 0) {
+        if (ratio > end) return false
+        if (ratio > start) start = ratio
+      } else {
+        if (ratio < start) return false
+        if (ratio < end) end = ratio
+      }
+      return true
+    }
+    if (
+      !clip(-dx, from.x - minX) ||
+      !clip(dx, maxX - from.x) ||
+      !clip(-dz, from.z - minZ) ||
+      !clip(dz, maxZ - from.z)
+    ) return null
+    return {
+      from: { x: from.x + dx * start, z: from.z + dz * start },
+      to: { x: from.x + dx * end, z: from.z + dz * end },
+    }
+  }
   const rectFrom = (points: Array<{ x: number; z: number }>, extra = 0) => {
     const left = Math.min(...points.map((point) => point.x)) - extra
     const right = Math.max(...points.map((point) => point.x)) + extra
@@ -732,9 +764,11 @@ function mapFromOsm(
       const meters = Number(tags.width) || (walking ? 1.8 : tags.highway === "service" ? 4 : Math.min(8, lanes * 3.1 + 1.2))
       const thickness = Math.max(walking ? 1.2 : 2.8, meters * scale)
       for (let index = 1; index < points.length && pathParts < 30; index += 1) {
-        const from = points[index - 1]
-        const to = points[index]
+        const clipped = clipSegmentToMap(points[index - 1], points[index])
+        if (!clipped) continue
+        const { from, to } = clipped
         const length = Math.hypot(to.x - from.x, to.z - from.z)
+        if (length < 0.15) continue
         const steps = Math.max(1, Math.ceil(length / Math.max(1.8, thickness * 0.7)))
         for (let step = 0; step < steps && pathParts < 30; step += 1) {
           const ratio = (step + 0.5) / steps
@@ -760,11 +794,21 @@ function mapFromOsm(
     }
   }
 
-  if (buildings.length === 0) {
-    const innerW = Math.max(6, mapWidth - padding * 2)
-    const innerD = Math.max(6, mapDepth - padding * 2)
-    const roadDepth = Math.max(3, Math.min(5.5, innerD * 0.11))
-    const roadZ = padding + innerD * 0.48
+  const innerW = Math.max(6, mapWidth - padding * 2)
+  const innerD = Math.max(6, mapDepth - padding * 2)
+  const roadDepth = Math.max(3, Math.min(5.5, innerD * 0.1))
+  const roadZ = [0.5, 0.82, 0.18]
+    .map((ratio) => padding + innerD * ratio - roadDepth / 2)
+    .map((z) => ({
+      z,
+      occupied: [...buildings, ...waters].reduce((area, existing) => {
+        const top = Math.max(z, existing.rect.z)
+        const bottom = Math.min(z + roadDepth, existing.rect.z + existing.rect.d)
+        return area + Math.max(0, bottom - top) * existing.rect.w
+      }, 0),
+    }))
+    .sort((left, right) => left.occupied - right.occupied)[0].z
+  if (pathParts === 0 && mapWidth >= 28 && mapDepth >= 22) {
     surfaces.push(room(
       "inferred-road-main",
       "Rua de acesso",
@@ -775,26 +819,68 @@ function mapFromOsm(
       "#aab4bf",
     ))
     counts.caminhos += 1
+    counts.inferidos += 1
+  }
 
-    const addBuilding = (
-      name: string,
-      xRatio: number,
-      z: number,
-      wRatio: number,
-      d: number,
-      tags: Record<string, string>,
-    ) => {
-      const x = round2(padding + innerW * xRatio)
-      const availableW = mapWidth - padding - x
-      const availableD = mapDepth - padding - z
-      if (availableW < 3.8 || availableD < 3.4) return
-      const rect = {
-        x,
-        z: round2(z),
-        w: round2(Math.min(availableW, Math.max(4, innerW * wRatio))),
-        d: round2(Math.min(availableD, Math.max(4, d))),
+  const targetBuildings = innerW * innerD >= 2_200 ? 6 : innerW * innerD >= 1_100 ? 5 : innerW * innerD >= 600 ? 4 : 3
+  const sparseCartography = buildings.length < Math.min(3, targetBuildings)
+  if (sparseCartography) {
+    type PlannedRect = { x: number; z: number; w: number; d: number }
+    const plannedRect = (x: number, z: number, w: number, d: number): PlannedRect => ({
+      x: round2(padding + innerW * x),
+      z: round2(padding + innerD * z),
+      w: round2(Math.max(3.8, Math.min(innerW * w, innerW * (1 - x)))),
+      d: round2(Math.max(3.4, Math.min(innerD * d, innerD * (1 - z)))),
+    })
+    const overlaps = (candidate: PlannedRect, existing: MapRoom, margin = 0.75) =>
+      candidate.x < existing.rect.x + existing.rect.w + margin &&
+      candidate.x + candidate.w > existing.rect.x - margin &&
+      candidate.z < existing.rect.z + existing.rect.d + margin &&
+      candidate.z + candidate.d > existing.rect.z - margin
+    const fits = (candidate: PlannedRect, margin = 0.75) =>
+      candidate.x >= padding &&
+      candidate.z >= padding &&
+      candidate.x + candidate.w <= mapWidth - padding &&
+      candidate.z + candidate.d <= mapDepth - padding &&
+      ![...buildings, ...waters, ...surfaces.filter((surface) => surface.finish !== "grass")].some((existing) =>
+        overlaps(candidate, existing, margin),
+      )
+    const addArea = (candidate: PlannedRect, type: "pool" | "field") => {
+      if (!fits(candidate, 1)) return false
+      if (type === "pool") {
+        waters.push(room("inferred-pool", "Piscina", candidate, "agua", "water", "#21b6d0", "#8cf3ff"))
+        counts.agua += 1
+      } else {
+        surfaces.push(room("inferred-field", "Quadra esportiva", candidate, "campo", "sport", "#3f8f91", "#d7fff7"))
+        counts.campos += 1
       }
-      if (rect.w < 3.8 || rect.d < 3.4) return
+      counts.inferidos += 1
+      return true
+    }
+    const tryAreaCandidates = (type: "pool" | "field", candidates: PlannedRect[]) => {
+      for (const candidate of candidates) {
+        if (addArea(candidate, type)) return true
+      }
+      return false
+    }
+
+    if (waters.length === 0 && innerW >= 28 && innerD >= 22) {
+      tryAreaCandidates("pool", [
+        plannedRect(0.08, 0.66, 0.18, 0.2),
+        plannedRect(0.73, 0.65, 0.18, 0.2),
+        plannedRect(0.08, 0.16, 0.17, 0.18),
+      ])
+    }
+    if (!surfaces.some((surface) => surface.kind === "campo") && innerW >= 34 && innerD >= 25) {
+      tryAreaCandidates("field", [
+        plannedRect(0.38, 0.64, 0.24, 0.23),
+        plannedRect(0.4, 0.12, 0.22, 0.22),
+        plannedRect(0.68, 0.64, 0.23, 0.22),
+      ])
+    }
+
+    const addBuilding = (name: string, rect: PlannedRect, tags: Record<string, string>) => {
+      if (!fits(rect)) return false
       const index = buildings.length
       const doorWidth = Math.min(2.8, Math.max(1.4, rect.w * 0.22))
       const building = room(
@@ -810,58 +896,48 @@ function mapFromOsm(
       buildings.push(building)
       generatedProps.push(...generatedBuildingProps(building, tags, index))
       counts.construcoes += 1
+      counts.inferidos += 1
+      return true
     }
 
-    const topDepth = Math.max(5, roadZ - padding - 2)
-    const lowerZ = roadZ + roadDepth + 2
-    const lowerDepth = Math.max(5, mapDepth - padding - lowerZ)
-    addBuilding("Casa principal", 0.05, padding + 1, 0.25, topDepth, { building: "house" })
-    addBuilding("Casa de hóspedes", 0.37, padding + 2, 0.18, topDepth * 0.82, { building: "house" })
-    addBuilding("Administração", 0.66, padding + 1, 0.27, topDepth, { building: "office", office: "yes" })
-    addBuilding("Salão", 0.66, lowerZ + 1, 0.26, lowerDepth * 0.82, { building: "commercial" })
+    const buildingPlans: Array<{ name: string; rect: PlannedRect; tags: Record<string, string> }> = [
+      { name: "Casa principal", rect: plannedRect(0.08, 0.08, 0.24, 0.2), tags: { building: "house" } },
+      { name: "Salão principal", rect: plannedRect(0.38, 0.08, 0.25, 0.17), tags: { building: "commercial" } },
+      { name: "Administração", rect: plannedRect(0.72, 0.09, 0.2, 0.2), tags: { building: "office", office: "yes" } },
+      { name: "Casa de hóspedes", rect: plannedRect(0.08, 0.57, 0.2, 0.19), tags: { building: "house" } },
+      { name: "Área de apoio", rect: plannedRect(0.7, 0.57, 0.22, 0.18), tags: { building: "warehouse" } },
+      { name: "Quiosque", rect: plannedRect(0.31, 0.7, 0.13, 0.14), tags: { building: "retail" } },
+      { name: "Vestiário", rect: plannedRect(0.57, 0.7, 0.12, 0.15), tags: { building: "commercial" } },
+      { name: "Portaria", rect: plannedRect(0.8, 0.38, 0.1, 0.12), tags: { building: "commercial" } },
+      { name: "Depósito", rect: plannedRect(0.28, 0.31, 0.13, 0.13), tags: { building: "warehouse" } },
+    ]
+    for (const plan of buildingPlans) {
+      if (buildings.length >= targetBuildings) break
+      addBuilding(plan.name, plan.rect, plan.tags)
+    }
 
-    if (innerW >= 28 && lowerDepth >= 7) {
-      waters.push(room(
-        "inferred-pool",
-        "Piscina",
-        { x: round2(padding + innerW * 0.07), z: round2(lowerZ + 1), w: round2(innerW * 0.22), d: round2(lowerDepth * 0.72) },
-        "agua",
-        "water",
-        "#21b6d0",
-        "#8cf3ff",
-      ))
-      surfaces.push(room(
-        "inferred-field",
-        "Campo/quadra",
-        { x: round2(padding + innerW * 0.35), z: round2(lowerZ + 1), w: round2(innerW * 0.24), d: round2(lowerDepth * 0.72) },
-        "campo",
-        "sport",
-        "#3f8f91",
-        "#d7fff7",
-      ))
-      counts.agua += 1
-      counts.campos += 1
+    const vehicleRoads = surfaces.filter((surface) => surface.finish === "asphalt")
+    if (innerW >= 38 && vehicleRoads.length > 0) {
+      const carSpots = vehicleRoads.filter((_, index) => index % Math.max(1, Math.floor(vehicleRoads.length / 2)) === 0).slice(0, 2)
+      for (const [index, road] of carSpots.entries()) {
+        generatedProps.push({
+          kind: "car",
+          x: round2(road.rect.x + road.rect.w / 2),
+          z: round2(road.rect.z + road.rect.d / 2),
+          rot: road.rect.w >= road.rect.d ? Math.PI / 2 : 0,
+          level: 0,
+        })
+        if (index === 0) {
+          generatedProps.push({
+            kind: "cone",
+            x: round2(road.rect.x + road.rect.w * 0.25),
+            z: round2(road.rect.z + road.rect.d * 0.25),
+            rot: 0,
+            level: 0,
+          })
+        }
+      }
     }
-    if (innerW >= 38) {
-      generatedProps.push(
-        { kind: "car", x: round2(padding + innerW * 0.28), z: round2(roadZ + roadDepth / 2), rot: Math.PI / 2, level: 0 },
-        { kind: "car", x: round2(padding + innerW * 0.53), z: round2(roadZ + roadDepth / 2), rot: -Math.PI / 2, level: 0 },
-        { kind: "cone", x: round2(padding + innerW * 0.45), z: round2(roadZ + roadDepth * 0.2), rot: 0, level: 0 },
-      )
-    }
-    counts.inferidos = buildings.length + waters.length + surfaces.length
-  } else if (pathParts === 0 && mapWidth >= 28 && mapDepth >= 22) {
-    surfaces.push(room(
-      "inferred-road-access",
-      "Via de acesso",
-      { x: padding, z: round2(mapDepth - padding - 4.5), w: mapWidth - padding * 2, d: 4.5 },
-      "externa",
-      "asphalt",
-      "#252a31",
-      "#aab4bf",
-    ))
-    counts.caminhos += 1
-    counts.inferidos += 1
   }
 
   const protectedRooms = [...buildings, ...waters, ...surfaces.filter((surface) => surface.kind === "campo")]
@@ -917,7 +993,9 @@ function mapFromOsm(
   base.vents = []
   base.stairs = []
   base.source = {
-    label: "Área gerada de dados cartográficos do OpenStreetMap",
+    label: sparseCartography
+      ? "Área baseada em dados cartográficos do OpenStreetMap com detalhes ausentes completados automaticamente"
+      : "Área gerada de dados cartográficos do OpenStreetMap",
     referenceUrl,
     latitude: centerLatitude,
     longitude: centerLongitude,

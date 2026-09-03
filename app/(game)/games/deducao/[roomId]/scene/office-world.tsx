@@ -8,7 +8,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js"
 import type { OfficeMap } from "@/lib/services/games"
 import type { Quality } from "../match-types"
-import { useVisionMaterial } from "./vision-material"
+import { patchVision, useVisionMaterial } from "./vision-material"
 
 /// Pé-direito quase encostado na laje superior. O vão restante é estrutural,
 /// não um buraco por onde se enxerga o mapa inteiro.
@@ -811,32 +811,34 @@ function TexturedFloor({
     [textures],
   )
 
+  const material = useVisionMaterial({
+    color: patch.tint,
+    map: textures.color,
+    normalMap: textures.normal,
+    normalScale: patch.finish === "water" ? 0.08 : patch.finish === "grass" ? 0.5 : 0.38,
+    roughnessMap: textures.roughness,
+    emissive: "#dbe7f1",
+    emissiveIntensity: blackout ? 0 : 0.01,
+    roughness:
+      patch.finish === "water"
+        ? 0.22
+        : patch.finish === "wood" || patch.finish === "parquet"
+          ? 0.68
+          : patch.finish === "server"
+            ? 0.58
+            : 0.9,
+    metalness: patch.finish === "water" ? 0.08 : patch.finish === "server" ? 0.16 : 0.01,
+    surface: "piso",
+  })
+
   return (
     <mesh
       position={[patch.x + patch.w / 2, patch.elevation, patch.z + patch.d / 2]}
       rotation-x={-Math.PI / 2}
       receiveShadow
+      material={material}
     >
       <planeGeometry args={[patch.w, patch.d]} />
-      <meshStandardMaterial
-        map={textures.color}
-        normalMap={textures.normal}
-        normalScale={new THREE.Vector2(patch.finish === "water" ? 0.08 : patch.finish === "grass" ? 0.5 : 0.38, patch.finish === "water" ? 0.08 : patch.finish === "grass" ? 0.5 : 0.38)}
-        roughnessMap={textures.roughness}
-        color={patch.tint}
-        emissive="#dbe7f1"
-        emissiveIntensity={blackout ? 0 : 0.01}
-        roughness={
-          patch.finish === "water"
-            ? 0.22
-            : patch.finish === "wood" || patch.finish === "parquet"
-              ? 0.68
-              : patch.finish === "server"
-                ? 0.58
-                : 0.9
-        }
-        metalness={patch.finish === "water" ? 0.08 : patch.finish === "server" ? 0.16 : 0.01}
-      />
     </mesh>
   )
 }
@@ -922,11 +924,13 @@ function LocalRoomLights({
   lights,
   height,
   blackout,
+  active,
   focusRef,
 }: {
   lights: RoomLightSource[]
   height: number
   blackout: boolean
+  active: boolean
   focusRef: MutableRefObject<THREE.Vector2>
 }) {
   const refs = useRef<Array<THREE.SpotLight | null>>([])
@@ -949,12 +953,12 @@ function LocalRoomLights({
     refs.current.forEach((light, index) => {
       if (!light) return
       const source = selected.current[index]
-      light.visible = Boolean(source)
+      light.visible = Boolean(source) && active
       if (!source) return
       light.position.set(source.x, height, source.z)
       light.color.set(source.color)
       light.distance = source.distance
-      light.intensity += ((blackout ? 0 : source.intensity) - light.intensity) * Math.min(1, delta * 8)
+      light.intensity += ((active && !blackout ? source.intensity : 0) - light.intensity) * Math.min(1, delta * 8)
       targets[index].position.set(source.x, 0.04, source.z)
       light.target = targets[index]
     })
@@ -1762,22 +1766,20 @@ export function OfficeWorld({
           <Instances geometry={ceilingGeometry} material={ceilingMaterial} transforms={ceilingFixtures} shadows={false} />
         </>
       )}
-      {active && (
-        <LocalRoomLights
-          lights={roomLights}
-          height={Math.max(2.8, wallHeight - 0.2)}
-          blackout={blackout}
-          focusRef={focusRef}
-        />
-      )}
-      {active &&
-        quality !== "baixo" &&
+      <LocalRoomLights
+        lights={roomLights}
+        height={Math.max(2.8, wallHeight - 0.2)}
+        blackout={blackout}
+        active={active}
+        focusRef={focusRef}
+      />
+      {quality !== "baixo" &&
         emergencyLights.map((light, index) => (
           <pointLight
             key={`emergency-light-${index}`}
             position={[light.x, 0.48, light.z]}
             color="#ff2d3f"
-            intensity={blackout ? 18 : 0}
+            intensity={active && blackout ? 18 : 0}
             distance={7.5}
             decay={2}
           />
@@ -1843,7 +1845,7 @@ function DetailedPropKind({
           next.roughnessMap = upholsteryRoughness
           next.roughness = 1
         }
-        return next
+        return patchVision(next)
       })
       child.material = Array.isArray(child.material) ? materials : materials[0]
     })
