@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { Html } from "@react-three/drei"
 import * as THREE from "three"
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
 import type { Room } from "@colyseus/sdk"
 import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/games/collision"
 import { playGameSound } from "@/lib/games/game-audio"
@@ -13,7 +14,7 @@ import type { Role, Snapshot } from "../use-deducao-room"
 import { OfficeWorld } from "./office-world"
 import { setVision, useVisionMaterial } from "./vision-material"
 
-const VOID_COLOR = "#2a3450"
+const VOID_COLOR = "#3b4d6c"
 
 /// Altura dos olhos. A câmera de primeira pessoa fica aqui, e é por isso que a
 /// parede precisa passar dos 2,5m: a 1,55m dava para ver o escritório inteiro
@@ -53,8 +54,8 @@ export function OfficeScene(props: Props) {
   return (
     <Canvas
       shadows={quality !== "baixo"}
-      dpr={quality === "alto" ? [1, 1.75] : quality === "medio" ? [1, 1.25] : 1}
-      gl={{ antialias: quality === "alto", powerPreference: "high-performance" }}
+      dpr={quality === "alto" ? [1, 2] : quality === "medio" ? [1, 1.5] : 1}
+      gl={{ antialias: quality !== "baixo", powerPreference: "high-performance", stencil: false }}
       camera={{ fov: 40, near: 0.1, far: 130, position: [0, 14, 10.5] }}
       onCreated={({ gl }) => {
         // O vazio em volta do escritório é um azul de fim de tarde, não preto:
@@ -62,13 +63,55 @@ export function OfficeScene(props: Props) {
         gl.setClearColor(VOID_COLOR)
         gl.outputColorSpace = THREE.SRGBColorSpace
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = 1.05
+        gl.toneMappingExposure = 1.16
         gl.shadowMap.type = THREE.PCFSoftShadowMap
       }}
     >
       <SceneContent {...props} />
     </Canvas>
   )
+}
+
+function ProceduralEnvironment({ quality, blackout }: { quality: Quality; blackout: boolean }) {
+  const { gl, scene } = useThree()
+  const enabled = quality !== "baixo"
+
+  useEffect(() => {
+    const previous = scene.environment
+    if (!enabled) {
+      scene.environment = null
+      return () => {
+        scene.environment = previous
+      }
+    }
+
+    const generator = new THREE.PMREMGenerator(gl)
+    generator.compileCubemapShader()
+    const environment = new RoomEnvironment()
+    const target = generator.fromScene(environment, quality === "alto" ? 0.025 : 0.04)
+    scene.environment = target.texture
+
+    environment.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return
+      child.geometry.dispose()
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      materials.forEach((material) => material.dispose())
+    })
+    generator.dispose()
+
+    return () => {
+      if (scene.environment === target.texture) scene.environment = previous
+      target.dispose()
+    }
+  }, [enabled, gl, quality, scene])
+
+  useFrame((_, delta) => {
+    const target = blackout ? 0.025 : quality === "alto" ? 0.58 : quality === "medio" ? 0.42 : 0
+    scene.environmentIntensity +=
+      (target - scene.environmentIntensity) * Math.min(1, delta * 3.5)
+  })
+
+  return null
 }
 
 function SceneContent({
@@ -95,28 +138,44 @@ function SceneContent({
   const targetSignature = useRef("")
   const sun = useRef<THREE.DirectionalLight>(null)
   const sky = useRef<THREE.HemisphereLight>(null)
+  const ambient = useRef<THREE.AmbientLight>(null)
   const playerLight = useRef<THREE.PointLight>(null)
   const cameraGoal = useRef(new THREE.Vector3())
+  const lastLevel = useRef(-1)
+
+  const mineSnapshot = snapshot.players.find((player) => player.id === me)
+  const currentLevel = mineSnapshot?.level ?? 0
 
   // Duas listas, e a diferença importa: no armário você esbarra e some atrás
   // dele; na mesa você esbarra mas continua à vista.
-  const colliders = useMemo(() => [...map.walls, ...map.obstacles], [map.walls, map.obstacles])
+  const colliders = useMemo(
+    () =>
+      [...map.walls, ...map.obstacles].filter((box) => (box.level ?? 0) === currentLevel),
+    [map.walls, map.obstacles, currentLevel],
+  )
   const walls = useMemo(
-    () => [...map.walls, ...map.obstacles.filter((box) => box.tall)],
-    [map.walls, map.obstacles],
+    () =>
+      [
+        ...map.walls.filter((box) => box.style !== "guarda-corpo"),
+        ...map.obstacles.filter((box) => box.tall),
+      ].filter((box) => (box.level ?? 0) === currentLevel),
+    [map.walls, map.obstacles, currentLevel],
   )
   const myTaskSpots = useMemo(
-    () => map.taskSpots.filter((spot) => pendingTasks.includes(spot.id)),
-    [map.taskSpots, pendingTasks],
+    () =>
+      map.taskSpots.filter(
+        (spot) => pendingTasks.includes(spot.id) && (spot.level ?? 0) === currentLevel,
+      ),
+    [map.taskSpots, pendingTasks, currentLevel],
   )
 
-  const alive = snapshot.players.find((player) => player.id === me)?.alive ?? true
-  const inVent = snapshot.players.find((player) => player.id === me)?.inVent ?? false
+  const alive = mineSnapshot?.alive ?? true
+  const inVent = mineSnapshot?.inVent ?? false
   const visionRange = Number(snapshot.config.visionRange ?? 13)
   // No apagão o assassino enxerga igual. É ele quem apagou a luz, e é essa
   // vantagem que faz valer a pena apagar.
-  const activeVision =
-    snapshot.blackout && role !== "assassino" ? Math.min(4.2, visionRange * 0.42) : visionRange
+  const blackoutForViewer = snapshot.blackout && role !== "assassino"
+  const activeVision = blackoutForViewer ? Math.min(4.2, visionRange * 0.42) : visionRange
 
   // Olhar com o mouse. O clique tranca o ponteiro; o Esc destranca, e aí o
   // jogador volta a ter cursor para clicar nos botões do HUD.
@@ -196,6 +255,14 @@ function SceneContent({
     if (!started.current) {
       local.current.set(mine.x, mine.z)
       started.current = true
+      lastLevel.current = Number(mine.level ?? 0)
+    }
+
+    const liveLevel = Number(mine.level ?? 0)
+    if (liveLevel !== lastLevel.current) {
+      local.current.set(mine.x, mine.z)
+      lastLevel.current = liveLevel
+      playGameSound("action")
     }
 
     const canWalk = snapshot.phase === "jogando" || snapshot.phase === "lobby"
@@ -282,22 +349,29 @@ function SceneContent({
     poseRef.current.z = local.current.y
     poseRef.current.dir = heading.current
 
-    const dark = snapshot.blackout
+    const dark = blackoutForViewer
     setVision(local.current.x, local.current.y, activeVision * 0.68, activeVision)
     if (sun.current) {
       sun.current.position.set(local.current.x - 14, 26, local.current.y - 10)
       sun.current.target.position.set(local.current.x, 0, local.current.y)
       sun.current.target.updateMatrixWorld()
-      sun.current.intensity += ((dark ? 0.06 : 1.3) - sun.current.intensity) * Math.min(1, delta * 3)
+      sun.current.intensity += ((dark ? 0.025 : 2.05) - sun.current.intensity) * Math.min(1, delta * 3)
     }
     if (sky.current) {
-      sky.current.intensity += ((dark ? 0.05 : 1.15) - sky.current.intensity) * Math.min(1, delta * 3)
+      const skyTarget = dark ? 0.025 : quality === "baixo" ? 0.95 : 0.62
+      sky.current.intensity += (skyTarget - sky.current.intensity) * Math.min(1, delta * 3)
+    }
+    if (ambient.current) {
+      const ambientTarget = dark ? 0.018 : quality === "baixo" ? 0.52 : 0.16
+      ambient.current.intensity += (ambientTarget - ambient.current.intensity) * Math.min(1, delta * 3)
     }
     if (playerLight.current) {
-      playerLight.current.position.set(local.current.x, 3.2, local.current.y)
-      playerLight.current.intensity += ((dark ? 3.1 : 0.45) - playerLight.current.intensity) * Math.min(1, delta * 5)
-      playerLight.current.distance = dark ? activeVision * 1.55 : 8
+      playerLight.current.position.set(local.current.x, EYE_HEIGHT + 0.25, local.current.y)
+      playerLight.current.intensity += ((dark ? 38 : 2.2) - playerLight.current.intensity) * Math.min(1, delta * 5)
+      playerLight.current.distance = dark ? activeVision * 1.7 : 7
     }
+    const exposure = dark ? 0.88 : 1.16
+    gl.toneMappingExposure += (exposure - gl.toneMappingExposure) * Math.min(1, delta * 3)
 
     reportTargets({
       state,
@@ -308,6 +382,7 @@ function SceneContent({
       allies,
       snapshot,
       walls,
+      level: currentLevel,
       position: { x: local.current.x, z: local.current.y },
       onTargets,
       signature: targetSignature,
@@ -316,26 +391,35 @@ function SceneContent({
 
   return (
     <>
-      <fog attach="fog" args={[VOID_COLOR, 34, 92]} />
-      <ambientLight color="#d5def2" intensity={0.38} />
-      <hemisphereLight ref={sky} args={["#ffffff", "#61708f", 1.15]} />
+      <fog attach="fog" args={[VOID_COLOR, 38, 100]} />
+      <ProceduralEnvironment quality={quality} blackout={blackoutForViewer} />
+      <ambientLight ref={ambient} color="#dce8ff" intensity={0.16} />
+      <hemisphereLight ref={sky} args={["#f5f9ff", "#52627d", 0.62]} />
       <directionalLight
         ref={sun}
-        color="#fff2df"
-        intensity={1.3}
+        color="#ffe7c2"
+        intensity={2.05}
         castShadow={quality !== "baixo"}
         shadow-mapSize={quality === "alto" ? [2048, 2048] : [1024, 1024]}
-        shadow-camera-left={-22}
-        shadow-camera-right={22}
-        shadow-camera-top={22}
-        shadow-camera-bottom={-22}
+        shadow-camera-left={-20}
+        shadow-camera-right={20}
+        shadow-camera-top={20}
+        shadow-camera-bottom={-20}
         shadow-camera-near={1}
         shadow-camera-far={70}
-        shadow-bias={-0.0012}
+        shadow-bias={-0.00035}
+        shadow-normalBias={0.035}
+        shadow-radius={quality === "alto" ? 3 : 1.5}
       />
-      <pointLight ref={playerLight} color="#e8f1ff" intensity={0.45} distance={8} decay={1.7} />
+      <pointLight ref={playerLight} color="#e8f3ff" intensity={2.2} distance={7} decay={2} />
 
-      <OfficeWorld map={map} quality={quality} blackout={snapshot.blackout} view={view} />
+      <OfficeWorld
+        map={map}
+        quality={quality}
+        blackout={blackoutForViewer}
+        view={view}
+        level={currentLevel}
+      />
       <Markers
         map={map}
         spots={myTaskSpots}
@@ -343,6 +427,7 @@ function SceneContent({
         localRef={local}
         walls={walls}
         visionRange={activeVision}
+        level={currentLevel}
       />
 
       {snapshot.players.map((player) => (
@@ -359,21 +444,24 @@ function SceneContent({
           hideBody={player.id === me && view === "primeira"}
           walls={walls}
           visionRange={activeVision}
-          blackout={snapshot.blackout}
+          blackout={blackoutForViewer}
+          viewerLevel={currentLevel}
         />
       ))}
 
-      {snapshot.corpses.map((corpse) => (
-        <Corpse
-          key={corpse.id}
-          corpse={corpse}
-          localRef={local}
-          viewerAlive={alive}
-          walls={walls}
-          visionRange={activeVision}
-          blackout={snapshot.blackout}
-        />
-      ))}
+      {snapshot.corpses
+        .filter((corpse) => corpse.level === currentLevel)
+        .map((corpse) => (
+          <Corpse
+            key={corpse.id}
+            corpse={corpse}
+            localRef={local}
+            viewerAlive={alive}
+            walls={walls}
+            visionRange={activeVision}
+            blackout={blackoutForViewer}
+          />
+        ))}
     </>
   )
 }
@@ -393,6 +481,7 @@ function Actor({
   walls,
   visionRange,
   blackout,
+  viewerLevel,
 }: {
   player: Snapshot["players"][number]
   roomRef: React.MutableRefObject<Room | null>
@@ -408,6 +497,7 @@ function Actor({
   walls: OfficeMap["walls"]
   visionRange: number
   blackout: boolean
+  viewerLevel: number
 }) {
   const group = useRef<THREE.Group>(null)
   const bodyGroup = useRef<THREE.Group>(null)
@@ -451,14 +541,20 @@ function Actor({
 
     node.position.x += (targetX - node.position.x) * pull
     node.position.z += (targetZ - node.position.z) * pull
+    const sameLevel = Number(live.level ?? 0) === viewerLevel
     const inSight =
-      !viewerAlive ||
-      isMe ||
-      (distance({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z }) <= visionRange &&
-        hasLineOfSight({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z }, walls))
+      sameLevel &&
+      (!viewerAlive ||
+        isMe ||
+        (distance({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z }) <= visionRange &&
+          hasLineOfSight({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z }, walls)))
     if (inSight) lastVisibleAt.current = performance.now()
     node.visible =
-      !hideBody && !hidden && !live.inVent && (inSight || performance.now() - lastVisibleAt.current < 120)
+      sameLevel &&
+      !hideBody &&
+      !hidden &&
+      !live.inVent &&
+      (inSight || performance.now() - lastVisibleAt.current < 120)
     if (label.current) label.current.style.visibility = node.visible ? "visible" : "hidden"
     if (!node.visible) return
 
@@ -610,6 +706,7 @@ function Markers({
   localRef,
   walls,
   visionRange,
+  level,
 }: {
   map: OfficeMap
   spots: OfficeMap["taskSpots"]
@@ -617,9 +714,10 @@ function Markers({
   localRef: React.MutableRefObject<THREE.Vector2>
   walls: OfficeMap["walls"]
   visionRange: number
+  level: number
 }) {
   const ring = useRef<THREE.Group>(null)
-  const emergency = useRef<THREE.Mesh>(null)
+  const emergency = useRef<THREE.Group>(null)
   const vents = useRef<THREE.Group>(null)
 
   useFrame(({ clock }) => {
@@ -634,9 +732,12 @@ function Markers({
         child.visible = Boolean(spots[index] && visible(spots[index]))
       })
     }
-    if (emergency.current) emergency.current.visible = visible(map.emergency)
+    if (emergency.current) {
+      emergency.current.visible = (map.emergency.level ?? 0) === level && visible(map.emergency)
+    }
+    const levelVents = map.vents.filter((vent) => (vent.level ?? 0) === level)
     vents.current?.children.forEach((child, index) => {
-      child.visible = Boolean(map.vents[index] && visible(map.vents[index]))
+      child.visible = Boolean(levelVents[index] && visible(levelVents[index]))
     })
   })
 
@@ -645,16 +746,26 @@ function Markers({
       <group ref={ring}>
         {spots.map((spot) => (
           <mesh key={spot.id} position={[spot.x, 0.06, spot.z]} rotation-x={-Math.PI / 2}>
-            <ringGeometry args={[0.6, 0.82, 22]} />
-            <meshBasicMaterial color="#fbbf24" transparent opacity={0.85} />
+            <ringGeometry args={[0.5, 0.57, 32]} />
+            <meshBasicMaterial color="#ffd76a" transparent opacity={0.76} depthWrite={false} />
           </mesh>
         ))}
       </group>
 
-      <mesh ref={emergency} position={[map.emergency.x, 0.55, map.emergency.z]}>
-        <cylinderGeometry args={[0.34, 0.4, 1.1, 12]} />
-        <meshStandardMaterial color="#7f1d1d" emissive="#ef4444" emissiveIntensity={0.75} roughness={0.4} />
-      </mesh>
+      <group ref={emergency} position={[map.emergency.x, 0, map.emergency.z]}>
+        <mesh position={[0, 0.22, 0]} castShadow>
+          <cylinderGeometry args={[0.31, 0.38, 0.44, 18]} />
+          <meshStandardMaterial color="#5b6575" metalness={0.35} roughness={0.42} />
+        </mesh>
+        <mesh position={[0, 0.49, 0]} castShadow>
+          <cylinderGeometry args={[0.25, 0.28, 0.14, 20]} />
+          <meshStandardMaterial color="#ad2635" emissive="#ff334d" emissiveIntensity={0.75} roughness={0.28} />
+        </mesh>
+        <mesh position={[0, 0.57, 0]} rotation-x={Math.PI / 2}>
+          <torusGeometry args={[0.28, 0.035, 8, 24]} />
+          <meshStandardMaterial color="#e5b85e" metalness={0.55} roughness={0.32} />
+        </mesh>
+      </group>
 
       {/* O duto em si é parte do escritório e todo mundo vê, igual no Among:
           esconder a grelha não escondia nada e ainda entregava o assassino no
@@ -662,10 +773,10 @@ function Markers({
           este anel, que marca qual grelha dá para usar. */}
       {showVents && (
         <group ref={vents}>
-          {map.vents.map((vent) => (
-            <mesh key={vent.id} position={[vent.x, 0.3, vent.z]} rotation-x={-Math.PI / 2}>
-              <ringGeometry args={[0.86, 1.04, 24]} />
-              <meshBasicMaterial color="#f87171" transparent opacity={0.7} />
+          {map.vents.filter((vent) => (vent.level ?? 0) === level).map((vent) => (
+            <mesh key={vent.id} position={[vent.x, 0.225, vent.z]} rotation-x={-Math.PI / 2}>
+              <ringGeometry args={[0.82, 0.88, 28]} />
+              <meshBasicMaterial color="#69d6ff" transparent opacity={0.5} depthWrite={false} />
             </mesh>
           ))}
         </group>
@@ -685,6 +796,7 @@ function reportTargets({
   allies,
   snapshot,
   walls,
+  level,
   position,
   onTargets,
   signature,
@@ -697,14 +809,21 @@ function reportTargets({
   allies: string[]
   snapshot: Snapshot
   walls: OfficeMap["walls"]
+  level: number
   position: { x: number; z: number }
   onTargets: (targets: Targets) => void
   signature: React.MutableRefObject<string>
 }) {
   const task = myTaskSpots.find((spot) => distance(position, spot) <= TASK_RANGE) ?? null
-  const corpse = snapshot.corpses.find((body) => !body.reported && distance(position, body) <= REPORT_RANGE) ?? null
-  const emergency = distance(position, map.emergency) <= REPORT_RANGE
-  const vent = role === "assassino" ? (map.vents.find((item) => distance(position, item) <= VENT_RANGE) ?? null) : null
+  const corpse =
+    snapshot.corpses.find(
+      (body) => body.level === level && !body.reported && distance(position, body) <= REPORT_RANGE,
+    ) ?? null
+  const emergency = (map.emergency.level ?? 0) === level && distance(position, map.emergency) <= REPORT_RANGE
+  const vent =
+    role === "assassino"
+      ? (map.vents.find((item) => (item.level ?? 0) === level && distance(position, item) <= VENT_RANGE) ?? null)
+      : null
 
   let kill: { id: string; name: string } | null = null
   if (role === "assassino") {
@@ -713,6 +832,7 @@ function reportTargets({
       if (player.id === me || !player.alive || allies.includes(player.id)) return
       const live = state?.players?.get?.(player.id)
       if (!live) return
+      if (Number(live.level ?? 0) !== level) return
       const gap = distance(position, { x: live.x, z: live.z })
       if (
         gap <= Number(snapshot.config.killRange ?? 2.2) &&

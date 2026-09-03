@@ -30,12 +30,15 @@ export interface WallBox {
   /// Chega na altura dos olhos, então além de barrar o corpo também corta a
   /// linha de visão. Mesa e sofá não.
   tall?: boolean
+  level?: number
+  style?: "parede" | "guarda-corpo"
 }
 export interface MapRoom {
   id: string
   name: string
   rect: MapRect
-  kind: "sala" | "corredor"
+  kind: "sala" | "corredor" | "terraco"
+  level?: number
   floor: string
   light: string
 }
@@ -44,6 +47,7 @@ export interface MapProp {
   x: number
   z: number
   rot: number
+  level?: number
 }
 export interface MapTaskSpot {
   id: string
@@ -52,6 +56,7 @@ export interface MapTaskSpot {
   label: string
   x: number
   z: number
+  level?: number
 }
 export interface MapVent {
   id: string
@@ -59,6 +64,17 @@ export interface MapVent {
   x: number
   z: number
   links: string[]
+  level?: number
+}
+export interface MapStair {
+  id: string
+  level: number
+  x: number
+  z: number
+  rot: number
+  targetLevel: number
+  targetX: number
+  targetZ: number
 }
 
 export interface OfficeMap {
@@ -72,8 +88,9 @@ export interface OfficeMap {
   props: MapProp[]
   taskSpots: MapTaskSpot[]
   vents: MapVent[]
-  emergency: { x: number; z: number }
-  spawns: { x: number; z: number }[]
+  stairs: MapStair[]
+  emergency: { x: number; z: number; level?: number }
+  spawns: { x: number; z: number; level?: number }[]
 }
 
 export function getGameCatalog(): Promise<GameCatalog> {

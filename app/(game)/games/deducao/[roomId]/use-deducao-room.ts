@@ -20,6 +20,7 @@ export interface PlayerRow {
   tasksDone: number
   tasksTotal: number
   emergenciesLeft: number
+  level: number
 }
 
 export interface MeetingRow {
@@ -46,6 +47,7 @@ export interface CorpseRow {
   x: number
   z: number
   reported: boolean
+  level: number
 }
 
 export interface ChatRow {
@@ -126,6 +128,7 @@ function snapshotOf(state: any): Snapshot {
       tasksDone: player.tasksDone,
       tasksTotal: player.tasksTotal,
       emergenciesLeft: player.emergenciesLeft,
+      level: Number(player.level ?? 0),
     })
   })
 
@@ -144,6 +147,7 @@ function snapshotOf(state: any): Snapshot {
       x: corpse.x,
       z: corpse.z,
       reported: corpse.reported,
+      level: Number(corpse.level ?? 0),
     })
   })
 
@@ -385,6 +389,9 @@ export function useDeducaoRoom({ roomId, name, password }: Options) {
         notice("perigo", `${payload.by} te pegou. Agora você observa e termina suas tarefas.`)
       })
       room.onMessage("apagao", () => notice("perigo", "A luz caiu. Ninguém enxerga direito."))
+      room.onMessage("andar", (payload: { level: number }) =>
+        notice("aviso", payload.level === 1 ? "Você chegou ao 2º andar." : "Você voltou ao térreo."),
+      )
       room.onMessage("investigacao", (payload: { status: string; name: string }) => {
         if (payload.status === "anotado")
           notice("pista", `${payload.name} entrou na sua lista. A leitura sai na próxima reunião.`)

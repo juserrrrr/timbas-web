@@ -88,7 +88,7 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
 
         float visionDist = distance(vVisionPos.xz, uFocus.xz);
         float visible = 1.0 - smoothstep(uInner, uOuter, visionDist);
-        vec3 penumbra = gl_FragColor.rgb * 0.16 + vec3(0.055, 0.068, 0.098);
+        vec3 penumbra = gl_FragColor.rgb * 0.24 + vec3(0.065, 0.082, 0.118);
         gl_FragColor.rgb = mix(penumbra, gl_FragColor.rgb, visible);`,
       )
   }

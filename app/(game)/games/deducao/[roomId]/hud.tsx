@@ -58,6 +58,11 @@ export function Hud({
   const progress = snapshot.tasksTotal > 0 ? snapshot.tasksDone / snapshot.tasksTotal : 0
   const spots = map.taskSpots.filter((spot) => pendingTasks.includes(spot.id))
   const roomName = (id: string) => map.rooms.find((room) => room.id === id)?.name ?? id
+  const floorName = mine?.level === 1 ? "2º andar" : "Térreo"
+  const visibleNotices =
+    role === "assassino"
+      ? notices.filter((notice) => notice.text !== "A luz caiu. Ninguém enxerga direito.")
+      : notices
 
   // Dentro do duto, para onde dá para ir. O servidor sempre soube fazer a
   // viagem; faltava a tela oferecer o destino, e sem ela o duto era um buraco
@@ -84,7 +89,7 @@ export function Hud({
 
   return (
     <div className="pointer-events-none absolute inset-0 select-none">
-      {snapshot.blackout && (
+      {snapshot.blackout && role !== "assassino" && (
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_18%,rgba(0,0,0,0.82)_78%)]">
           <p className="absolute left-1/2 top-6 -translate-x-1/2 font-mono text-[11px] font-bold uppercase tracking-[0.4em] text-red-400/80">
             Luz apagada
@@ -110,7 +115,7 @@ export function Hud({
         </div>
         {role && (
           <p className={`mt-2 font-mono text-[10px] uppercase tracking-[0.22em] ${ROLE_COPY[role].tone}`}>
-            {alive ? ROLE_COPY[role].title : "Morto"}
+            {alive ? ROLE_COPY[role].title : "Morto"} · {floorName}
           </p>
         )}
       </div>
@@ -177,7 +182,9 @@ export function Hud({
               }`}
             >
               <span className="block font-semibold">{spot.label}</span>
-              <span className="font-mono text-[9px] uppercase tracking-[0.16em] opacity-70">{roomName(spot.room)}</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.16em] opacity-70">
+                {roomName(spot.room)} · {(spot.level ?? 0) === 1 ? "2º andar" : "térreo"}
+              </span>
             </li>
           ))}
         </ul>
@@ -325,7 +332,7 @@ export function Hud({
       )}
 
       <div className="absolute left-1/2 top-20 w-[min(90vw,26rem)] -translate-x-1/2 space-y-2">
-        {notices.map((notice) => (
+        {visibleNotices.map((notice) => (
           <p
             key={notice.id}
             className={`rounded-xl border px-4 py-2.5 text-center text-[13px] font-semibold backdrop-blur ${
