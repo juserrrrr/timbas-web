@@ -99,7 +99,7 @@ export function PlayerRatingCard({
       className={cn(
         "group relative isolate flex aspect-[3/4] w-full flex-col overflow-hidden rounded-2xl border p-2.5 shadow-xl transition duration-300 hover:-translate-y-1",
         tier.shell,
-        compact ? stats.length ? "min-h-[164px]" : "min-h-[138px]" : "min-h-[190px] p-3.5",
+        compact ? stats.length ? "min-h-[174px]" : "min-h-[138px]" : "min-h-[190px] p-3.5",
         className,
       )}
       title={`${player.playerName}, nota ${rating?.toFixed(1).replace(".", ",")}`}
@@ -125,7 +125,7 @@ export function PlayerRatingCard({
 
       <div className="relative border-t border-white/10 pt-2 text-center">
         <h4 className={cn("truncate font-black uppercase tracking-tight text-white", compact ? "text-[10px]" : "text-xs")}>{player.playerName}</h4>
-        {stats.length ? <div className={`mt-1.5 grid gap-1 ${stats.length > 2 ? "grid-cols-3" : "grid-cols-2"}`}>{stats.map((stat) => <span key={stat.label} className="min-w-0 rounded bg-black/20 px-0.5 py-1"><strong className="block truncate text-[9px] font-black tabular-nums text-white">{stat.value}</strong><small className="block truncate text-[6px] font-black uppercase tracking-wide text-white/40">{stat.label}</small></span>)}</div> : <div className="mt-1 flex items-center justify-center gap-1.5">
+        {stats.length ? <div className="mt-1.5 grid grid-cols-2 gap-1">{stats.map((stat, index) => <span key={stat.label} className={cn("min-w-0 rounded bg-black/20 px-1 py-1", stats.length === 3 && index === 2 && "col-span-2")}><strong className="block truncate text-[10px] font-black tabular-nums text-white">{stat.value}</strong><small className="block truncate text-[7px] font-black uppercase tracking-wide text-white/45">{stat.label}</small></span>)}</div> : <div className="mt-1 flex items-center justify-center gap-1.5">
           {player.team && <TeamCrest name={player.team.name} logoUrl={player.team.logoUrl} size={compact ? 16 : 20} />}
           <span className="max-w-[78px] truncate text-[8px] font-bold text-white/50">{player.team?.name ?? tier.label}</span>
         </div>}

@@ -109,6 +109,16 @@ function ratingFor(player: EaClubFieldPlayer, sector: FieldLine) {
   return performanceFor(player, sector)?.averageRating ?? player.rating ?? -1
 }
 
+function appearancesFor(player: EaClubFieldPlayer, sector: FieldLine) {
+  return performanceFor(player, sector)?.appearances ?? player.appearances
+}
+
+function comparePlayers(a: EaClubFieldPlayer, b: EaClubFieldPlayer, sector: FieldLine) {
+  const aAppearances = appearancesFor(a, sector)
+  const bAppearances = appearancesFor(b, sector)
+  return Number(bAppearances >= 3) - Number(aAppearances >= 3) || ratingFor(b, sector) - ratingFor(a, sector) || bAppearances - aAppearances
+}
+
 function performanceStats(player: EaClubFieldPlayer, sector: FieldLine) {
   const performance = performanceFor(player, sector) ?? player.positionRatings?.[0]
   if (!performance) return []
@@ -171,12 +181,12 @@ export default function EaClubFieldPage() {
   const selection = useMemo(() => {
     const groups = new Map<FieldLine, EaClubFieldPlayer[]>()
     const starters = new Map<string, Array<{ player: EaClubFieldPlayer | null; adapted: boolean }>>()
-    const reserves = new Map<FieldLine, EaClubFieldPlayer | null>()
+    const reserves = new Map<FieldLine, EaClubFieldPlayer[]>()
     for (const sector of LINE_ORDER) groups.set(sector, [])
     for (const player of field?.players ?? []) groups.get(lineFor(player.position))?.push(player)
     const assigned = new Set<string>()
     for (const sector of LINE_ORDER) {
-      const ranked = [...(groups.get(sector) ?? [])].sort((a, b) => ratingFor(b, sector) - ratingFor(a, sector) || b.appearances - a.appearances)
+      const ranked = [...(groups.get(sector) ?? [])].sort((a, b) => comparePlayers(a, b, sector))
       let playerIndex = 0
       for (const line of lines.filter(item => item.key === sector)) {
         const slots = line.positions.map(() => ({ player: null as EaClubFieldPlayer | null, adapted: false }))
@@ -198,21 +208,20 @@ export default function EaClubFieldPage() {
       for (let index = 0; index < slots.length; index += 1) {
         if (slots[index].player || !unassigned.length) continue
         const target = LINE_ORDER.indexOf(line.key)
-        unassigned.sort((a, b) => Math.abs(LINE_ORDER.indexOf(lineFor(a.position)) - target) - Math.abs(LINE_ORDER.indexOf(lineFor(b.position)) - target) || ratingFor(b, line.key) - ratingFor(a, line.key))
+        unassigned.sort((a, b) => Math.abs(LINE_ORDER.indexOf(lineFor(a.position)) - target) - Math.abs(LINE_ORDER.indexOf(lineFor(b.position)) - target) || comparePlayers(a, b, line.key))
         const player = unassigned.shift() ?? null
         slots[index] = { player, adapted: player !== null && !performanceFor(player, line.key) }
         if (player) assigned.add(player.id)
       }
     }
     for (const sector of LINE_ORDER) {
-      const ranked = (groups.get(sector) ?? []).filter(player => !assigned.has(player.id)).sort((a, b) => ratingFor(b, sector) - ratingFor(a, sector) || b.appearances - a.appearances)
-      reserves.set(sector, ranked[0] ?? null)
+      reserves.set(sector, unassigned.filter(player => lineFor(player.position) === sector).sort((a, b) => comparePlayers(a, b, sector)))
     }
     return { starters, reserves }
   }, [field, lines])
 
-  const fieldHeight = lines.length >= 6 ? "min-h-[1120px]" : lines.length === 5 ? "min-h-[940px]" : "min-h-[820px]"
-  const lineupHeight = lines.length >= 6 ? "min-h-[1064px]" : lines.length === 5 ? "min-h-[884px]" : "min-h-[764px]"
+  const fieldHeight = lines.length >= 6 ? "min-h-[1240px]" : lines.length === 5 ? "min-h-[1060px]" : "min-h-[900px]"
+  const lineupHeight = lines.length >= 6 ? "min-h-[1184px]" : lines.length === 5 ? "min-h-[1004px]" : "min-h-[844px]"
 
   if (loading) return <PageLoading />
   if (error || !field) return <ErrorState message={error} retry={() => void load()} />
@@ -222,14 +231,14 @@ export default function EaClubFieldPage() {
 
     <section className="overflow-hidden rounded-[26px] border border-emerald-400/15 bg-gradient-to-b from-emerald-500/[0.07] to-transparent">
       <div className="flex flex-col gap-4 border-b border-white/[0.07] p-5 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Seleção do clube</p><h2 className="mt-1 text-2xl font-black text-white">Melhor 11 em um {activeFormation}</h2><p className="mt-1 text-[11px] text-gray-500">{manualFormation ? `Formação alterada manualmente. A sugestão automática pelas últimas 25 partidas é ${field.formation ?? "4-3-3"}.` : field.formationSummary ? `${field.summary?.matches ?? 0} jogos analisados. O ${field.formation} apareceu ${field.formationSummary.matches} vezes, com ${field.formationSummary.wins} vitórias, ${field.formationSummary.draws} empates e ${field.formationSummary.losses} derrotas. Frequência, resultados e recência definem a escolha.` : "Sem uma formação completa nas partidas analisadas; exibindo o 4-3-3 como base."}</p></div>
+        <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Seleção do clube</p><h2 className="mt-1 text-2xl font-black text-white">Melhor 11 em um {activeFormation}</h2><p className="mt-1 text-[11px] text-gray-500">{manualFormation ? `Formação alterada manualmente. A sugestão automática pelas últimas 25 partidas é ${field.formation ?? "4-3-3"}. Titulares priorizam quem fez pelo menos 3 jogos na posição.` : field.formationSummary ? `${field.summary?.matches ?? 0} jogos analisados. O ${field.formation} apareceu ${field.formationSummary.matches} vezes, com ${field.formationSummary.wins} ${field.formationSummary.wins === 1 ? "vitória" : "vitórias"}, ${field.formationSummary.draws} ${field.formationSummary.draws === 1 ? "empate" : "empates"} e ${field.formationSummary.losses} ${field.formationSummary.losses === 1 ? "derrota" : "derrotas"}. Titulares priorizam ao menos 3 jogos na posição, depois nota média e atuações.` : "Sem uma formação completa nas partidas analisadas; exibindo o 4-3-3 como base."}</p></div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end"><label className="text-[8px] font-black uppercase tracking-wider text-gray-500" htmlFor="field-formation">Formação</label><select id="field-formation" value={manualFormation ?? "auto"} onChange={event => setManualFormation(event.target.value === "auto" ? null : event.target.value)} className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold text-white outline-none focus:border-emerald-400/50"><option value="auto">Melhor sugerida ({field.formation ?? "4-3-3"})</option>{FORMATION_OPTIONS.map(formation => <option key={formation} value={formation}>{formation}</option>)}</select><span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-400">Atualizado: {formatDate(field.match?.playedAt, true)}</span></div>
       </div>
 
       {field.players.length ? <div className="grid items-start gap-5 p-4 xl:grid-cols-[minmax(720px,1fr)_250px] xl:p-5">
-        <div className="overflow-x-auto"><div className={`relative mx-auto min-w-[720px] max-w-[980px] overflow-hidden rounded-[28px] border border-emerald-300/20 bg-emerald-950/70 p-7 shadow-2xl shadow-black/30 ${fieldHeight}`}><div aria-hidden className="pointer-events-none absolute inset-5 rounded-[20px] border border-white/10" /><div aria-hidden className="pointer-events-none absolute inset-x-5 top-1/2 h-px bg-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-5 h-14 w-48 -translate-x-1/2 border border-t-0 border-white/10" /><div aria-hidden className="pointer-events-none absolute bottom-5 left-1/2 h-14 w-48 -translate-x-1/2 border border-b-0 border-white/10" /><div className={`relative flex flex-col justify-around ${lineupHeight}`}>{lines.map(line => <div key={line.id} className={`grid min-h-[164px] items-center justify-items-center gap-4 ${line.grid}`}>{(selection.starters.get(line.id) ?? []).map((slot, index) => <PlayerCard key={slot.player?.id ?? `${line.id}-${index}`} player={slot.player} position={line.positions[index]} sector={line.key} clubId={clubId} adapted={slot.adapted} />)}</div>)}</div></div></div>
+        <div className="overflow-x-auto"><div className={`relative mx-auto min-w-[720px] max-w-[980px] overflow-hidden rounded-[28px] border border-emerald-300/20 bg-emerald-950/70 p-7 shadow-2xl shadow-black/30 ${fieldHeight}`}><div aria-hidden className="pointer-events-none absolute inset-5 rounded-[20px] border border-white/10" /><div aria-hidden className="pointer-events-none absolute inset-x-5 top-1/2 h-px bg-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-5 h-14 w-48 -translate-x-1/2 border border-t-0 border-white/10" /><div aria-hidden className="pointer-events-none absolute bottom-5 left-1/2 h-14 w-48 -translate-x-1/2 border border-b-0 border-white/10" /><div className={`relative flex flex-col justify-around ${lineupHeight}`}>{lines.map(line => <div key={line.id} className={`grid min-h-[174px] items-center justify-items-center gap-4 ${line.grid}`}>{(selection.starters.get(line.id) ?? []).map((slot, index) => <PlayerCard key={slot.player?.id ?? `${line.id}-${index}`} player={slot.player} position={line.positions[index]} sector={line.key} clubId={clubId} adapted={slot.adapted} />)}</div>)}</div></div></div>
 
-        <aside className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Banco por setor</p><h3 className="mt-1 text-lg font-black text-white">Primeiros reservas</h3><p className="mt-1 text-[10px] leading-relaxed text-gray-500">O próximo melhor avaliado depois dos titulares de cada linha.</p></div><div className="grid grid-cols-2 justify-items-center gap-4 xl:grid-cols-1">{RESERVE_SECTORS.map(sector => <div key={sector.key} className="space-y-1 text-center"><p className="text-[9px] font-black uppercase tracking-wider text-gray-500">{sector.label}</p><PlayerCard player={selection.reserves.get(sector.key) ?? null} position={sector.position} sector={sector.key} clubId={clubId} /></div>)}</div></aside>
+        <aside className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Banco por setor</p><h3 className="mt-1 text-lg font-black text-white">Todos os reservas</h3><p className="mt-1 text-[10px] leading-relaxed text-gray-500">Todos que jogaram nas últimas 25 partidas aparecem como titulares ou no banco.</p></div><div className="grid grid-cols-2 justify-items-center gap-5 xl:grid-cols-1">{RESERVE_SECTORS.map(sector => { const reserves = selection.reserves.get(sector.key) ?? []; return <div key={sector.key} className="w-full space-y-2 text-center"><p className="text-[9px] font-black uppercase tracking-wider text-gray-500">{sector.label}</p>{reserves.length ? <div className="grid justify-items-center gap-3">{reserves.map(player => <PlayerCard key={player.id} player={player} position={sector.position} sector={sector.key} clubId={clubId} />)}</div> : <p className="rounded-xl border border-dashed border-white/10 px-2 py-4 text-[9px] font-bold uppercase text-gray-700">Sem reserva</p>}</div> })}</div></aside>
       </div> : <Card className="m-5 border-dashed border-white/10 bg-white/[0.02] p-10 text-center"><p className="font-bold text-white">Ainda não há escalação registrada</p><p className="mt-1 text-sm text-gray-500">Sincronize as partidas do clube para formar o campo.</p></Card>}
     </section>
 
