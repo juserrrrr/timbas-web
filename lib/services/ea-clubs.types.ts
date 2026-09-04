@@ -143,6 +143,20 @@ export interface EaClubFieldPlayer {
   position: string;
   rating?: number | null;
   appearances: number;
+  positionRatings?: Array<{
+    position: string;
+    appearances: number;
+    averageRating: number | null;
+    goals: number;
+    assists: number;
+    shots: number;
+    shotConversion: number | null;
+    passesCompleted: number;
+    passAccuracy: number | null;
+    tacklesCompleted: number;
+    tackleAccuracy: number | null;
+    saves: number;
+  }>;
 }
 
 export interface EaClubField {

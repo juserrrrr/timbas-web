@@ -10,6 +10,11 @@ interface RatingCardPlayer {
   team?: { name: string; logoUrl: string | null } | null
 }
 
+interface RatingCardStat {
+  label: string
+  value: string
+}
+
 const TIERS = [
   {
     minimum: 9.95,
@@ -60,6 +65,7 @@ export function PlayerRatingCard({
   compact = false,
   className,
   emptyLabel = "A definir",
+  stats = [],
 }: {
   player: RatingCardPlayer | null
   position: string
@@ -67,6 +73,7 @@ export function PlayerRatingCard({
   compact?: boolean
   className?: string
   emptyLabel?: string
+  stats?: RatingCardStat[]
 }) {
   const rating = player ? Math.max(0, Math.min(10, player.averageRating ?? 0)) : null
   const index = player?.craqueScore == null ? null : Math.max(0, Math.min(10, player.craqueScore))
@@ -92,7 +99,7 @@ export function PlayerRatingCard({
       className={cn(
         "group relative isolate flex aspect-[3/4] w-full flex-col overflow-hidden rounded-2xl border p-2.5 shadow-xl transition duration-300 hover:-translate-y-1",
         tier.shell,
-        compact ? "min-h-[138px]" : "min-h-[190px] p-3.5",
+        compact ? stats.length ? "min-h-[164px]" : "min-h-[138px]" : "min-h-[190px] p-3.5",
         className,
       )}
       title={`${player.playerName}, nota ${rating?.toFixed(1).replace(".", ",")}`}
@@ -118,10 +125,10 @@ export function PlayerRatingCard({
 
       <div className="relative border-t border-white/10 pt-2 text-center">
         <h4 className={cn("truncate font-black uppercase tracking-tight text-white", compact ? "text-[10px]" : "text-xs")}>{player.playerName}</h4>
-        <div className="mt-1 flex items-center justify-center gap-1.5">
+        {stats.length ? <div className={`mt-1.5 grid gap-1 ${stats.length > 2 ? "grid-cols-3" : "grid-cols-2"}`}>{stats.map((stat) => <span key={stat.label} className="min-w-0 rounded bg-black/20 px-0.5 py-1"><strong className="block truncate text-[9px] font-black tabular-nums text-white">{stat.value}</strong><small className="block truncate text-[6px] font-black uppercase tracking-wide text-white/40">{stat.label}</small></span>)}</div> : <div className="mt-1 flex items-center justify-center gap-1.5">
           {player.team && <TeamCrest name={player.team.name} logoUrl={player.team.logoUrl} size={compact ? 16 : 20} />}
           <span className="max-w-[78px] truncate text-[8px] font-bold text-white/50">{player.team?.name ?? tier.label}</span>
-        </div>
+        </div>}
         <div className="mt-1 flex min-h-3 items-center justify-center gap-1 text-[7px] font-black uppercase tracking-wider text-white/45">
           {index !== null && <span>Índice {index.toFixed(2).replace(".", ",")}</span>}
           {adapted && <span className="text-amber-200">• adaptado</span>}

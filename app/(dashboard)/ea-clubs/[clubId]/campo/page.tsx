@@ -11,7 +11,16 @@ import type { EaClub, EaClubField, EaClubFieldPlayer } from "@/lib/services/ea-c
 
 type FieldLine = "goalkeeper" | "defense" | "midfield" | "attack"
 
-type FieldLineConfig = { key: FieldLine; label: string; grid: string; positions: string[]; priority: number[] }
+type FieldLineConfig = { id: string; key: FieldLine; grid: string; positions: string[]; priority: number[] }
+
+const RESERVE_SECTORS: Array<{ key: FieldLine; label: string; position: string }> = [
+  { key: "attack", label: "Ataque", position: "ATA" },
+  { key: "midfield", label: "Meio", position: "MEI" },
+  { key: "defense", label: "Defesa", position: "ZAG" },
+  { key: "goalkeeper", label: "Goleiro", position: "GOL" },
+]
+
+const FORMATION_OPTIONS = ["3-5-2", "4-3-3", "4-4-2", "4-2-3-1", "4-1-2-1-2", "3-4-2-1", "5-3-2", "5-4-1", "3-4-3"]
 
 function gridFor(count: number) {
   if (count === 1) return "grid-cols-1 px-[42%]"
@@ -31,19 +40,40 @@ function priorityFor(count: number) {
 
 function positionLabels(line: FieldLine, count: number) {
   const labels: Record<Exclude<FieldLine, "goalkeeper">, Record<number, string[]>> = {
-    attack: { 1: ["ATA"], 2: ["ATA", "ATA"], 3: ["PE", "ATA", "PD"] },
+    attack: { 1: ["ATA"], 2: ["ATE", "ATD"], 3: ["PE", "ATA", "PD"] },
     midfield: { 2: ["MC", "MC"], 3: ["MC", "VOL", "MEI"], 4: ["ME", "MC", "MC", "MD"], 5: ["ME", "MC", "VOL", "MC", "MD"] },
-    defense: { 3: ["ZAG", "ZAG", "ZAG"], 4: ["LE", "ZAG", "ZAG", "LD"], 5: ["LE", "ZAG", "ZAG", "ZAG", "LD"] },
+    defense: { 3: ["ZGE", "ZAG", "ZGD"], 4: ["LE", "ZAG", "ZAG", "LD"], 5: ["LE", "ZGE", "ZAG", "ZGD", "LD"] },
   }
   if (line === "goalkeeper") return ["GOL"]
   return labels[line][count] ?? Array.from({ length: count }, () => line === "attack" ? "ATA" : line === "defense" ? "ZAG" : "MC")
 }
 
 function formationLines(formation: string | null): FieldLineConfig[] {
-  const parsed = formation?.match(/^(\d)-(\d)-(\d)$/)?.slice(1).map(Number)
-  const [defense, midfield, attack] = parsed?.length === 3 ? parsed : [4, 3, 3]
-  const makeLine = (key: FieldLine, label: string, count: number): FieldLineConfig => ({ key, label, grid: gridFor(count), positions: positionLabels(key, count), priority: priorityFor(count) })
-  return [makeLine("attack", "Ataque", attack), makeLine("midfield", "Meio", midfield), makeLine("defense", "Defesa", defense), makeLine("goalkeeper", "Goleiro", 1)]
+  const values = formation?.split("-").map(Number).filter(Number.isFinite)
+  const parsed = values && values.length >= 3 ? values : [4, 3, 3]
+  const defense = parsed[0]
+  const attack = parsed[parsed.length - 1]
+  const midfield = parsed.slice(1, -1)
+  const makeLine = (id: string, key: FieldLine, positions: string[]): FieldLineConfig => ({ id, key, grid: gridFor(positions.length), positions, priority: priorityFor(positions.length) })
+  const midfieldLabels = (count: number, index: number, total: number) => {
+    if (total === 1) return positionLabels("midfield", count)
+    if (count === 1) return index === total - 1 ? ["VOL"] : ["MEI"]
+    if (count === 2) return index === total - 1 ? ["VLE", "VLD"] : ["MEI", "MEI"]
+    if (count === 3) return ["ME", "MEI", "MD"]
+    return positionLabels("midfield", count)
+  }
+  const midfieldLines = midfield.length === 1 && midfield[0] === 5
+    ? [
+        makeLine("midfield-advanced", "midfield", ["ME", "MEI", "MD"]),
+        makeLine("midfield-holding", "midfield", ["VLE", "VLD"]),
+      ]
+    : [...midfield].reverse().map((count, index, rows) => makeLine(`midfield-${index}`, "midfield", midfieldLabels(count, index, rows.length)))
+  return [
+    makeLine("attack", "attack", positionLabels("attack", attack)),
+    ...midfieldLines,
+    makeLine("defense", "defense", positionLabels("defense", defense)),
+    makeLine("goalkeeper", "goalkeeper", ["GOL"]),
+  ]
 }
 
 const LINE_ORDER: FieldLine[] = ["goalkeeper", "defense", "midfield", "attack"]
@@ -71,15 +101,50 @@ function resultLabel(result: "WIN" | "DRAW" | "LOSS") {
   return { text: "Derrota", tone: "border-rose-400/25 bg-rose-400/10 text-rose-300" }
 }
 
-function PlayerCard({ player, position, clubId, adapted = false }: { player: EaClubFieldPlayer | null; position: string; clubId: string; adapted?: boolean }) {
-  const card = <PlayerRatingCard player={player ? { playerName: player.playerName, averageRating: player.rating ?? null, primaryPosition: player.position } : null} position={position} adapted={adapted} compact className="max-w-[104px]" emptyLabel="CPU da EA" />
-  return player ? <Link href={`/ea-clubs/${clubId}/players/${player.id}`} className="w-[104px]">{card}</Link> : <div className="w-[104px]">{card}</div>
+function performanceFor(player: EaClubFieldPlayer, sector: FieldLine) {
+  return player.positionRatings?.find(performance => lineFor(performance.position) === sector)
+}
+
+function ratingFor(player: EaClubFieldPlayer, sector: FieldLine) {
+  return performanceFor(player, sector)?.averageRating ?? player.rating ?? -1
+}
+
+function performanceStats(player: EaClubFieldPlayer, sector: FieldLine) {
+  const performance = performanceFor(player, sector) ?? player.positionRatings?.[0]
+  if (!performance) return []
+  const percent = (value: number | null) => value === null ? "-" : `${Math.round(value)}%`
+  if (sector === "attack") return [
+    { label: "Gols", value: String(performance.goals) },
+    { label: "Assist.", value: String(performance.assists) },
+    { label: "Conversão", value: percent(performance.shotConversion) },
+  ]
+  if (sector === "midfield") return [
+    { label: "Assist.", value: String(performance.assists) },
+    { label: "Passes", value: String(performance.passesCompleted) },
+    { label: "Precisão", value: percent(performance.passAccuracy) },
+  ]
+  if (sector === "defense") return [
+    { label: "Desarmes", value: String(performance.tacklesCompleted) },
+    { label: "Precisão", value: percent(performance.tackleAccuracy) },
+    { label: "Passes", value: String(performance.passesCompleted) },
+  ]
+  return [
+    { label: "Defesas", value: String(performance.saves) },
+    { label: "Jogos", value: String(performance.appearances) },
+  ]
+}
+
+function PlayerCard({ player, position, sector, clubId, adapted = false }: { player: EaClubFieldPlayer | null; position: string; sector: FieldLine; clubId: string; adapted?: boolean }) {
+  const performance = player ? performanceFor(player, sector) : undefined
+  const card = <PlayerRatingCard player={player ? { playerName: player.playerName, averageRating: performance?.averageRating ?? player.rating ?? null, primaryPosition: player.position } : null} position={position} adapted={adapted} compact stats={player ? performanceStats(player, sector) : []} className="max-w-[116px]" emptyLabel="CPU da EA" />
+  return player ? <Link href={`/ea-clubs/${clubId}/players/${player.id}`} className="w-[116px]">{card}</Link> : <div className="w-[116px]">{card}</div>
 }
 
 export default function EaClubFieldPage() {
   const { clubId } = useParams<{ clubId: string }>()
   const [club, setClub] = useState<EaClub | null>(null)
   const [field, setField] = useState<EaClubField | null>(null)
+  const [manualFormation, setManualFormation] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -89,6 +154,7 @@ export default function EaClubFieldPage() {
       const [clubData, fieldData] = await Promise.all([getEaClub(clubId), getEaClubField(clubId)])
       setClub(clubData)
       setField(fieldData)
+      setManualFormation(null)
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar o campo")
@@ -99,45 +165,54 @@ export default function EaClubFieldPage() {
 
   useEffect(() => { void load() }, [load])
 
-  const lines = useMemo(() => formationLines(field?.formation ?? null), [field?.formation])
+  const activeFormation = manualFormation ?? field?.formation ?? "4-3-3"
+  const lines = useMemo(() => formationLines(activeFormation), [activeFormation])
 
   const selection = useMemo(() => {
     const groups = new Map<FieldLine, EaClubFieldPlayer[]>()
-    const starters = new Map<FieldLine, Array<{ player: EaClubFieldPlayer | null; adapted: boolean }>>()
+    const starters = new Map<string, Array<{ player: EaClubFieldPlayer | null; adapted: boolean }>>()
     const reserves = new Map<FieldLine, EaClubFieldPlayer | null>()
-    for (const line of lines) groups.set(line.key, [])
+    for (const sector of LINE_ORDER) groups.set(sector, [])
     for (const player of field?.players ?? []) groups.get(lineFor(player.position))?.push(player)
     const assigned = new Set<string>()
-    for (const line of lines) {
-      const ranked = (groups.get(line.key) ?? []).sort((a, b) => Number(b.rating ?? -1) - Number(a.rating ?? -1) || b.appearances - a.appearances)
-      const slots = line.positions.map(() => ({ player: null as EaClubFieldPlayer | null, adapted: false }))
-      line.priority.forEach((slotIndex, playerIndex) => {
-        const player = ranked[playerIndex]
-        if (!player) return
-        slots[slotIndex] = { player, adapted: false }
-        assigned.add(player.id)
-      })
-      starters.set(line.key, slots)
+    for (const sector of LINE_ORDER) {
+      const ranked = [...(groups.get(sector) ?? [])].sort((a, b) => ratingFor(b, sector) - ratingFor(a, sector) || b.appearances - a.appearances)
+      let playerIndex = 0
+      for (const line of lines.filter(item => item.key === sector)) {
+        const slots = line.positions.map(() => ({ player: null as EaClubFieldPlayer | null, adapted: false }))
+        for (const slotIndex of line.priority) {
+          const player = ranked[playerIndex]
+          playerIndex += 1
+          if (!player) continue
+          slots[slotIndex] = { player, adapted: false }
+          assigned.add(player.id)
+        }
+        starters.set(line.id, slots)
+      }
     }
 
     const unassigned = (field?.players ?? []).filter(player => !assigned.has(player.id))
     for (const line of lines) {
-      const slots = starters.get(line.key) ?? []
+      if (line.key === "goalkeeper") continue
+      const slots = starters.get(line.id) ?? []
       for (let index = 0; index < slots.length; index += 1) {
         if (slots[index].player || !unassigned.length) continue
         const target = LINE_ORDER.indexOf(line.key)
-        unassigned.sort((a, b) => Math.abs(LINE_ORDER.indexOf(lineFor(a.position)) - target) - Math.abs(LINE_ORDER.indexOf(lineFor(b.position)) - target) || Number(b.rating ?? -1) - Number(a.rating ?? -1))
+        unassigned.sort((a, b) => Math.abs(LINE_ORDER.indexOf(lineFor(a.position)) - target) - Math.abs(LINE_ORDER.indexOf(lineFor(b.position)) - target) || ratingFor(b, line.key) - ratingFor(a, line.key))
         const player = unassigned.shift() ?? null
-        slots[index] = { player, adapted: player !== null && lineFor(player.position) !== line.key }
+        slots[index] = { player, adapted: player !== null && !performanceFor(player, line.key) }
         if (player) assigned.add(player.id)
       }
     }
-    for (const line of lines) {
-      const ranked = (groups.get(line.key) ?? []).filter(player => !assigned.has(player.id))
-      reserves.set(line.key, ranked[0] ?? null)
+    for (const sector of LINE_ORDER) {
+      const ranked = (groups.get(sector) ?? []).filter(player => !assigned.has(player.id)).sort((a, b) => ratingFor(b, sector) - ratingFor(a, sector) || b.appearances - a.appearances)
+      reserves.set(sector, ranked[0] ?? null)
     }
     return { starters, reserves }
   }, [field, lines])
+
+  const fieldHeight = lines.length >= 6 ? "min-h-[1120px]" : lines.length === 5 ? "min-h-[940px]" : "min-h-[820px]"
+  const lineupHeight = lines.length >= 6 ? "min-h-[1064px]" : lines.length === 5 ? "min-h-[884px]" : "min-h-[764px]"
 
   if (loading) return <PageLoading />
   if (error || !field) return <ErrorState message={error} retry={() => void load()} />
@@ -147,14 +222,14 @@ export default function EaClubFieldPage() {
 
     <section className="overflow-hidden rounded-[26px] border border-emerald-400/15 bg-gradient-to-b from-emerald-500/[0.07] to-transparent">
       <div className="flex flex-col gap-4 border-b border-white/[0.07] p-5 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Seleção do clube</p><h2 className="mt-1 text-2xl font-black text-white">Melhor 11 em um {field.formation ?? "4-3-3"}</h2><p className="mt-1 text-[11px] text-gray-500">{field.formationSummary ? `${field.summary?.matches ?? 0} jogos analisados. O ${field.formation} apareceu ${field.formationSummary.matches} vezes, com ${field.formationSummary.wins} vitórias, ${field.formationSummary.draws} empates e ${field.formationSummary.losses} derrotas. Frequência, resultados e recência definem a escolha.` : "Sem uma formação humana completa nas partidas analisadas; exibindo o 4-3-3 como base."}</p></div>
-        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-400">Atualizado: {formatDate(field.match?.playedAt, true)}</span>
+        <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Seleção do clube</p><h2 className="mt-1 text-2xl font-black text-white">Melhor 11 em um {activeFormation}</h2><p className="mt-1 text-[11px] text-gray-500">{manualFormation ? `Formação alterada manualmente. A sugestão automática pelas últimas 25 partidas é ${field.formation ?? "4-3-3"}.` : field.formationSummary ? `${field.summary?.matches ?? 0} jogos analisados. O ${field.formation} apareceu ${field.formationSummary.matches} vezes, com ${field.formationSummary.wins} vitórias, ${field.formationSummary.draws} empates e ${field.formationSummary.losses} derrotas. Frequência, resultados e recência definem a escolha.` : "Sem uma formação completa nas partidas analisadas; exibindo o 4-3-3 como base."}</p></div>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end"><label className="text-[8px] font-black uppercase tracking-wider text-gray-500" htmlFor="field-formation">Formação</label><select id="field-formation" value={manualFormation ?? "auto"} onChange={event => setManualFormation(event.target.value === "auto" ? null : event.target.value)} className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold text-white outline-none focus:border-emerald-400/50"><option value="auto">Melhor sugerida ({field.formation ?? "4-3-3"})</option>{FORMATION_OPTIONS.map(formation => <option key={formation} value={formation}>{formation}</option>)}</select><span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-400">Atualizado: {formatDate(field.match?.playedAt, true)}</span></div>
       </div>
 
       {field.players.length ? <div className="grid items-start gap-5 p-4 xl:grid-cols-[minmax(720px,1fr)_250px] xl:p-5">
-        <div className="overflow-x-auto"><div className="relative mx-auto min-h-[760px] min-w-[720px] max-w-[980px] overflow-hidden rounded-[28px] border border-emerald-300/20 bg-emerald-950/70 p-7 shadow-2xl shadow-black/30"><div aria-hidden className="pointer-events-none absolute inset-5 rounded-[20px] border border-white/10" /><div aria-hidden className="pointer-events-none absolute inset-x-5 top-1/2 h-px bg-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-5 h-14 w-48 -translate-x-1/2 border border-t-0 border-white/10" /><div aria-hidden className="pointer-events-none absolute bottom-5 left-1/2 h-14 w-48 -translate-x-1/2 border border-b-0 border-white/10" /><div className="relative flex min-h-[704px] flex-col justify-around">{lines.map(line => <div key={line.key} className={`grid min-h-[150px] items-center justify-items-center gap-5 ${line.grid}`}>{(selection.starters.get(line.key) ?? []).map((slot, index) => <PlayerCard key={slot.player?.id ?? `${line.key}-${index}`} player={slot.player} position={line.positions[index]} clubId={clubId} adapted={slot.adapted} />)}</div>)}</div></div></div>
+        <div className="overflow-x-auto"><div className={`relative mx-auto min-w-[720px] max-w-[980px] overflow-hidden rounded-[28px] border border-emerald-300/20 bg-emerald-950/70 p-7 shadow-2xl shadow-black/30 ${fieldHeight}`}><div aria-hidden className="pointer-events-none absolute inset-5 rounded-[20px] border border-white/10" /><div aria-hidden className="pointer-events-none absolute inset-x-5 top-1/2 h-px bg-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-5 h-14 w-48 -translate-x-1/2 border border-t-0 border-white/10" /><div aria-hidden className="pointer-events-none absolute bottom-5 left-1/2 h-14 w-48 -translate-x-1/2 border border-b-0 border-white/10" /><div className={`relative flex flex-col justify-around ${lineupHeight}`}>{lines.map(line => <div key={line.id} className={`grid min-h-[164px] items-center justify-items-center gap-4 ${line.grid}`}>{(selection.starters.get(line.id) ?? []).map((slot, index) => <PlayerCard key={slot.player?.id ?? `${line.id}-${index}`} player={slot.player} position={line.positions[index]} sector={line.key} clubId={clubId} adapted={slot.adapted} />)}</div>)}</div></div></div>
 
-        <aside className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Banco por setor</p><h3 className="mt-1 text-lg font-black text-white">Primeiros reservas</h3><p className="mt-1 text-[10px] leading-relaxed text-gray-500">O próximo melhor avaliado depois dos titulares de cada linha.</p></div><div className="grid grid-cols-2 justify-items-center gap-4 xl:grid-cols-1">{lines.map(line => <div key={line.key} className="space-y-1 text-center"><p className="text-[9px] font-black uppercase tracking-wider text-gray-500">{line.label}</p><PlayerCard player={selection.reserves.get(line.key) ?? null} position={line.positions[0]} clubId={clubId} /></div>)}</div></aside>
+        <aside className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Banco por setor</p><h3 className="mt-1 text-lg font-black text-white">Primeiros reservas</h3><p className="mt-1 text-[10px] leading-relaxed text-gray-500">O próximo melhor avaliado depois dos titulares de cada linha.</p></div><div className="grid grid-cols-2 justify-items-center gap-4 xl:grid-cols-1">{RESERVE_SECTORS.map(sector => <div key={sector.key} className="space-y-1 text-center"><p className="text-[9px] font-black uppercase tracking-wider text-gray-500">{sector.label}</p><PlayerCard player={selection.reserves.get(sector.key) ?? null} position={sector.position} sector={sector.key} clubId={clubId} /></div>)}</div></aside>
       </div> : <Card className="m-5 border-dashed border-white/10 bg-white/[0.02] p-10 text-center"><p className="font-bold text-white">Ainda não há escalação registrada</p><p className="mt-1 text-sm text-gray-500">Sincronize as partidas do clube para formar o campo.</p></Card>}
     </section>
 
