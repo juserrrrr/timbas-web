@@ -109,7 +109,7 @@ export interface OfficeMap {
   taskSpots: MapTaskSpot[]
   vents: MapVent[]
   stairs: MapStair[]
-  emergency: { x: number; z: number; level?: number }
+  emergency: { x: number; y?: number; z: number; level?: number }
   spawns: { x: number; z: number; level?: number }[]
   meetingSeats: { x: number; z: number; level: number; dir: number }[]
   source?: {

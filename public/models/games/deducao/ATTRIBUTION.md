@@ -19,3 +19,12 @@ O modelo foi distribuído pelo Khronos como exemplo de materiais glTF com sheen 
 - Fonte: [Khronos glTF Sample Assets](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ToyCar)
 
 Os dois modelos externos foram otimizados para entrega no navegador com glTF Transform. Geometria, materiais PBR e créditos foram preservados.
+
+## Timbas Coupe SUV
+
+- Arquivo: `timbas-coupe-suv.glb`
+- Modelo e materiais: criação original do projeto Timbas
+- Fonte: `scripts/build-deducao-models.mjs`
+- Dependências externas: nenhuma
+
+A carroceria, o interior e os materiais PBR são gerados do zero. O desenho segue a categoria SUV cupê sem copiar logotipos ou elementos de marca.

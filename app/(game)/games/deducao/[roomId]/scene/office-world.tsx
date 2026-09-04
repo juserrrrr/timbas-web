@@ -24,6 +24,11 @@ const ROOM_LIGHT_POOL_SIZE: Record<Quality, number> = {
   medio: 5,
   baixo: 0,
 }
+const EMERGENCY_LIGHT_POOL_SIZE: Record<Quality, number> = {
+  alto: 6,
+  medio: 4,
+  baixo: 0,
+}
 
 /// Espessura estrutural das lajes. No piso superior ela é recortada nos vãos
 /// das escadas para os dois andares formarem um prédio contínuo.
@@ -178,6 +183,13 @@ const PROPS: Record<string, PropSpec> = {
     boxes: [
       [2.0, 0.7, 4.3, 0, 0.55, 0, "#c0475a"],
       [1.75, 0.6, 2.1, 0, 1.15, -0.15, "#cfe0ef"],
+    ],
+  },
+  sportCar: {
+    color: "#781f32",
+    boxes: [
+      [2.0, 0.72, 4.45, 0, 0.6, 0, "#781f32"],
+      [1.62, 0.62, 2.35, 0, 1.18, -0.1, "#6e91a4"],
     ],
   },
   cone: {
@@ -476,7 +488,8 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
     box([0.8, 0.025, 0.018], [-0.52, 1.55, 0.055], "#4d88cf", [0, 0, -0.12], 0.006)
     box([0.58, 0.025, 0.018], [0.44, 1.3, 0.055], "#e66c72", [0, 0, 0.18], 0.006)
     box([0.42, 0.025, 0.018], [-0.18, 1.04, 0.055], "#56a873", [0, 0, 0.08], 0.006)
-  } else if (kind === "car") {
+  } else if (kind === "car" || kind === "sportCar") {
+    const sporty = kind === "sportCar"
     for (const x of [-1.02, 1.02]) {
       for (const z of [-1.35, 1.35]) {
         cylinder(0.31, 0.31, 0.24, [x, 0.38, z], "#202733", [0, 0, Math.PI / 2], 18)
@@ -485,7 +498,7 @@ function geometryFor(kind: string, spec: PropSpec): THREE.BufferGeometry {
     }
     box([1.62, 0.34, 0.06], [0, 1.18, 0.94], "#82b7d4", [-0.35, 0, 0], 0.018)
     box([1.62, 0.32, 0.06], [0, 1.18, -1.08], "#78a9c5", [0.32, 0, 0], 0.018)
-    box([1.86, 0.16, 0.15], [0, 0.64, 2.12], "#a93249", [0, 0, 0], 0.04)
+    box([1.86, 0.16, 0.15], [0, 0.64, 2.12], sporty ? "#65182a" : "#a93249", [0, 0, 0], 0.04)
     ;[-0.62, 0.62].forEach((x) => {
       box([0.35, 0.16, 0.035], [x, 0.73, 2.17], "#fff1a8", [0, 0, 0], 0.018)
       box([0.32, 0.13, 0.035], [x, 0.68, -2.17], "#ff6474", [0, 0, 0], 0.018)
@@ -617,6 +630,7 @@ interface Placement {
 
 interface RoomLightSource {
   x: number
+  y: number
   z: number
   color: string
   intensity: number
@@ -696,6 +710,7 @@ const DETAILED_MODELS = {
     fit: { width: 2, depth: 4.3 },
     skipNodes: ["Fabric"],
   },
+  sportCar: { path: "/models/games/deducao/timbas-coupe-suv.glb" },
 } as const satisfies Record<string, DetailedModelConfig>
 
 type DetailedModelKind = keyof typeof DETAILED_MODELS
@@ -942,11 +957,9 @@ function Instances({
 
 function RoomLightPool({
   lights,
-  height,
   quality,
 }: {
   lights: RoomLightSource[]
-  height: number
   quality: Quality
 }) {
   const { camera } = useThree()
@@ -986,7 +999,7 @@ function RoomLightPool({
       if (entry.source === sourceIndex) return
 
       entry.source = sourceIndex
-      entry.light.position.set(source.x, height, source.z)
+      entry.light.position.set(source.x, source.y, source.z)
       entry.light.color.set(source.color)
       entry.light.intensity = source.intensity
       entry.light.distance = source.distance
@@ -1000,6 +1013,47 @@ function RoomLightPool({
       <primitive object={entry.light} />
     </group>
   ))
+}
+
+function EmergencyLightPool({ lights, quality }: { lights: RoomLightSource[]; quality: Quality }) {
+  const { camera } = useThree()
+  const poolSize = Math.min(lights.length, EMERGENCY_LIGHT_POOL_SIZE[quality])
+  const pool = useMemo(
+    () =>
+      Array.from({ length: poolSize }, () => {
+        const light = new THREE.PointLight("#ff2038", 0)
+        light.decay = 2
+        return { light, source: -1 }
+      }),
+    [poolSize],
+  )
+
+  useFrame(() => {
+    const closest = lights
+      .map((light, index) => ({
+        index,
+        distance: (light.x - camera.position.x) ** 2 + (light.z - camera.position.z) ** 2,
+      }))
+      .sort((left, right) => left.distance - right.distance)
+      .slice(0, pool.length)
+
+    pool.forEach((entry, index) => {
+      const sourceIndex = closest[index]?.index
+      const source = sourceIndex === undefined ? null : lights[sourceIndex]
+      if (!source) {
+        entry.light.intensity = 0
+        return
+      }
+      if (entry.source === sourceIndex) return
+
+      entry.source = sourceIndex
+      entry.light.position.set(source.x, source.y, source.z)
+      entry.light.intensity = source.intensity
+      entry.light.distance = source.distance
+    })
+  })
+
+  return pool.map((entry, index) => <primitive key={index} object={entry.light} />)
 }
 
 export function OfficeWorld({
@@ -1145,6 +1199,12 @@ export function OfficeWorld({
     emissiveIntensity: blackout ? 0.01 : 0.14,
     roughness: 0.3,
   })
+  const emergencyFixtureMaterial = useVisionMaterial({
+    color: "#ff4b5f",
+    emissive: "#ff1738",
+    emissiveIntensity: blackout ? 2.8 : 0,
+    roughness: 0.24,
+  })
   const ceilingSlabMaterial = useVisionMaterial({
     color: "#f5f2e9",
     map: materialTextures.ceiling,
@@ -1234,6 +1294,20 @@ export function OfficeWorld({
       })),
     [ceilingFixtures],
   )
+  const emergencyFixtures = useMemo(() => {
+    const corridors = map.rooms.filter((room) => (room.level ?? 0) === level && room.kind === "corredor")
+    return ceilingFixtures
+      .filter((fixture) =>
+        corridors.some(
+          (room) =>
+            fixture.x > room.rect.x &&
+            fixture.x < room.rect.x + room.rect.w &&
+            fixture.z > room.rect.z &&
+            fixture.z < room.rect.z + room.rect.d,
+        ),
+      )
+      .map((fixture) => ({ ...fixture, y: (fixture.y ?? wallHeight) - 0.055 }))
+  }, [ceilingFixtures, level, map.rooms, wallHeight])
 
   const floorHoles = useMemo(
     () =>
@@ -1333,6 +1407,7 @@ export function OfficeWorld({
           const fixture = fixtures[THREE.MathUtils.clamp(fixtureIndex, 0, fixtures.length - 1)]
           return {
             x: fixture.x,
+            y: (fixture.y ?? wallHeight) - 0.045,
             z: fixture.z,
             color: `#${roomTone.getHexString()}`,
             intensity: room.kind === "corredor" ? 9 : 8,
@@ -1340,7 +1415,7 @@ export function OfficeWorld({
           }
         })
       })
-  }, [ceilingFixtures, map.rooms, quality, level])
+  }, [ceilingFixtures, map.rooms, quality, level, wallHeight])
 
   const serverAisles = useMemo(
     () =>
@@ -1655,10 +1730,26 @@ export function OfficeWorld({
 
   const emergencyLights = useMemo(
     () => [
-      ...(map.stairs ?? []).filter((stair) => stair.level === level).map((stair) => ({ x: stair.x, z: stair.z })),
-      ...((map.emergency.level ?? 0) === level ? [{ x: map.emergency.x, z: map.emergency.z }] : []),
+      ...emergencyFixtures.map((fixture) => ({
+        x: fixture.x,
+        y: fixture.y ?? wallHeight,
+        z: fixture.z,
+        color: "#ff2038",
+        intensity: 20,
+        distance: 8,
+      })),
+      ...((map.emergency.level ?? 0) === level
+        ? [{
+            x: map.emergency.x,
+            y: (map.emergency.y ?? 0) + 0.18,
+            z: map.emergency.z,
+            color: "#ff2038",
+            intensity: 12,
+            distance: 4.8,
+          }]
+        : []),
     ],
-    [level, map.emergency, map.stairs],
+    [emergencyFixtures, level, map.emergency, wallHeight],
   )
 
   const groundGeometry = useMemo(() => {
@@ -1673,6 +1764,7 @@ export function OfficeWorld({
   }, [])
 
   const fixtureFrameGeometry = useMemo(() => new RoundedBoxGeometry(1.58, 0.075, 0.58, 2, 0.07), [])
+  const emergencyFixtureGeometry = useMemo(() => new RoundedBoxGeometry(1.2, 0.025, 0.3, 2, 0.035), [])
 
   const plinthGeometry = useMemo(() => {
     const box = new THREE.BoxGeometry(1, 1, 1)
@@ -1718,6 +1810,7 @@ export function OfficeWorld({
       groundGeometry,
       ceilingGeometry,
       fixtureFrameGeometry,
+      emergencyFixtureGeometry,
       plinthGeometry,
       rugGeometry,
       wallGeometry,
@@ -1732,6 +1825,7 @@ export function OfficeWorld({
     groundGeometry,
     ceilingGeometry,
     fixtureFrameGeometry,
+    emergencyFixtureGeometry,
     plinthGeometry,
     rugGeometry,
     wallGeometry,
@@ -1782,22 +1876,22 @@ export function OfficeWorld({
         <>
           <Instances geometry={fixtureFrameGeometry} material={fixtureFrameMaterial} transforms={fixtureFrames} />
           <Instances geometry={ceilingGeometry} material={ceilingMaterial} transforms={ceilingFixtures} shadows={false} />
+          {blackout && (
+            <Instances
+              geometry={emergencyFixtureGeometry}
+              material={emergencyFixtureMaterial}
+              transforms={emergencyFixtures}
+              shadows={false}
+            />
+          )}
         </>
       )}
       {active && !blackout && (
-        <RoomLightPool lights={roomLights} height={Math.max(2.8, wallHeight - 0.2)} quality={quality} />
+        <RoomLightPool lights={roomLights} quality={quality} />
       )}
-      {quality !== "baixo" && active && blackout &&
-        emergencyLights.map((light, index) => (
-          <pointLight
-            key={`emergency-light-${index}`}
-            position={[light.x, 0.48, light.z]}
-            color="#ff2d3f"
-            intensity={18}
-            distance={7.5}
-            decay={2}
-          />
-        ))}
+      {quality !== "baixo" && active && blackout && (
+        <EmergencyLightPool lights={emergencyLights} quality={quality} />
+      )}
       {propGroups.map((group) => {
         const model = DETAILED_MODELS[group.kind as DetailedModelKind]
         return quality !== "baixo" && model && (!generatedOutdoor || map.props.length < 70) ? (
