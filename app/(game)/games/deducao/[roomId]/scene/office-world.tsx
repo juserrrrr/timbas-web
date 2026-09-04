@@ -2,7 +2,6 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { useGLTF } from "@react-three/drei"
-import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import type { OfficeMap } from "@/lib/services/games"
 import type { Quality } from "../match-types"
@@ -29,6 +28,12 @@ interface RoomLightSource {
   color: string
   intensity: number
   distance: number
+}
+
+interface CeilingFixturePlacement extends Placement {
+  roomId: string
+  roomKind: OfficeMap["rooms"][number]["kind"]
+  roomArea: number
 }
 
 interface DetailedModelConfig {
@@ -81,63 +86,108 @@ export function OfficeBuilding({ blackout, quality }: { blackout: boolean; quali
   return <primitive object={building} dispose={null} />
 }
 
+function isInsideStairOpening(map: OfficeMap, level: number, x: number, z: number) {
+  if (level !== 0) return false
+  return map.stairs
+    .filter((stair) => stair.targetLevel > stair.level)
+    .some((stair) => {
+      const minX = Math.min(stair.x, stair.targetX) - 1.62
+      const maxX = Math.max(stair.x, stair.targetX) + 1.62
+      const minZ = Math.min(stair.z, stair.targetZ) - 0.24
+      const maxZ = Math.max(stair.z, stair.targetZ) + 0.24
+      return x >= minX && x <= maxX && z >= minZ && z <= maxZ
+    })
+}
+
+function ceilingFixturePlacements(map: OfficeMap, level: number): CeilingFixturePlacement[] {
+  return map.rooms
+    .filter((room) => (room.level ?? 0) === level && room.kind !== "terraco")
+    .flatMap((room) => {
+      const columns = Math.max(1, Math.min(3, Math.floor((room.rect.w - 2) / 6)))
+      const rows = Math.max(1, Math.min(3, Math.floor((room.rect.d - 2) / 7)))
+      return Array.from({ length: columns * rows }, (_, index) => {
+        const column = index % columns
+        const row = Math.floor(index / columns)
+        return {
+          x: room.rect.x + ((column + 1) * room.rect.w) / (columns + 1),
+          y: WALL_HEIGHT - 0.08,
+          z: room.rect.z + ((row + 1) * room.rect.d) / (rows + 1),
+          rot: Math.PI / 2,
+          roomId: room.id,
+          roomKind: room.kind,
+          roomArea: room.rect.w * room.rect.d,
+        }
+      })
+    })
+    .filter((fixture) => !isInsideStairOpening(map, level, fixture.x, fixture.z))
+}
+
 function emergencyPlacements(map: OfficeMap, level: number): Placement[] {
   const corridors = map.rooms.filter(
     (room) => (room.level ?? 0) === level && room.kind === "corredor",
   )
-  return corridors.flatMap((room) => {
-    const count = Math.max(2, Math.floor(Math.max(room.rect.w, room.rect.d) / 9))
-    const alongX = room.rect.w > room.rect.d
-    return Array.from({ length: count }, (_, index) => ({
-      x: alongX
-        ? room.rect.x + ((index + 1) * room.rect.w) / (count + 1)
-        : room.rect.x + room.rect.w / 2,
-      y: WALL_HEIGHT - 0.13,
-      z: alongX
-        ? room.rect.z + room.rect.d / 2
-        : room.rect.z + ((index + 1) * room.rect.d) / (count + 1),
-      rot: alongX ? 0 : Math.PI / 2,
-    }))
-  })
+  return corridors
+    .flatMap((room) => {
+      const count = Math.max(2, Math.floor(Math.max(room.rect.w, room.rect.d) / 9))
+      const alongX = room.rect.w > room.rect.d
+      return Array.from({ length: count }, (_, index) => ({
+        x: alongX
+          ? room.rect.x + ((index + 1) * room.rect.w) / (count + 1)
+          : room.rect.x + room.rect.w / 2,
+        y: WALL_HEIGHT - 0.13,
+        z: alongX
+          ? room.rect.z + room.rect.d / 2
+          : room.rect.z + ((index + 1) * room.rect.d) / (count + 1),
+        rot: alongX ? 0 : Math.PI / 2,
+      }))
+    })
+    .filter((fixture) => !isInsideStairOpening(map, level, fixture.x, fixture.z))
 }
 
-function StableOfficeFill({ quality }: { quality: Quality }) {
-  const { camera } = useThree()
-  const direction = useMemo(() => new THREE.Vector3(), [])
-  const lights = useMemo(
-    () => {
-      const count = quality === "alto" ? 2 : 1
-      return Array.from({ length: count }, (_, index) => {
-        const light = new THREE.PointLight(index === 0 ? "#fff2dc" : "#dcecff", 0)
-        light.decay = 2
-        return light
-      })
-    },
-    [quality],
-  )
-  const targets = useMemo(() => lights.map(() => new THREE.Vector3()), [lights])
-
-  useEffect(() => () => lights.forEach((light) => light.dispose()), [lights])
-
-  useFrame((_, delta) => {
-    camera.getWorldDirection(direction)
-    direction.y = 0
-    if (direction.lengthSq() < 0.001) direction.set(0, 0, -1)
-    else direction.normalize()
-    lights.forEach((light, index) => {
-      const ahead = index === 0 ? 1.5 : 9
-      const target = targets[index].set(
-        camera.position.x + direction.x * ahead,
-        WALL_HEIGHT - (index === 0 ? 0.62 : 0.88),
-        camera.position.z + direction.z * ahead,
+function normalLightSources(
+  fixtures: CeilingFixturePlacement[],
+  quality: Quality,
+): RoomLightSource[] {
+  const roomAnchors = [...new Set(fixtures.map((fixture) => fixture.roomId))]
+    .map((roomId) => {
+      const candidates = fixtures.filter((fixture) => fixture.roomId === roomId)
+      const centerX = candidates.reduce((sum, fixture) => sum + fixture.x, 0) / candidates.length
+      const centerZ = candidates.reduce((sum, fixture) => sum + fixture.z, 0) / candidates.length
+      return candidates.reduce((closest, fixture) =>
+        Math.hypot(fixture.x - centerX, fixture.z - centerZ) <
+        Math.hypot(closest.x - centerX, closest.z - centerZ)
+          ? fixture
+          : closest,
       )
-      light.position.lerp(target, 1 - Math.exp(-10 * Math.min(delta, 0.1)))
-      light.intensity = quality === "baixo" ? 7 : index === 0 ? 9.5 : 6.5
-      light.distance = quality === "baixo" ? 19 : index === 0 ? 23 : 20
     })
-  })
+    .filter((fixture) => {
+      if (quality === "alto") return true
+      if (quality === "medio") return fixture.roomKind === "corredor" || fixture.roomArea >= 190
+      return fixture.roomKind === "corredor" || fixture.roomId.includes("hall") || fixture.roomId === "openspace" || fixture.roomId === "operacoes"
+    })
 
-  return lights.map((light, index) => <primitive key={index} object={light} />)
+  const intensity = quality === "alto" ? 8.2 : quality === "medio" ? 7 : 5.8
+  return roomAnchors.map((fixture) => ({
+    x: fixture.x,
+    y: (fixture.y ?? WALL_HEIGHT) - 0.2,
+    z: fixture.z,
+    color: "#fff1dc",
+    intensity,
+    distance: Math.min(10.5, Math.max(7.2, Math.sqrt(fixture.roomArea) * 0.64)),
+  }))
+}
+
+function FixedOfficeLights({ lights }: { lights: RoomLightSource[] }) {
+  return lights.map((light, index) => (
+    <pointLight
+      key={index}
+      position={[light.x, light.y, light.z]}
+      color={light.color}
+      intensity={light.intensity}
+      distance={light.distance}
+      decay={2}
+    />
+  ))
 }
 
 function EmergencyLightPool({ lights, quality }: { lights: RoomLightSource[]; quality: Quality }) {
@@ -169,7 +219,12 @@ export function OfficeWorld({
   baseY?: number
   active?: boolean
 }) {
+  const ceilingFixtures = useMemo(() => ceilingFixturePlacements(map, level), [level, map])
   const emergencyFixtures = useMemo(() => emergencyPlacements(map, level), [level, map])
+  const normalLights = useMemo(
+    () => normalLightSources(ceilingFixtures, quality),
+    [ceilingFixtures, quality],
+  )
   const emergencyLights = useMemo<RoomLightSource[]>(
     () => [
       ...emergencyFixtures.map((fixture) => ({
@@ -204,7 +259,7 @@ export function OfficeWorld({
           shadows={false}
         />
       )}
-      {active && !blackout && <StableOfficeFill quality={quality} />}
+      {active && !blackout && <FixedOfficeLights lights={normalLights} />}
       {active && blackout && <EmergencyLightPool lights={emergencyLights} quality={quality} />}
     </group>
   )

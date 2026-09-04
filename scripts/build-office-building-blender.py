@@ -54,6 +54,30 @@ PROP_ROOT = ROOT / "public" / "models" / "games" / "deducao"
 FLOOR_HEIGHT = 4.2
 WALL_HEIGHT = 4.02
 DOOR_HEIGHT = 2.62
+LAYOUT_ORIGIN = 3.0
+ORIGINAL_BOUNDS = (74.0, 58.0)
+
+
+def layout_scales(game_map: dict) -> tuple[float, float]:
+    bounds = game_map["bounds"]
+    margin = LAYOUT_ORIGIN * 2
+    return (
+        (bounds["w"] - margin) / (ORIGINAL_BOUNDS[0] - margin),
+        (bounds["d"] - margin) / (ORIGINAL_BOUNDS[1] - margin),
+    )
+
+
+def layout_point(game_map: dict, x: float, z: float) -> tuple[float, float]:
+    scale_x, scale_z = layout_scales(game_map)
+    return (
+        LAYOUT_ORIGIN + (x - LAYOUT_ORIGIN) * scale_x,
+        LAYOUT_ORIGIN + (z - LAYOUT_ORIGIN) * scale_z,
+    )
+
+
+def layout_world_point(game_map: dict, value: tuple[float, float, float]) -> tuple[float, float, float]:
+    x, z = layout_point(game_map, value[0], -value[1])
+    return (x, -z, value[2])
 
 
 def clear_scene() -> None:
@@ -295,6 +319,38 @@ def stair_holes(game_map: dict) -> list[dict]:
     return result
 
 
+def ceiling_fixture_placements(game_map: dict) -> list[dict]:
+    holes = stair_holes(game_map)
+    placements: list[dict] = []
+    for room in game_map["rooms"]:
+        if room["kind"] == "terraco":
+            continue
+        rect = room["rect"]
+        columns = max(1, min(3, math.floor((rect["w"] - 2) / 6)))
+        rows = max(1, min(3, math.floor((rect["d"] - 2) / 7)))
+        level = room.get("level", 0)
+        for index in range(columns * rows):
+            column = index % columns
+            row = index // columns
+            x = rect["x"] + (column + 1) * rect["w"] / (columns + 1)
+            z = rect["z"] + (row + 1) * rect["d"] / (rows + 1)
+            inside_opening = level == 0 and any(
+                hole["x"] <= x <= hole["x"] + hole["w"]
+                and hole["z"] <= z <= hole["z"] + hole["d"]
+                for hole in holes
+            )
+            if inside_opening:
+                continue
+            placements.append({
+                "x": x,
+                "y": WALL_HEIGHT - 0.08,
+                "z": z,
+                "rot": math.pi / 2,
+                "level": level,
+            })
+    return placements
+
+
 def add_floor(target: bpy.types.Collection, room: dict, piece: dict, base: float) -> None:
     finish = room["finish"]
     x = piece["x"] + piece["w"] / 2
@@ -527,26 +583,35 @@ def add_room_details(target: bpy.types.Collection, game_map: dict) -> None:
     by_id = {room["id"]: room for room in game_map["rooms"]}
     garage = by_id["garagem"]["rect"]
     base = 0.055
-    for center_x in (8, 14):
-        box(target, "Garage parking side", (0.055, 6.0, 0.018), world_location(center_x - 1.35, 45.5, base), MAT["white"])
-        box(target, "Garage parking side", (0.055, 6.0, 0.018), world_location(center_x + 1.35, 45.5, base), MAT["white"])
-        box(target, "Garage parking stop", (2.75, 0.055, 0.018), world_location(center_x, garage["z"] + 1.2, base), MAT["white"])
+    cars = [prop for prop in game_map["props"] if prop["kind"] in ("car", "sportCar")]
+    for car in cars:
+        box(target, "Garage parking side", (0.055, 6.0, 0.018), world_location(car["x"] - 1.35, car["z"], base), MAT["white"])
+        box(target, "Garage parking side", (0.055, 6.0, 0.018), world_location(car["x"] + 1.35, car["z"], base), MAT["white"])
+        box(target, "Garage parking stop", (2.75, 0.055, 0.018), world_location(car["x"], garage["z"] + 1.2, base), MAT["white"])
+    _, scale_z = layout_scales(game_map)
     for x in (5.5, 10.5, 15.5):
-        box(target, "Server raised floor guide", (0.035, 10.5, 0.014), world_location(x, 10, 0.06), MAT["cyan"])
+        mapped_x, mapped_z = layout_point(game_map, x, 10)
+        box(target, "Server raised floor guide", (0.035, 10.5 * scale_z, 0.014), world_location(mapped_x, mapped_z, 0.06), MAT["cyan"])
     for x in (28, 34.2, 40.4, 46.6):
-        box(target, "Operations cable guide", (0.035, 10.2, 0.014), world_location(x, 10, FLOOR_HEIGHT + 0.06), MAT["cyan"])
+        mapped_x, mapped_z = layout_point(game_map, x, 10)
+        box(target, "Operations cable guide", (0.035, 10.2 * scale_z, 0.014), world_location(mapped_x, mapped_z, FLOOR_HEIGHT + 0.06), MAT["cyan"])
 
     # Banheiro completo: duas cabines, portas elevadas, divisórias e acessórios.
     # As louças e a bancada são móveis Blender independentes; aqui fica a
     # arquitetura que pertence ao cômodo.
     for x in (56.75, 60.35, 64.0):
-        box(target, "Bathroom privacy partition", (0.075, 3.25, 1.86), world_location(x, 42.55, 0.99), MAT["structure"], bevel=0.035)
+        mapped_x, mapped_z = layout_point(game_map, x, 42.55)
+        box(target, "Bathroom privacy partition", (0.075, 3.25, 1.86), world_location(mapped_x, mapped_z, 0.99), MAT["structure"], bevel=0.035)
     for x in (58.55, 62.18):
-        box(target, "Bathroom floating stall door", (1.18, 0.075, 1.54), world_location(x, 40.96, 1.05), MAT["glass"], bevel=0.055)
-        cylinder(target, "Bathroom occupancy light", 0.035, 0.03, world_location(x, 40.90, 1.5), MAT["cyan"], vertices=18, bevel=0.006)
+        door_x, door_z = layout_point(game_map, x, 40.96)
+        light_x, light_z = layout_point(game_map, x, 40.90)
+        box(target, "Bathroom floating stall door", (1.18, 0.075, 1.54), world_location(door_x, door_z, 1.05), MAT["glass"], bevel=0.055)
+        cylinder(target, "Bathroom occupancy light", 0.035, 0.03, world_location(light_x, light_z, 1.5), MAT["cyan"], vertices=18, bevel=0.006)
     for index, x in enumerate((66.5, 67.05, 67.6)):
-        box(target, "Folded hand towel", (0.38, 0.055, 0.58), world_location(x, 44.74, 1.55), MAT[("white", "acoustic_teal", "white")[index]], bevel=0.035)
-    box(target, "Touchless hand dryer", (0.5, 0.22, 0.62), world_location(65.5, 44.67, 1.5), MAT["white"], bevel=0.12)
+        mapped_x, mapped_z = layout_point(game_map, x, 44.74)
+        box(target, "Folded hand towel", (0.38, 0.055, 0.58), world_location(mapped_x, mapped_z, 1.55), MAT[("white", "acoustic_teal", "white")[index]], bevel=0.035)
+    dryer_x, dryer_z = layout_point(game_map, 65.5, 44.67)
+    box(target, "Touchless hand dryer", (0.5, 0.22, 0.62), world_location(dryer_x, dryer_z, 1.5), MAT["white"], bevel=0.12)
 
     emergency = game_map["emergency"]
     button_base = emergency.get("level", 0) * FLOOR_HEIGHT + emergency.get("y", 0)
@@ -620,21 +685,26 @@ def wall_art(
             box(target, f"Artwork composition · {name}", (0.38, 0.035, height_piece), world_location(x + offset, front_z + 0.03 * inward_sign, base + 2.02 + (index % 2) * 0.08), finish, bevel=0.08, rotation=(0, 0, math.radians(8 - index * 5)))
 
 
-def add_modern_decor(target: bpy.types.Collection) -> None:
-    wall_art(target, "Reception gallery", 3.23, 26, 0, vertical_wall=True, inward_sign=1)
-    wall_art(target, "Meeting room gallery", 70.77, 10.5, 0, vertical_wall=True, inward_sign=-1)
-    wall_art(target, "Lounge gallery", 3.23, 27.5, FLOOR_HEIGHT, vertical_wall=True, inward_sign=1)
-    wall_art(target, "Executive gallery", 70.77, 11.5, FLOOR_HEIGHT, vertical_wall=True, inward_sign=-1)
-    wall_art(target, "Council gallery", 18.77, 45, FLOOR_HEIGHT, vertical_wall=True, inward_sign=-1)
-    wall_art(target, "Atrium gallery west", 31.5, 17.23, 0, vertical_wall=False, inward_sign=1)
-    wall_art(target, "Atrium gallery east", 42.5, 17.23, 0, vertical_wall=False, inward_sign=1)
-    wall_art(target, "Mezzanine gallery west", 31.5, 17.23, FLOOR_HEIGHT, vertical_wall=False, inward_sign=1)
-    wall_art(target, "Mezzanine gallery east", 42.5, 17.23, FLOOR_HEIGHT, vertical_wall=False, inward_sign=1)
+def add_modern_decor(target: bpy.types.Collection, game_map: dict) -> None:
+    def mapped_art(name: str, x: float, z: float, base: float, *, vertical_wall: bool, inward_sign: int) -> None:
+        mapped_x, mapped_z = layout_point(game_map, x, z)
+        wall_art(target, name, mapped_x, mapped_z, base, vertical_wall=vertical_wall, inward_sign=inward_sign)
+
+    mapped_art("Reception gallery", 3.23, 26, 0, vertical_wall=True, inward_sign=1)
+    mapped_art("Meeting room gallery", 70.77, 10.5, 0, vertical_wall=True, inward_sign=-1)
+    mapped_art("Lounge gallery", 3.23, 27.5, FLOOR_HEIGHT, vertical_wall=True, inward_sign=1)
+    mapped_art("Executive gallery", 70.77, 11.5, FLOOR_HEIGHT, vertical_wall=True, inward_sign=-1)
+    mapped_art("Council gallery", 18.77, 45, FLOOR_HEIGHT, vertical_wall=True, inward_sign=-1)
+    mapped_art("Atrium gallery west", 31.5, 17.23, 0, vertical_wall=False, inward_sign=1)
+    mapped_art("Atrium gallery east", 42.5, 17.23, 0, vertical_wall=False, inward_sign=1)
+    mapped_art("Mezzanine gallery west", 31.5, 17.23, FLOOR_HEIGHT, vertical_wall=False, inward_sign=1)
+    mapped_art("Mezzanine gallery east", 42.5, 17.23, FLOOR_HEIGHT, vertical_wall=False, inward_sign=1)
 
     for room_name, x, z, level in (
         ("Data core telemetry", 13, 16.77, 0),
         ("Operations command wall", 37, 16.77, 1),
     ):
+        x, z = layout_point(game_map, x, z)
         base = level * FLOOR_HEIGHT
         box(target, room_name, (7.6, 0.07, 1.65), world_location(x, z, base + 2.05), MAT["structure"], bevel=0.06)
         for index in range(4):
@@ -646,37 +716,50 @@ def add_modern_decor(target: bpy.types.Collection) -> None:
     for level in (0, 1):
         base = level * FLOOR_HEIGHT
         for z in (20.5, 37.5):
-            box(target, "Atrium vertical LED", (0.055, 0.055, 2.2), world_location(28.0, z, base + 1.75), MAT["cyan"], bevel=0.02)
-            box(target, "Atrium vertical LED", (0.055, 0.055, 2.2), world_location(46.0, z, base + 1.75), MAT["amber"], bevel=0.02)
+            west_x, mapped_z = layout_point(game_map, 28.0, z)
+            east_x, _ = layout_point(game_map, 46.0, z)
+            box(target, "Atrium vertical LED", (0.055, 0.055, 2.2), world_location(west_x, mapped_z, base + 1.75), MAT["cyan"], bevel=0.02)
+            box(target, "Atrium vertical LED", (0.055, 0.055, 2.2), world_location(east_x, mapped_z, base + 1.75), MAT["amber"], bevel=0.02)
 
+    _, scale_z = layout_scales(game_map)
     for x in (5.5, 9.5, 13.5, 17.5, 21.0):
-        box(target, "Data core overhead cable tray", (0.12, 10.4, 0.1), world_location(x, 10, 3.26), MAT["structure"], bevel=0.025)
-        box(target, "Data core ceiling status LED", (0.025, 9.8, 0.025), world_location(x, 10, 3.19), MAT["cyan"], bevel=0.01)
+        mapped_x, mapped_z = layout_point(game_map, x, 10)
+        box(target, "Data core overhead cable tray", (0.12, 10.4 * scale_z, 0.1), world_location(mapped_x, mapped_z, 3.26), MAT["structure"], bevel=0.025)
+        box(target, "Data core ceiling status LED", (0.025, 9.8 * scale_z, 0.025), world_location(mapped_x, mapped_z, 3.19), MAT["cyan"], bevel=0.01)
 
     # Terraço de trabalho: pergolado, jardineiras e luz integrada, para o lado
     # de fora parecer continuação do escritório em vez de uma laje vazia.
     terrace_base = FLOOR_HEIGHT
+    scale_x, _ = layout_scales(game_map)
     for x in (57.25, 68.75):
         for z in (32.0, 42.0):
-            box(target, "Terrace pergola column", (0.18, 0.18, 2.72), world_location(x, z, terrace_base + 1.36), MAT["structure"], bevel=0.035)
+            mapped_x, mapped_z = layout_point(game_map, x, z)
+            box(target, "Terrace pergola column", (0.18, 0.18, 2.72), world_location(mapped_x, mapped_z, terrace_base + 1.36), MAT["structure"], bevel=0.035)
     for z in (32.0, 42.0):
-        box(target, "Terrace pergola beam", (11.7, 0.18, 0.2), world_location(63, z, terrace_base + 2.72), MAT["structure"], bevel=0.04)
+        mapped_x, mapped_z = layout_point(game_map, 63, z)
+        box(target, "Terrace pergola beam", (11.7 * scale_x, 0.18, 0.2), world_location(mapped_x, mapped_z, terrace_base + 2.72), MAT["structure"], bevel=0.04)
     for index in range(10):
         z = 32.25 + index * 1.05
-        box(target, "Terrace solar louver", (11.35, 0.11, 0.11), world_location(63, z, terrace_base + 2.83), MAT["walnut"], bevel=0.025)
+        mapped_x, mapped_z = layout_point(game_map, 63, z)
+        box(target, "Terrace solar louver", (11.35 * scale_x, 0.11, 0.11), world_location(mapped_x, mapped_z, terrace_base + 2.83), MAT["walnut"], bevel=0.025)
         if index in (1, 4, 7):
-            box(target, "Terrace integrated LED", (10.8, 0.028, 0.028), world_location(63, z, terrace_base + 2.75), MAT["amber"], bevel=0.01)
+            box(target, "Terrace integrated LED", (10.8 * scale_x, 0.028, 0.028), world_location(mapped_x, mapped_z, terrace_base + 2.75), MAT["amber"], bevel=0.01)
     for x, z, sx, sz in ((57.2, 20.5, 1.1, 4.2), (68.8, 29.5, 1.1, 5.2), (57.2, 51.5, 1.1, 4.2)):
-        box(target, "Terrace mineral planter", (sx, sz, 0.48), world_location(x, z, terrace_base + 0.24), MAT["terrazzo"], bevel=0.12)
-        box(target, "Terrace planter shadow gap", (sx + 0.04, sz + 0.04, 0.055), world_location(x, z, terrace_base + 0.05), MAT["structure"], bevel=0.025)
+        mapped_x, mapped_z = layout_point(game_map, x, z)
+        box(target, "Terrace mineral planter", (sx, sz, 0.48), world_location(mapped_x, mapped_z, terrace_base + 0.24), MAT["terrazzo"], bevel=0.12)
+        box(target, "Terrace planter shadow gap", (sx + 0.04, sz + 0.04, 0.055), world_location(mapped_x, mapped_z, terrace_base + 0.05), MAT["structure"], bevel=0.025)
 
     # Um skyline geométrico muito leve fecha a vista externa sem fotografia ou
     # textura grande. Tudo se une por material na exportação.
-    towers = (
+    legacy_towers = (
         (80.0, 13.0, 6.5, 9.0, 12.0),
         (87.5, 27.0, 7.0, 8.0, 17.0),
         (79.0, 43.0, 5.5, 7.5, 11.0),
         (91.0, 53.0, 8.5, 9.0, 20.0),
+    )
+    towers = tuple(
+        (*layout_point(game_map, x, z), width, depth, height)
+        for x, z, width, depth, height in legacy_towers
     )
     tower_boxes = [(x, -z, height / 2, width, depth, height) for x, z, width, depth, height in towers]
     mesh_boxes(target, "Exterior skyline masses", tower_boxes, MAT["structure"])
@@ -717,23 +800,7 @@ def add_furniture(target: bpy.types.Collection, game_map: dict) -> None:
     for prop in game_map["props"]:
         if prop["kind"] in PROP_MODELS:
             by_kind.setdefault(prop["kind"], []).append(prop)
-    by_kind["ceilingLight"] = []
-    for room in game_map["rooms"]:
-        if room["kind"] == "terraco":
-            continue
-        rect = room["rect"]
-        columns = max(1, min(3, int((rect["w"] - 2) // 6)))
-        rows = max(1, min(3, int((rect["d"] - 2) // 7)))
-        for index in range(columns * rows):
-            column = index % columns
-            row = index // columns
-            by_kind["ceilingLight"].append({
-                "x": rect["x"] + (column + 1) * rect["w"] / (columns + 1),
-                "y": WALL_HEIGHT - 0.08,
-                "z": rect["z"] + (row + 1) * rect["d"] / (rows + 1),
-                "rot": math.pi / 2,
-                "level": room.get("level", 0),
-            })
+    by_kind["ceilingLight"] = ceiling_fixture_placements(game_map)
 
     for kind, placements in by_kind.items():
         before = set(bpy.data.objects)
@@ -803,30 +870,31 @@ def optimize_and_export(source: bpy.types.Collection) -> None:
     )
 
 
-def add_preview(scene: bpy.types.Scene) -> None:
+def add_preview(scene: bpy.types.Scene, game_map: dict) -> None:
     for obj in scene.objects:
         if obj.get("timbas_static_instance"):
             obj.visible_shadow = False
-    bpy.ops.object.light_add(type="SUN", location=(20, -20, 18))
+    bpy.ops.object.light_add(type="SUN", location=layout_world_point(game_map, (20, -20, 18)))
     sun = bpy.context.object
     sun.data.energy = 1.7
     sun.data.angle = math.radians(18)
     sun.rotation_euler = (math.radians(24), math.radians(-22), math.radians(-28))
-    bpy.ops.object.light_add(type="AREA", location=(37, -25, 18))
+    bpy.ops.object.light_add(type="AREA", location=layout_world_point(game_map, (37, -25, 18)))
     area = bpy.context.object
     area.data.energy = 2600
     area.data.shape = "DISK"
     area.data.size = 18
     for x, y, color in ((32, -29, (0.55, 0.72, 1.0)), (42, -29, (1.0, 0.7, 0.42)), (37, -21, (0.6, 0.9, 1.0))):
-        bpy.ops.object.light_add(type="POINT", location=(x, y, 3.15))
+        bpy.ops.object.light_add(type="POINT", location=layout_world_point(game_map, (x, y, 3.15)))
         point = bpy.context.object
         point.data.energy = 620
         point.data.color = color
         point.data.shadow_soft_size = 2.4
         point.data.use_shadow = False
-    bpy.ops.object.camera_add(location=(37, -35.5, 1.72))
+    bpy.ops.object.camera_add(location=layout_world_point(game_map, (37, -35.5, 1.72)))
     camera = bpy.context.object
-    camera.rotation_euler = (Vector((37, -20.5, 1.58)) - camera.location).to_track_quat("-Z", "Y").to_euler()
+    camera_target = layout_world_point(game_map, (37, -20.5, 1.58))
+    camera.rotation_euler = (Vector(camera_target) - camera.location).to_track_quat("-Z", "Y").to_euler()
     camera.data.lens = 31
     scene.camera = camera
     scene.render.engine = "BLENDER_EEVEE"
@@ -838,7 +906,7 @@ def add_preview(scene: bpy.types.Scene) -> None:
     scene.world.color = (0.018, 0.024, 0.038)
 
 
-def render_review_views(scene: bpy.types.Scene) -> None:
+def render_review_views(scene: bpy.types.Scene, game_map: dict) -> None:
     views = (
         (SERVER_PREVIEW_PATH, (13, -5.2, 1.72), (13, -15.2, 1.3), (13, -10.5, 3.0)),
         (PANTRY_PREVIEW_PATH, (57.2, -32.0, 1.7), (69.2, -21.0, 1.2), (65.0, -24.5, 3.0)),
@@ -855,9 +923,10 @@ def render_review_views(scene: bpy.types.Scene) -> None:
     review_light.data.color = (0.72, 0.84, 1.0)
     review_light.data.use_shadow = False
     for path, location, target, light_location in views:
-        scene.camera.location = location
-        scene.camera.rotation_euler = (Vector(target) - scene.camera.location).to_track_quat("-Z", "Y").to_euler()
-        review_light.location = light_location
+        scene.camera.location = layout_world_point(game_map, location)
+        mapped_target = layout_world_point(game_map, target)
+        scene.camera.rotation_euler = (Vector(mapped_target) - scene.camera.location).to_track_quat("-Z", "Y").to_euler()
+        review_light.location = layout_world_point(game_map, light_location)
         scene.render.filepath = str(path)
         bpy.ops.render.render(write_still=True)
 
@@ -874,16 +943,16 @@ def main() -> None:
     add_feature_walls(building, game_map)
     add_stairs(building, game_map)
     add_room_details(building, game_map)
-    add_modern_decor(building)
+    add_modern_decor(building, game_map)
     add_vent_grilles(building, game_map)
     add_furniture(building, game_map)
     BLEND_PATH.parent.mkdir(parents=True, exist_ok=True)
     GLB_PATH.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
     optimize_and_export(building)
-    add_preview(bpy.context.scene)
+    add_preview(bpy.context.scene, game_map)
     bpy.ops.render.render(write_still=True)
-    render_review_views(bpy.context.scene)
+    render_review_views(bpy.context.scene, game_map)
     print(f"BLEND: {BLEND_PATH}")
     print(f"GLB: {GLB_PATH}")
     print(f"PREVIEW: {PREVIEW_PATH}")

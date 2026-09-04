@@ -22,13 +22,14 @@ Uma segunda falha foi tratar arquitetura e mobiliário como duas cenas. O navega
 - escadas sem vão arquitetônico coerente;
 - objetos apoiados na altura errada, porque o modelo visual e a planta não eram revisados juntos.
 
-As revisões seguintes revelaram mais três regras importantes:
+As revisões seguintes revelaram mais quatro regras importantes:
 
 - transparência ordenada em dezenas de portas de vidro pode piscar, atravessar outra folha e mudar de ordem conforme a câmera; vidro arquitetônico de gameplay deve usar material sólido, escuro e reflexivo, com o vão de circulação realmente livre;
-- uma luz real transferida instantaneamente para a luminária mais próxima denuncia o pool e faz o prédio "acender" quando o jogador chega; o preenchimento precisa seguir a câmera suavemente enquanto todas as luminárias continuam emissivas;
+- uma luz real transferida entre luminárias denuncia o pool, mas prendê-la à câmera cria uma lanterna invisível que acompanha o jogador e chega a iluminar o vão da escada; toda fonte dinâmica do escritório deve permanecer fixa na coordenada de uma luminária física;
+- reduzir o prédio escalando também carros e móveis deixa tudo com aparência de miniatura; a planta, as portas e as posições podem ser compactadas, enquanto medidas físicas, colisões e alturas dos objetos permanecem reais;
 - um corpo feito no React e escondido por distância não parece parte do mundo e pode sumir antes do report; personagem vivo e corpo agora têm fontes Blender próprias, e só a laje decide em qual pavimento o corpo aparece.
 
-A regra atual é uma fonte Blender para o edifício completo. `timbas-office-building.blend` contém os dois pavimentos, arquitetura, acabamentos, móveis, equipamentos, luminárias, carros e decoração. O navegador carrega um GLB único e conserva apenas interações, uma ou duas luzes de preenchimento estáveis e as luzes vermelhas do blackout.
+A regra atual é uma fonte Blender para o edifício completo. `timbas-office-building.blend` contém os dois pavimentos, arquitetura, acabamentos, móveis, equipamentos, luminárias, carros e decoração. O navegador carrega um GLB único e conserva apenas interações, luzes fixas sem sombra sob luminárias reais e as luzes vermelhas do blackout.
 
 ## Padrão visual
 
@@ -100,8 +101,9 @@ O orçamento decisivo da cena é a combinação de draw calls, luzes com sombra,
 ## Iluminação
 
 - A peça emissiva deve existir dentro de uma luminária física.
-- Emissão dá aparência de luz, mas uma ou duas luzes reais de preenchimento acompanham a câmera com interpolação suave.
-- A luz de preenchimento nunca salta entre luminárias. Não deve haver uma PointLight para cada peça do teto.
+- Emissão dá aparência de luz; a fonte que ilumina o ambiente fica fixa logo abaixo da mesma luminária, nunca na câmera ou no jogador.
+- Nem toda peça emissiva precisa de uma PointLight. Em qualidade alta há no máximo uma por ambiente; média e baixa preservam primeiro os corredores, halls e salas maiores.
+- Nenhuma luminária pode ser criada dentro do recorte da laje sobre uma escada.
 - Apenas uma luz principal pode projetar sombra dinâmica quando necessário.
 - No blackout, as luzes normais apagam e as luminárias de emergência do corredor acendem em vermelho.
 - O assassino recebe leitura noturna reduzida no blackout, sem reacender as luminárias normais para os demais jogadores.
