@@ -99,7 +99,7 @@ export function PlayerRatingCard({
       className={cn(
         "group relative isolate flex aspect-[3/4] w-full flex-col overflow-hidden rounded-2xl border p-2.5 shadow-xl transition duration-300 hover:-translate-y-1",
         tier.shell,
-        compact ? stats.length ? "min-h-[174px]" : "min-h-[138px]" : "min-h-[190px] p-3.5",
+        compact ? stats.length ? "h-[214px] aspect-auto" : "min-h-[138px]" : "min-h-[190px] p-3.5",
         className,
       )}
       title={`${player.playerName}, nota ${rating?.toFixed(1).replace(".", ",")}`}
@@ -125,7 +125,7 @@ export function PlayerRatingCard({
 
       <div className="relative border-t border-white/10 pt-2 text-center">
         <h4 className={cn("truncate font-black uppercase tracking-tight text-white", compact ? "text-[10px]" : "text-xs")}>{player.playerName}</h4>
-        {stats.length ? <div className="mt-1.5 grid grid-cols-2 gap-1">{stats.map((stat, index) => <span key={stat.label} className={cn("min-w-0 rounded bg-black/20 px-1 py-1", stats.length === 3 && index === 2 && "col-span-2")}><strong className="block truncate text-[10px] font-black tabular-nums text-white">{stat.value}</strong><small className="block truncate text-[7px] font-black uppercase tracking-wide text-white/45">{stat.label}</small></span>)}</div> : <div className="mt-1 flex items-center justify-center gap-1.5">
+        {stats.length ? <div className="mt-1.5 grid grid-cols-2 gap-1">{stats.map((stat, index) => <span key={stat.label} className={cn("min-w-0 rounded bg-black/20 px-1 py-1", stats.length === 3 && index === 2 && "col-span-2")}><strong className="block text-[10px] font-black tabular-nums text-white">{stat.value}</strong><small className="block whitespace-nowrap text-[7px] font-black uppercase tracking-wide text-white/45">{stat.label}</small></span>)}</div> : <div className="mt-1 flex items-center justify-center gap-1.5">
           {player.team && <TeamCrest name={player.team.name} logoUrl={player.team.logoUrl} size={compact ? 16 : 20} />}
           <span className="max-w-[78px] truncate text-[8px] font-bold text-white/50">{player.team?.name ?? tier.label}</span>
         </div>}

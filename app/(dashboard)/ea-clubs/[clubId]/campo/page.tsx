@@ -86,13 +86,41 @@ function lineFor(position: string): FieldLine {
   return "midfield"
 }
 
-function positionName(position: string) {
-  const value = position.toUpperCase()
-  if (value === "FORWARD") return "ATA"
-  if (value === "DEFENDER") return "DEF"
-  if (value === "MIDFIELDER") return "MEI"
-  if (value === "GK" || value === "GOALKEEPER") return "GOL"
-  return value
+const SLOT_POSITION_MATCHES: Record<string, { exact: string[]; nearby: string[] }> = {
+  ATE: { exact: ["LW", "LF", "LS"], nearby: ["ST", "CF"] },
+  ATD: { exact: ["RW", "RF", "RS"], nearby: ["ST", "CF"] },
+  PE: { exact: ["LW", "LF"], nearby: ["LM", "LAM", "ST"] },
+  ATA: { exact: ["ST", "CF"], nearby: ["LF", "RF", "LW", "RW"] },
+  PD: { exact: ["RW", "RF"], nearby: ["RM", "RAM", "ST"] },
+  ME: { exact: ["LM", "LAM", "LCM"], nearby: ["LW", "LDM", "CM", "CAM"] },
+  MEI: { exact: ["CAM", "CM"], nearby: ["LAM", "RAM", "LCM", "RCM"] },
+  MD: { exact: ["RM", "RAM", "RCM"], nearby: ["RW", "RDM", "CM", "CAM"] },
+  VLE: { exact: ["LDM"], nearby: ["CDM", "LCM", "LM", "LB", "LWB"] },
+  VLD: { exact: ["RDM"], nearby: ["CDM", "RCM", "RM", "RB", "RWB"] },
+  MC: { exact: ["CM", "LCM", "RCM"], nearby: ["CAM", "CDM"] },
+  VOL: { exact: ["CDM", "LDM", "RDM"], nearby: ["CM", "LCM", "RCM"] },
+  LE: { exact: ["LB", "LWB"], nearby: ["LCB", "LM"] },
+  ZGE: { exact: ["LCB"], nearby: ["CB", "LB", "LWB"] },
+  ZAG: { exact: ["CB", "SW"], nearby: ["LCB", "RCB"] },
+  ZGD: { exact: ["RCB"], nearby: ["CB", "RB", "RWB"] },
+  LD: { exact: ["RB", "RWB"], nearby: ["RCB", "RM"] },
+  GOL: { exact: ["GK", "GOALKEEPER"], nearby: [] },
+}
+
+function slotFitFor(player: EaClubFieldPlayer, slot: string) {
+  const matches = SLOT_POSITION_MATCHES[slot]
+  if (!matches) return 0
+  const positions = player.positionRatings?.length
+    ? player.positionRatings
+    : [{ position: player.position, appearances: player.appearances }]
+
+  return positions.reduce((best, performance) => {
+    const code = performance.position.trim().toUpperCase()
+    const sample = cappedShare(performance.appearances, 5)
+    if (matches.exact.includes(code)) return Math.max(best, 3 + sample)
+    if (matches.nearby.includes(code)) return Math.max(best, 1.5 + sample * 0.5)
+    return best
+  }, 0)
 }
 
 function resultLabel(result: "WIN" | "DRAW" | "LOSS") {
@@ -179,6 +207,10 @@ function comparePlayers(a: EaClubFieldPlayer, b: EaClubFieldPlayer, sector: Fiel
   )
 }
 
+function comparePlayersForSlot(a: EaClubFieldPlayer, b: EaClubFieldPlayer, sector: FieldLine, slot: string) {
+  return slotFitFor(b, slot) - slotFitFor(a, slot) || comparePlayers(a, b, sector)
+}
+
 function performanceStats(player: EaClubFieldPlayer, sector: FieldLine) {
   const performance = performanceFor(player, sector) ?? player.positionRatings?.[0]
   if (!performance) return []
@@ -187,16 +219,19 @@ function performanceStats(player: EaClubFieldPlayer, sector: FieldLine) {
     { label: "Gols", value: String(performance.goals) },
     { label: "Assist.", value: String(performance.assists) },
     { label: "Conversão", value: percent(performance.shotConversion) },
+    { label: "Jogos", value: String(performance.appearances) },
   ]
   if (sector === "midfield") return [
     { label: "Assist.", value: String(performance.assists) },
     { label: "Passes", value: String(performance.passesCompleted) },
     { label: "Precisão", value: percent(performance.passAccuracy) },
+    { label: "Jogos", value: String(performance.appearances) },
   ]
   if (sector === "defense") return [
     { label: "Desarmes", value: String(performance.tacklesCompleted) },
     { label: "Precisão", value: percent(performance.tackleAccuracy) },
     { label: "Passes", value: String(performance.passesCompleted) },
+    { label: "Jogos", value: String(performance.appearances) },
   ]
   return [
     { label: "Defesas", value: String(performance.saves) },
@@ -206,8 +241,8 @@ function performanceStats(player: EaClubFieldPlayer, sector: FieldLine) {
 
 function PlayerCard({ player, position, sector, clubId, adapted = false }: { player: EaClubFieldPlayer | null; position: string; sector: FieldLine; clubId: string; adapted?: boolean }) {
   const performance = player ? performanceFor(player, sector) : undefined
-  const card = <PlayerRatingCard player={player ? { playerName: player.playerName, averageRating: performance?.averageRating ?? player.rating ?? null, primaryPosition: player.position } : null} position={position} adapted={adapted} compact stats={player ? performanceStats(player, sector) : []} className="max-w-[116px]" emptyLabel="CPU da EA" />
-  return player ? <Link href={`/ea-clubs/${clubId}/players/${player.id}`} className="w-[116px]">{card}</Link> : <div className="w-[116px]">{card}</div>
+  const card = <PlayerRatingCard player={player ? { playerName: player.playerName, averageRating: performance?.averageRating ?? player.rating ?? null, primaryPosition: player.position } : null} position={position} adapted={adapted} compact stats={player ? performanceStats(player, sector) : []} className="max-w-[128px]" emptyLabel="CPU da EA" />
+  return player ? <Link href={`/ea-clubs/${clubId}/players/${player.id}`} className="w-[128px]">{card}</Link> : <div className="w-[128px]">{card}</div>
 }
 
 export default function EaClubFieldPage() {
@@ -247,12 +282,13 @@ export default function EaClubFieldPage() {
     const assigned = new Set<string>()
     for (const sector of LINE_ORDER) {
       const ranked = [...(groups.get(sector) ?? [])].sort((a, b) => comparePlayers(a, b, sector))
-      let playerIndex = 0
-      for (const line of lines.filter(item => item.key === sector)) {
+      const sectorLines = lines.filter(item => item.key === sector)
+      const available = ranked.slice(0, sectorLines.reduce((total, line) => total + line.positions.length, 0))
+      for (const line of sectorLines) {
         const slots = line.positions.map(() => ({ player: null as EaClubFieldPlayer | null, adapted: false }))
         for (const slotIndex of line.priority) {
-          const player = ranked[playerIndex]
-          playerIndex += 1
+          available.sort((a, b) => comparePlayersForSlot(a, b, sector, line.positions[slotIndex]))
+          const player = available.shift()
           if (!player) continue
           slots[slotIndex] = { player, adapted: false }
           assigned.add(player.id)
@@ -268,7 +304,11 @@ export default function EaClubFieldPage() {
       for (let index = 0; index < slots.length; index += 1) {
         if (slots[index].player || !unassigned.length) continue
         const target = LINE_ORDER.indexOf(line.key)
-        unassigned.sort((a, b) => Math.abs(LINE_ORDER.indexOf(lineFor(a.position)) - target) - Math.abs(LINE_ORDER.indexOf(lineFor(b.position)) - target) || comparePlayers(a, b, line.key))
+        unassigned.sort((a, b) =>
+          Math.abs(LINE_ORDER.indexOf(lineFor(a.position)) - target) -
+            Math.abs(LINE_ORDER.indexOf(lineFor(b.position)) - target) ||
+          comparePlayersForSlot(a, b, line.key, line.positions[index]),
+        )
         const player = unassigned.shift() ?? null
         slots[index] = { player, adapted: player !== null && !performanceFor(player, line.key) }
         if (player) assigned.add(player.id)
@@ -291,12 +331,12 @@ export default function EaClubFieldPage() {
 
     <section className="overflow-hidden rounded-[26px] border border-emerald-400/15 bg-gradient-to-b from-emerald-500/[0.07] to-transparent">
       <div className="flex flex-col gap-4 border-b border-white/[0.07] p-5 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Seleção do clube</p><h2 className="mt-1 text-2xl font-black text-white">Melhor 11 em um {activeFormation}</h2><p className="mt-1 text-[11px] text-gray-500">{manualFormation ? `Formação alterada manualmente. A sugestão automática pelas últimas 25 partidas é ${field.formation ?? "4-3-3"}. Titulares priorizam quem fez pelo menos 3 jogos na posição.` : field.formationSummary ? `${field.summary?.matches ?? 0} jogos analisados. O ${field.formation} apareceu ${field.formationSummary.matches} vezes, com ${field.formationSummary.wins} ${field.formationSummary.wins === 1 ? "vitória" : "vitórias"}, ${field.formationSummary.draws} ${field.formationSummary.draws === 1 ? "empate" : "empates"} e ${field.formationSummary.losses} ${field.formationSummary.losses === 1 ? "derrota" : "derrotas"}. Titulares priorizam ao menos 3 jogos na posição, depois nota média e atuações.` : "Sem uma formação completa nas partidas analisadas; exibindo o 4-3-3 como base."}</p></div>
+        <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Seleção do clube</p><h2 className="mt-1 text-2xl font-black text-white">Melhor 11 em um {activeFormation}</h2><p className="mt-1 text-[11px] text-gray-500">{manualFormation ? `Formação alterada manualmente. A sugestão automática pelas últimas 25 partidas é ${field.formation ?? "4-3-3"}. O encaixe respeita a posição recente e depois compara produção e nota.` : field.formationSummary ? `${field.summary?.matches ?? 0} jogos analisados. O ${field.formation} apareceu ${field.formationSummary.matches} vezes, com ${field.formationSummary.wins} ${field.formationSummary.wins === 1 ? "vitória" : "vitórias"}, ${field.formationSummary.draws} ${field.formationSummary.draws === 1 ? "empate" : "empates"} e ${field.formationSummary.losses} ${field.formationSummary.losses === 1 ? "derrota" : "derrotas"}. O encaixe respeita a posição recente e depois compara produção, eficiência, nota e amostra.` : "Sem uma formação completa nas partidas analisadas; exibindo o 4-3-3 como base."}</p></div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end"><label className="text-[8px] font-black uppercase tracking-wider text-gray-500" htmlFor="field-formation">Formação</label><select id="field-formation" value={manualFormation ?? "auto"} onChange={event => setManualFormation(event.target.value === "auto" ? null : event.target.value)} className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold text-white outline-none focus:border-emerald-400/50"><option value="auto">Melhor sugerida ({field.formation ?? "4-3-3"})</option>{FORMATION_OPTIONS.map(formation => <option key={formation} value={formation}>{formation}</option>)}</select><span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-400">Atualizado: {formatDate(field.match?.playedAt, true)}</span></div>
       </div>
 
       {field.players.length ? <div className="grid items-start gap-5 p-4 xl:grid-cols-[minmax(720px,1fr)_250px] xl:p-5">
-        <div className="overflow-x-auto"><div className={`relative mx-auto min-w-[720px] max-w-[980px] overflow-hidden rounded-[28px] border border-emerald-300/20 bg-emerald-950/70 p-7 shadow-2xl shadow-black/30 ${fieldHeight}`}><div aria-hidden className="pointer-events-none absolute inset-5 rounded-[20px] border border-white/10" /><div aria-hidden className="pointer-events-none absolute inset-x-5 top-1/2 h-px bg-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-5 h-14 w-48 -translate-x-1/2 border border-t-0 border-white/10" /><div aria-hidden className="pointer-events-none absolute bottom-5 left-1/2 h-14 w-48 -translate-x-1/2 border border-b-0 border-white/10" /><div className={`relative flex flex-col justify-around ${lineupHeight}`}>{lines.map(line => <div key={line.id} className={`grid min-h-[174px] items-center justify-items-center gap-4 ${line.grid}`}>{(selection.starters.get(line.id) ?? []).map((slot, index) => <PlayerCard key={slot.player?.id ?? `${line.id}-${index}`} player={slot.player} position={line.positions[index]} sector={line.key} clubId={clubId} adapted={slot.adapted} />)}</div>)}</div></div></div>
+        <div className="overflow-x-auto"><div className={`relative mx-auto min-w-[720px] max-w-[980px] overflow-hidden rounded-[28px] border border-emerald-300/20 bg-emerald-950/70 p-7 shadow-2xl shadow-black/30 ${fieldHeight}`}><div aria-hidden className="pointer-events-none absolute inset-5 rounded-[20px] border border-white/10" /><div aria-hidden className="pointer-events-none absolute inset-x-5 top-1/2 h-px bg-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-5 h-14 w-48 -translate-x-1/2 border border-t-0 border-white/10" /><div aria-hidden className="pointer-events-none absolute bottom-5 left-1/2 h-14 w-48 -translate-x-1/2 border border-b-0 border-white/10" /><div className={`relative flex flex-col justify-around ${lineupHeight}`}>{lines.map(line => <div key={line.id} className={`grid min-h-[214px] items-center justify-items-center gap-4 ${line.grid}`}>{(selection.starters.get(line.id) ?? []).map((slot, index) => <PlayerCard key={slot.player?.id ?? `${line.id}-${index}`} player={slot.player} position={line.positions[index]} sector={line.key} clubId={clubId} adapted={slot.adapted} />)}</div>)}</div></div></div>
 
         <aside className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Banco por setor</p><h3 className="mt-1 text-lg font-black text-white">Todos os reservas</h3><p className="mt-1 text-[10px] leading-relaxed text-gray-500">Todos que jogaram nas últimas 25 partidas aparecem como titulares ou no banco. O time equilibra nota, produção, eficiência e amostra.</p></div><div className="grid grid-cols-2 justify-items-center gap-5 xl:grid-cols-1">{RESERVE_SECTORS.map(sector => { const reserves = selection.reserves.get(sector.key) ?? []; return <div key={sector.key} className="w-full space-y-2 text-center"><p className="text-[9px] font-black uppercase tracking-wider text-gray-500">{sector.label}</p>{reserves.length ? <div className="grid justify-items-center gap-3">{reserves.map(player => <PlayerCard key={player.id} player={player} position={sector.position} sector={sector.key} clubId={clubId} />)}</div> : <p className="rounded-xl border border-dashed border-white/10 px-2 py-4 text-[9px] font-bold uppercase text-gray-700">Sem reserva</p>}</div> })}</div></aside>
       </div> : <Card className="m-5 border-dashed border-white/10 bg-white/[0.02] p-10 text-center"><p className="font-bold text-white">Ainda não há escalação registrada</p><p className="mt-1 text-sm text-gray-500">Sincronize as partidas do clube para formar o campo.</p></Card>}
