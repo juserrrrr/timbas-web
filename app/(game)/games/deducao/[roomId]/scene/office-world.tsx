@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { useGLTF, useTexture } from "@react-three/drei"
-import { useThree } from "@react-three/fiber"
+import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js"
@@ -19,6 +19,11 @@ const STAIR_WIDTH = 2.8
 const STAIR_STEPS = 18
 const TRIM_HEIGHT = 0.16
 const BASEBOARD_HEIGHT = 0.22
+const ROOM_LIGHT_POOL_SIZE: Record<Quality, number> = {
+  alto: 8,
+  medio: 5,
+  baixo: 0,
+}
 
 /// Espessura estrutural das lajes. No piso superior ela é recortada nos vãos
 /// das escadas para os dois andares formarem um prédio contínuo.
@@ -935,28 +940,66 @@ function Instances({
   )
 }
 
-function RoomSpotlight({ light, height, blackout }: { light: RoomLightSource; height: number; blackout: boolean }) {
-  const target = useMemo(() => {
-    const object = new THREE.Object3D()
-    object.position.set(light.x, 0.04, light.z)
-    return object
-  }, [light.x, light.z])
-
-  return (
-    <>
-      <primitive object={target} />
-      <spotLight
-        position={[light.x, height, light.z]}
-        target={target}
-        color={light.color}
-        intensity={blackout ? 0 : light.intensity}
-        distance={light.distance}
-        angle={0.72}
-        penumbra={0.82}
-        decay={2}
-      />
-    </>
+function RoomLightPool({
+  lights,
+  height,
+  quality,
+}: {
+  lights: RoomLightSource[]
+  height: number
+  quality: Quality
+}) {
+  const { camera } = useThree()
+  const poolSize = Math.min(lights.length, ROOM_LIGHT_POOL_SIZE[quality])
+  // Luzes têm alcance curto. Manter apenas as mais próximas preserva o que
+  // chega à câmera sem cobrar cada sala distante em todo pixel da tela.
+  const pool = useMemo(
+    () =>
+      Array.from({ length: poolSize }, () => {
+        const target = new THREE.Object3D()
+        const light = new THREE.SpotLight("#ffffff", 0)
+        light.angle = 0.72
+        light.penumbra = 0.82
+        light.decay = 2
+        light.target = target
+        return { light, target, source: -1 }
+      }),
+    [poolSize],
   )
+
+  useFrame(() => {
+    const closest = lights
+      .map((light, index) => ({
+        index,
+        distance: (light.x - camera.position.x) ** 2 + (light.z - camera.position.z) ** 2,
+      }))
+      .sort((left, right) => left.distance - right.distance)
+      .slice(0, pool.length)
+
+    pool.forEach((entry, index) => {
+      const sourceIndex = closest[index]?.index
+      const source = sourceIndex === undefined ? null : lights[sourceIndex]
+      if (!source) {
+        entry.light.intensity = 0
+        return
+      }
+      if (entry.source === sourceIndex) return
+
+      entry.source = sourceIndex
+      entry.light.position.set(source.x, height, source.z)
+      entry.light.color.set(source.color)
+      entry.light.intensity = source.intensity
+      entry.light.distance = source.distance
+      entry.target.position.set(source.x, 0.04, source.z)
+    })
+  })
+
+  return pool.map((entry, index) => (
+    <group key={index}>
+      <primitive object={entry.target} />
+      <primitive object={entry.light} />
+    </group>
+  ))
 }
 
 export function OfficeWorld({
@@ -1741,22 +1784,16 @@ export function OfficeWorld({
           <Instances geometry={ceilingGeometry} material={ceilingMaterial} transforms={ceilingFixtures} shadows={false} />
         </>
       )}
-      {active &&
-        roomLights.map((light, index) => (
-          <RoomSpotlight
-            key={`room-light-${index}`}
-            light={light}
-            height={Math.max(2.8, wallHeight - 0.2)}
-            blackout={blackout}
-          />
-        ))}
-      {quality !== "baixo" &&
+      {active && !blackout && (
+        <RoomLightPool lights={roomLights} height={Math.max(2.8, wallHeight - 0.2)} quality={quality} />
+      )}
+      {quality !== "baixo" && active && blackout &&
         emergencyLights.map((light, index) => (
           <pointLight
             key={`emergency-light-${index}`}
             position={[light.x, 0.48, light.z]}
             color="#ff2d3f"
-            intensity={active && blackout ? 18 : 0}
+            intensity={18}
             distance={7.5}
             decay={2}
           />

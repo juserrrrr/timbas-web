@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { Html } from "@react-three/drei"
 import * as THREE from "three"
@@ -19,6 +19,7 @@ import { FLOOR_HEIGHT, OfficeWorld } from "./office-world"
 import { setBlackout, useVisionMaterial } from "./vision-material"
 
 const VOID_COLOR = "#7892b8"
+const MAX_RENDER_FPS = 60
 
 /// Altura dos olhos. A câmera de primeira pessoa fica aqui, e é por isso que a
 /// parede precisa passar dos 2,5m: a 1,55m dava para ver o escritório inteiro
@@ -130,17 +131,18 @@ interface Props {
 
 export function OfficeScene(props: Props) {
   const { quality } = props
+  const cameraFar = Math.max(130, Math.hypot(props.map.bounds.w, props.map.bounds.d) + 24)
   return (
     <Canvas
       shadows={quality !== "baixo"}
       dpr={quality === "alto" ? [1, 1.35] : quality === "medio" ? [1, 1.2] : 1}
-      frameloop={props.snapshot.phase === "lobby" ? "demand" : "always"}
+      frameloop="never"
       gl={{
         antialias: quality !== "baixo",
         powerPreference: "high-performance",
         stencil: false,
       }}
-      camera={{ fov: 68, near: 0.05, far: 130, position: [0, EYE_HEIGHT, 0] }}
+      camera={{ fov: 68, near: 0.05, far: cameraFar, position: [0, EYE_HEIGHT, 0] }}
       onCreated={({ gl }) => {
         // O vazio em volta do escritório é um azul de fim de tarde, não preto:
         // ele precisa ler como ar em volta das lajes, e não como buraco.
@@ -151,9 +153,35 @@ export function OfficeScene(props: Props) {
         gl.shadowMap.type = THREE.PCFSoftShadowMap
       }}
     >
+      <CappedFrameLoop />
       <SceneContent {...props} />
     </Canvas>
   )
+}
+
+function CappedFrameLoop() {
+  const advance = useThree((state) => state.advance)
+
+  useEffect(() => {
+    // O modo automático acompanha monitores de 120/144 Hz e redesenha a mesma
+    // cena mais vezes do que o movimento e a rede conseguem aproveitar.
+    const interval = 1000 / MAX_RENDER_FPS
+    let nextFrame = 0
+    let frame = 0
+
+    const render = (now: number) => {
+      if (now + 0.5 >= nextFrame) {
+        advance(now / 1000)
+        nextFrame = nextFrame === 0 || now - nextFrame > interval * 2 ? now + interval : nextFrame + interval
+      }
+      frame = window.requestAnimationFrame(render)
+    }
+
+    frame = window.requestAnimationFrame(render)
+    return () => window.cancelAnimationFrame(frame)
+  }, [advance])
+
+  return null
 }
 
 function ProceduralEnvironment({ quality, blackout }: { quality: Quality; blackout: boolean }) {
@@ -646,6 +674,7 @@ function SceneContent({
       <object3D ref={flashlightTarget} />
       <spotLight
         ref={flashlight}
+        visible={blackoutForViewer}
         color="#e8f2ff"
         intensity={0}
         distance={0}
@@ -788,6 +817,12 @@ function Actor({
   // conta própria, e ela vale para todo mundo do mesmo jeito.
   const hidden = !player.alive && viewerAlive
   const ghost = !player.alive && !viewerAlive
+
+  useLayoutEffect(() => {
+    group.current?.traverse((child) => {
+      if (child instanceof THREE.Mesh) child.frustumCulled = false
+    })
+  }, [])
 
   useFrame((_, rawDelta) => {
     const node = group.current
@@ -1027,9 +1062,7 @@ function Markers({
         child.visible = Boolean(spots[index] && visible(spots[index]))
       })
     }
-    if (emergency.current) {
-      emergency.current.visible = (map.emergency.level ?? 0) === level && visible(map.emergency)
-    }
+    if (emergency.current) emergency.current.visible = (map.emergency.level ?? 0) === level
     const levelVents = map.vents.filter((vent) => (vent.level ?? 0) === level)
     vents.current?.children.forEach((child, index) => {
       child.visible = Boolean(levelVents[index] && visible(levelVents[index]))
