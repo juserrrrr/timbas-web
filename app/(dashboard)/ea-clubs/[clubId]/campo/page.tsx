@@ -11,11 +11,11 @@ import type { EaClub, EaClubField, EaClubFieldPlayer } from "@/lib/services/ea-c
 
 type FieldLine = "goalkeeper" | "defense" | "midfield" | "attack"
 
-const LINES: Array<{ key: FieldLine; grid: string }> = [
-  { key: "attack", grid: "grid-cols-3 px-[8%]" },
-  { key: "midfield", grid: "grid-cols-3 px-[17%]" },
-  { key: "defense", grid: "grid-cols-4 px-[3%]" },
-  { key: "goalkeeper", grid: "grid-cols-1 px-[42%]" },
+const LINES: Array<{ key: FieldLine; grid: string; slots: number; position: string }> = [
+  { key: "attack", grid: "grid-cols-3 px-[8%]", slots: 3, position: "ATA" },
+  { key: "midfield", grid: "grid-cols-3 px-[17%]", slots: 3, position: "MEI" },
+  { key: "defense", grid: "grid-cols-4 px-[3%]", slots: 4, position: "DEF" },
+  { key: "goalkeeper", grid: "grid-cols-1 px-[42%]", slots: 1, position: "GOL" },
 ]
 
 function lineFor(position: string): FieldLine {
@@ -62,6 +62,7 @@ export default function EaClubFieldPage() {
     const result = new Map<FieldLine, EaClubFieldPlayer[]>()
     for (const line of LINES) result.set(line.key, [])
     for (const player of field?.players ?? []) result.get(lineFor(player.position))?.push(player)
+    for (const players of result.values()) players.sort((a, b) => Number(b.rating ?? -1) - Number(a.rating ?? -1) || b.appearances - a.appearances)
     return result
   }, [field])
 
@@ -69,10 +70,10 @@ export default function EaClubFieldPage() {
   if (error || !field) return <ErrorState message={error} retry={() => void load()} />
 
   return <div className="mx-auto max-w-7xl space-y-6">
-    <ClubPageHeader name="Campo do clube" subtitle={`Formação predominante nas últimas 25 partidas do ${club?.nickname || club?.name || "clube"}`} />
+    <ClubPageHeader name="Campo do clube" subtitle={`Melhor escalação pelas últimas 25 partidas do ${club?.nickname || club?.name || "clube"}`} />
     <section className="overflow-hidden rounded-[26px] border border-emerald-400/15 bg-gradient-to-b from-emerald-500/[0.07] to-transparent">
-      <div className="flex flex-col gap-4 border-b border-white/[0.07] p-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Escalação mais usada</p><h2 className="mt-1 text-2xl font-black text-white">Formação {field.formation ?? "a definir"}</h2><p className="mt-1 text-[11px] text-gray-500">{field.summary ? `${field.summary.matches} jogos, ${field.summary.wins} vitórias e ${field.summary.draws} empates. Exibindo a partida mais recente com esta formação.` : "Ainda não há partidas com posições registradas."}</p></div><span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-400">Partida: {formatDate(field.match?.playedAt, true)}</span></div>
-      {field.players.length ? <div className="overflow-x-auto p-3 sm:p-5"><div className="relative mx-auto min-w-[720px] max-w-[980px] overflow-hidden rounded-[28px] border border-emerald-300/20 bg-emerald-950/70 p-5 shadow-2xl shadow-black/30 sm:p-7"><div aria-hidden className="pointer-events-none absolute inset-5 rounded-[20px] border border-white/10" /><div aria-hidden className="pointer-events-none absolute inset-x-5 top-1/2 h-px bg-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-5 h-14 w-48 -translate-x-1/2 border border-t-0 border-white/10" /><div aria-hidden className="pointer-events-none absolute bottom-5 left-1/2 h-14 w-48 -translate-x-1/2 border border-b-0 border-white/10" /><div className="relative space-y-5">{LINES.map(({ key, grid }) => <div key={key} className={`grid items-center justify-items-center gap-4 ${grid}`}>{(groups.get(key) ?? []).map(player => <Link key={player.id} href={`/ea-clubs/${clubId}/players/${player.id}`} className="w-[92px]"><PlayerRatingCard player={{ playerName: player.playerName, averageRating: player.rating, primaryPosition: player.position }} position={positionName(player.position)} compact className="min-h-[116px]" /></Link>)}</div>)}</div></div></div> : <Card className="m-5 border-dashed border-white/10 bg-white/[0.02] p-10 text-center"><p className="font-bold text-white">Ainda não há escalação registrada</p><p className="mt-1 text-sm text-gray-500">Sincronize as partidas do clube para formar o campo.</p></Card>}
+      <div className="flex flex-col gap-4 border-b border-white/[0.07] p-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Seleção do clube</p><h2 className="mt-1 text-2xl font-black text-white">Melhor 11 em um {field.formation ?? "4-3-3"}</h2><p className="mt-1 text-[11px] text-gray-500">{field.summary ? `${field.summary.matches} jogos analisados, ${field.summary.wins} vitórias e ${field.summary.draws} empates. A maior nota média escolhe cada setor.` : "Ainda não há partidas com posições registradas."}</p></div><span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-400">Atualizado: {formatDate(field.match?.playedAt, true)}</span></div>
+      {field.players.length ? <div className="overflow-x-auto p-3 sm:p-5"><div className="relative mx-auto min-w-[720px] max-w-[980px] overflow-hidden rounded-[28px] border border-emerald-300/20 bg-emerald-950/70 p-5 shadow-2xl shadow-black/30 sm:p-7"><div aria-hidden className="pointer-events-none absolute inset-5 rounded-[20px] border border-white/10" /><div aria-hidden className="pointer-events-none absolute inset-x-5 top-1/2 h-px bg-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-5 h-14 w-48 -translate-x-1/2 border border-t-0 border-white/10" /><div aria-hidden className="pointer-events-none absolute bottom-5 left-1/2 h-14 w-48 -translate-x-1/2 border border-b-0 border-white/10" /><div className="relative space-y-6">{LINES.map(({ key, grid, slots, position }) => { const selected = (groups.get(key) ?? []).slice(0, slots); return <div key={key} className={`grid min-h-[138px] items-center justify-items-center gap-5 ${grid}`}>{Array.from({ length: slots }, (_, index) => { const player = selected[index] ?? null; return player ? <Link key={player.id} href={`/ea-clubs/${clubId}/players/${player.id}`} className="w-[110px]"><PlayerRatingCard player={{ playerName: player.playerName, averageRating: player.rating, primaryPosition: player.position }} position={positionName(player.position)} compact className="max-w-[110px]" /></Link> : <PlayerRatingCard key={`${key}-${index}`} player={null} position={position} compact className="max-w-[110px]" /> })}</div>})}</div></div></div> : <Card className="m-5 border-dashed border-white/10 bg-white/[0.02] p-10 text-center"><p className="font-bold text-white">Ainda não há escalação registrada</p><p className="mt-1 text-sm text-gray-500">Sincronize as partidas do clube para formar o campo.</p></Card>}
     </section>
   </div>
 }

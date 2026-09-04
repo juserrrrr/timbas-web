@@ -142,6 +142,7 @@ export interface EaClubFieldPlayer {
   playerName: string;
   position: string;
   rating?: number | null;
+  appearances: number;
 }
 
 export interface EaClubField {
