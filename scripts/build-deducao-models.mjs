@@ -3,6 +3,7 @@ import path from "node:path"
 import * as THREE from "three"
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js"
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js"
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 
 globalThis.FileReader = class FileReader {
   result = null
@@ -38,7 +39,6 @@ const finishes = {
   lightMetal: material("brushed-aluminum", "#aab6c6", 0.28, 0.72),
   plastic: material("soft-touch-plastic", "#34465e", 0.48, 0.05),
   fabric: material("fabric", "#54a9b2", 0.92),
-  accentFabric: material("accent-fabric", "#e7a36a", 0.9),
   glass: material("smoked-glass", "#9bc9de", 0.12, 0.08, { transparent: true, opacity: 0.72 }),
   cable: material("rubber", "#222a36", 0.8),
   screen: material("screen", "#6ac7ff", 0.2, 0.05, {
@@ -59,16 +59,6 @@ function rounded(group, size, position, finish, radius = 0.04, rotation = [0, 0,
 
 function cylinder(group, radiusTop, radiusBottom, height, position, finish, rotation = [0, 0, 0], segments = 20) {
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusTop, radiusBottom, height, segments), finish)
-  mesh.position.set(...position)
-  mesh.rotation.set(...rotation)
-  mesh.castShadow = true
-  mesh.receiveShadow = true
-  group.add(mesh)
-  return mesh
-}
-
-function capsule(group, radius, length, position, finish, rotation = [0, 0, 0]) {
-  const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, 6, 18), finish)
   mesh.position.set(...position)
   mesh.rotation.set(...rotation)
   mesh.castShadow = true
@@ -128,32 +118,14 @@ function chair() {
   return group
 }
 
-function sofa() {
+function computer() {
   const group = new THREE.Group()
-  rounded(group, [2.08, 0.36, 0.92], [0, 0.29, 0], finishes.fabric, 0.17)
-  const cushions = [
-    { x: -0.66, yaw: 0.16 },
-    { x: 0, yaw: 0 },
-    { x: 0.66, yaw: -0.16 },
-  ]
-  for (const cushion of cushions) {
-    const curve = Math.abs(cushion.x) * 0.08
-    rounded(group, [0.68, 0.2, 0.7], [cushion.x, 0.54, 0.09 + curve], finishes.fabric, 0.13, [0, cushion.yaw, 0])
-    rounded(
-      group,
-      [0.66, 0.55, 0.18],
-      [cushion.x, 0.87, -0.31 + curve],
-      finishes.fabric,
-      0.145,
-      [-0.13, cushion.yaw, 0],
-    )
-  }
-  for (const x of [-0.98, 0.98]) {
-    capsule(group, 0.16, 0.52, [x, 0.62, 0.03], finishes.fabric, [Math.PI / 2, 0, 0])
-    rounded(group, [0.13, 0.15, 0.13], [x * 0.86, 0.08, 0.1], finishes.darkMetal, 0.045)
-  }
-  rounded(group, [0.42, 0.38, 0.12], [-0.42, 0.83, -0.13], finishes.accentFabric, 0.1, [0, 0.15, -0.08])
-  rounded(group, [0.34, 0.31, 0.11], [0.38, 0.78, -0.16], finishes.accentFabric, 0.09, [0, -0.13, 0.05])
+  rounded(group, [0.7, 0.46, 0.065], [0, 1.08, 0], finishes.plastic, 0.045)
+  rounded(group, [0.61, 0.355, 0.014], [0, 1.08, 0.041], finishes.screen, 0.018)
+  rounded(group, [0.16, 0.19, 0.055], [0, 0.81, 0], finishes.lightMetal, 0.022)
+  rounded(group, [0.42, 0.035, 0.25], [0, 0.72, 0.08], finishes.lightMetal, 0.025)
+  rounded(group, [0.1, 0.022, 0.014], [0, 0.875, 0.043], finishes.darkMetal, 0.006)
+  cylinder(group, 0.018, 0.018, 0.012, [0, 1.285, 0.043], finishes.screen, [Math.PI / 2, 0, 0], 12)
   return group
 }
 
@@ -175,7 +147,35 @@ function meetingTable() {
 
 async function exportModel(name, build) {
   const scene = new THREE.Scene()
-  const model = build()
+  const source = build()
+  source.updateMatrixWorld(true)
+  const buckets = new Map()
+
+  source.traverse((child) => {
+    if (!(child instanceof THREE.Mesh) || Array.isArray(child.material)) return
+    let geometry = child.geometry.clone()
+    if (geometry.index) {
+      const flat = geometry.toNonIndexed()
+      geometry.dispose()
+      geometry = flat
+    }
+    geometry.applyMatrix4(child.matrixWorld)
+    const bucket = buckets.get(child.material.uuid) ?? { material: child.material, geometries: [] }
+    bucket.geometries.push(geometry)
+    buckets.set(child.material.uuid, bucket)
+  })
+
+  const model = new THREE.Group()
+  for (const { material: finish, geometries } of buckets.values()) {
+    const geometry = mergeGeometries(geometries, false)
+    geometries.forEach((item) => item.dispose())
+    if (!geometry) throw new Error(`Não foi possível unir as geometrias de ${name}.`)
+    const mesh = new THREE.Mesh(geometry, finish)
+    mesh.name = finish.name
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    model.add(mesh)
+  }
   model.name = name
   scene.add(model)
   scene.updateMatrixWorld(true)
@@ -192,7 +192,7 @@ await mkdir(outputDirectory, { recursive: true })
 await Promise.all([
   exportModel("desk", desk),
   exportModel("office-chair", chair),
-  exportModel("sofa", sofa),
+  exportModel("computer", computer),
   exportModel("meeting-table", meetingTable),
 ])
 

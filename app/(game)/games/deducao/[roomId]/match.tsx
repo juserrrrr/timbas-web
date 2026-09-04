@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { playGameSound, unlockGameAudio } from "@/lib/games/game-audio"
 import type { MapTaskSpot, OfficeMap } from "@/lib/services/games"
 import { EndScreen } from "./end-screen"
@@ -91,6 +91,7 @@ export function Match({
   const previousAlive = useRef(snapshot.players.find((player) => player.id === me)?.alive ?? true)
   const actions = useRef({ snapshot, targets, role, openTask, onSend, map, intro })
   actions.current = { snapshot, targets, role, openTask, onSend, map, intro }
+  const markSceneReady = useCallback(() => setSceneReady(true), [])
 
   useEffect(() => {
     try {
@@ -103,6 +104,7 @@ export function Match({
 
   const chooseQuality = (next: Quality) => {
     setTargets(NO_TARGETS)
+    setSceneReady(false)
     setQuality(next)
     try {
       window.localStorage.setItem(QUALITY_KEY, next)
@@ -135,20 +137,16 @@ export function Match({
   useEffect(() => {
     if (snapshot.phase !== "jogando" || !role) {
       setIntro(false)
-      setSceneReady(false)
       return
     }
     pressed.current.clear()
     inputRef.current = { x: 0, z: 0, sprint: false, crouch: false, jumpSerial: inputRef.current.jumpSerial }
     setIntro(true)
-    setSceneReady(false)
-    const warmup = window.setTimeout(() => setSceneReady(true), 300)
-    return () => window.clearTimeout(warmup)
   }, [snapshot.phase, role])
 
   useEffect(() => {
     if (!sceneReady || snapshot.phase !== "jogando" || !role) return
-    const timer = window.setTimeout(() => setIntro(false), 7500)
+    const timer = window.setTimeout(() => setIntro(false), 5200)
     return () => window.clearTimeout(timer)
   }, [role, sceneReady, snapshot.phase])
 
@@ -279,23 +277,22 @@ export function Match({
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
-      {sceneReady && (
-        <OfficeScene
-          key={`office-${quality}`}
-          map={map}
-          snapshot={snapshot}
-          roomRef={roomRef}
-          me={me}
-          role={role}
-          allies={allies}
-          pendingTasks={pendingTasks}
-          quality={quality}
-          inputRef={inputRef}
-          lookRef={lookRef}
-          poseRef={poseRef}
-          onTargets={setTargets}
-        />
-      )}
+      <OfficeScene
+        key={`office-${quality}`}
+        map={map}
+        snapshot={snapshot}
+        roomRef={roomRef}
+        me={me}
+        role={role}
+        allies={allies}
+        pendingTasks={pendingTasks}
+        quality={quality}
+        inputRef={inputRef}
+        lookRef={lookRef}
+        poseRef={poseRef}
+        onTargets={setTargets}
+        onReady={markSceneReady}
+      />
 
       <Hud
         snapshot={snapshot}
