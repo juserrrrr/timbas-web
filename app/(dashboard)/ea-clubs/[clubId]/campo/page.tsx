@@ -21,6 +21,8 @@ const RESERVE_SECTORS: Array<{ key: FieldLine; label: string; position: string }
 ]
 
 const FORMATION_OPTIONS = ["3-5-2", "4-3-3", "4-4-2", "4-2-3-1", "4-1-2-1-2", "3-4-2-1", "5-3-2", "5-4-1", "3-4-3"]
+const MATCH_WINDOW_OPTIONS = [5, 10, 15, 20, 25] as const
+type MatchWindow = (typeof MATCH_WINDOW_OPTIONS)[number]
 
 function gridFor(count: number) {
   if (count === 1) return "grid-cols-1 px-[42%]"
@@ -211,11 +213,11 @@ function comparePlayersForSlot(a: EaClubFieldPlayer, b: EaClubFieldPlayer, secto
   return slotFitFor(b, slot) - slotFitFor(a, slot) || comparePlayers(a, b, sector)
 }
 
-function performanceStats(player: EaClubFieldPlayer, sector: FieldLine) {
+function performanceStats(player: EaClubFieldPlayer, sector: FieldLine, matchesAnalyzed: number) {
   const performance = performanceFor(player, sector) ?? player.positionRatings?.[0]
   if (!performance) return []
   const percent = (value: number | null) => value === null ? "-" : `${Math.round(value)}%`
-  const games = `${performance.appearances}/${player.appearances}`
+  const games = `${performance.appearances}/${matchesAnalyzed}`
   if (sector === "attack") return [
     { label: "Gols", value: String(performance.goals) },
     { label: "Assist.", value: String(performance.assists) },
@@ -240,9 +242,9 @@ function performanceStats(player: EaClubFieldPlayer, sector: FieldLine) {
   ]
 }
 
-function PlayerCard({ player, position, sector, clubId, adapted = false }: { player: EaClubFieldPlayer | null; position: string; sector: FieldLine; clubId: string; adapted?: boolean }) {
+function PlayerCard({ player, position, sector, clubId, matchesAnalyzed, adapted = false }: { player: EaClubFieldPlayer | null; position: string; sector: FieldLine; clubId: string; matchesAnalyzed: number; adapted?: boolean }) {
   const performance = player ? performanceFor(player, sector) : undefined
-  const card = <PlayerRatingCard player={player ? { playerName: player.playerName, averageRating: performance?.averageRating ?? player.rating ?? null, primaryPosition: player.position } : null} position={position} adapted={adapted} compact stats={player ? performanceStats(player, sector) : []} className="max-w-[128px]" emptyLabel="CPU da EA" />
+  const card = <PlayerRatingCard player={player ? { playerName: player.playerName, averageRating: performance?.averageRating ?? player.rating ?? null, primaryPosition: player.position } : null} position={position} adapted={adapted} compact stats={player ? performanceStats(player, sector, matchesAnalyzed) : []} className="max-w-[128px]" emptyLabel="CPU da EA" />
   return player ? <Link href={`/ea-clubs/${clubId}/players/${player.id}`} className="w-[128px]">{card}</Link> : <div className="w-[128px]">{card}</div>
 }
 
@@ -251,13 +253,14 @@ export default function EaClubFieldPage() {
   const [club, setClub] = useState<EaClub | null>(null)
   const [field, setField] = useState<EaClubField | null>(null)
   const [manualFormation, setManualFormation] = useState<string | null>(null)
+  const [matchWindow, setMatchWindow] = useState<MatchWindow>(25)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [clubData, fieldData] = await Promise.all([getEaClub(clubId), getEaClubField(clubId)])
+      const [clubData, fieldData] = await Promise.all([getEaClub(clubId), getEaClubField(clubId, matchWindow)])
       setClub(clubData)
       setField(fieldData)
       setManualFormation(null)
@@ -267,7 +270,7 @@ export default function EaClubFieldPage() {
     } finally {
       setLoading(false)
     }
-  }, [clubId])
+  }, [clubId, matchWindow])
 
   useEffect(() => { void load() }, [load])
 
@@ -323,23 +326,24 @@ export default function EaClubFieldPage() {
 
   const fieldHeight = lines.length >= 6 ? "min-h-[1240px]" : lines.length === 5 ? "min-h-[1060px]" : "min-h-[900px]"
   const lineupHeight = lines.length >= 6 ? "min-h-[1184px]" : lines.length === 5 ? "min-h-[1004px]" : "min-h-[844px]"
+  const matchesAnalyzed = field?.summary?.matches ?? matchWindow
 
   if (loading) return <PageLoading />
   if (error || !field) return <ErrorState message={error} retry={() => void load()} />
 
   return <div className="mx-auto max-w-[1500px] space-y-6">
-    <ClubPageHeader name="Campo do clube" subtitle={`Melhor escalação pelas últimas 25 partidas do ${club?.nickname || club?.name || "clube"}`} />
+    <ClubPageHeader name="Campo do clube" subtitle={`Melhor escalação pelas últimas ${matchWindow} partidas do ${club?.nickname || club?.name || "clube"}`} />
 
     <section className="overflow-hidden rounded-[26px] border border-emerald-400/15 bg-gradient-to-b from-emerald-500/[0.07] to-transparent">
       <div className="flex flex-col gap-4 border-b border-white/[0.07] p-5 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Seleção do clube</p><h2 className="mt-1 text-2xl font-black text-white">Melhor 11 em um {activeFormation}</h2><p className="mt-1 text-[11px] text-gray-500">{manualFormation ? `Formação alterada manualmente. A sugestão automática pelas últimas 25 partidas é ${field.formation ?? "4-3-3"}. O encaixe respeita a posição recente e depois compara produção e nota.` : field.formationSummary ? `${field.summary?.matches ?? 0} jogos analisados. O ${field.formation} apareceu ${field.formationSummary.matches} vezes, com ${field.formationSummary.wins} ${field.formationSummary.wins === 1 ? "vitória" : "vitórias"}, ${field.formationSummary.draws} ${field.formationSummary.draws === 1 ? "empate" : "empates"} e ${field.formationSummary.losses} ${field.formationSummary.losses === 1 ? "derrota" : "derrotas"}. O encaixe respeita a posição recente e depois compara produção, eficiência, nota e amostra.` : "Sem uma formação completa nas partidas analisadas; exibindo o 4-3-3 como base."}</p></div>
-        <div className="flex flex-col items-stretch gap-2 sm:items-end"><label className="text-[8px] font-black uppercase tracking-wider text-gray-500" htmlFor="field-formation">Formação</label><select id="field-formation" value={manualFormation ?? "auto"} onChange={event => setManualFormation(event.target.value === "auto" ? null : event.target.value)} className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold text-white outline-none focus:border-emerald-400/50"><option value="auto">Melhor sugerida ({field.formation ?? "4-3-3"})</option>{FORMATION_OPTIONS.map(formation => <option key={formation} value={formation}>{formation}</option>)}</select><span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-400">Atualizado: {formatDate(field.match?.playedAt, true)}</span></div>
+        <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Seleção do clube</p><h2 className="mt-1 text-2xl font-black text-white">Melhor 11 em um {activeFormation}</h2><p className="mt-1 text-[11px] text-gray-500">{manualFormation ? `Formação alterada manualmente. A sugestão automática pelas últimas ${matchWindow} partidas é ${field.formation ?? "4-3-3"}. O encaixe respeita a posição recente e depois compara produção e nota.` : field.formationSummary ? `${field.summary?.matches ?? 0} jogos analisados. O ${field.formation} apareceu ${field.formationSummary.matches} vezes, com ${field.formationSummary.wins} ${field.formationSummary.wins === 1 ? "vitória" : "vitórias"}, ${field.formationSummary.draws} ${field.formationSummary.draws === 1 ? "empate" : "empates"} e ${field.formationSummary.losses} ${field.formationSummary.losses === 1 ? "derrota" : "derrotas"}. O encaixe respeita a posição recente e depois compara produção, eficiência, nota e amostra.` : "Sem uma formação completa nas partidas analisadas; exibindo o 4-3-3 como base."}</p></div>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end"><div className="grid grid-cols-2 gap-2"><label className="flex flex-col gap-1 text-[8px] font-black uppercase tracking-wider text-gray-500" htmlFor="field-window">Período<select id="field-window" value={matchWindow} onChange={event => setMatchWindow(Number(event.target.value) as MatchWindow)} className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold normal-case tracking-normal text-white outline-none focus:border-emerald-400/50">{MATCH_WINDOW_OPTIONS.map(value => <option key={value} value={value}>Últimas {value}</option>)}</select></label><label className="flex flex-col gap-1 text-[8px] font-black uppercase tracking-wider text-gray-500" htmlFor="field-formation">Formação<select id="field-formation" value={manualFormation ?? "auto"} onChange={event => setManualFormation(event.target.value === "auto" ? null : event.target.value)} className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold normal-case tracking-normal text-white outline-none focus:border-emerald-400/50"><option value="auto">Sugerida ({field.formation ?? "4-3-3"})</option>{FORMATION_OPTIONS.map(formation => <option key={formation} value={formation}>{formation}</option>)}</select></label></div><div className="flex flex-wrap justify-end gap-2"><span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-400">Jogos: setor/analisadas</span><span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-400">Atualizado: {formatDate(field.match?.playedAt, true)}</span></div></div>
       </div>
 
       {field.players.length ? <div className="grid items-start gap-5 p-4 xl:grid-cols-[minmax(720px,1fr)_250px] xl:p-5">
-        <div className="overflow-x-auto"><div className={`relative mx-auto min-w-[720px] max-w-[980px] overflow-hidden rounded-[28px] border border-emerald-300/20 bg-emerald-950/70 p-7 shadow-2xl shadow-black/30 ${fieldHeight}`}><div aria-hidden className="pointer-events-none absolute inset-5 rounded-[20px] border border-white/10" /><div aria-hidden className="pointer-events-none absolute inset-x-5 top-1/2 h-px bg-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-5 h-14 w-48 -translate-x-1/2 border border-t-0 border-white/10" /><div aria-hidden className="pointer-events-none absolute bottom-5 left-1/2 h-14 w-48 -translate-x-1/2 border border-b-0 border-white/10" /><div className={`relative flex flex-col justify-around ${lineupHeight}`}>{lines.map(line => <div key={line.id} className={`grid min-h-[214px] items-center justify-items-center gap-4 ${line.grid}`}>{(selection.starters.get(line.id) ?? []).map((slot, index) => <PlayerCard key={slot.player?.id ?? `${line.id}-${index}`} player={slot.player} position={line.positions[index]} sector={line.key} clubId={clubId} adapted={slot.adapted} />)}</div>)}</div></div></div>
+        <div className="overflow-x-auto"><div className={`relative mx-auto min-w-[720px] max-w-[980px] overflow-hidden rounded-[28px] border border-emerald-300/20 bg-emerald-950/70 p-7 shadow-2xl shadow-black/30 ${fieldHeight}`}><div aria-hidden className="pointer-events-none absolute inset-5 rounded-[20px] border border-white/10" /><div aria-hidden className="pointer-events-none absolute inset-x-5 top-1/2 h-px bg-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /><div aria-hidden className="pointer-events-none absolute left-1/2 top-5 h-14 w-48 -translate-x-1/2 border border-t-0 border-white/10" /><div aria-hidden className="pointer-events-none absolute bottom-5 left-1/2 h-14 w-48 -translate-x-1/2 border border-b-0 border-white/10" /><div className={`relative flex flex-col justify-around ${lineupHeight}`}>{lines.map(line => <div key={line.id} className={`grid min-h-[214px] items-center justify-items-center gap-4 ${line.grid}`}>{(selection.starters.get(line.id) ?? []).map((slot, index) => <PlayerCard key={slot.player?.id ?? `${line.id}-${index}`} player={slot.player} position={line.positions[index]} sector={line.key} clubId={clubId} matchesAnalyzed={matchesAnalyzed} adapted={slot.adapted} />)}</div>)}</div></div></div>
 
-        <aside className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Banco por setor</p><h3 className="mt-1 text-lg font-black text-white">Todos os reservas</h3><p className="mt-1 text-[10px] leading-relaxed text-gray-500">Todos que jogaram nas últimas 25 partidas aparecem como titulares ou no banco. O time equilibra nota, produção, eficiência e amostra.</p></div><div className="grid grid-cols-2 justify-items-center gap-5 xl:grid-cols-1">{RESERVE_SECTORS.map(sector => { const reserves = selection.reserves.get(sector.key) ?? []; return <div key={sector.key} className="w-full space-y-2 text-center"><p className="text-[9px] font-black uppercase tracking-wider text-gray-500">{sector.label}</p>{reserves.length ? <div className="grid justify-items-center gap-3">{reserves.map(player => <PlayerCard key={player.id} player={player} position={sector.position} sector={sector.key} clubId={clubId} />)}</div> : <p className="rounded-xl border border-dashed border-white/10 px-2 py-4 text-[9px] font-bold uppercase text-gray-700">Sem reserva</p>}</div> })}</div></aside>
+        <aside className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"><div className="mb-4"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Banco por setor</p><h3 className="mt-1 text-lg font-black text-white">Todos os reservas</h3><p className="mt-1 text-[10px] leading-relaxed text-gray-500">Todos que jogaram nas últimas {matchWindow} partidas aparecem como titulares ou no banco. O time equilibra nota, produção, eficiência e amostra.</p></div><div className="grid grid-cols-2 justify-items-center gap-5 xl:grid-cols-1">{RESERVE_SECTORS.map(sector => { const reserves = selection.reserves.get(sector.key) ?? []; return <div key={sector.key} className="w-full space-y-2 text-center"><p className="text-[9px] font-black uppercase tracking-wider text-gray-500">{sector.label}</p>{reserves.length ? <div className="grid justify-items-center gap-3">{reserves.map(player => <PlayerCard key={player.id} player={player} position={sector.position} sector={sector.key} clubId={clubId} matchesAnalyzed={matchesAnalyzed} />)}</div> : <p className="rounded-xl border border-dashed border-white/10 px-2 py-4 text-[9px] font-bold uppercase text-gray-700">Sem reserva</p>}</div> })}</div></aside>
       </div> : <Card className="m-5 border-dashed border-white/10 bg-white/[0.02] p-10 text-center"><p className="font-bold text-white">Ainda não há escalação registrada</p><p className="mt-1 text-sm text-gray-500">Sincronize as partidas do clube para formar o campo.</p></Card>}
     </section>
 

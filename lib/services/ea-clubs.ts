@@ -68,8 +68,8 @@ export function getEaClubPlayer(clubId: string, playerId: string): Promise<EaClu
   return request(`/ea-clubs/${encodeURIComponent(clubId)}/players/${encodeURIComponent(playerId)}`)
 }
 
-export function getEaClubField(clubId: string): Promise<EaClubField> {
-  return request(`/ea-clubs/${encodeURIComponent(clubId)}/field`)
+export function getEaClubField(clubId: string, matches = 25): Promise<EaClubField> {
+  return request(`/ea-clubs/${encodeURIComponent(clubId)}/field?matches=${matches}`)
 }
 
 export async function getEaClubLeaderboard(clubId: string): Promise<EaLeaderboardCategory[]> {
