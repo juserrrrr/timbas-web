@@ -148,6 +148,13 @@ export interface EaClubFieldPlayer {
 export interface EaClubField {
   match: { playedAt: string } | null;
   formation: string | null;
+  formationSummary: {
+    matches: number;
+    wins: number;
+    draws: number;
+    losses: number;
+    pointsPerMatch: number;
+  } | null;
   summary: { matches: number; wins: number; draws: number } | null;
   players: EaClubFieldPlayer[];
   history: Array<{
@@ -157,6 +164,7 @@ export interface EaClubField {
     opponentName: string;
     goalsFor: number;
     goalsAgainst: number;
+    formation: string | null;
     positions: {
       goalkeeper: number;
       defense: number;
