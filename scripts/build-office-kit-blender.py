@@ -38,6 +38,8 @@ ASSET_FILES: dict[str, str] = {
     "sink": "utility-sink",
     "vending": "vending-machine",
     "kitchen": "office-kitchen",
+    "gameTable": "lounge-game-table",
+    "arcade": "arcade-cabinet",
     "tree": "courtyard-tree",
     "streetLamp": "street-lamp",
     "bench": "courtyard-bench",
@@ -71,6 +73,7 @@ def material(
     coat: float = 0.0,
     emission: tuple[float, float, float, float] | None = None,
     emission_strength: float = 0.0,
+    alpha: float = 1.0,
 ) -> bpy.types.Material:
     result = bpy.data.materials.new(name)
     result.use_nodes = True
@@ -81,9 +84,14 @@ def material(
     set_input(shader, ("Roughness",), roughness)
     set_input(shader, ("Coat Weight", "Clearcoat"), coat)
     set_input(shader, ("Coat Roughness", "Clearcoat Roughness"), 0.16)
+    set_input(shader, ("Alpha",), alpha)
     if emission is not None:
         set_input(shader, ("Emission Color", "Emission"), emission)
         set_input(shader, ("Emission Strength",), emission_strength)
+    if alpha < 1:
+        result.diffuse_color = (*color[:3], alpha)
+        if hasattr(result, "surface_render_method"):
+            result.surface_render_method = "DITHERED"
     return result
 
 
@@ -104,7 +112,7 @@ def create_materials() -> None:
         fabric=material("Deep blue fabric", (0.018, 0.105, 0.25, 1), roughness=0.86),
         fabric_light=material("Blue accent fabric", (0.03, 0.24, 0.52, 1), roughness=0.8),
         leather=material("Midnight leather", (0.018, 0.028, 0.05, 1), roughness=0.42, coat=0.18),
-        glass=material("Smoked glass", (0.025, 0.12, 0.17, 1), metallic=0.18, roughness=0.13, coat=0.45),
+        glass=material("Smoked glass", (0.025, 0.12, 0.17, 1), metallic=0.18, roughness=0.13, coat=0.45, alpha=0.28),
         screen=material("Active display", (0.008, 0.04, 0.08, 1), roughness=0.2, emission=(0.03, 0.46, 1, 1), emission_strength=1.6),
         green=material("Leaf green", (0.035, 0.31, 0.105, 1), roughness=0.72),
         green_light=material("Fresh leaf", (0.09, 0.48, 0.13, 1), roughness=0.7),
@@ -116,6 +124,10 @@ def create_materials() -> None:
         green_led=material("Status green", (0.01, 0.35, 0.08, 1), roughness=0.25, emission=(0.02, 1, 0.18, 1), emission_strength=2.4),
         warm_light=material("Warm diffuser", (0.84, 0.72, 0.48, 1), roughness=0.32, emission=(1, 0.73, 0.38, 1), emission_strength=3.0),
         red_light=material("Red diffuser", (0.8, 0.015, 0.025, 1), roughness=0.28, emission=(1, 0.01, 0.02, 1), emission_strength=4.0),
+        teal=material("Recreation teal", (0.015, 0.31, 0.3, 1), roughness=0.68),
+        yellow=material("Drink label yellow", (0.95, 0.53, 0.025, 1), roughness=0.42, coat=0.12),
+        purple=material("Drink label purple", (0.35, 0.06, 0.52, 1), roughness=0.42, coat=0.12),
+        silver=material("Can aluminum", (0.58, 0.63, 0.68, 1), metallic=0.9, roughness=0.2),
     )
 
 
@@ -246,6 +258,62 @@ def tube(
     return obj
 
 
+def ergonomic_back(target: bpy.types.Collection) -> bpy.types.Object:
+    rows = (
+        (0.64, -0.22, 0.27),
+        (0.80, -0.255, 0.31),
+        (1.02, -0.30, 0.30),
+        (1.22, -0.34, 0.25),
+        (1.33, -0.36, 0.20),
+    )
+    columns = 8
+    thickness = 0.035
+    vertices: list[tuple[float, float, float]] = []
+    for side in (-1, 1):
+        for z, y, half_width in rows:
+            for column in range(columns + 1):
+                t = column / columns
+                x = (t * 2 - 1) * half_width
+                bow = (1 - (t * 2 - 1) ** 2) * 0.018
+                vertices.append((x, y + side * thickness / 2 + bow, z))
+    row_width = columns + 1
+    sheet = len(rows) * row_width
+    faces: list[tuple[int, int, int, int]] = []
+    for side_index in range(2):
+        offset = side_index * sheet
+        for row in range(len(rows) - 1):
+            for column in range(columns):
+                a = offset + row * row_width + column
+                if side_index == 0:
+                    faces.append((a, a + row_width, a + row_width + 1, a + 1))
+                else:
+                    faces.append((a, a + 1, a + row_width + 1, a + row_width))
+    for row in range(len(rows) - 1):
+        for column in (0, columns):
+            front = row * row_width + column
+            back = sheet + front
+            next_front = front + row_width
+            next_back = back + row_width
+            faces.append((front, back, next_back, next_front))
+    for row in (0, len(rows) - 1):
+        start = row * row_width
+        for column in range(columns):
+            front = start + column
+            back = sheet + front
+            faces.append((front, front + 1, back + 1, back))
+    data = bpy.data.meshes.new("Ergonomic back mesh")
+    data.from_pydata(vertices, [], faces)
+    data.materials.append(MAT["leather"])
+    obj = bpy.data.objects.new("Continuous ergonomic back", data)
+    target.objects.link(obj)
+    bevel = obj.modifiers.new("Soft shell edge", "BEVEL")
+    bevel.width = 0.018
+    bevel.segments = 2
+    for face in data.polygons:
+        face.use_smooth = True
+    return obj
+
+
 def cone(
     target: bpy.types.Collection,
     name: str,
@@ -284,15 +352,16 @@ def build_chair() -> bpy.types.Collection:
     cylinder(c, "Hub", 0.11, 0.09, (0, 0, 0.12), MAT["black"], vertices=20)
     for index in range(5):
         angle = index * math.tau / 5
-        box(c, "Star base", (0.48, 0.055, 0.055), (math.cos(angle) * 0.2, math.sin(angle) * 0.2, 0.1), MAT["metal"], bevel=0.025, rotation=(0, 0, angle))
+        box(c, "Star base", (0.5, 0.05, 0.045), (math.cos(angle) * 0.2, math.sin(angle) * 0.2, 0.1), MAT["metal"], bevel=0.022, rotation=(0, 0, angle))
         cylinder(c, "Caster", 0.048, 0.045, (math.cos(angle) * 0.43, math.sin(angle) * 0.43, 0.055), MAT["black"], rotation=(math.pi / 2, 0, angle))
-    box(c, "Seat shell", (0.62, 0.59, 0.13), (0, 0.02, 0.52), MAT["black"], bevel=0.085)
-    box(c, "Seat cushion", (0.54, 0.51, 0.11), (0, 0.035, 0.61), MAT["fabric"], bevel=0.075)
-    box(c, "Back shell", (0.56, 0.11, 0.68), (0, -0.25, 0.91), MAT["black"], bevel=0.07, rotation=(-0.1, 0, 0))
-    box(c, "Back cushion", (0.48, 0.07, 0.57), (0, -0.185, 0.92), MAT["fabric_light"], bevel=0.07, rotation=(-0.1, 0, 0))
+    box(c, "Seat shell", (0.64, 0.61, 0.105), (0, 0.015, 0.53), MAT["black"], bevel=0.095)
+    box(c, "Tailored seat cushion", (0.55, 0.52, 0.105), (0, 0.055, 0.61), MAT["leather"], bevel=0.085)
+    ergonomic_back(c)
+    tube(c, "Backbone", [(0, -0.16, 0.44), (0, -0.23, 0.69), (0, -0.31, 1.13)], 0.035, MAT["metal"])
+    box(c, "Lumbar accent", (0.34, 0.045, 0.075), (0, -0.17, 0.82), MAT["fabric"], bevel=0.032)
     for x in (-0.34, 0.34):
-        box(c, "Arm upright", (0.045, 0.055, 0.27), (x, 0, 0.72), MAT["metal"], bevel=0.018)
-        box(c, "Arm pad", (0.08, 0.35, 0.055), (x, 0, 0.86), MAT["black"], bevel=0.028)
+        tube(c, "Arm support", [(x, -0.08, 0.57), (x, -0.02, 0.78), (x, 0.12, 0.82)], 0.025, MAT["metal"])
+        box(c, "Arm pad", (0.075, 0.34, 0.05), (x, 0.12, 0.84), MAT["leather"], bevel=0.026)
     return c
 
 
@@ -487,14 +556,64 @@ def build_sink() -> bpy.types.Collection:
 def build_vending() -> bpy.types.Collection:
     c = collection("vending")
     box(c, "Vending cabinet", (1.1, 0.75, 2.0), (0, 0, 1), MAT["black"], bevel=0.075)
-    box(c, "Glass window", (0.7, 0.035, 1.35), (-0.12, 0.395, 1.2), MAT["glass"], bevel=0.035)
+    box(c, "Illuminated refresh header", (0.72, 0.035, 0.2), (-0.12, 0.408, 1.82), MAT["cyan"], bevel=0.035)
+    box(c, "Product bay", (0.73, 0.04, 1.24), (-0.12, 0.405, 1.12), MAT["metal"], bevel=0.035)
     for row in range(4):
         box(c, "Product shelf", (0.65, 0.035, 0.025), (-0.12, 0.42, 0.73 + row * 0.32), MAT["metal_light"], bevel=0.008)
         for col in range(4):
-            finish = ("red", "fabric_light", "green", "orange")[(row + col) % 4]
-            cylinder(c, "Drink can", 0.055, 0.19, (-0.36 + col * 0.16, 0.44, 0.85 + row * 0.32), MAT[finish], vertices=14)
+            finish = ("red", "yellow", "green", "purple")[(row + col) % 4]
+            x = -0.36 + col * 0.16
+            z = 0.85 + row * 0.32
+            cylinder(c, "Aluminum drink can", 0.055, 0.19, (x, 0.44, z), MAT["silver"], vertices=18)
+            cylinder(c, "Printed drink sleeve", 0.057, 0.125, (x, 0.442, z), MAT[finish], vertices=18)
+            torus(c, "Can top rim", 0.048, 0.005, (x, 0.442, z + 0.097), MAT["silver"])
+            box(c, "Original label mark", (0.058, 0.008, 0.052), (x, 0.501, z), MAT["white"], bevel=0.012, rotation=(0, 0, 0.36 if col % 2 else -0.36))
+            cylinder(c, "Selection light", 0.011, 0.008, (x, 0.486, z - 0.125), MAT["green_led"], vertices=12, rotation=(math.pi / 2, 0, 0))
+    box(c, "Smoked glass reflection", (0.71, 0.018, 1.26), (-0.12, 0.512, 1.12), MAT["glass"], bevel=0.03)
     box(c, "Payment screen", (0.18, 0.03, 0.26), (0.39, 0.405, 1.35), MAT["screen"], bevel=0.02)
+    box(c, "Contactless reader", (0.14, 0.035, 0.09), (0.39, 0.41, 1.08), MAT["metal_light"], bevel=0.025)
     box(c, "Dispenser", (0.52, 0.045, 0.18), (-0.08, 0.41, 0.28), MAT["metal"], bevel=0.035)
+    box(c, "Dispenser inner", (0.39, 0.018, 0.09), (-0.08, 0.438, 0.28), MAT["black"], bevel=0.022)
+    return c
+
+
+def build_game_table() -> bpy.types.Collection:
+    c = collection("gameTable")
+    box(c, "Pool table body", (2.25, 1.25, 0.22), (0, 0, 0.77), MAT["wood_dark"], bevel=0.1)
+    box(c, "Tournament felt", (1.92, 0.92, 0.035), (0, 0, 0.905), MAT["teal"], bevel=0.055)
+    for x in (-1.055, 1.055):
+        box(c, "Cushion rail", (0.13, 1.14, 0.095), (x, 0, 0.93), MAT["wood"], bevel=0.045)
+    for y in (-0.555, 0.555):
+        box(c, "Cushion rail", (2.0, 0.13, 0.095), (0, y, 0.93), MAT["wood"], bevel=0.045)
+    for x in (-0.86, 0.86):
+        for y in (-0.42, 0.42):
+            box(c, "Pool table leg", (0.16, 0.16, 0.68), (x, y, 0.36), MAT["metal"], bevel=0.045)
+            box(c, "Adjustable foot", (0.24, 0.24, 0.055), (x, y, 0.035), MAT["brass"], bevel=0.025)
+    for x, y in ((-0.93, -0.44), (-0.93, 0.44), (0.93, -0.44), (0.93, 0.44), (0, -0.44), (0, 0.44)):
+        cylinder(c, "Leather pocket", 0.075, 0.028, (x, y, 0.94), MAT["black"], vertices=20)
+    ball_finishes = ("white", "yellow", "red", "purple", "orange", "fabric_light")
+    for index, (x, y) in enumerate(((-0.42, 0), (0.34, 0), (0.47, -0.07), (0.47, 0.07), (0.6, -0.14), (0.6, 0), (0.6, 0.14))):
+        sphere(c, "Pool ball", (0.034, 0.034, 0.034), (x, y, 0.965), MAT[ball_finishes[index % len(ball_finishes)]])
+    cylinder(c, "Cue", 0.012, 1.62, (-0.2, -0.28, 1.005), MAT["wood_light"], vertices=12, rotation=(0, math.pi / 2, 0.12))
+    return c
+
+
+def build_arcade() -> bpy.types.Collection:
+    c = collection("arcade")
+    box(c, "Arcade cabinet", (0.84, 0.72, 1.76), (0, 0, 0.88), MAT["black"], bevel=0.075)
+    box(c, "Arcade side accent left", (0.045, 0.64, 1.5), (-0.4, 0, 0.88), MAT["purple"], bevel=0.022)
+    box(c, "Arcade side accent right", (0.045, 0.64, 1.5), (0.4, 0, 0.88), MAT["cyan"], bevel=0.022)
+    box(c, "Arcade marquee", (0.68, 0.055, 0.2), (0, 0.37, 1.57), MAT["warm_light"], bevel=0.04)
+    box(c, "Arcade display frame", (0.66, 0.055, 0.55), (0, 0.355, 1.18), MAT["metal"], bevel=0.04, rotation=(-0.12, 0, 0))
+    box(c, "Arcade animated display", (0.57, 0.025, 0.45), (0, 0.39, 1.19), MAT["screen"], bevel=0.025, rotation=(-0.12, 0, 0))
+    box(c, "Arcade control deck", (0.72, 0.36, 0.11), (0, 0.31, 0.84), MAT["metal"], bevel=0.055, rotation=(0.12, 0, 0))
+    cylinder(c, "Joystick stem", 0.018, 0.12, (-0.2, 0.43, 0.94), MAT["metal_light"], vertices=14)
+    sphere(c, "Joystick ball", (0.045, 0.045, 0.045), (-0.2, 0.43, 1.01), MAT["red"])
+    for index, finish in enumerate(("cyan", "yellow", "red")):
+        cylinder(c, "Arcade button", 0.035, 0.022, (0.08 + index * 0.1, 0.45, 0.95), MAT[finish], vertices=16)
+    box(c, "Arcade speaker", (0.44, 0.035, 0.13), (0, 0.375, 0.56), MAT["metal_light"], bevel=0.025)
+    for x in (-0.12, 0, 0.12):
+        box(c, "Speaker slot", (0.055, 0.018, 0.07), (x, 0.398, 0.56), MAT["black"], bevel=0.015)
     return c
 
 
@@ -552,10 +671,14 @@ def build_bench() -> bpy.types.Collection:
 
 def build_ceiling_light() -> bpy.types.Collection:
     c = collection("ceilingLight")
-    box(c, "Luminaire housing", (1.58, 0.58, 0.075), (0, 0, 0.038), MAT["metal_light"], bevel=0.07)
-    box(c, "Warm diffuser", (1.42, 0.44, 0.035), (0, 0, -0.018), MAT["warm_light"], bevel=0.055)
-    for x in (-0.6, 0.6):
-        box(c, "Fixture rib", (0.035, 0.48, 0.025), (x, 0, -0.04), MAT["white"], bevel=0.01)
+    box(c, "Ceiling canopy", (0.54, 0.18, 0.055), (0, 0, 0.035), MAT["metal"], bevel=0.045)
+    for x in (-0.46, 0.46):
+        box(c, "Suspension pin", (0.018, 0.018, 0.13), (x, 0, -0.055), MAT["metal_light"], bevel=0.007)
+    for y in (-0.17, 0.17):
+        box(c, "Linear LED housing", (1.72, 0.075, 0.065), (0, y, -0.14), MAT["metal"], bevel=0.032)
+        box(c, "Continuous warm LED", (1.59, 0.038, 0.025), (0, y, -0.181), MAT["warm_light"], bevel=0.018)
+    for x in (-0.83, 0.83):
+        box(c, "Luminaire end bridge", (0.075, 0.42, 0.055), (x, 0, -0.14), MAT["metal"], bevel=0.027)
     return c
 
 
@@ -588,6 +711,8 @@ BUILDERS = {
     "sink": build_sink,
     "vending": build_vending,
     "kitchen": build_kitchen,
+    "gameTable": build_game_table,
+    "arcade": build_arcade,
     "tree": build_tree,
     "streetLamp": build_street_lamp,
     "bench": build_bench,
@@ -666,7 +791,7 @@ def add_studio(scene: bpy.types.Scene, assets: dict[str, bpy.types.Collection]) 
         ("meetingTable", (3.2, 2.8, 0), 0), ("counter", (-4.3, -0.7, 0), 0), ("rack", (-0.8, -1.2, 0), 0),
         ("locker", (0.7, -1.2, 0), 0), ("shelf", (2.8, -1.2, 0), 0), ("vending", (5.1, -1.2, 0), 0),
         ("coffee", (-5.8, -2.7, 0), 0), ("printer", (-4.5, -2.7, 0), 0), ("plant", (-3.25, -2.75, 0), 0),
-        ("bench", (-0.9, -3.15, 0), 0), ("streetLamp", (1.2, -3.5, 0), 0), ("tree", (3.7, -3.25, 0), 0),
+        ("gameTable", (-0.8, -3.15, 0), 0), ("arcade", (1.45, -3.1, 0), 0), ("tree", (3.7, -3.25, 0), 0),
     )
     for name, position, rotation in placements:
         instance = bpy.data.objects.new(f"Preview {name}", None)

@@ -15,6 +15,15 @@ A primeira versão do SUV foi construída diretamente com caixas e cilindros no 
 
 O custo maior não foi refazer o código. Foi ter criado uma direção visual errada antes de produzir imagens de controle.
 
+Uma segunda falha foi tratar arquitetura e mobiliário como duas cenas. O navegador montava pisos, paredes, forros e escadas enquanto carregava os móveis do Blender. Isso provocou quatro problemas visíveis:
+
+- troca de pavimento com aparência de carregamento de outro mapa;
+- emendas quadradas criadas por texturas e por um shader de grade repetida;
+- escadas sem vão arquitetônico coerente;
+- objetos apoiados na altura errada, porque o modelo visual e a planta não eram revisados juntos.
+
+A regra atual é uma fonte Blender para o edifício completo. `timbas-office-building.blend` contém os dois pavimentos, arquitetura, acabamentos, móveis, equipamentos, luminárias, carros e decoração. O navegador carrega um GLB único e conserva apenas interações e um pequeno pool de luzes reais.
+
 ## Padrão visual
 
 Todo objeto importante precisa ser reconhecível apenas pela silhueta. Detalhes pequenos entram depois que proporção, perfil e volumes principais estiverem corretos.
@@ -49,6 +58,15 @@ Para móveis e equipamentos:
 10. Testar no mapa em qualidade alta, média e baixa, com luz normal e blackout.
 11. Medir GPU, memória, tempo de quadro e quantidade de draw calls antes de aprovar.
 
+Para cenários completos, a revisão também precisa confirmar:
+
+1. Todos os andares existem simultaneamente no mesmo arquivo.
+2. A escada termina em um vão real da laje superior.
+3. Cada equipamento de tarefa está na mesma coordenada usada pelo servidor.
+4. Objetos apoiados usam a altura da bancada, mesa ou piso correta.
+5. Salas grandes possuem zonas de uso e circulação, não móveis isolados em um vazio.
+6. Paredes lisas não recebem grade artificial nem textura curta repetida.
+
 No Three.js, a frente funcional do objeto aponta para `+Z`, a largura usa `X` e a altura usa `Y`. A fonte Blender permanece com `Z` para cima e `+Y` para a frente. O exportador aplica a compensação de 180 graus na cópia otimizada para conservar o padrão do mapa.
 
 ## Orçamento para navegador
@@ -78,6 +96,9 @@ O orçamento decisivo da cena é a combinação de draw calls, luzes com sombra,
 - `scripts/run-deducao-blender-builds.mjs`: localiza o Blender e executa os geradores oficiais.
 - `scripts/build-coupe-suv-blender.py`: fonte paramétrica do SUV cupê.
 - `scripts/build-office-kit-blender.py`: fonte paramétrica dos objetos do escritório.
+- `scripts/build-office-building-blender.py`: monta o prédio completo a partir da planta exportada pelo servidor.
+- `assets/models/deducao/office-map.json`: fotografia da planta usada pelo Blender na geração.
+- `assets/models/deducao/timbas-office-building.blend`: fonte editável da cena completa.
 - `assets/models/deducao/`: arquivos `.blend` editáveis.
 - `public/models/games/deducao/`: arquivos GLB otimizados usados pelo jogo.
 - `public/models/games/deducao/ATTRIBUTION.md`: autoria, licença e origem de cada modelo.

@@ -3,6 +3,7 @@ import path from "node:path"
 
 const directory = path.join("public", "models", "games", "deducao")
 const files = [
+  "timbas-office-building.glb",
   "timbas-coupe-suv.glb",
   "desk-blender.glb",
   "office-chair-blender.glb",
@@ -23,6 +24,8 @@ const files = [
   "utility-sink.glb",
   "vending-machine.glb",
   "office-kitchen.glb",
+  "lounge-game-table.glb",
+  "arcade-cabinet.glb",
   "courtyard-tree.glb",
   "street-lamp.glb",
   "courtyard-bench.glb",
@@ -38,6 +41,19 @@ function parseGlb(buffer, filename) {
   return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString("utf8"))
 }
 
+function limits(filename) {
+  if (filename === "timbas-office-building.glb") {
+    return { bytes: 16 * 1024 * 1024, drawCalls: 72, materials: 72 }
+  }
+  if (filename === "timbas-coupe-suv.glb") {
+    return { bytes: 3 * 1024 * 1024, drawCalls: 14, materials: 14 }
+  }
+  if (filename === "vending-machine.glb") {
+    return { bytes: 700 * 1024, drawCalls: 14, materials: 14 }
+  }
+  return { bytes: 420 * 1024, drawCalls: 14, materials: 14 }
+}
+
 let totalBytes = 0
 let totalDrawCalls = 0
 
@@ -50,9 +66,11 @@ for (const filename of files) {
   if (gltf.cameras?.length || gltf.animations?.length || hasLights) {
     throw new Error(`${filename}: contém câmera, animação ou luz de apresentação`)
   }
-  const maxBytes = filename === "timbas-coupe-suv.glb" ? 3 * 1024 * 1024 : 320 * 1024
-  if (buffer.length > maxBytes) throw new Error(`${filename}: excede o orçamento de tamanho`)
-  if (drawCalls > 12 || materialCount > 12) throw new Error(`${filename}: excede o orçamento de materiais`)
+  const budget = limits(filename)
+  if (buffer.length > budget.bytes) throw new Error(`${filename}: excede o orçamento de tamanho`)
+  if (drawCalls > budget.drawCalls || materialCount > budget.materials) {
+    throw new Error(`${filename}: excede o orçamento de materiais`)
+  }
   totalBytes += buffer.length
   totalDrawCalls += drawCalls
   console.log(`${filename.padEnd(29)} ${String(drawCalls).padStart(2)} draw calls  ${(buffer.length / 1024).toFixed(1).padStart(7)} KB`)

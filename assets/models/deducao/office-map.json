@@ -1,0 +1,3922 @@
+{
+  "name": "Escritório Timbas",
+  "bounds": {
+    "x": 0,
+    "z": 0,
+    "w": 74,
+    "d": 58
+  },
+  "rooms": [
+    {
+      "id": "servidores",
+      "name": "Sala dos servidores",
+      "rect": {
+        "x": 3,
+        "z": 3,
+        "w": 20,
+        "d": 14
+      },
+      "kind": "sala",
+      "floor": "#4c718a",
+      "finish": "server",
+      "light": "#38bdf8",
+      "doors": [
+        {
+          "side": "south",
+          "at": 16.4,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "openspace",
+      "name": "Open space",
+      "rect": {
+        "x": 23,
+        "z": 3,
+        "w": 28,
+        "d": 14
+      },
+      "kind": "sala",
+      "floor": "#6e8299",
+      "finish": "carpet",
+      "light": "#38bdf8",
+      "doors": [
+        {
+          "side": "south",
+          "at": 12.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "reuniao",
+      "name": "Sala de reunião",
+      "rect": {
+        "x": 51,
+        "z": 3,
+        "w": 20,
+        "d": 14
+      },
+      "kind": "sala",
+      "floor": "#a97850",
+      "finish": "wood",
+      "light": "#f6a35c",
+      "doors": [
+        {
+          "side": "south",
+          "at": 0.3999999999999986,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "recepcao",
+      "name": "Recepção",
+      "rect": {
+        "x": 3,
+        "z": 17,
+        "w": 16,
+        "d": 18
+      },
+      "kind": "sala",
+      "floor": "#8b98a8",
+      "finish": "terrazzo",
+      "light": "#7aa2f7",
+      "doors": [
+        {
+          "side": "east",
+          "at": 7.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "corredor-oeste",
+      "name": "Corredor oeste",
+      "rect": {
+        "x": 19,
+        "z": 17,
+        "w": 8,
+        "d": 24
+      },
+      "kind": "corredor",
+      "floor": "#8794a5",
+      "finish": "vinyl",
+      "light": "#60a5fa",
+      "doors": [
+        {
+          "side": "north",
+          "at": 0.3999999999999986,
+          "width": 3.2
+        },
+        {
+          "side": "west",
+          "at": 7.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "east",
+          "at": 10.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "west",
+          "at": 19.4,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "hall-central",
+      "name": "Átrio central",
+      "rect": {
+        "x": 27,
+        "z": 17,
+        "w": 20,
+        "d": 24
+      },
+      "kind": "sala",
+      "floor": "#677b95",
+      "finish": "patternedCarpet",
+      "light": "#93c5fd",
+      "doors": [
+        {
+          "side": "north",
+          "at": 8.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "west",
+          "at": 10.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "east",
+          "at": 10.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "corredor-leste",
+      "name": "Corredor leste",
+      "rect": {
+        "x": 47,
+        "z": 17,
+        "w": 8,
+        "d": 24
+      },
+      "kind": "corredor",
+      "floor": "#8794a5",
+      "finish": "vinyl",
+      "light": "#60a5fa",
+      "doors": [
+        {
+          "side": "north",
+          "at": 4.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "west",
+          "at": 10.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "east",
+          "at": 7.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "east",
+          "at": 19.4,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "copa",
+      "name": "Copa",
+      "rect": {
+        "x": 55,
+        "z": 17,
+        "w": 16,
+        "d": 18
+      },
+      "kind": "sala",
+      "floor": "#668c79",
+      "finish": "pantry",
+      "light": "#4ade80",
+      "doors": [
+        {
+          "side": "west",
+          "at": 7.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "garagem",
+      "name": "Garagem",
+      "rect": {
+        "x": 3,
+        "z": 35,
+        "w": 16,
+        "d": 20
+      },
+      "kind": "sala",
+      "floor": "#777f89",
+      "finish": "concrete",
+      "light": "#fb923c",
+      "doors": [
+        {
+          "side": "east",
+          "at": 1.3999999999999986,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "dispensa",
+      "name": "Dispensa",
+      "rect": {
+        "x": 55,
+        "z": 35,
+        "w": 16,
+        "d": 10
+      },
+      "kind": "sala",
+      "floor": "#718d7b",
+      "finish": "pantry",
+      "light": "#facc15",
+      "doors": [
+        {
+          "side": "west",
+          "at": 1.3999999999999986,
+          "width": 3.2
+        },
+        {
+          "side": "south",
+          "at": 6.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "deposito",
+      "name": "Depósito",
+      "rect": {
+        "x": 55,
+        "z": 45,
+        "w": 16,
+        "d": 10
+      },
+      "kind": "sala",
+      "floor": "#837565",
+      "finish": "concrete",
+      "light": "#f59e0b",
+      "doors": [
+        {
+          "side": "north",
+          "at": 6.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "arquivo",
+      "name": "Arquivo executivo",
+      "rect": {
+        "x": 3,
+        "z": 3,
+        "w": 20,
+        "d": 14
+      },
+      "kind": "sala",
+      "level": 1,
+      "floor": "#766a8b",
+      "finish": "carpet",
+      "light": "#c084fc",
+      "doors": [
+        {
+          "side": "south",
+          "at": 16.4,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "operacoes",
+      "name": "Central de operações",
+      "rect": {
+        "x": 23,
+        "z": 3,
+        "w": 28,
+        "d": 14
+      },
+      "kind": "sala",
+      "level": 1,
+      "floor": "#4f748b",
+      "finish": "server",
+      "light": "#22d3ee",
+      "doors": [
+        {
+          "side": "south",
+          "at": 12.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "chefe",
+      "name": "Sala do chefe",
+      "rect": {
+        "x": 51,
+        "z": 3,
+        "w": 20,
+        "d": 14
+      },
+      "kind": "sala",
+      "level": 1,
+      "floor": "#9a704e",
+      "finish": "parquet",
+      "light": "#f59e0b",
+      "doors": [
+        {
+          "side": "south",
+          "at": 0.3999999999999986,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "lounge",
+      "name": "Lounge",
+      "rect": {
+        "x": 3,
+        "z": 17,
+        "w": 16,
+        "d": 18
+      },
+      "kind": "sala",
+      "level": 1,
+      "floor": "#5e8378",
+      "finish": "patternedCarpet",
+      "light": "#34d399",
+      "doors": [
+        {
+          "side": "east",
+          "at": 7.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "corredor-superior-oeste",
+      "name": "Corredor superior oeste",
+      "rect": {
+        "x": 19,
+        "z": 17,
+        "w": 8,
+        "d": 24
+      },
+      "kind": "corredor",
+      "level": 1,
+      "floor": "#75849a",
+      "finish": "vinyl",
+      "light": "#818cf8",
+      "doors": [
+        {
+          "side": "north",
+          "at": 0.3999999999999986,
+          "width": 3.2
+        },
+        {
+          "side": "west",
+          "at": 7.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "east",
+          "at": 10.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "west",
+          "at": 19.4,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "hall-superior",
+      "name": "Mezanino",
+      "rect": {
+        "x": 27,
+        "z": 17,
+        "w": 20,
+        "d": 24
+      },
+      "kind": "sala",
+      "level": 1,
+      "floor": "#687996",
+      "finish": "patternedCarpet",
+      "light": "#818cf8",
+      "doors": [
+        {
+          "side": "north",
+          "at": 8.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "west",
+          "at": 10.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "east",
+          "at": 10.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "corredor-superior-leste",
+      "name": "Corredor superior leste",
+      "rect": {
+        "x": 47,
+        "z": 17,
+        "w": 8,
+        "d": 24
+      },
+      "kind": "corredor",
+      "level": 1,
+      "floor": "#75849a",
+      "finish": "vinyl",
+      "light": "#818cf8",
+      "doors": [
+        {
+          "side": "north",
+          "at": 4.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "west",
+          "at": 10.399999999999999,
+          "width": 3.2
+        },
+        {
+          "side": "east",
+          "at": 10.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "terraco",
+      "name": "Terraço",
+      "rect": {
+        "x": 55,
+        "z": 17,
+        "w": 16,
+        "d": 38
+      },
+      "kind": "terraco",
+      "level": 1,
+      "floor": "#7f898c",
+      "finish": "concrete",
+      "light": "#86efac",
+      "doors": [
+        {
+          "side": "west",
+          "at": 10.399999999999999,
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "id": "conselho",
+      "name": "Sala do conselho",
+      "rect": {
+        "x": 3,
+        "z": 35,
+        "w": 16,
+        "d": 20
+      },
+      "kind": "sala",
+      "level": 1,
+      "floor": "#8e7058",
+      "finish": "parquet",
+      "light": "#f0abfc",
+      "doors": [
+        {
+          "side": "east",
+          "at": 1.3999999999999986,
+          "width": 3.2
+        }
+      ]
+    }
+  ],
+  "walls": [
+    {
+      "minX": 3,
+      "minZ": 2.8,
+      "maxX": 71,
+      "maxZ": 3.2,
+      "accent": "#38bdf8",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 3,
+      "minZ": 16.8,
+      "maxX": 19.4,
+      "maxZ": 17.2,
+      "accent": "#38bdf8",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 22.599999999999998,
+      "minZ": 16.8,
+      "maxX": 35.4,
+      "maxZ": 17.2,
+      "accent": "#38bdf8",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 38.6,
+      "minZ": 16.8,
+      "maxX": 51.4,
+      "maxZ": 17.2,
+      "accent": "#38bdf8",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 54.6,
+      "minZ": 16.8,
+      "maxX": 71,
+      "maxZ": 17.2,
+      "accent": "#f6a35c",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 22.8,
+      "minZ": 3,
+      "maxX": 23.2,
+      "maxZ": 17,
+      "accent": "#38bdf8",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 2.8,
+      "minZ": 3,
+      "maxX": 3.2,
+      "maxZ": 55,
+      "accent": "#38bdf8",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 50.8,
+      "minZ": 3,
+      "maxX": 51.2,
+      "maxZ": 17,
+      "accent": "#38bdf8",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 70.8,
+      "minZ": 3,
+      "maxX": 71.2,
+      "maxZ": 55,
+      "accent": "#f6a35c",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 3,
+      "minZ": 34.8,
+      "maxX": 19,
+      "maxZ": 35.2,
+      "accent": "#7aa2f7",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 55,
+      "minZ": 34.8,
+      "maxX": 71,
+      "maxZ": 35.2,
+      "accent": "#4ade80",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 18.8,
+      "minZ": 17,
+      "maxX": 19.2,
+      "maxZ": 24.4,
+      "accent": "#7aa2f7",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 18.8,
+      "minZ": 27.599999999999998,
+      "maxX": 19.2,
+      "maxZ": 36.4,
+      "accent": "#7aa2f7",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 18.8,
+      "minZ": 39.6,
+      "maxX": 19.2,
+      "maxZ": 55,
+      "accent": "#60a5fa",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 19,
+      "minZ": 40.8,
+      "maxX": 55,
+      "maxZ": 41.2,
+      "accent": "#60a5fa",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 26.8,
+      "minZ": 17,
+      "maxX": 27.2,
+      "maxZ": 27.4,
+      "accent": "#60a5fa",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 26.8,
+      "minZ": 30.599999999999998,
+      "maxX": 27.2,
+      "maxZ": 41,
+      "accent": "#60a5fa",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 46.8,
+      "minZ": 17,
+      "maxX": 47.2,
+      "maxZ": 27.4,
+      "accent": "#93c5fd",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 46.8,
+      "minZ": 30.599999999999998,
+      "maxX": 47.2,
+      "maxZ": 41,
+      "accent": "#93c5fd",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 54.8,
+      "minZ": 17,
+      "maxX": 55.2,
+      "maxZ": 24.4,
+      "accent": "#60a5fa",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 54.8,
+      "minZ": 27.599999999999998,
+      "maxX": 55.2,
+      "maxZ": 36.4,
+      "accent": "#60a5fa",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 54.8,
+      "minZ": 39.6,
+      "maxX": 55.2,
+      "maxZ": 55,
+      "accent": "#60a5fa",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 3,
+      "minZ": 54.8,
+      "maxX": 19,
+      "maxZ": 55.2,
+      "accent": "#fb923c",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 55,
+      "minZ": 54.8,
+      "maxX": 71,
+      "maxZ": 55.2,
+      "accent": "#f59e0b",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 55,
+      "minZ": 44.8,
+      "maxX": 61.4,
+      "maxZ": 45.2,
+      "accent": "#facc15",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 64.6,
+      "minZ": 44.8,
+      "maxX": 71,
+      "maxZ": 45.2,
+      "accent": "#facc15",
+      "level": 0,
+      "style": "parede"
+    },
+    {
+      "minX": 3,
+      "minZ": 2.8,
+      "maxX": 71,
+      "maxZ": 3.2,
+      "accent": "#c084fc",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 3,
+      "minZ": 16.8,
+      "maxX": 19.4,
+      "maxZ": 17.2,
+      "accent": "#c084fc",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 22.599999999999998,
+      "minZ": 16.8,
+      "maxX": 35.4,
+      "maxZ": 17.2,
+      "accent": "#c084fc",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 38.6,
+      "minZ": 16.8,
+      "maxX": 51.4,
+      "maxZ": 17.2,
+      "accent": "#22d3ee",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 54.6,
+      "minZ": 16.8,
+      "maxX": 71,
+      "maxZ": 17.2,
+      "accent": "#f59e0b",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 22.8,
+      "minZ": 3,
+      "maxX": 23.2,
+      "maxZ": 17,
+      "accent": "#c084fc",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 2.8,
+      "minZ": 3,
+      "maxX": 3.2,
+      "maxZ": 55,
+      "accent": "#c084fc",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 50.8,
+      "minZ": 3,
+      "maxX": 51.2,
+      "maxZ": 17,
+      "accent": "#22d3ee",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 70.8,
+      "minZ": 3,
+      "maxX": 71.2,
+      "maxZ": 17,
+      "accent": "#f59e0b",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 3,
+      "minZ": 34.8,
+      "maxX": 19,
+      "maxZ": 35.2,
+      "accent": "#34d399",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 18.8,
+      "minZ": 17,
+      "maxX": 19.2,
+      "maxZ": 24.4,
+      "accent": "#34d399",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 18.8,
+      "minZ": 27.599999999999998,
+      "maxX": 19.2,
+      "maxZ": 36.4,
+      "accent": "#34d399",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 18.8,
+      "minZ": 39.6,
+      "maxX": 19.2,
+      "maxZ": 55,
+      "accent": "#818cf8",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 19,
+      "minZ": 40.8,
+      "maxX": 55,
+      "maxZ": 41.2,
+      "accent": "#818cf8",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 26.8,
+      "minZ": 17,
+      "maxX": 27.2,
+      "maxZ": 27.4,
+      "accent": "#818cf8",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 26.8,
+      "minZ": 30.599999999999998,
+      "maxX": 27.2,
+      "maxZ": 41,
+      "accent": "#818cf8",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 46.8,
+      "minZ": 17,
+      "maxX": 47.2,
+      "maxZ": 27.4,
+      "accent": "#818cf8",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 46.8,
+      "minZ": 30.599999999999998,
+      "maxX": 47.2,
+      "maxZ": 41,
+      "accent": "#818cf8",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 54.8,
+      "minZ": 17,
+      "maxX": 55.2,
+      "maxZ": 27.4,
+      "accent": "#818cf8",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 54.8,
+      "minZ": 30.599999999999998,
+      "maxX": 55.2,
+      "maxZ": 41,
+      "accent": "#818cf8",
+      "level": 1,
+      "style": "parede"
+    },
+    {
+      "minX": 55,
+      "minZ": 16.8,
+      "maxX": 71,
+      "maxZ": 17.2,
+      "accent": "#86efac",
+      "level": 1,
+      "style": "guarda-corpo"
+    },
+    {
+      "minX": 55,
+      "minZ": 54.8,
+      "maxX": 71,
+      "maxZ": 55.2,
+      "accent": "#86efac",
+      "level": 1,
+      "style": "guarda-corpo"
+    },
+    {
+      "minX": 70.8,
+      "minZ": 17,
+      "maxX": 71.2,
+      "maxZ": 55,
+      "accent": "#86efac",
+      "level": 1,
+      "style": "guarda-corpo"
+    },
+    {
+      "minX": 54.8,
+      "minZ": 17,
+      "maxX": 55.2,
+      "maxZ": 27.4,
+      "accent": "#86efac",
+      "level": 1,
+      "style": "guarda-corpo"
+    },
+    {
+      "minX": 54.8,
+      "minZ": 30.599999999999998,
+      "maxX": 55.2,
+      "maxZ": 55,
+      "accent": "#86efac",
+      "level": 1,
+      "style": "guarda-corpo"
+    },
+    {
+      "minX": 3,
+      "minZ": 54.8,
+      "maxX": 19,
+      "maxZ": 55.2,
+      "accent": "#f0abfc",
+      "level": 1,
+      "style": "parede"
+    }
+  ],
+  "obstacles": [
+    {
+      "minX": 8.25,
+      "minZ": 20.45,
+      "maxX": 12.75,
+      "maxZ": 21.55,
+      "height": 1.13,
+      "level": 0
+    },
+    {
+      "minX": 5.9,
+      "minZ": 29.985,
+      "maxX": 8.1,
+      "maxZ": 31.015,
+      "height": 0.46,
+      "level": 0
+    },
+    {
+      "minX": 4.24,
+      "minZ": 18.74,
+      "maxX": 4.76,
+      "maxZ": 19.26,
+      "height": 0.38,
+      "level": 0
+    },
+    {
+      "minX": 16.939999999999998,
+      "minZ": 32.74,
+      "maxX": 17.46,
+      "maxZ": 33.26,
+      "height": 0.38,
+      "level": 0
+    },
+    {
+      "minX": 29.4,
+      "minZ": 19.685,
+      "maxX": 31.6,
+      "maxZ": 20.715,
+      "height": 0.46,
+      "level": 0
+    },
+    {
+      "minX": 42.4,
+      "minZ": 37.285,
+      "maxX": 44.6,
+      "maxZ": 38.315,
+      "height": 0.46,
+      "level": 0
+    },
+    {
+      "minX": 28.24,
+      "minZ": 18.74,
+      "maxX": 28.76,
+      "maxZ": 19.26,
+      "height": 0.38,
+      "level": 0
+    },
+    {
+      "minX": 45.24,
+      "minZ": 38.74,
+      "maxX": 45.76,
+      "maxZ": 39.26,
+      "height": 0.38,
+      "level": 0
+    },
+    {
+      "minX": 48.55,
+      "minZ": 14.65,
+      "maxX": 49.45,
+      "maxZ": 15.35,
+      "height": 0.9,
+      "level": 0
+    },
+    {
+      "minX": 42.4,
+      "minZ": 19.685,
+      "maxX": 44.6,
+      "maxZ": 20.715,
+      "height": 0.46,
+      "level": 0
+    },
+    {
+      "minX": 29.4,
+      "minZ": 37.285,
+      "maxX": 31.6,
+      "maxZ": 38.315,
+      "height": 0.46,
+      "level": 0
+    },
+    {
+      "minX": 33.325,
+      "minZ": 19.825,
+      "maxX": 34.675,
+      "maxZ": 21.175,
+      "height": 0.82,
+      "level": 0
+    },
+    {
+      "minX": 39.325,
+      "minZ": 19.825,
+      "maxX": 40.675,
+      "maxZ": 21.175,
+      "height": 0.82,
+      "level": 0
+    },
+    {
+      "minX": 38.14,
+      "minZ": 20.14,
+      "maxX": 38.86,
+      "maxZ": 20.86,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 41.14,
+      "minZ": 20.14,
+      "maxX": 41.86,
+      "maxZ": 20.86,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 31.985,
+      "minZ": 27.9,
+      "maxX": 33.015,
+      "maxZ": 30.1,
+      "height": 0.46,
+      "level": 0
+    },
+    {
+      "minX": 40.985,
+      "minZ": 27.9,
+      "maxX": 42.015,
+      "maxZ": 30.1,
+      "height": 0.46,
+      "level": 0
+    },
+    {
+      "minX": 36.325,
+      "minZ": 28.325,
+      "maxX": 37.675,
+      "maxZ": 29.675,
+      "height": 0.82,
+      "level": 0
+    },
+    {
+      "minX": 39.325,
+      "minZ": 36.825,
+      "maxX": 40.675,
+      "maxZ": 38.175,
+      "height": 0.82,
+      "level": 0
+    },
+    {
+      "minX": 5.6,
+      "minZ": 5.5,
+      "maxX": 6.4,
+      "maxZ": 6.5,
+      "height": 2,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 8.6,
+      "minZ": 5.5,
+      "maxX": 9.4,
+      "maxZ": 6.5,
+      "height": 2,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 11.6,
+      "minZ": 5.5,
+      "maxX": 12.4,
+      "maxZ": 6.5,
+      "height": 2,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 14.6,
+      "minZ": 5.5,
+      "maxX": 15.4,
+      "maxZ": 6.5,
+      "height": 2,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 17.6,
+      "minZ": 5.5,
+      "maxX": 18.4,
+      "maxZ": 6.5,
+      "height": 2,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 7.6,
+      "minZ": 12.5,
+      "maxX": 8.4,
+      "maxZ": 13.5,
+      "height": 2,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 11.6,
+      "minZ": 12.5,
+      "maxX": 12.4,
+      "maxZ": 13.5,
+      "height": 2,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 15.6,
+      "minZ": 12.5,
+      "maxX": 16.4,
+      "maxZ": 13.5,
+      "height": 2,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 57.675,
+      "minZ": 8.25,
+      "maxX": 64.325,
+      "maxZ": 10.75,
+      "height": 0.86,
+      "level": 0
+    },
+    {
+      "minX": 57.64,
+      "minZ": 6.79,
+      "maxX": 58.36,
+      "maxZ": 7.510000000000001,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 57.64,
+      "minZ": 11.49,
+      "maxX": 58.36,
+      "maxZ": 12.209999999999999,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 59.14,
+      "minZ": 6.79,
+      "maxX": 59.86,
+      "maxZ": 7.510000000000001,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 59.14,
+      "minZ": 11.49,
+      "maxX": 59.86,
+      "maxZ": 12.209999999999999,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 60.64,
+      "minZ": 6.79,
+      "maxX": 61.36,
+      "maxZ": 7.510000000000001,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 60.64,
+      "minZ": 11.49,
+      "maxX": 61.36,
+      "maxZ": 12.209999999999999,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 62.14,
+      "minZ": 6.79,
+      "maxX": 62.86,
+      "maxZ": 7.510000000000001,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 62.14,
+      "minZ": 11.49,
+      "maxX": 62.86,
+      "maxZ": 12.209999999999999,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 63.64,
+      "minZ": 6.79,
+      "maxX": 64.36,
+      "maxZ": 7.510000000000001,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 63.64,
+      "minZ": 11.49,
+      "maxX": 64.36,
+      "maxZ": 12.209999999999999,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 55.94,
+      "minZ": 9.14,
+      "maxX": 56.66,
+      "maxZ": 9.86,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 65.34,
+      "minZ": 9.14,
+      "maxX": 66.06,
+      "maxZ": 9.86,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 59.65,
+      "minZ": 4.04,
+      "maxX": 62.35,
+      "maxZ": 4.159999999999999,
+      "height": 2.05,
+      "level": 0
+    },
+    {
+      "minX": 69.74,
+      "minZ": 18.9,
+      "maxX": 70.46,
+      "maxZ": 23.1,
+      "height": 2.2,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 69.325,
+      "minZ": 24.55,
+      "maxX": 70.075,
+      "maxZ": 25.650000000000002,
+      "height": 2,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 58.825,
+      "minZ": 20.325,
+      "maxX": 60.175,
+      "maxZ": 21.675,
+      "height": 0.82,
+      "level": 0
+    },
+    {
+      "minX": 57.54,
+      "minZ": 20.64,
+      "maxX": 58.26,
+      "maxZ": 21.36,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 60.74,
+      "minZ": 20.64,
+      "maxX": 61.46,
+      "maxZ": 21.36,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 62.825,
+      "minZ": 30.325,
+      "maxX": 64.175,
+      "maxZ": 31.675,
+      "height": 0.82,
+      "level": 0
+    },
+    {
+      "minX": 61.54,
+      "minZ": 30.64,
+      "maxX": 62.26,
+      "maxZ": 31.36,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 64.74,
+      "minZ": 30.64,
+      "maxX": 65.46,
+      "maxZ": 31.36,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 68.74,
+      "minZ": 32.74,
+      "maxX": 69.26,
+      "maxZ": 33.26,
+      "height": 0.38,
+      "level": 0
+    },
+    {
+      "minX": 58.825,
+      "minZ": 28.825,
+      "maxX": 60.175,
+      "maxZ": 30.175,
+      "height": 0.82,
+      "level": 0
+    },
+    {
+      "minX": 57.54,
+      "minZ": 29.14,
+      "maxX": 58.26,
+      "maxZ": 29.86,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 60.74,
+      "minZ": 29.14,
+      "maxX": 61.46,
+      "maxZ": 29.86,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 7,
+      "minZ": 43.35,
+      "maxX": 9,
+      "maxZ": 47.65,
+      "height": 1.5,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 13,
+      "minZ": 43.275,
+      "maxX": 15,
+      "maxZ": 47.725,
+      "height": 1.65,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 4.410632045681849,
+      "minZ": 52.41063204568185,
+      "maxX": 5.589367954318151,
+      "maxZ": 53.58936795431815,
+      "height": 0.94,
+      "level": 0
+    },
+    {
+      "minX": 57.7,
+      "minZ": 37.7,
+      "maxX": 58.3,
+      "maxZ": 40.3,
+      "height": 1.9,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 67.7,
+      "minZ": 37.7,
+      "maxX": 68.3,
+      "maxZ": 40.3,
+      "height": 1.9,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 57.7,
+      "minZ": 48.7,
+      "maxX": 58.3,
+      "maxZ": 51.3,
+      "height": 1.9,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 67.7,
+      "minZ": 48.7,
+      "maxX": 68.3,
+      "maxZ": 51.3,
+      "height": 1.9,
+      "tall": true,
+      "level": 0
+    },
+    {
+      "minX": 63.374571652106525,
+      "minZ": 50.374571652106525,
+      "maxX": 64.62542834789348,
+      "maxZ": 51.625428347893475,
+      "height": 0.94,
+      "level": 0
+    },
+    {
+      "minX": 65.37457165210652,
+      "minZ": 51.374571652106525,
+      "maxX": 66.62542834789348,
+      "maxZ": 52.625428347893475,
+      "height": 0.94,
+      "level": 0
+    },
+    {
+      "minX": 4.725,
+      "minZ": 5.45,
+      "maxX": 5.275,
+      "maxZ": 6.55,
+      "height": 2,
+      "tall": true,
+      "level": 1
+    },
+    {
+      "minX": 4.725,
+      "minZ": 9.45,
+      "maxX": 5.275,
+      "maxZ": 10.55,
+      "height": 2,
+      "tall": true,
+      "level": 1
+    },
+    {
+      "minX": 20.725,
+      "minZ": 5.45,
+      "maxX": 21.275,
+      "maxZ": 6.55,
+      "height": 2,
+      "tall": true,
+      "level": 1
+    },
+    {
+      "minX": 20.725,
+      "minZ": 9.45,
+      "maxX": 21.275,
+      "maxZ": 10.55,
+      "height": 2,
+      "tall": true,
+      "level": 1
+    },
+    {
+      "minX": 10.7,
+      "minZ": 3.9,
+      "maxX": 13.3,
+      "maxZ": 4.5,
+      "height": 1.9,
+      "tall": true,
+      "level": 1
+    },
+    {
+      "minX": 10.7,
+      "minZ": 14.7,
+      "maxX": 13.3,
+      "maxZ": 15.3,
+      "height": 1.9,
+      "tall": true,
+      "level": 1
+    },
+    {
+      "minX": 6.9,
+      "minZ": 23.485,
+      "maxX": 9.1,
+      "maxZ": 24.515,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 12.9,
+      "minZ": 29.485,
+      "maxX": 15.1,
+      "maxZ": 30.515,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 16.625,
+      "minZ": 19.45,
+      "maxX": 17.375,
+      "maxZ": 20.55,
+      "height": 2,
+      "tall": true,
+      "level": 1
+    },
+    {
+      "minX": 9.875,
+      "minZ": 20.175,
+      "maxX": 12.125,
+      "maxZ": 21.425,
+      "height": 0.92,
+      "level": 1
+    },
+    {
+      "minX": 16.84,
+      "minZ": 28.375,
+      "maxX": 17.56,
+      "maxZ": 29.225,
+      "height": 1.85,
+      "tall": true,
+      "level": 1
+    },
+    {
+      "minX": 16.84,
+      "minZ": 30.775,
+      "maxX": 17.56,
+      "maxZ": 31.625,
+      "height": 1.85,
+      "tall": true,
+      "level": 1
+    },
+    {
+      "minX": 4.74,
+      "minZ": 32.74,
+      "maxX": 5.26,
+      "maxZ": 33.26,
+      "height": 0.38,
+      "level": 1
+    },
+    {
+      "minX": 10.325,
+      "minZ": 26.325,
+      "maxX": 11.675,
+      "maxZ": 27.675,
+      "height": 0.82,
+      "level": 1
+    },
+    {
+      "minX": 9.040000000000001,
+      "minZ": 26.64,
+      "maxX": 9.76,
+      "maxZ": 27.36,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 12.24,
+      "minZ": 26.64,
+      "maxX": 12.959999999999999,
+      "maxZ": 27.36,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 29.4,
+      "minZ": 19.685,
+      "maxX": 31.6,
+      "maxZ": 20.715,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 42.4,
+      "minZ": 37.285,
+      "maxX": 44.6,
+      "maxZ": 38.315,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 42.4,
+      "minZ": 19.685,
+      "maxX": 44.6,
+      "maxZ": 20.715,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 29.4,
+      "minZ": 37.285,
+      "maxX": 31.6,
+      "maxZ": 38.315,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 28.24,
+      "minZ": 38.74,
+      "maxX": 28.76,
+      "maxZ": 39.26,
+      "height": 0.38,
+      "level": 1
+    },
+    {
+      "minX": 45.24,
+      "minZ": 18.74,
+      "maxX": 45.76,
+      "maxZ": 19.26,
+      "height": 0.38,
+      "level": 1
+    },
+    {
+      "minX": 33.325,
+      "minZ": 19.825,
+      "maxX": 34.675,
+      "maxZ": 21.175,
+      "height": 0.82,
+      "level": 1
+    },
+    {
+      "minX": 39.325,
+      "minZ": 19.825,
+      "maxX": 40.675,
+      "maxZ": 21.175,
+      "height": 0.82,
+      "level": 1
+    },
+    {
+      "minX": 38.14,
+      "minZ": 20.14,
+      "maxX": 38.86,
+      "maxZ": 20.86,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 41.14,
+      "minZ": 20.14,
+      "maxX": 41.86,
+      "maxZ": 20.86,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 31.985,
+      "minZ": 27.9,
+      "maxX": 33.015,
+      "maxZ": 30.1,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 40.985,
+      "minZ": 27.9,
+      "maxX": 42.015,
+      "maxZ": 30.1,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 36.325,
+      "minZ": 28.325,
+      "maxX": 37.675,
+      "maxZ": 29.675,
+      "height": 0.82,
+      "level": 1
+    },
+    {
+      "minX": 39.325,
+      "minZ": 36.825,
+      "maxX": 40.675,
+      "maxZ": 38.175,
+      "height": 0.82,
+      "level": 1
+    },
+    {
+      "minX": 60.09,
+      "minZ": 7.55,
+      "maxX": 61.91,
+      "maxZ": 8.45,
+      "height": 0.84,
+      "level": 1
+    },
+    {
+      "minX": 60.64,
+      "minZ": 8.940000000000001,
+      "maxX": 61.36,
+      "maxZ": 9.66,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 54.485,
+      "minZ": 12.4,
+      "maxX": 55.515,
+      "maxZ": 14.6,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 66.325,
+      "minZ": 11.825,
+      "maxX": 67.675,
+      "maxZ": 13.175,
+      "height": 0.82,
+      "level": 1
+    },
+    {
+      "minX": 68.74,
+      "minZ": 4.74,
+      "maxX": 69.26,
+      "maxZ": 5.26,
+      "height": 0.38,
+      "level": 1
+    },
+    {
+      "minX": 59.65,
+      "minZ": 4.04,
+      "maxX": 62.35,
+      "maxZ": 4.159999999999999,
+      "height": 2.05,
+      "level": 1
+    },
+    {
+      "minX": 58.94,
+      "minZ": 9.84,
+      "maxX": 59.66,
+      "maxZ": 10.559999999999999,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 62.34,
+      "minZ": 9.84,
+      "maxX": 63.06,
+      "maxZ": 10.559999999999999,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 68.8,
+      "minZ": 8.2,
+      "maxX": 69.39999999999999,
+      "maxZ": 10.8,
+      "height": 1.9,
+      "tall": true,
+      "level": 1
+    },
+    {
+      "minX": 64.9,
+      "minZ": 14.084999999999999,
+      "maxX": 67.1,
+      "maxZ": 15.115,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 62.325,
+      "minZ": 23.325,
+      "maxX": 63.675,
+      "maxZ": 24.675,
+      "height": 0.82,
+      "level": 1
+    },
+    {
+      "minX": 62.325,
+      "minZ": 35.325,
+      "maxX": 63.675,
+      "maxZ": 36.675,
+      "height": 0.82,
+      "level": 1
+    },
+    {
+      "minX": 64.9,
+      "minZ": 47.485,
+      "maxX": 67.1,
+      "maxZ": 48.515,
+      "height": 0.46,
+      "level": 1
+    },
+    {
+      "minX": 56.74,
+      "minZ": 19.74,
+      "maxX": 57.26,
+      "maxZ": 20.26,
+      "height": 0.38,
+      "level": 1
+    },
+    {
+      "minX": 68.74,
+      "minZ": 30.74,
+      "maxX": 69.26,
+      "maxZ": 31.26,
+      "height": 0.38,
+      "level": 1
+    },
+    {
+      "minX": 56.74,
+      "minZ": 51.74,
+      "maxX": 57.26,
+      "maxZ": 52.26,
+      "height": 0.38,
+      "level": 1
+    },
+    {
+      "minX": 9.75,
+      "minZ": 41.675,
+      "maxX": 12.25,
+      "maxZ": 48.325,
+      "height": 0.86,
+      "level": 1
+    },
+    {
+      "minX": 8.440000000000001,
+      "minZ": 42.14,
+      "maxX": 9.16,
+      "maxZ": 42.86,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 12.84,
+      "minZ": 42.14,
+      "maxX": 13.559999999999999,
+      "maxZ": 42.86,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 8.440000000000001,
+      "minZ": 43.84,
+      "maxX": 9.16,
+      "maxZ": 44.56,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 12.84,
+      "minZ": 43.84,
+      "maxX": 13.559999999999999,
+      "maxZ": 44.56,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 8.440000000000001,
+      "minZ": 45.44,
+      "maxX": 9.16,
+      "maxZ": 46.16,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 12.84,
+      "minZ": 45.44,
+      "maxX": 13.559999999999999,
+      "maxZ": 46.16,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 8.440000000000001,
+      "minZ": 47.14,
+      "maxX": 9.16,
+      "maxZ": 47.86,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 12.84,
+      "minZ": 47.14,
+      "maxX": 13.559999999999999,
+      "maxZ": 47.86,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 9.65,
+      "minZ": 53.739999999999995,
+      "maxX": 12.35,
+      "maxZ": 53.86,
+      "height": 2.05,
+      "level": 1
+    },
+    {
+      "minX": 26.09,
+      "minZ": 5.55,
+      "maxX": 27.91,
+      "maxZ": 6.45,
+      "height": 0.84,
+      "level": 0
+    },
+    {
+      "minX": 26.64,
+      "minZ": 6.92,
+      "maxX": 27.36,
+      "maxZ": 7.640000000000001,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 32.290000000000006,
+      "minZ": 5.55,
+      "maxX": 34.11,
+      "maxZ": 6.45,
+      "height": 0.84,
+      "level": 0
+    },
+    {
+      "minX": 32.84,
+      "minZ": 6.92,
+      "maxX": 33.56,
+      "maxZ": 7.640000000000001,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 38.49,
+      "minZ": 5.55,
+      "maxX": 40.309999999999995,
+      "maxZ": 6.45,
+      "height": 0.84,
+      "level": 0
+    },
+    {
+      "minX": 39.04,
+      "minZ": 6.92,
+      "maxX": 39.76,
+      "maxZ": 7.640000000000001,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 44.690000000000005,
+      "minZ": 5.55,
+      "maxX": 46.51,
+      "maxZ": 6.45,
+      "height": 0.84,
+      "level": 0
+    },
+    {
+      "minX": 45.24,
+      "minZ": 6.92,
+      "maxX": 45.96,
+      "maxZ": 7.640000000000001,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 26.09,
+      "minZ": 11.55,
+      "maxX": 27.91,
+      "maxZ": 12.45,
+      "height": 0.84,
+      "level": 0
+    },
+    {
+      "minX": 26.64,
+      "minZ": 10.360000000000001,
+      "maxX": 27.36,
+      "maxZ": 11.08,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 32.290000000000006,
+      "minZ": 11.55,
+      "maxX": 34.11,
+      "maxZ": 12.45,
+      "height": 0.84,
+      "level": 0
+    },
+    {
+      "minX": 32.84,
+      "minZ": 10.360000000000001,
+      "maxX": 33.56,
+      "maxZ": 11.08,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 38.49,
+      "minZ": 11.55,
+      "maxX": 40.309999999999995,
+      "maxZ": 12.45,
+      "height": 0.84,
+      "level": 0
+    },
+    {
+      "minX": 39.04,
+      "minZ": 10.360000000000001,
+      "maxX": 39.76,
+      "maxZ": 11.08,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 44.690000000000005,
+      "minZ": 11.55,
+      "maxX": 46.51,
+      "maxZ": 12.45,
+      "height": 0.84,
+      "level": 0
+    },
+    {
+      "minX": 45.24,
+      "minZ": 10.360000000000001,
+      "maxX": 45.96,
+      "maxZ": 11.08,
+      "height": 1.18,
+      "level": 0
+    },
+    {
+      "minX": 26.09,
+      "minZ": 5.55,
+      "maxX": 27.91,
+      "maxZ": 6.45,
+      "height": 0.84,
+      "level": 1
+    },
+    {
+      "minX": 26.64,
+      "minZ": 6.92,
+      "maxX": 27.36,
+      "maxZ": 7.640000000000001,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 32.290000000000006,
+      "minZ": 5.55,
+      "maxX": 34.11,
+      "maxZ": 6.45,
+      "height": 0.84,
+      "level": 1
+    },
+    {
+      "minX": 32.84,
+      "minZ": 6.92,
+      "maxX": 33.56,
+      "maxZ": 7.640000000000001,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 38.49,
+      "minZ": 5.55,
+      "maxX": 40.309999999999995,
+      "maxZ": 6.45,
+      "height": 0.84,
+      "level": 1
+    },
+    {
+      "minX": 39.04,
+      "minZ": 6.92,
+      "maxX": 39.76,
+      "maxZ": 7.640000000000001,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 44.690000000000005,
+      "minZ": 5.55,
+      "maxX": 46.51,
+      "maxZ": 6.45,
+      "height": 0.84,
+      "level": 1
+    },
+    {
+      "minX": 45.24,
+      "minZ": 6.92,
+      "maxX": 45.96,
+      "maxZ": 7.640000000000001,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 26.09,
+      "minZ": 11.55,
+      "maxX": 27.91,
+      "maxZ": 12.45,
+      "height": 0.84,
+      "level": 1
+    },
+    {
+      "minX": 26.64,
+      "minZ": 10.360000000000001,
+      "maxX": 27.36,
+      "maxZ": 11.08,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 32.290000000000006,
+      "minZ": 11.55,
+      "maxX": 34.11,
+      "maxZ": 12.45,
+      "height": 0.84,
+      "level": 1
+    },
+    {
+      "minX": 32.84,
+      "minZ": 10.360000000000001,
+      "maxX": 33.56,
+      "maxZ": 11.08,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 38.49,
+      "minZ": 11.55,
+      "maxX": 40.309999999999995,
+      "maxZ": 12.45,
+      "height": 0.84,
+      "level": 1
+    },
+    {
+      "minX": 39.04,
+      "minZ": 10.360000000000001,
+      "maxX": 39.76,
+      "maxZ": 11.08,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 44.690000000000005,
+      "minZ": 11.55,
+      "maxX": 46.51,
+      "maxZ": 12.45,
+      "height": 0.84,
+      "level": 1
+    },
+    {
+      "minX": 45.24,
+      "minZ": 10.360000000000001,
+      "maxX": 45.96,
+      "maxZ": 11.08,
+      "height": 1.18,
+      "level": 1
+    },
+    {
+      "minX": 21.4,
+      "maxX": 21.64,
+      "minZ": 21.8,
+      "maxZ": 28.2,
+      "level": 0
+    },
+    {
+      "minX": 24.36,
+      "maxX": 24.6,
+      "minZ": 21.8,
+      "maxZ": 28.2,
+      "level": 0
+    },
+    {
+      "minX": 21.4,
+      "maxX": 21.64,
+      "minZ": 21.8,
+      "maxZ": 28.2,
+      "level": 1
+    },
+    {
+      "minX": 24.36,
+      "maxX": 24.6,
+      "minZ": 21.8,
+      "maxZ": 28.2,
+      "level": 1
+    },
+    {
+      "minX": 21.52,
+      "maxX": 24.48,
+      "minZ": 21.86,
+      "maxZ": 22.14,
+      "level": 0
+    },
+    {
+      "minX": 21.52,
+      "maxX": 24.48,
+      "minZ": 27.86,
+      "maxZ": 28.14,
+      "level": 1
+    },
+    {
+      "minX": 49.400000000000006,
+      "maxX": 49.64,
+      "minZ": 29.8,
+      "maxZ": 36.2,
+      "level": 0
+    },
+    {
+      "minX": 52.36,
+      "maxX": 52.599999999999994,
+      "minZ": 29.8,
+      "maxZ": 36.2,
+      "level": 0
+    },
+    {
+      "minX": 49.400000000000006,
+      "maxX": 49.64,
+      "minZ": 29.8,
+      "maxZ": 36.2,
+      "level": 1
+    },
+    {
+      "minX": 52.36,
+      "maxX": 52.599999999999994,
+      "minZ": 29.8,
+      "maxZ": 36.2,
+      "level": 1
+    },
+    {
+      "minX": 49.52,
+      "maxX": 52.48,
+      "minZ": 35.86,
+      "maxZ": 36.14,
+      "level": 0
+    },
+    {
+      "minX": 49.52,
+      "maxX": 52.48,
+      "minZ": 29.86,
+      "maxZ": 30.14,
+      "level": 1
+    }
+  ],
+  "props": [
+    {
+      "kind": "counter",
+      "x": 10.5,
+      "z": 21,
+      "rot": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 10.5,
+      "z": 20.6,
+      "rot": 0
+    },
+    {
+      "kind": "sofa",
+      "x": 7,
+      "z": 30.5,
+      "rot": 0
+    },
+    {
+      "kind": "plant",
+      "x": 4.5,
+      "z": 19,
+      "rot": 0
+    },
+    {
+      "kind": "plant",
+      "x": 17.2,
+      "z": 33,
+      "rot": 0
+    },
+    {
+      "kind": "sofa",
+      "x": 30.5,
+      "z": 20.2,
+      "rot": 0
+    },
+    {
+      "kind": "sofa",
+      "x": 43.5,
+      "z": 37.8,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "plant",
+      "x": 28.5,
+      "z": 19,
+      "rot": 0
+    },
+    {
+      "kind": "plant",
+      "x": 45.5,
+      "z": 39,
+      "rot": 0
+    },
+    {
+      "kind": "printer",
+      "x": 49,
+      "z": 15,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "sofa",
+      "x": 43.5,
+      "z": 20.2,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "sofa",
+      "x": 30.5,
+      "z": 37.8,
+      "rot": 0
+    },
+    {
+      "kind": "cafeTable",
+      "x": 34,
+      "z": 20.5,
+      "rot": 0
+    },
+    {
+      "kind": "cafeTable",
+      "x": 40,
+      "z": 20.5,
+      "rot": 0
+    },
+    {
+      "kind": "chair",
+      "x": 38.5,
+      "z": 20.5,
+      "rot": 1.5707963267948966
+    },
+    {
+      "kind": "chair",
+      "x": 41.5,
+      "z": 20.5,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "sofa",
+      "x": 32.5,
+      "z": 29,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "sofa",
+      "x": 41.5,
+      "z": 29,
+      "rot": 1.5707963267948966
+    },
+    {
+      "kind": "cafeTable",
+      "x": 37,
+      "z": 29,
+      "rot": 0
+    },
+    {
+      "kind": "cafeTable",
+      "x": 40,
+      "z": 37.5,
+      "rot": 0
+    },
+    {
+      "kind": "rack",
+      "x": 6,
+      "z": 6,
+      "rot": 0
+    },
+    {
+      "kind": "rack",
+      "x": 9,
+      "z": 6,
+      "rot": 0
+    },
+    {
+      "kind": "rack",
+      "x": 12,
+      "z": 6,
+      "rot": 0
+    },
+    {
+      "kind": "rack",
+      "x": 15,
+      "z": 6,
+      "rot": 0
+    },
+    {
+      "kind": "rack",
+      "x": 18,
+      "z": 6,
+      "rot": 0
+    },
+    {
+      "kind": "rack",
+      "x": 8,
+      "z": 13,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "rack",
+      "x": 12,
+      "z": 13,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "rack",
+      "x": 16,
+      "z": 13,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "meetingTable",
+      "x": 61,
+      "z": 9.5,
+      "rot": 0
+    },
+    {
+      "kind": "chair",
+      "x": 58,
+      "z": 7.15,
+      "rot": 0
+    },
+    {
+      "kind": "chair",
+      "x": 58,
+      "z": 11.85,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "chair",
+      "x": 59.5,
+      "z": 7.15,
+      "rot": 0
+    },
+    {
+      "kind": "chair",
+      "x": 59.5,
+      "z": 11.85,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "chair",
+      "x": 61,
+      "z": 7.15,
+      "rot": 0
+    },
+    {
+      "kind": "chair",
+      "x": 61,
+      "z": 11.85,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "chair",
+      "x": 62.5,
+      "z": 7.15,
+      "rot": 0
+    },
+    {
+      "kind": "chair",
+      "x": 62.5,
+      "z": 11.85,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "chair",
+      "x": 64,
+      "z": 7.15,
+      "rot": 0
+    },
+    {
+      "kind": "chair",
+      "x": 64,
+      "z": 11.85,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "chair",
+      "x": 56.3,
+      "z": 9.5,
+      "rot": 1.5707963267948966
+    },
+    {
+      "kind": "chair",
+      "x": 65.7,
+      "z": 9.5,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "whiteboard",
+      "x": 61,
+      "z": 4.1,
+      "rot": 0
+    },
+    {
+      "kind": "kitchen",
+      "x": 70.1,
+      "z": 21,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "coffee",
+      "x": 69.72,
+      "y": 0.91,
+      "z": 19.6,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "vending",
+      "x": 69.7,
+      "z": 25.1,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "cafeTable",
+      "x": 59.5,
+      "z": 21,
+      "rot": 0
+    },
+    {
+      "kind": "chair",
+      "x": 57.9,
+      "z": 21,
+      "rot": 1.5707963267948966
+    },
+    {
+      "kind": "chair",
+      "x": 61.1,
+      "z": 21,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "cafeTable",
+      "x": 63.5,
+      "z": 31,
+      "rot": 0
+    },
+    {
+      "kind": "chair",
+      "x": 61.9,
+      "z": 31,
+      "rot": 1.5707963267948966
+    },
+    {
+      "kind": "chair",
+      "x": 65.1,
+      "z": 31,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "plant",
+      "x": 69,
+      "z": 33,
+      "rot": 0
+    },
+    {
+      "kind": "cafeTable",
+      "x": 59.5,
+      "z": 29.5,
+      "rot": 0
+    },
+    {
+      "kind": "chair",
+      "x": 57.9,
+      "z": 29.5,
+      "rot": 1.5707963267948966
+    },
+    {
+      "kind": "chair",
+      "x": 61.1,
+      "z": 29.5,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "car",
+      "x": 8,
+      "z": 45.5,
+      "rot": 0
+    },
+    {
+      "kind": "sportCar",
+      "x": 14,
+      "z": 45.5,
+      "rot": 0
+    },
+    {
+      "kind": "cone",
+      "x": 10.8,
+      "z": 52.5,
+      "rot": 0
+    },
+    {
+      "kind": "cone",
+      "x": 12,
+      "z": 51.5,
+      "rot": 0
+    },
+    {
+      "kind": "crate",
+      "x": 5,
+      "z": 53,
+      "rot": 0.2
+    },
+    {
+      "kind": "shelf",
+      "x": 58,
+      "z": 39,
+      "rot": 1.5707963267948966
+    },
+    {
+      "kind": "shelf",
+      "x": 68,
+      "z": 39,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "shelf",
+      "x": 58,
+      "z": 50,
+      "rot": 1.5707963267948966
+    },
+    {
+      "kind": "shelf",
+      "x": 68,
+      "z": 50,
+      "rot": -1.5707963267948966
+    },
+    {
+      "kind": "crate",
+      "x": 64,
+      "z": 51,
+      "rot": 0.3
+    },
+    {
+      "kind": "crate",
+      "x": 66,
+      "z": 52,
+      "rot": -0.3
+    },
+    {
+      "kind": "locker",
+      "x": 5,
+      "z": 6,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "locker",
+      "x": 5,
+      "z": 10,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "locker",
+      "x": 21,
+      "z": 6,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "locker",
+      "x": 21,
+      "z": 10,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "shelf",
+      "x": 12,
+      "z": 4.2,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "shelf",
+      "x": 12,
+      "z": 15,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 8,
+      "z": 24,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 14,
+      "z": 30,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "vending",
+      "x": 17,
+      "z": 20,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "gameTable",
+      "x": 11,
+      "z": 20.8,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "arcade",
+      "x": 17.2,
+      "z": 28.8,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "arcade",
+      "x": 17.2,
+      "z": 31.2,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "plant",
+      "x": 5,
+      "z": 33,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "cafeTable",
+      "x": 11,
+      "z": 27,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 9.4,
+      "z": 27,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 12.6,
+      "z": 27,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 30.5,
+      "z": 20.2,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 43.5,
+      "z": 37.8,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 43.5,
+      "z": 20.2,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 30.5,
+      "z": 37.8,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "plant",
+      "x": 28.5,
+      "z": 39,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "plant",
+      "x": 45.5,
+      "z": 19,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "cafeTable",
+      "x": 34,
+      "z": 20.5,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "cafeTable",
+      "x": 40,
+      "z": 20.5,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 38.5,
+      "z": 20.5,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 41.5,
+      "z": 20.5,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 32.5,
+      "z": 29,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 41.5,
+      "z": 29,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "cafeTable",
+      "x": 37,
+      "z": 29,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "cafeTable",
+      "x": 40,
+      "z": 37.5,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "desk",
+      "x": 61,
+      "z": 8,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 61,
+      "z": 7.65,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 61,
+      "z": 9.3,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 55,
+      "z": 13.5,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "cafeTable",
+      "x": 67,
+      "z": 12.5,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "plant",
+      "x": 69,
+      "z": 5,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "whiteboard",
+      "x": 61,
+      "z": 4.1,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 59.3,
+      "z": 10.2,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 62.7,
+      "z": 10.2,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "shelf",
+      "x": 69.1,
+      "z": 9.5,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 66,
+      "z": 14.6,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "cafeTable",
+      "x": 63,
+      "z": 24,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "cafeTable",
+      "x": 63,
+      "z": 36,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "sofa",
+      "x": 66,
+      "z": 48,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "plant",
+      "x": 57,
+      "z": 20,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "plant",
+      "x": 69,
+      "z": 31,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "plant",
+      "x": 57,
+      "z": 52,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "meetingTable",
+      "x": 11,
+      "z": 45,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 8.8,
+      "z": 42.5,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 13.2,
+      "z": 42.5,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 8.8,
+      "z": 44.2,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 13.2,
+      "z": 44.2,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 8.8,
+      "z": 45.8,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 13.2,
+      "z": 45.8,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 8.8,
+      "z": 47.5,
+      "rot": -1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 13.2,
+      "z": 47.5,
+      "rot": 1.5707963267948966,
+      "level": 1
+    },
+    {
+      "kind": "whiteboard",
+      "x": 11,
+      "z": 53.8,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "desk",
+      "x": 27,
+      "z": 6,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 26.66,
+      "z": 5.66,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 27.34,
+      "z": 5.66,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "chair",
+      "x": 27,
+      "z": 7.28,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "desk",
+      "x": 33.2,
+      "z": 6,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 32.86,
+      "z": 5.66,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 33.540000000000006,
+      "z": 5.66,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "chair",
+      "x": 33.2,
+      "z": 7.28,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "desk",
+      "x": 39.4,
+      "z": 6,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 39.059999999999995,
+      "z": 5.66,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 39.74,
+      "z": 5.66,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "chair",
+      "x": 39.4,
+      "z": 7.28,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "desk",
+      "x": 45.6,
+      "z": 6,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 45.26,
+      "z": 5.66,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 45.940000000000005,
+      "z": 5.66,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "chair",
+      "x": 45.6,
+      "z": 7.28,
+      "rot": 0,
+      "level": 0
+    },
+    {
+      "kind": "desk",
+      "x": 27,
+      "z": 12,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 26.66,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 27.34,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "chair",
+      "x": 27,
+      "z": 10.72,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "desk",
+      "x": 33.2,
+      "z": 12,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 32.86,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 33.540000000000006,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "chair",
+      "x": 33.2,
+      "z": 10.72,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "desk",
+      "x": 39.4,
+      "z": 12,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 39.059999999999995,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 39.74,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "chair",
+      "x": 39.4,
+      "z": 10.72,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "desk",
+      "x": 45.6,
+      "z": 12,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 45.26,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "monitor",
+      "x": 45.940000000000005,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "chair",
+      "x": 45.6,
+      "z": 10.72,
+      "rot": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "kind": "desk",
+      "x": 27,
+      "z": 6,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 26.66,
+      "z": 5.66,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 27.34,
+      "z": 5.66,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 27,
+      "z": 7.28,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "desk",
+      "x": 33.2,
+      "z": 6,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 32.86,
+      "z": 5.66,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 33.540000000000006,
+      "z": 5.66,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 33.2,
+      "z": 7.28,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "desk",
+      "x": 39.4,
+      "z": 6,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 39.059999999999995,
+      "z": 5.66,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 39.74,
+      "z": 5.66,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 39.4,
+      "z": 7.28,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "desk",
+      "x": 45.6,
+      "z": 6,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 45.26,
+      "z": 5.66,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 45.940000000000005,
+      "z": 5.66,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 45.6,
+      "z": 7.28,
+      "rot": 0,
+      "level": 1
+    },
+    {
+      "kind": "desk",
+      "x": 27,
+      "z": 12,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 26.66,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 27.34,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 27,
+      "z": 10.72,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "desk",
+      "x": 33.2,
+      "z": 12,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 32.86,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 33.540000000000006,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 33.2,
+      "z": 10.72,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "desk",
+      "x": 39.4,
+      "z": 12,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 39.059999999999995,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 39.74,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 39.4,
+      "z": 10.72,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "desk",
+      "x": 45.6,
+      "z": 12,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 45.26,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "monitor",
+      "x": 45.940000000000005,
+      "z": 12.34,
+      "rot": 3.141592653589793,
+      "level": 1
+    },
+    {
+      "kind": "chair",
+      "x": 45.6,
+      "z": 10.72,
+      "rot": 3.141592653589793,
+      "level": 1
+    }
+  ],
+  "taskSpots": [
+    {
+      "id": "rack-a",
+      "kind": "rack",
+      "room": "servidores",
+      "label": "Religar o rack principal",
+      "x": 9,
+      "z": 7.15
+    },
+    {
+      "id": "rack-b",
+      "kind": "rack",
+      "room": "servidores",
+      "label": "Trocar o disco do backup",
+      "x": 16,
+      "z": 11.85
+    },
+    {
+      "id": "cabos-a",
+      "kind": "cabos",
+      "room": "servidores",
+      "label": "Refazer o cabeamento",
+      "x": 12,
+      "z": 11.7
+    },
+    {
+      "id": "senha-a",
+      "kind": "senha",
+      "room": "openspace",
+      "label": "Destravar a estação 3",
+      "x": 34.1,
+      "z": 7.2
+    },
+    {
+      "id": "senha-b",
+      "kind": "senha",
+      "room": "openspace",
+      "label": "Reiniciar a estação 7",
+      "x": 46.5,
+      "z": 10.7
+    },
+    {
+      "id": "cafe-a",
+      "kind": "cafe",
+      "room": "copa",
+      "label": "Calibrar a cafeteira",
+      "x": 68.65,
+      "z": 19.6
+    },
+    {
+      "id": "estoque-a",
+      "kind": "estoque",
+      "room": "copa",
+      "label": "Repor a máquina de venda",
+      "x": 68.25,
+      "z": 25.1
+    },
+    {
+      "id": "estoque-dispensa",
+      "kind": "estoque",
+      "room": "dispensa",
+      "label": "Conferir os mantimentos",
+      "x": 61,
+      "z": 42
+    },
+    {
+      "id": "senha-c",
+      "kind": "senha",
+      "room": "recepcao",
+      "label": "Fechar o caixa da recepção",
+      "x": 10.5,
+      "z": 22.2
+    },
+    {
+      "id": "estoque-b",
+      "kind": "estoque",
+      "room": "deposito",
+      "label": "Conferir o inventário",
+      "x": 64,
+      "z": 49.5
+    },
+    {
+      "id": "cabos-c",
+      "kind": "cabos",
+      "room": "garagem",
+      "label": "Recarregar o carro da empresa",
+      "x": 8,
+      "z": 42.5
+    },
+    {
+      "id": "arquivo-a",
+      "kind": "arquivo",
+      "room": "arquivo",
+      "label": "Arquivar os contratos",
+      "x": 6.15,
+      "z": 6,
+      "level": 1
+    },
+    {
+      "id": "arquivo-b",
+      "kind": "arquivo",
+      "room": "arquivo",
+      "label": "Separar os documentos sigilosos",
+      "x": 12,
+      "z": 15.9,
+      "level": 1
+    },
+    {
+      "id": "senha-d",
+      "kind": "senha",
+      "room": "operacoes",
+      "label": "Autorizar o painel de operações",
+      "x": 40.3,
+      "z": 10.7,
+      "level": 1
+    },
+    {
+      "id": "senha-chefe",
+      "kind": "senha",
+      "room": "chefe",
+      "label": "Liberar o terminal do chefe",
+      "x": 62,
+      "z": 9.25,
+      "level": 1
+    },
+    {
+      "id": "cabos-conselho",
+      "kind": "cabos",
+      "room": "conselho",
+      "label": "Ligar a tela do conselho",
+      "x": 11,
+      "z": 52.5,
+      "level": 1
+    }
+  ],
+  "vents": [
+    {
+      "id": "vent-servidores",
+      "room": "servidores",
+      "x": 21,
+      "z": 15,
+      "links": [
+        "vent-garagem",
+        "vent-operacoes"
+      ]
+    },
+    {
+      "id": "vent-garagem",
+      "room": "garagem",
+      "x": 17,
+      "z": 53,
+      "links": [
+        "vent-servidores",
+        "vent-terraco"
+      ]
+    },
+    {
+      "id": "vent-operacoes",
+      "room": "operacoes",
+      "x": 49,
+      "z": 15,
+      "level": 1,
+      "links": [
+        "vent-servidores",
+        "vent-chefe"
+      ]
+    },
+    {
+      "id": "vent-chefe",
+      "room": "chefe",
+      "x": 69,
+      "z": 15,
+      "level": 1,
+      "links": [
+        "vent-operacoes",
+        "vent-terraco"
+      ]
+    },
+    {
+      "id": "vent-terraco",
+      "room": "terraco",
+      "x": 69,
+      "z": 53,
+      "level": 1,
+      "links": [
+        "vent-chefe",
+        "vent-garagem"
+      ]
+    }
+  ],
+  "stairs": [
+    {
+      "id": "escada-oeste-terreo",
+      "level": 0,
+      "x": 23,
+      "z": 28,
+      "rot": 0,
+      "targetLevel": 1,
+      "targetX": 23,
+      "targetZ": 22
+    },
+    {
+      "id": "escada-oeste-superior",
+      "level": 1,
+      "x": 23,
+      "z": 22,
+      "rot": 3.141592653589793,
+      "targetLevel": 0,
+      "targetX": 23,
+      "targetZ": 28
+    },
+    {
+      "id": "escada-leste-terreo",
+      "level": 0,
+      "x": 51,
+      "z": 30,
+      "rot": 3.141592653589793,
+      "targetLevel": 1,
+      "targetX": 51,
+      "targetZ": 36
+    },
+    {
+      "id": "escada-leste-superior",
+      "level": 1,
+      "x": 51,
+      "z": 36,
+      "rot": 0,
+      "targetLevel": 0,
+      "targetX": 51,
+      "targetZ": 30
+    }
+  ],
+  "emergency": {
+    "x": 61,
+    "y": 0.86,
+    "z": 10.2,
+    "level": 0
+  },
+  "spawns": [
+    {
+      "x": 34,
+      "z": 26,
+      "level": 0
+    },
+    {
+      "x": 37,
+      "z": 26,
+      "level": 0
+    },
+    {
+      "x": 40,
+      "z": 26,
+      "level": 0
+    },
+    {
+      "x": 34,
+      "z": 29,
+      "level": 0
+    },
+    {
+      "x": 40,
+      "z": 29,
+      "level": 0
+    },
+    {
+      "x": 34,
+      "z": 32,
+      "level": 0
+    },
+    {
+      "x": 37,
+      "z": 32,
+      "level": 0
+    },
+    {
+      "x": 40,
+      "z": 32,
+      "level": 0
+    },
+    {
+      "x": 31,
+      "z": 26,
+      "level": 0
+    },
+    {
+      "x": 43,
+      "z": 26,
+      "level": 0
+    },
+    {
+      "x": 31,
+      "z": 32,
+      "level": 0
+    },
+    {
+      "x": 43,
+      "z": 32,
+      "level": 0
+    }
+  ],
+  "meetingSeats": [
+    {
+      "x": 58,
+      "z": 7.15,
+      "dir": 0,
+      "level": 0
+    },
+    {
+      "x": 58,
+      "z": 11.85,
+      "dir": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "x": 59.5,
+      "z": 7.15,
+      "dir": 0,
+      "level": 0
+    },
+    {
+      "x": 59.5,
+      "z": 11.85,
+      "dir": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "x": 61,
+      "z": 7.15,
+      "dir": 0,
+      "level": 0
+    },
+    {
+      "x": 61,
+      "z": 11.85,
+      "dir": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "x": 62.5,
+      "z": 7.15,
+      "dir": 0,
+      "level": 0
+    },
+    {
+      "x": 62.5,
+      "z": 11.85,
+      "dir": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "x": 64,
+      "z": 7.15,
+      "dir": 0,
+      "level": 0
+    },
+    {
+      "x": 64,
+      "z": 11.85,
+      "dir": 3.141592653589793,
+      "level": 0
+    },
+    {
+      "x": 56.3,
+      "z": 9.5,
+      "dir": 1.5707963267948966,
+      "level": 0
+    },
+    {
+      "x": 65.7,
+      "z": 9.5,
+      "dir": -1.5707963267948966,
+      "level": 0
+    }
+  ]
+}

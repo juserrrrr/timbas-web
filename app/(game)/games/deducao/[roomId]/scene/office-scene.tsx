@@ -15,7 +15,7 @@ import { playGameSound } from "@/lib/games/game-audio"
 import type { OfficeMap } from "@/lib/services/games"
 import { NO_TARGETS, type LookState, type Quality, type Targets } from "../match-types"
 import type { Role, Snapshot } from "../use-deducao-room"
-import { FLOOR_HEIGHT, OfficeWorld } from "./office-world"
+import { FLOOR_HEIGHT, OfficeBuilding, OfficeWorld } from "./office-world"
 import { setBlackout, useVisionMaterial } from "./vision-material"
 
 const VOID_COLOR = "#7892b8"
@@ -683,6 +683,7 @@ function SceneContent({
         decay={2}
       />
 
+      <OfficeBuilding blackout={blackoutForViewer} quality={quality} />
       {renderedFloors.map((floor) => (
         <OfficeWorld
           key={floor}
@@ -1047,7 +1048,6 @@ function Markers({
   level: number
 }) {
   const ring = useRef<THREE.Group>(null)
-  const emergency = useRef<THREE.Group>(null)
   const vents = useRef<THREE.Group>(null)
 
   useFrame(({ clock }) => {
@@ -1062,7 +1062,6 @@ function Markers({
         child.visible = Boolean(spots[index] && visible(spots[index]))
       })
     }
-    if (emergency.current) emergency.current.visible = (map.emergency.level ?? 0) === level
     const levelVents = map.vents.filter((vent) => (vent.level ?? 0) === level)
     vents.current?.children.forEach((child, index) => {
       child.visible = Boolean(levelVents[index] && visible(levelVents[index]))
@@ -1078,21 +1077,6 @@ function Markers({
             <meshBasicMaterial color="#ffd76a" transparent opacity={0.76} depthWrite={false} />
           </mesh>
         ))}
-      </group>
-
-      <group ref={emergency} position={[map.emergency.x, map.emergency.y ?? 0, map.emergency.z]}>
-        <mesh position={[0, 0.055, 0]} castShadow>
-          <cylinderGeometry args={[0.31, 0.36, 0.11, 18]} />
-          <meshStandardMaterial color="#5b6575" metalness={0.35} roughness={0.42} />
-        </mesh>
-        <mesh position={[0, 0.15, 0]} castShadow>
-          <cylinderGeometry args={[0.25, 0.28, 0.1, 20]} />
-          <meshStandardMaterial color="#ad2635" emissive="#ff334d" emissiveIntensity={0.75} roughness={0.28} />
-        </mesh>
-        <mesh position={[0, 0.21, 0]} rotation-x={Math.PI / 2}>
-          <torusGeometry args={[0.28, 0.035, 8, 24]} />
-          <meshStandardMaterial color="#e5b85e" metalness={0.55} roughness={0.32} />
-        </mesh>
       </group>
 
       {/* O duto em si é parte do escritório e todo mundo vê, igual no Among:

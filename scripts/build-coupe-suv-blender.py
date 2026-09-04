@@ -128,6 +128,7 @@ def add_loft(
     *,
     ring_segments: int = 32,
     subdivision: int = 2,
+    cap_ends: bool = True,
 ) -> bpy.types.Object:
     vertices: list[tuple[float, float, float]] = []
     faces: list[tuple[int, ...]] = []
@@ -155,9 +156,10 @@ def add_loft(
                 )
             )
 
-    faces.append(tuple(range(ring_segments)))
-    final_ring = (len(sections) - 1) * ring_segments
-    faces.append(tuple(reversed([final_ring + index for index in range(ring_segments)])))
+    if cap_ends:
+        faces.append(tuple(range(ring_segments)))
+        final_ring = (len(sections) - 1) * ring_segments
+        faces.append(tuple(reversed([final_ring + index for index in range(ring_segments)])))
 
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(vertices, [], faces)
@@ -179,15 +181,15 @@ def add_roof_surface(
     paint: bpy.types.Material,
     glass: bpy.types.Material,
 ) -> None:
-    x_values = [-0.73, -0.54, -0.28, 0.0, 0.28, 0.54, 0.73]
-    y_values = [-1.05, -0.78, -0.45, -0.1, 0.25, 0.55, 0.78]
+    x_values = [-0.72, -0.52, -0.27, 0.0, 0.27, 0.52, 0.72]
+    y_values = [-1.18, -0.92, -0.6, -0.2, 0.2, 0.52, 0.72]
     vertices = []
     for y in y_values:
         for x in x_values:
-            rear_drop = max(0.0, (-y - 0.2) / 1.25) * 0.095
-            front_drop = max(0.0, (y - 0.5) / 0.4) * 0.045
-            crown = 0.045 * (1.0 - (x / 0.73) ** 2)
-            vertices.append((x, y, 1.535 + crown - rear_drop - front_drop))
+            rear_drop = max(0.0, (-y - 0.15) / 1.35) * 0.16
+            front_drop = max(0.0, (y - 0.46) / 0.35) * 0.07
+            crown = 0.035 * (1.0 - (x / 0.72) ** 2)
+            vertices.append((x, y, 1.50 + crown - rear_drop - front_drop))
 
     faces = []
     width = len(x_values)
@@ -216,8 +218,8 @@ def add_roof_surface(
     add_beveled_cube(
         collection,
         "Panoramic roof",
-        (0.92, 1.05, 0.018),
-        (0.0, -0.03, 1.595),
+        (0.76, 0.88, 0.014),
+        (0.0, -0.1, 1.543),
         glass,
         bevel=0.035,
         rotation=(math.radians(-2.5), 0.0, 0.0),
@@ -275,6 +277,31 @@ def add_glass_panel(
     return panel
 
 
+def add_surface_panel(
+    collection: bpy.types.Collection,
+    name: str,
+    points: list[tuple[float, float, float]],
+    material: bpy.types.Material,
+    *,
+    thickness: float = 0.018,
+    bevel: float = 0.018,
+) -> bpy.types.Object:
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(points, [], [tuple(range(len(points)))])
+    mesh.update()
+    panel = bpy.data.objects.new(name, mesh)
+    panel.data.materials.append(material)
+    collection.objects.link(panel)
+    solidify = panel.modifiers.new("Panel thickness", "SOLIDIFY")
+    solidify.thickness = thickness
+    solidify.offset = 0.0
+    edge = panel.modifiers.new("Panel edge", "BEVEL")
+    edge.width = bevel
+    edge.segments = 3
+    smooth(panel)
+    return panel
+
+
 def add_wheel(
     collection: bpy.types.Collection,
     side: int,
@@ -284,7 +311,7 @@ def add_wheel(
     brake: bpy.types.Material,
     trim: bpy.types.Material,
 ) -> None:
-    x = side * 1.03
+    x = side * 0.96
     wheel_rotation = (0.0, math.pi / 2, 0.0)
     bpy.ops.mesh.primitive_torus_add(
         align="WORLD",
@@ -292,8 +319,8 @@ def add_wheel(
         minor_segments=14,
         location=(x, y, 0.43),
         rotation=wheel_rotation,
-        major_radius=0.285,
-        minor_radius=0.105,
+        major_radius=0.305,
+        minor_radius=0.088,
     )
     tire_obj = bpy.context.object
     tire_obj.name = "Performance tire"
@@ -303,8 +330,8 @@ def add_wheel(
     move_to_collection(tire_obj, collection)
     smooth(tire_obj)
 
-    outer_x = side * 1.145
-    bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=0.215, depth=0.035, location=(outer_x, y, 0.43), rotation=wheel_rotation)
+    outer_x = side * 1.055
+    bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=0.245, depth=0.035, location=(outer_x, y, 0.43), rotation=wheel_rotation)
     disc = bpy.context.object
     disc.name = "Brake disc"
     disc.data.materials.append(brake)
@@ -317,9 +344,9 @@ def add_wheel(
         align="WORLD",
         major_segments=32,
         minor_segments=10,
-        location=(side * 1.17, y, 0.43),
+        location=(side * 1.075, y, 0.43),
         rotation=wheel_rotation,
-        major_radius=0.175,
+        major_radius=0.205,
         minor_radius=0.028,
     )
     rim_ring = bpy.context.object
@@ -333,14 +360,14 @@ def add_wheel(
         add_beveled_cube(
             collection,
             "Wheel spoke",
-            (0.025, 0.032, 0.29),
-            (side * 1.19, y, 0.43),
+            (0.025, 0.032, 0.35),
+            (side * 1.087, y, 0.43),
             rim,
             bevel=0.009,
             rotation=(angle, 0.0, 0.0),
         )
 
-    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.065, depth=0.055, location=(side * 1.205, y, 0.43), rotation=wheel_rotation)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.065, depth=0.055, location=(side * 1.102, y, 0.43), rotation=wheel_rotation)
     hub = bpy.context.object
     hub.name = "Wheel hub"
     hub.data.materials.append(trim)
@@ -379,17 +406,18 @@ def build_vehicle(collection: bpy.types.Collection) -> None:
         collection,
         "Continuous sculpted body",
         [
-            (-2.25, 0.48, 0.61, 0.2, 3.4),
-            (-2.12, 0.78, 0.63, 0.28, 3.6),
-            (-1.72, 0.94, 0.66, 0.35, 3.8),
-            (-1.2, 1.0, 0.68, 0.39, 4.0),
-            (-0.25, 1.02, 0.69, 0.41, 4.2),
-            (0.55, 1.01, 0.68, 0.4, 4.2),
-            (1.25, 0.99, 0.66, 0.37, 4.0),
-            (1.78, 0.92, 0.64, 0.32, 3.8),
-            (2.05, 0.86, 0.61, 0.28, 3.6),
-            (2.18, 0.76, 0.59, 0.23, 3.5),
-            (2.22, 0.75, 0.59, 0.22, 3.5),
+            (-2.17, 0.76, 0.59, 0.24, 3.5),
+            (-2.15, 0.78, 0.6, 0.25, 3.5),
+            (-2.02, 0.88, 0.62, 0.29, 3.7),
+            (-1.65, 0.96, 0.64, 0.34, 4.0),
+            (-1.0, 1.0, 0.66, 0.37, 4.2),
+            (-0.2, 1.01, 0.67, 0.38, 4.4),
+            (0.62, 1.0, 0.65, 0.36, 4.3),
+            (1.25, 0.97, 0.62, 0.32, 4.1),
+            (1.72, 0.91, 0.59, 0.27, 3.9),
+            (2.04, 0.88, 0.6, 0.27, 3.7),
+            (2.14, 0.84, 0.58, 0.26, 3.5),
+            (2.16, 0.84, 0.58, 0.26, 3.5),
         ],
         paint,
         ring_segments=36,
@@ -400,10 +428,10 @@ def build_vehicle(collection: bpy.types.Collection) -> None:
         collection,
         "Windshield",
         (
-            (-0.7, 1.02, 1.0),
-            (0.7, 1.02, 1.0),
-            (0.62, 0.6, 1.52),
-            (-0.62, 0.6, 1.52),
+            (-0.68, 1.03, 0.99),
+            (0.68, 1.03, 0.99),
+            (0.6, 0.63, 1.48),
+            (-0.6, 0.63, 1.48),
         ),
         glass,
         (0.0, 1.0, 0.0),
@@ -413,25 +441,25 @@ def build_vehicle(collection: bpy.types.Collection) -> None:
         collection,
         "Rear windshield",
         (
-            (0.66, -1.64, 1.0),
-            (-0.66, -1.64, 1.0),
-            (-0.6, -0.72, 1.49),
-            (0.6, -0.72, 1.49),
+            (0.65, -1.62, 0.98),
+            (-0.65, -1.62, 0.98),
+            (-0.58, -0.91, 1.43),
+            (0.58, -0.91, 1.43),
         ),
         glass,
         (0.0, -1.0, 0.0),
         bulge=0.02,
     )
     for side in (-1, 1):
-        x = side * 0.77
+        x = side * 0.785
         add_glass_panel(
             collection,
             "Front side window",
             (
-                (x, 0.06, 1.01),
-                (x, 0.96, 1.01),
-                (x, 0.59, 1.51),
-                (x, 0.06, 1.55),
+                (x, 0.04, 1.01),
+                (x, 0.94, 1.0),
+                (side * 0.64, 0.61, 1.48),
+                (side * 0.72, 0.04, 1.53),
             ),
             glass,
             (side, 0.0, 0.0),
@@ -441,10 +469,10 @@ def build_vehicle(collection: bpy.types.Collection) -> None:
             collection,
             "Rear side window",
             (
-                (x, -1.6, 1.01),
+                (x, -1.48, 1.0),
                 (x, -0.02, 1.01),
-                (x, -0.02, 1.55),
-                (x, -0.72, 1.48),
+                (side * 0.72, -0.02, 1.53),
+                (side * 0.62, -0.86, 1.43),
             ),
             glass,
             (side, 0.0, 0.0),
@@ -452,7 +480,6 @@ def build_vehicle(collection: bpy.types.Collection) -> None:
         )
 
     add_beveled_cube(collection, "Lower floor", (1.82, 3.75, 0.16), (0.0, -0.02, 0.28), trim, bevel=0.075)
-    add_beveled_cube(collection, "Rear deck", (1.58, 0.38, 0.1), (0.0, -1.93, 0.99), paint, bevel=0.045, rotation=(math.radians(-2), 0.0, 0.0))
     add_roof_surface(collection, paint, glass)
 
     for wheel_y in (-1.38, 1.38):
@@ -463,7 +490,7 @@ def build_vehicle(collection: bpy.types.Collection) -> None:
                 angle = index / 12 * math.pi
                 arch_points.append(
                     (
-                        side * 1.015,
+                        side * 0.988,
                         wheel_y + math.cos(angle) * 0.435,
                         0.43 + math.sin(angle) * 0.435,
                     )
@@ -473,35 +500,35 @@ def build_vehicle(collection: bpy.types.Collection) -> None:
                 collection,
                 "Brake caliper",
                 (0.035, 0.09, 0.18),
-                (side * 1.21, wheel_y - 0.1, 0.43),
+                (side * 1.105, wheel_y - 0.1, 0.43),
                 caliper,
                 bevel=0.018,
             )
 
     for side in (-1, 1):
-        x = side * 1.008
+        x = side * 0.99
         add_curve(collection, "Shoulder line", [(x, -1.36, 1.0), (x, -0.15, 1.035), (x, 1.25, 0.99)], paint, 0.025)
         add_curve(collection, "Front door seam", [(x, 0.82, 0.5), (x, 0.75, 1.01)], trim, 0.009)
         add_curve(collection, "Center door seam", [(x, 0.0, 0.47), (x, 0.0, 1.02)], trim, 0.008)
         add_curve(collection, "Rear door seam", [(x, -0.96, 0.51), (x, -0.88, 0.99)], trim, 0.008)
-        add_beveled_cube(collection, "Front door handle", (0.028, 0.24, 0.035), (side * 1.035, 0.4, 0.96), chrome, bevel=0.012)
-        add_beveled_cube(collection, "Rear door handle", (0.028, 0.24, 0.035), (side * 1.035, -0.53, 0.96), chrome, bevel=0.012)
-        add_beveled_cube(collection, "Side skirt", (0.075, 2.12, 0.13), (side * 1.005, -0.05, 0.35), trim, bevel=0.035)
+        add_beveled_cube(collection, "Front door handle", (0.026, 0.22, 0.032), (side * 1.008, 0.4, 0.94), chrome, bevel=0.012)
+        add_beveled_cube(collection, "Rear door handle", (0.026, 0.22, 0.032), (side * 1.008, -0.53, 0.94), chrome, bevel=0.012)
+        add_beveled_cube(collection, "Side skirt", (0.065, 2.45, 0.115), (side * 0.988, -0.08, 0.34), trim, bevel=0.032)
 
         add_curve(collection, "A pillar", [(side * 0.78, 1.03, 1.0), (side * 0.65, 0.59, 1.53)], trim, 0.042)
-        add_curve(collection, "B pillar", [(side * 0.79, 0.03, 1.0), (side * 0.76, 0.03, 1.56)], trim, 0.038)
-        add_curve(collection, "C pillar", [(side * 0.64, -0.71, 1.5), (side * 0.76, -1.61, 1.01)], trim, 0.045)
-        add_curve(collection, "Roof edge", [(side * 0.63, -0.73, 1.51), (side * 0.71, -0.2, 1.58), (side * 0.64, 0.6, 1.54)], paint, 0.032)
+        add_curve(collection, "B pillar", [(side * 0.79, 0.03, 1.0), (side * 0.76, 0.03, 1.53)], trim, 0.024)
+        add_curve(collection, "C pillar", [(side * 0.62, -0.86, 1.43), (side * 0.76, -1.48, 1.0)], trim, 0.034)
+        add_curve(collection, "Roof glass edge", [(side * 0.61, -0.82, 1.43), (side * 0.7, -0.2, 1.53), (side * 0.61, 0.59, 1.47)], trim, 0.017)
 
-        bpy.ops.mesh.primitive_uv_sphere_add(segments=28, ring_count=14, location=(side * 1.08, 0.79, 1.12))
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=28, ring_count=14, location=(side * 1.025, 0.78, 1.1))
         mirror = bpy.context.object
         mirror.name = "Door mirror"
-        mirror.scale = (0.16, 0.22, 0.085)
+        mirror.scale = (0.13, 0.2, 0.065)
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
         mirror.data.materials.append(paint)
         move_to_collection(mirror, collection)
         smooth(mirror)
-        add_beveled_cube(collection, "Mirror support", (0.07, 0.16, 0.07), (side * 0.94, 0.77, 1.08), trim, bevel=0.025)
+        add_beveled_cube(collection, "Mirror support", (0.065, 0.14, 0.065), (side * 0.91, 0.76, 1.06), trim, bevel=0.022)
 
     for x in (-0.39, 0.39):
         for y in (-0.48, 0.46):
@@ -522,44 +549,94 @@ def build_vehicle(collection: bpy.types.Collection) -> None:
     steering.data.materials.append(interior)
     move_to_collection(steering, collection)
 
-    add_beveled_cube(collection, "Front light fascia", (1.48, 0.026, 0.13), (0.0, 2.237, 0.755), trim, bevel=0.045)
-    add_beveled_cube(collection, "Front grille", (1.08, 0.038, 0.22), (0.0, 2.245, 0.57), trim, bevel=0.04)
-    for x in (-0.42, -0.28, -0.14, 0.0, 0.14, 0.28, 0.42):
-        add_beveled_cube(collection, "Grille blade", (0.02, 0.016, 0.15), (x, 2.267, 0.57), chrome, bevel=0.007)
-    add_beveled_cube(collection, "Front splitter", (1.42, 0.12, 0.075), (0.0, 2.17, 0.3), trim, bevel=0.032)
+    for side in (-1, 1):
+        add_curve(collection, "Hood character line", [(side * 0.2, 1.03, 0.99), (side * 0.32, 1.58, 0.88), (side * 0.4, 2.04, 0.75)], paint, 0.012)
+    add_surface_panel(
+        collection,
+        "Integrated trapezoidal grille",
+        [
+            (-0.71, 2.174, 0.74),
+            (0.71, 2.174, 0.74),
+            (0.58, 2.174, 0.48),
+            (-0.58, 2.174, 0.48),
+        ],
+        trim,
+        thickness=0.024,
+        bevel=0.035,
+    )
+    for index, z in enumerate((0.525, 0.575, 0.625, 0.675)):
+        width = 1.08 + index * 0.035
+        add_beveled_cube(collection, "Grille horizontal blade", (width, 0.017, 0.012), (0.0, 2.191, z), chrome, bevel=0.005)
+    for x in (-0.075, -0.025, 0.025, 0.075):
+        add_beveled_cube(collection, "Original grille signature", (0.013, 0.019, 0.12), (x, 2.197, 0.625), chrome, bevel=0.005)
+
+    add_surface_panel(
+        collection,
+        "Lower bumper intake",
+        [
+            (-0.61, 2.142, 0.435),
+            (0.61, 2.142, 0.435),
+            (0.49, 2.142, 0.325),
+            (-0.49, 2.142, 0.325),
+        ],
+        trim,
+        thickness=0.02,
+        bevel=0.025,
+    )
+    add_beveled_cube(collection, "Front satin skid plate", (1.12, 0.05, 0.035), (0.0, 2.13, 0.29), chrome, bevel=0.016)
 
     for side in (-1, 1):
-        add_beveled_cube(
+        inner = side * 0.17
+        outer = side * 0.87
+        add_surface_panel(
             collection,
             "Headlight housing",
-            (0.46, 0.032, 0.095),
-            (side * 0.5, 2.242, 0.76),
+            [
+                (inner, 2.166, 0.825),
+                (outer, 2.112, 0.855),
+                (side * 0.82, 2.14, 0.735),
+                (side * 0.25, 2.174, 0.75),
+            ],
             trim,
-            bevel=0.032,
-            rotation=(0.0, 0.0, side * math.radians(2.5)),
+            thickness=0.025,
+            bevel=0.026,
         )
-        add_beveled_cube(
+        add_curve(
             collection,
-            "Slim LED headlight",
-            (0.34, 0.022, 0.032),
-            (side * 0.5, 2.263, 0.765),
+            "Swept LED daytime signature",
+            [
+                (side * 0.23, 2.195, 0.80),
+                (side * 0.53, 2.176, 0.805),
+                (side * 0.82, 2.145, 0.825),
+            ],
             headlight,
-            bevel=0.014,
-            rotation=(0.0, 0.0, side * math.radians(2.5)),
+            0.018,
         )
-        add_beveled_cube(collection, "Front intake", (0.2, 0.022, 0.13), (side * 0.64, 2.245, 0.47), trim, bevel=0.032)
+        add_surface_panel(
+            collection,
+            "Vertical bumper air curtain",
+            [
+                (side * 0.75, 2.16, 0.64),
+                (side * 0.88, 2.105, 0.62),
+                (side * 0.82, 2.125, 0.39),
+                (side * 0.69, 2.17, 0.41),
+            ],
+            trim,
+            thickness=0.018,
+            bevel=0.022,
+        )
 
-    add_beveled_cube(collection, "Rear light bar", (1.5, 0.045, 0.06), (0.0, -2.205, 0.84), tail_light, bevel=0.025)
-    add_beveled_cube(collection, "Rear diffuser", (1.5, 0.12, 0.19), (0.0, -2.12, 0.34), trim, bevel=0.045)
-    add_beveled_cube(collection, "Rear spoiler lip", (1.46, 0.22, 0.045), (0.0, -1.91, 1.055), trim, bevel=0.02, rotation=(math.radians(-3), 0.0, 0.0))
-    add_beveled_cube(collection, "Rear plate", (0.47, 0.035, 0.13), (0.0, -2.232, 0.57), chrome, bevel=0.025)
-    for x in (-0.55, 0.55):
-        bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.055, depth=0.16, location=(x, -2.17, 0.29), rotation=(math.pi / 2, 0.0, 0.0))
-        exhaust = bpy.context.object
-        exhaust.name = "Exhaust"
-        exhaust.data.materials.append(chrome)
-        move_to_collection(exhaust, collection)
-        smooth(exhaust)
+    add_beveled_cube(collection, "Rear gloss black signature panel", (1.34, 0.022, 0.115), (0.0, -2.174, 0.79), trim, bevel=0.04)
+    for side in (-1, 1):
+        add_curve(
+            collection,
+            "Rear lamp wing",
+            [(side * 0.24, -2.191, 0.805), (side * 0.5, -2.18, 0.81), (side * 0.72, -2.145, 0.79)],
+            tail_light,
+            0.021,
+        )
+    add_beveled_cube(collection, "Rear diffuser", (1.48, 0.065, 0.13), (0.0, -2.10, 0.32), trim, bevel=0.038)
+    add_beveled_cube(collection, "Rear plate", (0.47, 0.025, 0.13), (0.0, -2.177, 0.56), chrome, bevel=0.025)
 
 
 def point_camera(camera: bpy.types.Object, target: tuple[float, float, float]) -> None:
@@ -578,9 +655,9 @@ def add_studio(scene: bpy.types.Scene) -> None:
     floor.data.materials.append(floor_material)
     move_to_collection(floor, studio)
 
-    bpy.ops.object.camera_add(location=(6.0, 6.2, 3.4))
+    bpy.ops.object.camera_add(location=(6.0, 6.5, 2.35))
     camera = bpy.context.object
-    camera.data.lens = 58
+    camera.data.lens = 62
     point_camera(camera, (0.0, 0.05, 0.76))
     move_to_collection(camera, studio)
     scene.camera = camera
@@ -674,7 +751,7 @@ def render_preview(scene: bpy.types.Scene) -> None:
         pass
     bpy.ops.render.render(write_still=True)
 
-    scene.camera.location = (6.0, -6.2, 3.15)
+    scene.camera.location = (6.0, -6.5, 2.3)
     point_camera(scene.camera, (0.0, -0.05, 0.76))
     scene.render.filepath = str(REAR_PREVIEW_PATH)
     bpy.ops.render.render(write_still=True)

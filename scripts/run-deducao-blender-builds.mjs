@@ -15,7 +15,11 @@ if (!executable) {
   throw new Error("Blender não encontrado. Instale o Blender ou defina BLENDER_BIN com o caminho do executável.")
 }
 
-for (const script of ["build-coupe-suv-blender.py", "build-office-kit-blender.py"]) {
+for (const script of [
+  "build-coupe-suv-blender.py",
+  "build-office-kit-blender.py",
+  "build-office-building-blender.py",
+]) {
   const source = path.join("scripts", script)
   const result = spawnSync(executable, ["--background", "--factory-startup", "--python", source], {
     cwd: process.cwd(),

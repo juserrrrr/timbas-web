@@ -32,10 +32,19 @@ A carroceria contínua, o interior, as rodas e os materiais PBR são gerados do 
 
 ## Timbas Office Kit
 
-- Arquivos: 24 modelos GLB modulares de móveis, equipamentos, vegetação e luminárias
+- Arquivos: 26 modelos GLB modulares de móveis, equipamentos, jogos, vegetação e luminárias
 - Modelo e materiais: criação original do projeto Timbas
 - Fonte paramétrica: `scripts/build-office-kit-blender.py`
 - Fonte editável: `assets/models/deducao/timbas-office-kit.blend`
 - Dependências externas: nenhuma
 
-O kit inclui mesas, cadeira, monitor, sofá, balcão, rack, armário, estante, cafeteira, caixa, impressora, quadro, cone, pia, vending machine, cozinha, planta, árvore, poste, banco e luminárias normal e de emergência. As peças são modeladas no Blender e unidas por material somente durante a exportação para o navegador.
+O kit inclui mesas, cadeira, monitor, sofá, balcão, rack, armário, estante, cafeteira, caixa, impressora, quadro, cone, pia, vending machine, cozinha, sinuca, arcade, planta, árvore, poste, banco e luminárias normal e de emergência. As peças são modeladas no Blender e unidas por material somente durante a exportação para o navegador.
+
+## Timbas Office Building
+
+- Arquivo: `timbas-office-building.glb`
+- Arquitetura e composição: criação original do projeto Timbas
+- Fonte paramétrica: `scripts/build-office-building-blender.py`
+- Fonte editável: `assets/models/deducao/timbas-office-building.blend`
+
+O edifício consolida os dois pavimentos, escadas, acabamentos, arte, iluminação e todos os objetos do mapa em uma cena Blender. O modelo Toy Car e seus materiais CC0 permanecem identificados acima; os demais elementos do edifício são originais do projeto.

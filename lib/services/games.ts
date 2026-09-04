@@ -65,6 +65,7 @@ export interface MapRoom {
 export interface MapProp {
   kind: string
   x: number
+  y?: number
   z: number
   rot: number
   level?: number
