@@ -94,6 +94,8 @@ export interface MapStair {
   x: number
   z: number
   rot: number
+  turnX?: number
+  turnZ?: number
   targetLevel: number
   targetX: number
   targetZ: number

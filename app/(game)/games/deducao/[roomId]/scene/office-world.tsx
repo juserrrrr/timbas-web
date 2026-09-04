@@ -91,11 +91,20 @@ function isInsideStairOpening(map: OfficeMap, level: number, x: number, z: numbe
   return map.stairs
     .filter((stair) => stair.targetLevel > stair.level)
     .some((stair) => {
-      const minX = Math.min(stair.x, stair.targetX) - 1.62
-      const maxX = Math.max(stair.x, stair.targetX) + 1.62
-      const minZ = Math.min(stair.z, stair.targetZ) - 0.24
-      const maxZ = Math.max(stair.z, stair.targetZ) + 0.24
-      return x >= minX && x <= maxX && z >= minZ && z <= maxZ
+      const points = [{ x: stair.x, z: stair.z }]
+      if (stair.turnX !== undefined && stair.turnZ !== undefined) {
+        points.push({ x: stair.turnX, z: stair.turnZ })
+      }
+      points.push({ x: stair.targetX, z: stair.targetZ })
+      return points.slice(0, -1).some((from, index) => {
+        const to = points[index + 1]
+        const vertical = Math.abs(to.z - from.z) >= Math.abs(to.x - from.x)
+        const minX = Math.min(from.x, to.x) - (vertical ? 1.62 : 0.24)
+        const maxX = Math.max(from.x, to.x) + (vertical ? 1.62 : 0.24)
+        const minZ = Math.min(from.z, to.z) - (vertical ? 0.24 : 1.62)
+        const maxZ = Math.max(from.z, to.z) + (vertical ? 0.24 : 1.62)
+        return x >= minX && x <= maxX && z >= minZ && z <= maxZ
+      })
     })
 }
 

@@ -22,12 +22,15 @@ Uma segunda falha foi tratar arquitetura e mobiliário como duas cenas. O navega
 - escadas sem vão arquitetônico coerente;
 - objetos apoiados na altura errada, porque o modelo visual e a planta não eram revisados juntos.
 
-As revisões seguintes revelaram mais quatro regras importantes:
+As revisões seguintes revelaram mais sete regras importantes:
 
 - transparência ordenada em dezenas de portas de vidro pode piscar, atravessar outra folha e mudar de ordem conforme a câmera; vidro arquitetônico de gameplay deve usar material sólido, escuro e reflexivo, com o vão de circulação realmente livre;
 - uma luz real transferida entre luminárias denuncia o pool, mas prendê-la à câmera cria uma lanterna invisível que acompanha o jogador e chega a iluminar o vão da escada; toda fonte dinâmica do escritório deve permanecer fixa na coordenada de uma luminária física;
 - reduzir o prédio escalando também carros e móveis deixa tudo com aparência de miniatura; a planta, as portas e as posições podem ser compactadas, enquanto medidas físicas, colisões e alturas dos objetos permanecem reais;
 - um corpo feito no React e escondido por distância não parece parte do mundo e pode sumir antes do report; personagem vivo e corpo agora têm fontes Blender próprias, e só a laje decide em qual pavimento o corpo aparece.
+- recortar a parede por toda a altura para inserir uma porta deixa um vazio sobre o marco; o vão termina na altura da porta e recebe parede contínua até o teto;
+- representar cada lance de uma escada como uma escada independente duplica acessos e quebra altura, colisão e recorte da laje; a escada em L é uma única polilinha com início, curva e desembarque compartilhada pelo servidor, cliente e Blender;
+- construir cada degrau como uma coluna até o térreo transforma o segundo lance em um bloco parecido com uma parede; degraus finos, patamar e longarinas precisam ser revisados também por baixo.
 
 A regra atual é uma fonte Blender para o edifício completo. `timbas-office-building.blend` contém os dois pavimentos, arquitetura, acabamentos, móveis, equipamentos, luminárias, carros e decoração. O navegador carrega um GLB único e conserva apenas interações, luzes fixas sem sombra sob luminárias reais e as luzes vermelhas do blackout.
 
@@ -81,6 +84,8 @@ Para cenários completos, a revisão também precisa confirmar:
 4. Objetos apoiados usam a altura da bancada, mesa ou piso correta.
 5. Salas grandes possuem zonas de uso e circulação, não móveis isolados em um vazio.
 6. Paredes lisas não recebem grade artificial nem textura curta repetida.
+7. Todo portal possui parede ou verga entre o marco e o teto, sem abertura acidental.
+8. Escadas com curva usam a mesma polilinha para degraus, altura contínua, colisão, guarda-corpo, luzes e recorte da laje.
 
 No Three.js, a frente funcional do objeto aponta para `+Z`, a largura usa `X` e a altura usa `Y`. A fonte Blender permanece com `Z` para cima e `+Y` para a frente. O exportador aplica a compensação de 180 graus na cópia otimizada para conservar o padrão do mapa.
 
@@ -142,6 +147,7 @@ Para reconstruir todos os modelos e materiais, execute `npm run assets:deducao`.
 - [ ] O objeto encosta corretamente no chão ou na superfície de apoio.
 - [ ] Escala e orientação conferem com a colisão do servidor.
 - [ ] Não existem peças flutuando ou faces abertas visíveis.
+- [ ] Portas terminam em parede contínua e escadas foram revisadas por cima e por baixo.
 - [ ] Materiais continuam legíveis com e sem iluminação direta.
 - [ ] Emissão não clareia a tela inteira.
 - [ ] O GLB não contém câmera, luz de estúdio ou objeto oculto.

@@ -305,17 +305,37 @@ def split_around_holes(rect: dict, holes: list[dict]) -> list[dict]:
     return pieces
 
 
+def stair_points(stair: dict) -> list[tuple[float, float]]:
+    points = [(stair["x"], stair["z"])]
+    if stair.get("turnX") is not None and stair.get("turnZ") is not None:
+        points.append((stair["turnX"], stair["turnZ"]))
+    points.append((stair["targetX"], stair["targetZ"]))
+    return points
+
+
 def stair_holes(game_map: dict) -> list[dict]:
     result = []
     for stair in game_map["stairs"]:
         if stair["targetLevel"] <= stair["level"]:
             continue
-        result.append({
-            "x": min(stair["x"], stair["targetX"]) - 1.62,
-            "z": min(stair["z"], stair["targetZ"]) - 0.24,
-            "w": abs(stair["targetX"] - stair["x"]) + 3.24,
-            "d": abs(stair["targetZ"] - stair["z"]) + 0.48,
-        })
+        points = stair_points(stair)
+        for start, end in zip(points, points[1:]):
+            dx = end[0] - start[0]
+            dz = end[1] - start[1]
+            if abs(dz) >= abs(dx):
+                result.append({
+                    "x": start[0] - 1.62,
+                    "z": min(start[1], end[1]) - 0.24,
+                    "w": 3.24,
+                    "d": abs(dz) + 0.48,
+                })
+            else:
+                result.append({
+                    "x": min(start[0], end[0]) - 0.24,
+                    "z": start[1] - 1.62,
+                    "w": abs(dx) + 0.48,
+                    "d": 3.24,
+                })
     return result
 
 
@@ -470,7 +490,9 @@ def add_doors(target: bpy.types.Collection, game_map: dict) -> None:
         base = room.get("level", 0) * FLOOR_HEIGHT
         cx, cz, width = entry["x"], entry["z"], door["width"]
         frame = 0.11
+        upper_height = WALL_HEIGHT - DOOR_HEIGHT
         if entry["horizontal"]:
+            box(target, f"Wall above portal {index}", (width, 0.4, upper_height), world_location(cx, cz, base + DOOR_HEIGHT + upper_height / 2), MAT["wall"])
             for x in (cx - width / 2 + frame / 2, cx + width / 2 - frame / 2):
                 box(target, f"Portal post {index}", (frame, 0.47, DOOR_HEIGHT), world_location(x, cz, base + DOOR_HEIGHT / 2), MAT["structure"], bevel=0.025)
             box(target, f"Portal header {index}", (width, 0.47, frame), world_location(cx, cz, base + DOOR_HEIGHT - frame / 2), MAT["structure"], bevel=0.025)
@@ -479,6 +501,7 @@ def add_doors(target: bpy.types.Collection, game_map: dict) -> None:
                 box(target, f"Glass portal sidelight {index}", (0.17, 0.07, 2.3), world_location(edge_x, cz + 0.24, base + 1.15), MAT["glass"], bevel=0.025)
             box(target, f"Door presence sensor {index}", (0.42, 0.08, 0.075), world_location(cx, cz + 0.255, base + DOOR_HEIGHT - 0.2), MAT["cyan"], bevel=0.028)
         else:
+            box(target, f"Wall above portal {index}", (0.4, width, upper_height), world_location(cx, cz, base + DOOR_HEIGHT + upper_height / 2), MAT["wall"])
             for z in (cz - width / 2 + frame / 2, cz + width / 2 - frame / 2):
                 box(target, f"Portal post {index}", (0.47, frame, DOOR_HEIGHT), world_location(cx, z, base + DOOR_HEIGHT / 2), MAT["structure"], bevel=0.025)
             box(target, f"Portal header {index}", (0.47, width, frame), world_location(cx, cz, base + DOOR_HEIGHT - frame / 2), MAT["structure"], bevel=0.025)
@@ -537,46 +560,136 @@ def add_stairs(target: bpy.types.Collection, game_map: dict) -> None:
     for stair in game_map["stairs"]:
         if stair["targetLevel"] <= stair["level"]:
             continue
-        start = Vector((stair["x"], -stair["z"], stair["level"] * FLOOR_HEIGHT))
-        end = Vector((stair["targetX"], -stair["targetZ"], stair["targetLevel"] * FLOOR_HEIGHT))
-        direction = end - start
-        horizontal = Vector((direction.x, direction.y, 0))
-        length = horizontal.length
-        horizontal.normalize()
-        side = Vector((-horizontal.y, horizontal.x, 0))
+        base = stair["level"] * FLOOR_HEIGHT
+        rise = (stair["targetLevel"] - stair["level"]) * FLOOR_HEIGHT
+        points = [Vector((x, -z, base)) for x, z in stair_points(stair)]
+        directions = []
+        lengths = []
+        for start, end in zip(points, points[1:]):
+            direction = end - start
+            direction.z = 0
+            length = direction.length
+            direction.normalize()
+            directions.append(direction)
+            lengths.append(length)
+        total_length = sum(lengths)
+
+        total_steps = 18
+        if len(lengths) == 1:
+            counts = [total_steps]
+        else:
+            first_count = max(4, min(total_steps - 4, round(total_steps * lengths[0] / total_length)))
+            counts = [first_count, total_steps - first_count]
+
         steps: list[tuple[float, float, float, float, float, float]] = []
         nosings: list[tuple[float, float, float, float, float, float]] = []
-        count = 18
-        run = length / count
-        for index in range(count):
-            progress = (index + 0.5) / count
-            center = start + direction * progress
-            top = (index + 1) / count * FLOOR_HEIGHT
-            center.z = start.z + top / 2
-            steps.append((center.x, center.y, center.z, 2.82 if abs(horizontal.y) > 0.5 else run, run if abs(horizontal.y) > 0.5 else 2.82, top))
-            nose = start + direction * ((index + 1) / count)
-            nosings.append((nose.x, nose.y, start.z + top + 0.012, 2.72 if abs(horizontal.y) > 0.5 else 0.025, 0.025 if abs(horizontal.y) > 0.5 else 2.72, 0.018))
+        traversed = 0.0
+        for segment_index, (start, direction, length, count) in enumerate(zip(points, directions, lengths, counts)):
+            run = length / count
+            for index in range(count):
+                center = start + direction * ((index + 0.5) * run)
+                top = rise * (traversed + (index + 1) * run) / total_length
+                tread_thickness = min(0.16, top)
+                center.z = base + top - tread_thickness / 2
+                along_x = abs(direction.x) > abs(direction.y)
+                steps.append((center.x, center.y, center.z, run if along_x else 2.82, 2.82 if along_x else run, tread_thickness))
+                nose = start + direction * ((index + 1) * run)
+                nosings.append((nose.x, nose.y, base + top + 0.012, 0.025 if along_x else 2.72, 2.72 if along_x else 0.025, 0.018))
+            traversed += length
+
+            if segment_index < len(lengths) - 1:
+                landing_top = rise * traversed / total_length
+                turn = points[segment_index + 1]
+                box(target, f"Stair landing {stair['id']}", (2.82, 2.82, 0.2), (turn.x, turn.y, base + landing_top - 0.1), MAT["terrazzo"])
+
         mesh_boxes(target, f"Integrated stair {stair['id']}", steps, MAT["terrazzo"])
         mesh_boxes(target, f"Stair LED nosing {stair['id']}", nosings, MAT["cyan"])
 
-        for sign in (-1, 1):
-            lower = start + side * (1.5 * sign)
-            upper = end + side * (1.5 * sign)
-            lower.z = start.z + 0.88
-            upper.z = end.z + 0.88
-            tube(target, f"Stair handrail {stair['id']}", [tuple(lower), tuple(upper)], 0.045, MAT["structure"])
-            panel_center = (start + end) / 2 + side * (1.48 * sign)
-            panel_rotation = math.atan2(horizontal.y, horizontal.x)
-            panel_length = length
-            box(target, f"Stair glass guard {stair['id']}", (panel_length, 0.045, 0.72), tuple(panel_center + Vector((0, 0, 0.62))), MAT["glass"], rotation=(0, 0, panel_rotation))
+        sides = [Vector((-direction.y, direction.x, 0)) for direction in directions]
+        traversed = 0.0
+        for segment_index, (start, end, side, length) in enumerate(zip(points, points[1:], sides, lengths)):
+            for sign in (-1, 1):
+                lower = start + side * (0.92 * sign)
+                upper = end + side * (0.92 * sign)
+                lower.z = base + max(0.08, rise * traversed / total_length - 0.18)
+                upper.z = base + rise * (traversed + length) / total_length - 0.18
+                tube(target, f"Stair stringer {stair['id']} {segment_index} {sign}", [tuple(lower), tuple(upper)], 0.075, MAT["structure"])
+            traversed += length
 
-        min_x, max_x = min(stair["x"], stair["targetX"]) - 1.62, max(stair["x"], stair["targetX"]) + 1.62
-        min_z, max_z = min(stair["z"], stair["targetZ"]) - 0.24, max(stair["z"], stair["targetZ"]) + 0.24
-        top_height = stair["targetLevel"] * FLOOR_HEIGHT + 0.56
-        if abs(stair["targetZ"] - stair["z"]) >= abs(stair["targetX"] - stair["x"]):
-            for x in (min_x, max_x):
-                box(target, f"Upper glass balustrade {stair['id']}", (0.055, max_z - min_z, 1.12), world_location(x, (min_z + max_z) / 2, top_height), MAT["glass"], bevel=0.02)
-                tube(target, f"Upper rail {stair['id']}", [(x, -min_z, top_height + 0.58), (x, -max_z, top_height + 0.58)], 0.04, MAT["structure"])
+        inside_sign = 0
+        if len(directions) > 1:
+            cross = directions[0].x * directions[1].y - directions[0].y * directions[1].x
+            inside_sign = 1 if cross > 0 else -1
+
+        rail_offset = 1.48
+        turn_clearance = 1.58
+        stair_posts: list[tuple[float, float, float, float, float, float]] = []
+        traversed = 0.0
+        for segment_index, (start, direction, side, length) in enumerate(zip(points, directions, sides, lengths)):
+            for sign in (-1, 1):
+                start_trim = turn_clearance if segment_index > 0 and sign == inside_sign else 0.06
+                end_trim = turn_clearance if segment_index < len(lengths) - 1 and sign == inside_sign else 0.06
+                span = length - start_trim - end_trim
+                if span <= 0.2:
+                    continue
+                rail_points = []
+                for distance in (start_trim, length - end_trim):
+                    point = start + direction * distance + side * (rail_offset * sign)
+                    point.z = base + rise * (traversed + distance) / total_length + 0.9
+                    rail_points.append(tuple(point))
+                tube(target, f"Stair handrail {stair['id']} {segment_index} {sign}", rail_points, 0.045, MAT["structure"])
+
+                post_count = max(2, math.ceil(span / 1.05) + 1)
+                for post_index in range(post_count):
+                    distance = start_trim + span * post_index / (post_count - 1)
+                    point = start + direction * distance + side * (rail_offset * sign)
+                    surface = base + rise * (traversed + distance) / total_length
+                    stair_posts.append((point.x, point.y, surface + 0.46, 0.045, 0.045, 0.84))
+            traversed += length
+        mesh_boxes(target, f"Stair rail posts {stair['id']}", stair_posts, MAT["structure"])
+
+        if len(points) == 3:
+            outer_sign = -inside_sign
+            turn = points[1]
+            turn_height = base + rise * lengths[0] / total_length + 0.9
+            first_outer = turn + sides[0] * (rail_offset * outer_sign)
+            corner = turn + (sides[0] + sides[1]) * (rail_offset * outer_sign)
+            second_outer = turn + sides[1] * (rail_offset * outer_sign)
+            for point in (first_outer, corner, second_outer):
+                point.z = turn_height
+            tube(target, f"Stair outer landing rail {stair['id']}", [tuple(first_outer), tuple(corner), tuple(second_outer)], 0.045, MAT["structure"])
+
+            upper_base = stair["targetLevel"] * FLOOR_HEIGHT
+            opening_offset = 1.62
+            first_guard_start = points[0] + sides[0] * (opening_offset * inside_sign)
+            inner_corner = points[1] - directions[0] * opening_offset + sides[0] * (opening_offset * inside_sign)
+            second_guard_end = points[2] + sides[1] * (opening_offset * inside_sign)
+            guard_height = upper_base + 1.02
+            for point in (first_guard_start, inner_corner, second_guard_end):
+                point.z = guard_height
+            tube(target, f"Upper L balustrade {stair['id']}", [tuple(first_guard_start), tuple(inner_corner), tuple(second_guard_end)], 0.045, MAT["structure"])
+
+            upper_posts: list[tuple[float, float, float, float, float, float]] = []
+            guard_segments = ((first_guard_start, inner_corner), (inner_corner, second_guard_end))
+            for guard_start, guard_end in guard_segments:
+                horizontal = guard_end - guard_start
+                horizontal.z = 0
+                guard_length = horizontal.length
+                horizontal.normalize()
+                post_count = max(2, math.ceil(guard_length / 1.05) + 1)
+                for post_index in range(post_count):
+                    point = guard_start + horizontal * (guard_length * post_index / (post_count - 1))
+                    upper_posts.append((point.x, point.y, upper_base + 0.53, 0.045, 0.045, 0.98))
+
+            start_left = points[0] + sides[0] * opening_offset
+            start_right = points[0] - sides[0] * opening_offset
+            start_left.z = guard_height
+            start_right.z = guard_height
+            tube(target, f"Upper stair end guard {stair['id']}", [tuple(start_left), tuple(start_right)], 0.045, MAT["structure"])
+            for sign in (-1, 0, 1):
+                point = points[0] + sides[0] * (opening_offset * sign)
+                upper_posts.append((point.x, point.y, upper_base + 0.53, 0.045, 0.045, 0.98))
+            mesh_boxes(target, f"Upper balustrade posts {stair['id']}", upper_posts, MAT["structure"])
 
 
 def add_room_details(target: bpy.types.Collection, game_map: dict) -> None:
@@ -719,7 +832,8 @@ def add_modern_decor(target: bpy.types.Collection, game_map: dict) -> None:
             west_x, mapped_z = layout_point(game_map, 28.0, z)
             east_x, _ = layout_point(game_map, 46.0, z)
             box(target, "Atrium vertical LED", (0.055, 0.055, 2.2), world_location(west_x, mapped_z, base + 1.75), MAT["cyan"], bevel=0.02)
-            box(target, "Atrium vertical LED", (0.055, 0.055, 2.2), world_location(east_x, mapped_z, base + 1.75), MAT["amber"], bevel=0.02)
+            if z < 30:
+                box(target, "Atrium vertical LED", (0.055, 0.055, 2.2), world_location(east_x, mapped_z, base + 1.75), MAT["amber"], bevel=0.02)
 
     _, scale_z = layout_scales(game_map)
     for x in (5.5, 9.5, 13.5, 17.5, 21.0):
@@ -911,7 +1025,7 @@ def render_review_views(scene: bpy.types.Scene, game_map: dict) -> None:
         (SERVER_PREVIEW_PATH, (13, -5.2, 1.72), (13, -15.2, 1.3), (13, -10.5, 3.0)),
         (PANTRY_PREVIEW_PATH, (57.2, -32.0, 1.7), (69.2, -21.0, 1.2), (65.0, -24.5, 3.0)),
         (LOUNGE_PREVIEW_PATH, (5.0, -32.5, FLOOR_HEIGHT + 1.72), (15.8, -21.0, FLOOR_HEIGHT + 1.15), (12.0, -26.0, FLOOR_HEIGHT + 3.0)),
-        (STAIR_PREVIEW_PATH, (22.8, -32.5, 1.72), (22.8, -23.5, 2.5), (23.0, -27.0, 4.9)),
+        (STAIR_PREVIEW_PATH, (34.0, -30.5, 1.72), (43.2, -37.2, 2.45), (39.0, -34.0, 5.4)),
         (MEETING_PREVIEW_PATH, (61.0, -15.4, 1.72), (61.0, -9.5, 0.9), (61.0, -11.0, 3.0)),
         (BATHROOM_PREVIEW_PATH, (56.0, -36.2, 1.68), (64.0, -42.0, 1.1), (64.0, -39.0, 3.0)),
     )

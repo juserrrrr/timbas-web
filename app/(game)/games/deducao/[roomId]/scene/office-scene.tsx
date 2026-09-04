@@ -54,26 +54,46 @@ function stairSampleAt(map: OfficeMap, x: number, z: number): StairSample | null
   let closest: (StairSample & { distance: number }) | null = null
 
   for (const stair of map.stairs.filter((candidate) => candidate.targetLevel > candidate.level)) {
-    const dx = stair.targetX - stair.x
-    const dz = stair.targetZ - stair.z
-    const lengthSquared = dx * dx + dz * dz
-    const rawProgress = ((x - stair.x) * dx + (z - stair.z) * dz) / lengthSquared
-    if (rawProgress < -0.08 || rawProgress > 1.08) continue
+    const points = [{ x: stair.x, z: stair.z }]
+    if (stair.turnX !== undefined && stair.turnZ !== undefined) {
+      points.push({ x: stair.turnX, z: stair.turnZ })
+    }
+    points.push({ x: stair.targetX, z: stair.targetZ })
+    const lengths = points.slice(0, -1).map((point, index) =>
+      Math.hypot(points[index + 1].x - point.x, points[index + 1].z - point.z),
+    )
+    const totalLength = lengths.reduce((sum, length) => sum + length, 0)
+    let traversed = 0
 
-    const progress = THREE.MathUtils.clamp(rawProgress, 0, 1)
-    const projectedX = stair.x + dx * progress
-    const projectedZ = stair.z + dz * progress
-    const perpendicularDistance = Math.hypot(x - projectedX, z - projectedZ)
-    if (perpendicularDistance > 1.16) continue
-
-    if (!closest || perpendicularDistance < closest.distance) {
-      closest = {
-        y: stair.level * FLOOR_HEIGHT + progress * FLOOR_HEIGHT,
-        progress,
-        level: stair.level,
-        targetLevel: stair.targetLevel,
-        distance: perpendicularDistance,
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const from = points[index]
+      const to = points[index + 1]
+      const dx = to.x - from.x
+      const dz = to.z - from.z
+      const length = lengths[index]
+      const rawSegmentProgress = ((x - from.x) * dx + (z - from.z) * dz) / (length * length)
+      if (rawSegmentProgress < -0.08 || rawSegmentProgress > 1.08) {
+        traversed += length
+        continue
       }
+
+      const segmentProgress = THREE.MathUtils.clamp(rawSegmentProgress, 0, 1)
+      const projectedX = from.x + dx * segmentProgress
+      const projectedZ = from.z + dz * segmentProgress
+      const perpendicularDistance = Math.hypot(x - projectedX, z - projectedZ)
+      if (perpendicularDistance <= 1.16) {
+        const progress = (traversed + length * segmentProgress) / totalLength
+        if (!closest || perpendicularDistance < closest.distance) {
+          closest = {
+            y: stair.level * FLOOR_HEIGHT + progress * FLOOR_HEIGHT,
+            progress,
+            level: stair.level,
+            targetLevel: stair.targetLevel,
+            distance: perpendicularDistance,
+          }
+        }
+      }
+      traversed += length
     }
   }
 
