@@ -28,7 +28,7 @@ const positionNames: Record<string, string> = {
 
 function positionName(position?: string | null) {
   if (!position) return "-";
-  return positionNames[position] ?? position.toUpperCase();
+  return positionNames[position.toLowerCase()] ?? position.toUpperCase();
 }
 
 export default function EaClubPlayerPage() {
