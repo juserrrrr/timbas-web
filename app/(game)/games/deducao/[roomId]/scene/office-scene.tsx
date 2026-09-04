@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
-import { Html, Sky, useGLTF } from "@react-three/drei"
+import { Html, useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
@@ -14,17 +14,19 @@ import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/game
 import { playGameSound } from "@/lib/games/game-audio"
 import type { OfficeMap } from "@/lib/services/games"
 import { NO_TARGETS, type LookState, type Quality, type Targets } from "../match-types"
+import { isGameControlTarget } from "../keyboard-controls"
 import type { Role, Snapshot } from "../use-deducao-room"
 import { FLOOR_HEIGHT, OfficeBuilding, OfficeWorld } from "./office-world"
+import { NightSky } from "./night-sky"
 import { patchVision, setBlackout, useVisionMaterial } from "./vision-material"
 
-const VOID_COLOR = "#7892b8"
+const VOID_COLOR = "#07111f"
 const MAX_RENDER_FPS = 60
 const CREW_MODEL = "/models/games/deducao/timbas-crew-character.glb"
 const CORPSE_MODEL = "/models/games/deducao/timbas-crew-corpse.glb"
 
-useGLTF.preload(CREW_MODEL)
-useGLTF.preload(CORPSE_MODEL)
+useGLTF.preload(CREW_MODEL, true, false)
+useGLTF.preload(CORPSE_MODEL, true, false)
 
 /// Altura dos olhos. A câmera de primeira pessoa fica aqui, e é por isso que a
 /// parede precisa passar dos 2,5m: a 1,55m dava para ver o escritório inteiro
@@ -40,6 +42,7 @@ const SEND_EVERY_MS = 50
 const TASK_RANGE = 2.2
 const REPORT_RANGE = 2.6
 const VENT_RANGE = 1.8
+const STAIR_LANDING_SIZE = 2.42
 
 interface StairSample {
   y: number
@@ -63,6 +66,22 @@ function stairSampleAt(map: OfficeMap, x: number, z: number): StairSample | null
       Math.hypot(points[index + 1].x - point.x, points[index + 1].z - point.z),
     )
     const totalLength = lengths.reduce((sum, length) => sum + length, 0)
+    const landingHalf = lengths.length === 2
+      ? Math.min(STAIR_LANDING_SIZE / 2, lengths[0] * 0.4, lengths[1] * 0.4)
+      : 0
+    const climbLength = totalLength - landingHalf * 2
+    const landingStart = lengths[0] - landingHalf
+    const landingEnd = lengths[0] + landingHalf
+    const turn = points[1]
+    if (landingHalf > 0 && Math.abs(x - turn.x) <= landingHalf && Math.abs(z - turn.z) <= landingHalf) {
+      const progress = landingStart / climbLength
+      return {
+        y: stair.level * FLOOR_HEIGHT + progress * FLOOR_HEIGHT,
+        progress,
+        level: stair.level,
+        targetLevel: stair.targetLevel,
+      }
+    }
     let traversed = 0
 
     for (let index = 0; index < points.length - 1; index += 1) {
@@ -82,7 +101,15 @@ function stairSampleAt(map: OfficeMap, x: number, z: number): StairSample | null
       const projectedZ = from.z + dz * segmentProgress
       const perpendicularDistance = Math.hypot(x - projectedX, z - projectedZ)
       if (perpendicularDistance <= 1.16) {
-        const progress = (traversed + length * segmentProgress) / totalLength
+        const pathDistance = traversed + length * segmentProgress
+        const climbDistance = landingHalf === 0
+          ? pathDistance
+          : pathDistance <= landingStart
+            ? pathDistance
+            : pathDistance <= landingEnd
+              ? landingStart
+              : pathDistance - landingHalf * 2
+        const progress = THREE.MathUtils.clamp(climbDistance / climbLength, 0, 1)
         if (!closest || perpendicularDistance < closest.distance) {
           closest = {
             y: stair.level * FLOOR_HEIGHT + progress * FLOOR_HEIGHT,
@@ -147,6 +174,7 @@ interface Props {
   allies: string[]
   pendingTasks: string[]
   quality: Quality
+  controlsEnabled: boolean
   inputRef: React.MutableRefObject<InputState>
   lookRef: React.MutableRefObject<LookState>
   poseRef: React.MutableRefObject<{ x: number; z: number; dir: number }>
@@ -170,17 +198,19 @@ export function OfficeScene(props: Props) {
       camera={{ fov: 68, near: 0.05, far: cameraFar, position: [0, EYE_HEIGHT, 0] }}
       style={{ touchAction: "none", overscrollBehavior: "none" }}
       onCreated={({ gl }) => {
-        // O vazio em volta do escritório é um azul de fim de tarde, não preto:
-        // ele precisa ler como ar em volta das lajes, e não como buraco.
+        // O vazio conserva o azul profundo da noite mesmo antes do céu procedural
+        // terminar de compilar.
         gl.setClearColor(VOID_COLOR)
         gl.outputColorSpace = THREE.SRGBColorSpace
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = quality === "alto" ? 0.92 : quality === "medio" ? 0.95 : 0.98
+        gl.toneMappingExposure = quality === "alto" ? 0.84 : quality === "medio" ? 0.87 : 0.9
         gl.shadowMap.type = THREE.PCFSoftShadowMap
       }}
     >
       <CappedFrameLoop />
-      <SceneContent {...props} />
+      <Suspense fallback={null}>
+        <SceneContent {...props} />
+      </Suspense>
     </Canvas>
   )
 }
@@ -244,7 +274,7 @@ function ProceduralEnvironment({ quality, blackout }: { quality: Quality; blacko
   }, [enabled, gl, quality, scene])
 
   useFrame((_, delta) => {
-    const target = blackout ? 0.025 : quality === "alto" ? 0.42 : quality === "medio" ? 0.34 : 0
+    const target = blackout ? 0.025 : quality === "alto" ? 0.18 : quality === "medio" ? 0.14 : 0
     scene.environmentIntensity += (target - scene.environmentIntensity) * Math.min(1, delta * 3.5)
   })
 
@@ -293,6 +323,7 @@ function SceneContent({
   allies,
   pendingTasks,
   quality,
+  controlsEnabled,
   inputRef,
   lookRef,
   poseRef,
@@ -309,7 +340,7 @@ function SceneContent({
   const eyeHeight = useRef(EYE_HEIGHT)
   const jumpHeight = useRef(0)
   const jumpVelocity = useRef(0)
-  const handledJump = useRef(0)
+  const handledJump = useRef(inputRef.current.jumpSerial)
   const climbing = useRef(false)
   const started = useRef(false)
   const lastSent = useRef(0)
@@ -370,16 +401,17 @@ function SceneContent({
   useEffect(() => {
     const canvas = gl.domElement
 
-    if (inMeeting) {
+    if (!controlsEnabled) {
       if (document.pointerLockElement === canvas) document.exitPointerLock()
       return
     }
 
     const pedirTrava = () => {
-      if (document.pointerLockElement !== canvas) void canvas.requestPointerLock()
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+      if (document.pointerLockElement !== canvas) void canvas.requestPointerLock()?.catch(() => {})
     }
     const mover = (event: MouseEvent) => {
-      if (document.pointerLockElement !== canvas) return
+      if (document.pointerLockElement !== canvas || isGameControlTarget(document.activeElement)) return
       lookRef.current.yaw -= event.movementX * 0.0022
       lookRef.current.pitch = THREE.MathUtils.clamp(
         lookRef.current.pitch - event.movementY * 0.0022,
@@ -395,18 +427,19 @@ function SceneContent({
       document.removeEventListener("mousemove", mover)
       if (document.pointerLockElement === canvas) document.exitPointerLock()
     }
-  }, [gl, inMeeting, lookRef])
+  }, [gl, controlsEnabled, lookRef])
 
   // No celular não tem ponteiro para trancar: arrastar o dedo na metade direita
   // da tela vira o olhar, que é onde o polegar já está e onde não tem manche.
   useEffect(() => {
-    if (inMeeting) return
+    if (!controlsEnabled) return
     const canvas = gl.domElement
     let ultimo: { id: number; x: number; y: number } | null = null
 
     const comeca = (event: TouchEvent) => {
       const toque = [...event.changedTouches].find((item) => item.clientX > window.innerWidth / 2)
       if (toque && !ultimo) {
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
         event.preventDefault()
         ultimo = { id: toque.identifier, x: toque.clientX, y: toque.clientY }
       }
@@ -443,7 +476,7 @@ function SceneContent({
       canvas.removeEventListener("touchend", termina)
       canvas.removeEventListener("touchcancel", termina)
     }
-  }, [gl, inMeeting, lookRef])
+  }, [gl, controlsEnabled, lookRef])
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.1)
@@ -469,8 +502,9 @@ function SceneContent({
       visualLevel.current = liveLevel
     }
 
-    const canWalk = snapshot.phase === "jogando" || snapshot.phase === "lobby"
+    const canWalk = controlsEnabled && !isGameControlTarget(document.activeElement)
     const input = inputRef.current
+    if (!canWalk) velocity.current.set(0, 0)
     const hasInput = canWalk && !inVent && (input.x !== 0 || input.z !== 0)
     const targetVelocity = desiredVelocity.current.set(0, 0)
 
@@ -558,7 +592,7 @@ function SceneContent({
     if (input.jumpSerial !== handledJump.current) {
       handledJump.current = input.jumpSerial
       const grounded = Math.abs(jumpHeight.current - supportBeforeJump) <= 0.025 && jumpVelocity.current <= 0
-      if (!inMeeting && !inVent && !onStairs && grounded) jumpVelocity.current = JUMP_SPEED
+      if (canWalk && !inVent && !onStairs && grounded) jumpVelocity.current = JUMP_SPEED
     }
     if (!onStairs && (jumpVelocity.current !== 0 || jumpHeight.current > supportBeforeJump + 0.001)) {
       jumpVelocity.current -= GRAVITY * delta
@@ -585,7 +619,7 @@ function SceneContent({
       jumpHeight.current + 0.08,
     )
     const airborne = jumpVelocity.current !== 0 || jumpHeight.current > support + 0.025
-    const crouching = input.crouch && !inMeeting && !inVent && !onStairs && !airborne
+    const crouching = canWalk && input.crouch && !inVent && !onStairs && !airborne
     const targetEyeHeight = inMeeting ? 1.22 : crouching ? 1.08 : EYE_HEIGHT
     eyeHeight.current += (targetEyeHeight - eyeHeight.current) * (1 - Math.exp(-14 * delta))
 
@@ -639,7 +673,7 @@ function SceneContent({
       sun.current.target.position.set(local.current.x, visualY.current, local.current.y)
       sun.current.target.updateMatrixWorld()
       sun.current.intensity +=
-        ((dark ? (nightVision ? 0.34 : 0.025) : 1.35) - sun.current.intensity) * Math.min(1, delta * 3)
+        ((dark ? (nightVision ? 0.28 : 0.02) : 0.46) - sun.current.intensity) * Math.min(1, delta * 3)
     }
     if (sky.current) {
       const skyTarget = dark
@@ -647,10 +681,10 @@ function SceneContent({
           ? 0.24
           : 0.025
         : quality === "baixo"
-          ? 0.78
+          ? 0.24
           : quality === "alto"
-            ? 0.62
-            : 0.68
+            ? 0.16
+            : 0.19
       sky.current.intensity += (skyTarget - sky.current.intensity) * Math.min(1, delta * 3)
     }
     if (ambient.current) {
@@ -659,10 +693,10 @@ function SceneContent({
           ? 0.15
           : 0.018
         : quality === "baixo"
-          ? 0.42
+          ? 0.16
           : quality === "alto"
-            ? 0.24
-            : 0.29
+            ? 0.1
+            : 0.12
       ambient.current.intensity += (ambientTarget - ambient.current.intensity) * Math.min(1, delta * 3)
     }
     if (flashlight.current && flashlightTarget.current) {
@@ -686,10 +720,10 @@ function SceneContent({
         ? 0.94
         : 0.84
       : quality === "alto"
-        ? 0.92
+        ? 0.84
         : quality === "medio"
-          ? 0.95
-          : 0.98
+          ? 0.87
+          : 0.9
     gl.toneMappingExposure += (exposure - gl.toneMappingExposure) * Math.min(1, delta * 3)
 
     if (onStairs) {
@@ -719,20 +753,13 @@ function SceneContent({
     <>
       <ProceduralEnvironment quality={quality} blackout={blackoutForViewer} />
       {quality === "alto" && <CinematicEffects blackout={blackoutForViewer} />}
-      <Sky
-        distance={420000}
-        sunPosition={[4, 2.5, -6]}
-        turbidity={7.5}
-        rayleigh={1.25}
-        mieCoefficient={0.006}
-        mieDirectionalG={0.82}
-      />
-      <ambientLight ref={ambient} color="#edf4ff" intensity={0.24} />
-      <hemisphereLight ref={sky} args={["#fff6e7", "#66768e", 0.62]} />
+      <NightSky quality={quality} />
+      <ambientLight ref={ambient} color="#91a9d4" intensity={0.1} />
+      <hemisphereLight ref={sky} args={["#738bb8", "#09101b", 0.16]} />
       <directionalLight
         ref={sun}
-        color="#fff0d1"
-        intensity={1.5}
+        color="#9ab5e8"
+        intensity={0.46}
         castShadow={quality !== "baixo"}
         shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-20}
@@ -903,7 +930,7 @@ function Actor({
   const balanco = useRef(0)
   const placed = useRef(false)
 
-  const { scene: crewSource } = useGLTF(CREW_MODEL)
+  const { scene: crewSource } = useGLTF(CREW_MODEL, true, false)
   const crew = useMemo(
     () => cloneCrewScene(crewSource, player.color, blackout, quality !== "baixo"),
     [blackout, crewSource, player.color, quality],
@@ -1041,7 +1068,7 @@ function Corpse({
   floorY: number
 }) {
   const group = useRef<THREE.Group>(null)
-  const { scene: corpseSource } = useGLTF(CORPSE_MODEL)
+  const { scene: corpseSource } = useGLTF(CORPSE_MODEL, true, false)
   const body = useMemo(
     () => cloneCrewScene(corpseSource, corpse.color, blackout, quality !== "baixo"),
     [blackout, corpse.color, corpseSource, quality],

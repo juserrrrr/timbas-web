@@ -86,6 +86,8 @@ Para cenários completos, a revisão também precisa confirmar:
 6. Paredes lisas não recebem grade artificial nem textura curta repetida.
 7. Todo portal possui parede ou verga entre o marco e o teto, sem abertura acidental.
 8. Escadas com curva usam a mesma polilinha para degraus, altura contínua, colisão, guarda-corpo, luzes e recorte da laje.
+9. O patamar é um quadrado plano de 2,42 m de lado. Cliente e servidor reconhecem toda a superfície, inclusive os cantos fora do eixo dos lances.
+10. O recorte da laje inclui o quadrado do patamar no canto da escada, com corrimãos interno e externo contínuos entre os dois lances.
 
 No Three.js, a frente funcional do objeto aponta para `+Z`, a largura usa `X` e a altura usa `Y`. A fonte Blender permanece com `Z` para cima e `+Y` para a frente. O exportador aplica a compensação de 180 graus na cópia otimizada para conservar o padrão do mapa.
 
@@ -103,6 +105,8 @@ Os valores são metas, não uma desculpa para deformar a silhueta.
 
 O orçamento decisivo da cena é a combinação de draw calls, luzes com sombra, pixels processados e objetos visíveis. Polígonos isoladamente não explicam o uso da GPU.
 
+Os GLBs usam compressão Draco. O carregamento usa `useGLTF(path, true, false)`, com Draco ativo e Meshopt desativado para evitar inicializar um decodificador desnecessário.
+
 ## Iluminação
 
 - A peça emissiva deve existir dentro de uma luminária física.
@@ -113,11 +117,17 @@ O orçamento decisivo da cena é a combinação de draw calls, luzes com sombra,
 - No blackout, as luzes normais apagam e as luminárias de emergência do corredor acendem em vermelho.
 - O assassino recebe leitura noturna reduzida no blackout, sem reacender as luminárias normais para os demais jogadores.
 - A qualidade baixa preserva emissão e leitura espacial, mas reduz luzes dinâmicas caras.
+- O `NightSky` procedural mantém o céu azul-escuro, com laranja localizado no horizonte. Sua esfera tem raio de 100 m e as estrelas ficam entre 94 e 98 m, dentro do alcance mínimo de 130 m da câmera.
+- O terraço recebe uma única luz quente fixa sob o LED lateral do pergolado.
 
-## Controles móveis e áudio
+## Controles e áudio
 
+- O HUD mantém ajuda de teclado legível, com teclas destacadas. WASD e setas compartilham os eixos, sem somar duas vezes a mesma direção, e as diagonais são normalizadas.
+- Tarefas, mapa expandido, apresentação do papel e fases sem jogo bloqueiam movimento e ações. Controles HTML focados recebem suas teclas sem interferência do jogo.
+- Perder foco, ocultar a aba ou liberar o ponteiro zera as teclas pressionadas; repetição automática não retoma movimento nem repete ações.
 - O canvas usa `touch-action: none`, e somente os dois controles ativos cancelam seus respectivos gestos.
 - O manche guarda origem e identificador em refs; reinstalar listeners a cada movimento causa saltos e dedos perdidos.
+- Gestos de jogo liberam o foco anterior de botões e seletores. Cancelar o toque, abrir um overlay ou sair da aba limpa o estado do manche.
 - A tela de jogo bloqueia zoom, gesto de pinça e overscroll durante a partida, restaurando o documento ao sair.
 - Voz usa WebRTC ponto a ponto; o Colyseus transporta somente oferta, resposta e ICE, nunca o áudio.
 - No mapa, o volume cai suavemente entre 3 e 15 metros e zera em outro pavimento ou dentro do duto.

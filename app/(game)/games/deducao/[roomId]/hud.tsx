@@ -5,6 +5,7 @@ import { AlertOctagon, Ghost, Hand, LoaderCircle, LogOut, Map as MapIcon, Mic, M
 import { playGameSound, unlockGameAudio } from "@/lib/games/game-audio"
 import type { MapTaskSpot, OfficeMap } from "@/lib/services/games"
 import type { Quality, Targets } from "./match-types"
+import { gameKeyCode, isGameControlTarget } from "./keyboard-controls"
 import type { InputState } from "./scene/office-scene"
 import { Minimap } from "./minimap"
 import type { Notice, Role, Snapshot } from "./use-deducao-room"
@@ -25,7 +26,9 @@ interface Props {
   onOpenTask: (spot: MapTaskSpot) => void
   onLeave: () => void
   inputRef: React.MutableRefObject<InputState>
-  touchEnabled: boolean
+  controlsEnabled: boolean
+  mapOpen: boolean
+  onMapOpenChange: (open: boolean) => void
   voice: VoiceControls
 }
 
@@ -34,6 +37,16 @@ const ROLE_COPY: Record<Role, { title: string; tone: string }> = {
   detetive: { title: "Detetive", tone: "text-sky-300" },
   funcionario: { title: "Funcionário", tone: "text-emerald-300" },
 }
+
+const KEYBOARD_HELP = [
+  { keys: "WASD / ↑↓←→", label: "Mover" },
+  { keys: "Shift", label: "Correr" },
+  { keys: "Espaço", label: "Pular" },
+  { keys: "C / Ctrl", label: "Agachar" },
+  { keys: "E", label: "Tarefa" },
+  { keys: "M", label: "Mapa" },
+  { keys: "Esc", label: "Soltar mouse" },
+]
 
 export function Hud({
   snapshot,
@@ -50,10 +63,11 @@ export function Hud({
   onOpenTask,
   onLeave,
   inputRef,
-  touchEnabled,
+  controlsEnabled,
+  mapOpen,
+  onMapOpenChange,
   voice,
 }: Props) {
-  const [mapaAberto, setMapaAberto] = useState(false)
   const mine = snapshot.players.find((player) => player.id === me)
   const alive = mine?.alive ?? true
   const progress = snapshot.tasksTotal > 0 ? snapshot.tasksDone / snapshot.tasksTotal : 0
@@ -72,18 +86,22 @@ export function Hud({
 
   useEffect(() => {
     const tecla = (event: KeyboardEvent) => {
-      const digitando = document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA"
-      if (digitando || event.repeat) return
-      if (event.code === "KeyM" || event.code === "Tab") {
+      if (event.defaultPrevented || event.repeat || event.isComposing || event.altKey || event.metaKey || event.ctrlKey) return
+      const code = gameKeyCode(event)
+      if (code === "Escape" && mapOpen) {
+        onMapOpenChange(false)
+        return
+      }
+      if (isGameControlTarget(event.target) || isGameControlTarget(document.activeElement)) return
+      if (!controlsEnabled && !mapOpen) return
+      if (code === "KeyM" || code === "Tab") {
         event.preventDefault()
-        setMapaAberto((aberto) => !aberto)
-      } else if (event.code === "Escape") {
-        setMapaAberto(false)
+        onMapOpenChange(!mapOpen)
       }
     }
     window.addEventListener("keydown", tecla)
     return () => window.removeEventListener("keydown", tecla)
-  }, [])
+  }, [controlsEnabled, mapOpen, onMapOpenChange])
 
   return (
     <div className="pointer-events-none absolute inset-0 select-none">
@@ -152,9 +170,14 @@ export function Hud({
           </button>
           <button
             type="button"
-            onClick={() => setMapaAberto((aberto) => !aberto)}
-            className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-amber-400/40 hover:text-amber-300"
-            aria-label="Abrir a planta"
+            onClick={(event) => {
+              event.currentTarget.blur()
+              onMapOpenChange(!mapOpen)
+            }}
+            disabled={!controlsEnabled && !mapOpen}
+            className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-amber-400/40 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label={mapOpen ? "Fechar a planta" : "Abrir a planta"}
+            aria-expanded={mapOpen}
             title="Mapa da partida (M)"
           >
             <MapIcon className="h-4 w-4" />
@@ -216,7 +239,7 @@ export function Hud({
       </div>
 
       {/* Ações. Uma coluna à direita, o polegar do celular alcança tudo. */}
-      <div className="pointer-events-auto absolute bottom-6 right-4 flex flex-col items-end gap-3 sm:right-6">
+      <fieldset disabled={!controlsEnabled} className="pointer-events-auto absolute bottom-6 right-4 flex flex-col items-end gap-3 sm:right-6" aria-label="Ações da partida">
         {role === "assassino" && alive && (
           <>
             <ActionButton
@@ -325,16 +348,19 @@ export function Hud({
             onOpenTask(targets.task)
           }}
         />
-      </div>
+      </fieldset>
 
-      {mapaAberto && (
+      {mapOpen && (
         <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm">
           <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-zinc-950/80 p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-400">{map.name}</p>
               <button
                 type="button"
-                onClick={() => setMapaAberto(false)}
+                onClick={(event) => {
+                  event.currentTarget.blur()
+                  onMapOpenChange(false)
+                }}
                 className="cursor-pointer rounded-lg border border-white/10 p-1.5 text-zinc-400 transition hover:text-white"
                 aria-label="Fechar a planta"
               >
@@ -357,9 +383,16 @@ export function Hud({
       )}
 
       {alive && (
-        <p className="absolute bottom-5 left-1/2 hidden -translate-x-1/2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-400 backdrop-blur-sm md:block">
-          WASD mover · Shift correr · Espaço pular · C agachar · M mapa
-        </p>
+        <div className="absolute bottom-5 left-1/2 hidden w-[min(30rem,calc(100vw-36rem))] -translate-x-1/2 rounded-xl border border-white/15 bg-black/80 px-3 py-2.5 text-zinc-200 backdrop-blur-sm lg:block" aria-label="Controles do teclado">
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-2">
+            {KEYBOARD_HELP.map(({ keys, label }) => (
+              <span key={keys} className="flex items-center gap-1.5 whitespace-nowrap text-[11px]">
+                <kbd className="rounded border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-white">{keys}</kbd>
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="absolute left-1/2 top-20 w-[min(90vw,26rem)] -translate-x-1/2 space-y-2">
@@ -379,7 +412,7 @@ export function Hud({
         ))}
       </div>
 
-      <TouchStick inputRef={inputRef} enabled={touchEnabled} />
+      <TouchStick inputRef={inputRef} enabled={controlsEnabled} />
     </div>
   )
 }
@@ -451,10 +484,10 @@ function TouchStick({ inputRef, enabled }: { inputRef: React.MutableRefObject<In
 
     const onStart = (event: TouchEvent) => {
       if (touchId.current !== null) return
-      const target = event.target instanceof Element ? event.target : null
-      if (target?.closest("button,input,textarea,select,a,[role='button']")) return
+      if (isGameControlTarget(event.target)) return
       const touch = Array.from(event.changedTouches).find((candidate) => candidate.clientX <= window.innerWidth * 0.55)
       if (!touch) return
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
       event.preventDefault()
       unlockGameAudio()
       touchId.current = touch.identifier
@@ -484,16 +517,26 @@ function TouchStick({ inputRef, enabled }: { inputRef: React.MutableRefObject<In
         reset()
       }
     }
+    const onVisibilityChange = () => {
+      if (document.hidden && touchId.current !== null) reset()
+    }
+    const onBlur = () => {
+      if (touchId.current !== null) reset()
+    }
 
     window.addEventListener("touchstart", onStart, { passive: false })
     window.addEventListener("touchmove", onMove, { passive: false })
     window.addEventListener("touchend", onEnd, { passive: false })
     window.addEventListener("touchcancel", onEnd, { passive: false })
+    window.addEventListener("blur", onBlur)
+    document.addEventListener("visibilitychange", onVisibilityChange)
     return () => {
       window.removeEventListener("touchstart", onStart)
       window.removeEventListener("touchmove", onMove)
       window.removeEventListener("touchend", onEnd)
       window.removeEventListener("touchcancel", onEnd)
+      window.removeEventListener("blur", onBlur)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
       reset()
     }
   }, [enabled, inputRef])

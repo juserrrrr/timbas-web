@@ -5,6 +5,7 @@ import { playGameSound, unlockGameAudio } from "@/lib/games/game-audio"
 import type { MapTaskSpot, OfficeMap } from "@/lib/services/games"
 import { EndScreen } from "./end-screen"
 import { Hud } from "./hud"
+import { gameKeyCode, isGameControlTarget } from "./keyboard-controls"
 import { NO_TARGETS, type LookState, type Quality, type Targets } from "./match-types"
 import { Meeting } from "./meeting"
 import { TaskOverlay } from "./minigames"
@@ -26,17 +27,7 @@ interface Props {
   onLeave: () => void
 }
 
-const KEYS: Record<string, [number, number]> = {
-  KeyW: [0, -1],
-  ArrowUp: [0, -1],
-  KeyS: [0, 1],
-  ArrowDown: [0, 1],
-  KeyA: [-1, 0],
-  ArrowLeft: [-1, 0],
-  KeyD: [1, 0],
-  ArrowRight: [1, 0],
-}
-
+const MOVEMENT_KEYS = new Set(["KeyW", "ArrowUp", "KeyS", "ArrowDown", "KeyA", "ArrowLeft", "KeyD", "ArrowRight"])
 const SPRINT_KEYS = new Set(["ShiftLeft", "ShiftRight"])
 const CROUCH_KEYS = new Set(["ControlLeft", "ControlRight", "KeyC"])
 
@@ -83,6 +74,7 @@ export function Match({
   const pressed = useRef(new Set<string>())
   const [targets, setTargets] = useState<Targets>(NO_TARGETS)
   const [openTask, setOpenTask] = useState<MapTaskSpot | null>(null)
+  const [mapOpen, setMapOpen] = useState(false)
   const [quality, setQuality] = useState<Quality>("alto")
   const [intro, setIntro] = useState(false)
   const [sceneReady, setSceneReady] = useState(false)
@@ -90,9 +82,14 @@ export function Match({
   const previousBlackout = useRef(snapshot.blackout)
   const previousPhase = useRef(snapshot.phase)
   const previousAlive = useRef(snapshot.players.find((player) => player.id === me)?.alive ?? true)
-  const actions = useRef({ snapshot, targets, role, openTask, onSend, map, intro })
-  actions.current = { snapshot, targets, role, openTask, onSend, map, intro }
+  const controlsEnabled = sceneReady && snapshot.phase === "jogando" && !openTask && !intro && !mapOpen
+  const actions = useRef({ snapshot, targets, role, onSend, controlsEnabled })
+  actions.current = { snapshot, targets, role, onSend, controlsEnabled }
   const markSceneReady = useCallback(() => setSceneReady(true), [])
+  const resetInput = useCallback(() => {
+    pressed.current.clear()
+    inputRef.current = { x: 0, z: 0, sprint: false, crouch: false, jumpSerial: inputRef.current.jumpSerial }
+  }, [])
   const voice = useProximityVoice({ roomRef, me, snapshot, poseRef })
 
   useEffect(() => {
@@ -105,6 +102,8 @@ export function Match({
   }, [])
 
   const chooseQuality = (next: Quality) => {
+    if (next === quality) return
+    resetInput()
     setTargets(NO_TARGETS)
     setSceneReady(false)
     setQuality(next)
@@ -141,10 +140,9 @@ export function Match({
       setIntro(false)
       return
     }
-    pressed.current.clear()
-    inputRef.current = { x: 0, z: 0, sprint: false, crouch: false, jumpSerial: inputRef.current.jumpSerial }
+    resetInput()
     setIntro(true)
-  }, [snapshot.phase, role])
+  }, [snapshot.phase, role, resetInput])
 
   useEffect(() => {
     if (!sceneReady || snapshot.phase !== "jogando" || !role) return
@@ -155,18 +153,18 @@ export function Match({
   useEffect(() => setDoneTasks([]), [myTasks])
 
   useEffect(() => {
+    if (!controlsEnabled) resetInput()
+  }, [controlsEnabled, resetInput])
+
+  useEffect(() => {
     const apply = () => {
-      let x = 0
-      let z = 0
-      pressed.current.forEach((code) => {
-        const move = KEYS[code]
-        if (!move) return
-        x += move[0]
-        z += move[1]
-      })
+      const keys = pressed.current
+      const x = Number(keys.has("KeyD") || keys.has("ArrowRight")) - Number(keys.has("KeyA") || keys.has("ArrowLeft"))
+      const z = Number(keys.has("KeyS") || keys.has("ArrowDown")) - Number(keys.has("KeyW") || keys.has("ArrowUp"))
+      const length = Math.max(1, Math.hypot(x, z))
       inputRef.current = {
-        x,
-        z,
+        x: x / length,
+        z: z / length,
         sprint: pressed.current.has("ShiftLeft") || pressed.current.has("ShiftRight"),
         crouch: pressed.current.has("ControlLeft") || pressed.current.has("ControlRight") || pressed.current.has("KeyC"),
         jumpSerial: inputRef.current.jumpSerial,
@@ -174,41 +172,46 @@ export function Match({
     }
 
     const down = (event: KeyboardEvent) => {
-      const typing = document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA"
-      if (typing) return
+      if (event.defaultPrevented || event.isComposing || event.altKey || event.metaKey) return
+      if (isGameControlTarget(event.target) || isGameControlTarget(document.activeElement)) {
+        resetInput()
+        return
+      }
+      const current = actions.current
+      if (!current.controlsEnabled) return
+      const code = gameKeyCode(event)
       unlockGameAudio()
 
-      if (KEYS[event.code] || SPRINT_KEYS.has(event.code) || CROUCH_KEYS.has(event.code)) {
+      if (MOVEMENT_KEYS.has(code) || SPRINT_KEYS.has(code) || CROUCH_KEYS.has(code)) {
         event.preventDefault()
-        if (actions.current.intro) return
-        pressed.current.add(event.code)
+        if (event.repeat) return
+        pressed.current.add(code)
         apply()
         return
       }
 
-      if (event.code === "Space") {
+      if (code === "Space") {
         event.preventDefault()
-        if (actions.current.intro || actions.current.openTask || event.repeat) return
+        if (event.repeat) return
         inputRef.current = { ...inputRef.current, jumpSerial: inputRef.current.jumpSerial + 1 }
         return
       }
 
       if (event.repeat) return
-      const current = actions.current
       const mine = current.snapshot.players.find((player) => player.id === me)
       const alive = mine?.alive ?? false
-      if (current.snapshot.phase !== "jogando" || current.openTask) return
 
-      if (event.code === "KeyE" && current.targets.task) {
+      if (code === "KeyE" && current.targets.task) {
         event.preventDefault()
+        resetInput()
         playGameSound("action")
         current.onSend("task:begin", { spotId: current.targets.task.id })
         setOpenTask(current.targets.task)
-      } else if (event.code === "KeyQ" && current.role === "assassino" && alive && current.targets.kill) {
+      } else if (code === "KeyQ" && current.role === "assassino" && alive && current.targets.kill) {
         event.preventDefault()
         playGameSound("kill")
         current.onSend("kill", { targetId: current.targets.kill.id })
-      } else if (event.code === "KeyV" && current.role === "assassino" && alive) {
+      } else if (code === "KeyV" && current.role === "assassino" && alive) {
         const ventId = mine?.inVent ? "" : current.targets.vent?.id
         if (ventId !== undefined) {
           event.preventDefault()
@@ -222,52 +225,65 @@ export function Match({
         mine?.inVent &&
         current.role === "assassino" &&
         alive &&
-        (event.code === "Digit1" || event.code === "Digit2")
+        (code === "Digit1" || code === "Digit2")
       ) {
-        const destino = current.targets.vent?.links[event.code === "Digit1" ? 0 : 1]
+        const destino = current.targets.vent?.links[code === "Digit1" ? 0 : 1]
         if (destino) {
           event.preventDefault()
           playGameSound("vent")
           current.onSend("vent", { ventId: destino })
         }
-      } else if (event.code === "KeyF" && current.role === "assassino" && alive) {
+      } else if (code === "KeyF" && current.role === "assassino" && alive) {
         event.preventDefault()
         playGameSound("action")
         current.onSend("sabotage")
-      } else if (event.code === "KeyR" && alive && current.targets.corpse) {
+      } else if (code === "KeyR" && alive && current.targets.corpse) {
         event.preventDefault()
         playGameSound("action")
         current.onSend("report", { corpseId: current.targets.corpse.id })
-      } else if (event.code === "KeyR" && alive && current.targets.emergency && (mine?.emergenciesLeft ?? 0) > 0) {
+      } else if (code === "KeyR" && alive && current.targets.emergency && (mine?.emergenciesLeft ?? 0) > 0) {
         event.preventDefault()
         playGameSound("action")
         current.onSend("emergency")
       }
     }
     const up = (event: KeyboardEvent) => {
-      pressed.current.delete(event.code)
-      apply()
+      if (pressed.current.delete(gameKeyCode(event))) apply()
     }
-    // Trocar de aba com a tecla apertada deixava o boneco andando sozinho.
-    const blur = () => {
-      pressed.current.clear()
-      apply()
+    const visibility = () => {
+      if (document.hidden) resetInput()
+    }
+    const focus = (event: FocusEvent) => {
+      if (isGameControlTarget(event.target)) resetInput()
+    }
+    const pointerLock = () => {
+      if (!document.pointerLockElement) resetInput()
     }
 
     window.addEventListener("keydown", down)
     window.addEventListener("keyup", up)
-    window.addEventListener("blur", blur)
+    window.addEventListener("blur", resetInput)
+    document.addEventListener("visibilitychange", visibility)
+    document.addEventListener("focusin", focus)
+    document.addEventListener("pointerlockchange", pointerLock)
     return () => {
       window.removeEventListener("keydown", down)
       window.removeEventListener("keyup", up)
-      window.removeEventListener("blur", blur)
+      window.removeEventListener("blur", resetInput)
+      document.removeEventListener("visibilitychange", visibility)
+      document.removeEventListener("focusin", focus)
+      document.removeEventListener("pointerlockchange", pointerLock)
+      resetInput()
     }
-  }, [me])
+  }, [me, resetInput])
 
   // A tarefa aberta fecha sozinha quando a reunião começa: ninguém termina o
   // cabeamento no meio de uma discussão.
   useEffect(() => {
-    if (snapshot.phase !== "jogando") setOpenTask(null)
+    if (snapshot.phase !== "jogando") {
+      setOpenTask(null)
+      setMapOpen(false)
+    }
   }, [snapshot.phase])
 
   // O servidor sabe quais tarefas já foram, mas não manda a lista de volta para
@@ -290,6 +306,7 @@ export function Match({
         pendingTasks={pendingTasks}
         quality={quality}
         inputRef={inputRef}
+        controlsEnabled={controlsEnabled}
         lookRef={lookRef}
         poseRef={poseRef}
         onTargets={setTargets}
@@ -309,12 +326,16 @@ export function Match({
         poseRef={poseRef}
         onSend={onSend}
         onOpenTask={(spot) => {
+          if (!controlsEnabled) return
+          resetInput()
           onSend("task:begin", { spotId: spot.id })
           setOpenTask(spot)
         }}
         onLeave={onLeave}
         inputRef={inputRef}
-        touchEnabled={snapshot.phase === "jogando" && !openTask && !intro}
+        controlsEnabled={controlsEnabled}
+        mapOpen={mapOpen}
+        onMapOpenChange={setMapOpen}
         voice={voice}
       />
 

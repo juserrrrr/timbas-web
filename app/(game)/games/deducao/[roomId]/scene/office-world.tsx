@@ -10,6 +10,8 @@ import { patchVision } from "./vision-material"
 export const FLOOR_HEIGHT = 4.2
 const WALL_HEIGHT = 4.02
 const BUILDING_MODEL = "/models/games/deducao/timbas-office-building.glb"
+const STAIR_OPENING_HALF_WIDTH = 1.35
+const STAIR_OPENING_END_PADDING = 0.12
 
 interface Placement {
   x: number
@@ -44,8 +46,8 @@ interface DetailedModelConfig {
 
 const EMERGENCY_LIGHT_MODEL = { path: "/models/games/deducao/emergency-light.glb" } as const
 
-useGLTF.preload(BUILDING_MODEL)
-useGLTF.preload(EMERGENCY_LIGHT_MODEL.path)
+useGLTF.preload(BUILDING_MODEL, true, false)
+useGLTF.preload(EMERGENCY_LIGHT_MODEL.path, true, false)
 
 function cloneMaterial(source: THREE.Material, blackout: boolean) {
   const material = source.clone()
@@ -57,7 +59,7 @@ function cloneMaterial(source: THREE.Material, blackout: boolean) {
 }
 
 export function OfficeBuilding({ blackout, quality }: { blackout: boolean; quality: Quality }) {
-  const { scene } = useGLTF(BUILDING_MODEL)
+  const { scene } = useGLTF(BUILDING_MODEL, true, false)
   const building = useMemo(() => {
     const clone = scene.clone(true)
     clone.traverse((child) => {
@@ -96,13 +98,16 @@ function isInsideStairOpening(map: OfficeMap, level: number, x: number, z: numbe
         points.push({ x: stair.turnX, z: stair.turnZ })
       }
       points.push({ x: stair.targetX, z: stair.targetZ })
+      if (points.slice(1, -1).some((turn) =>
+        Math.abs(x - turn.x) <= STAIR_OPENING_HALF_WIDTH && Math.abs(z - turn.z) <= STAIR_OPENING_HALF_WIDTH,
+      )) return true
       return points.slice(0, -1).some((from, index) => {
         const to = points[index + 1]
         const vertical = Math.abs(to.z - from.z) >= Math.abs(to.x - from.x)
-        const minX = Math.min(from.x, to.x) - (vertical ? 1.62 : 0.24)
-        const maxX = Math.max(from.x, to.x) + (vertical ? 1.62 : 0.24)
-        const minZ = Math.min(from.z, to.z) - (vertical ? 0.24 : 1.62)
-        const maxZ = Math.max(from.z, to.z) + (vertical ? 0.24 : 1.62)
+        const minX = Math.min(from.x, to.x) - (vertical ? STAIR_OPENING_HALF_WIDTH : STAIR_OPENING_END_PADDING)
+        const maxX = Math.max(from.x, to.x) + (vertical ? STAIR_OPENING_HALF_WIDTH : STAIR_OPENING_END_PADDING)
+        const minZ = Math.min(from.z, to.z) - (vertical ? STAIR_OPENING_END_PADDING : STAIR_OPENING_HALF_WIDTH)
+        const maxZ = Math.max(from.z, to.z) + (vertical ? STAIR_OPENING_END_PADDING : STAIR_OPENING_HALF_WIDTH)
         return x >= minX && x <= maxX && z >= minZ && z <= maxZ
       })
     })
@@ -231,8 +236,21 @@ export function OfficeWorld({
   const ceilingFixtures = useMemo(() => ceilingFixturePlacements(map, level), [level, map])
   const emergencyFixtures = useMemo(() => emergencyPlacements(map, level), [level, map])
   const normalLights = useMemo(
-    () => normalLightSources(ceilingFixtures, quality),
-    [ceilingFixtures, quality],
+    () => [
+      ...normalLightSources(ceilingFixtures, quality),
+      ...map.rooms
+        .filter((room) => room.kind === "terraco" && (room.level ?? 0) === level)
+        .map((room) => ({
+          // Centro da fita de LED na viga lateral do pergolado Blender.
+          x: room.rect.x + room.rect.w * 0.140625 + 0.085,
+          y: 2.49,
+          z: room.rect.z + room.rect.d * (10 / 19),
+          color: "#ffc18a",
+          intensity: quality === "alto" ? 30 : quality === "medio" ? 26 : 22,
+          distance: 12,
+        })),
+    ],
+    [ceilingFixtures, quality, map.rooms, level],
   )
   const emergencyLights = useMemo<RoomLightSource[]>(
     () => [
@@ -287,7 +305,7 @@ function DetailedPropKind({
   emissiveScale?: number
   shadows?: boolean
 }) {
-  const { scene } = useGLTF(model.path)
+  const { scene } = useGLTF(model.path, true, false)
   const parts = useMemo(() => {
     scene.updateMatrixWorld(true)
     const meshes: THREE.Mesh[] = []
