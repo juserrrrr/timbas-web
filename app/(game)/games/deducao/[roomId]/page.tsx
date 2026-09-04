@@ -107,31 +107,34 @@ export default function DeducaoRoomPage() {
     )
   }
 
-  if (room.snapshot.phase === "lobby") {
-    return (
-      <GameScreen>
-        <div className="h-full overflow-hidden">
-          <Lobby snapshot={room.snapshot} me={room.me} minPlayers={minPlayers} onSend={room.send} onLeave={leave} />
-        </div>
-      </GameScreen>
-    )
-  }
-
   return (
     <GameScreen>
-      <Match
-        map={map}
-        snapshot={room.snapshot}
-        roomRef={room.roomRef}
-        me={room.me}
-        role={room.role}
-        allies={room.allies}
-        myTasks={room.myTasks}
-        finalRoles={room.finalRoles}
-        notices={room.notices}
-        onSend={room.send}
-        onLeave={leave}
-      />
+      <div className="relative h-full overflow-hidden">
+        <Match
+          map={map}
+          snapshot={room.snapshot}
+          roomRef={room.roomRef}
+          me={room.me}
+          role={room.role}
+          allies={room.allies}
+          myTasks={room.myTasks}
+          finalRoles={room.finalRoles}
+          notices={room.notices}
+          onSend={room.send}
+          onLeave={leave}
+        />
+        {room.snapshot.phase === "lobby" && (
+          <div className="absolute inset-0 z-[70] h-full overflow-hidden">
+            <Lobby
+              snapshot={room.snapshot}
+              me={room.me}
+              minPlayers={minPlayers}
+              onSend={room.send}
+              onLeave={leave}
+            />
+          </div>
+        )}
+      </div>
     </GameScreen>
   )
 }

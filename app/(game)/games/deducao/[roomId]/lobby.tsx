@@ -29,7 +29,7 @@ const RULES: { key: string; label: string; hint: string; min: number; max: numbe
   {
     key: "visionRange",
     label: "Campo de visão",
-    hint: "Distância máxima para enxergar outros jogadores",
+    hint: "Alcance para interagir e identificar elementos próximos",
     min: 7,
     max: 15,
     step: 1,

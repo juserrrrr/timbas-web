@@ -671,16 +671,31 @@ const FLOOR_ASSET_NAMES: Record<FloorFinish, string> = {
   asphalt: "asphalt-road-v1",
 }
 
+interface DetailedModelConfig {
+  path: string
+  fit?: { width: number; depth: number }
+  skipNodes?: readonly string[]
+}
+
 const DETAILED_MODELS = {
-  desk: "/models/games/deducao/desk.glb",
-  chair: "/models/games/deducao/office-chair.glb",
-  sofa: "/models/games/deducao/glam-velvet-sofa.glb",
-  meetingTable: "/models/games/deducao/meeting-table.glb",
-} as const
+  desk: { path: "/models/games/deducao/desk.glb" },
+  chair: { path: "/models/games/deducao/office-chair.glb" },
+  monitor: { path: "/models/games/deducao/computer.glb" },
+  sofa: {
+    path: "/models/games/deducao/glam-velvet-sofa.glb",
+    fit: { width: 2.2, depth: 1.03 },
+  },
+  meetingTable: { path: "/models/games/deducao/meeting-table.glb" },
+  car: {
+    path: "/models/games/deducao/toy-car.glb",
+    fit: { width: 2, depth: 4.3 },
+    skipNodes: ["Fabric"],
+  },
+} as const satisfies Record<string, DetailedModelConfig>
 
 type DetailedModelKind = keyof typeof DETAILED_MODELS
 
-Object.values(DETAILED_MODELS).forEach((path) => useGLTF.preload(path))
+Object.values(DETAILED_MODELS).forEach(({ path }) => useGLTF.preload(path))
 Object.values(FLOOR_TEXTURE_PATHS).forEach((path) => useTexture.preload(path))
 Object.values(FLOOR_ASSET_NAMES).forEach((name) => {
   useTexture.preload(`/images/games/deducao/textures/${name}-normal.webp`)
@@ -1747,12 +1762,12 @@ export function OfficeWorld({
           />
         ))}
       {propGroups.map((group) => {
-        const modelPath = DETAILED_MODELS[group.kind as DetailedModelKind]
-        return quality !== "baixo" && modelPath && (!generatedOutdoor || map.props.length < 70) ? (
+        const model = DETAILED_MODELS[group.kind as DetailedModelKind]
+        return quality !== "baixo" && model && (!generatedOutdoor || map.props.length < 70) ? (
           <DetailedPropKind
             key={group.kind}
             kind={group.kind}
-            path={modelPath}
+            model={model}
             transforms={group.transforms}
             upholstery={materialTextures.upholstery}
             upholsteryNormal={materialTextures.upholsteryNormal}
@@ -1775,74 +1790,128 @@ export function OfficeWorld({
 
 function DetailedPropKind({
   kind,
-  path,
+  model,
   transforms,
   upholstery,
   upholsteryNormal,
   upholsteryRoughness,
 }: {
   kind: string
-  path: string
+  model: DetailedModelConfig
   transforms: Placement[]
   upholstery: THREE.Texture
   upholsteryNormal: THREE.Texture
   upholsteryRoughness: THREE.Texture
 }) {
-  const { scene } = useGLTF(path)
-  const prepared = useMemo(() => {
-    const model = scene.clone(true)
-    model.traverse((child) => {
-      if (child instanceof THREE.Light) {
-        child.visible = false
-        return
-      }
-      if (!(child instanceof THREE.Mesh)) return
-      child.castShadow = true
-      child.receiveShadow = true
-      const source = Array.isArray(child.material) ? child.material : [child.material]
-      const materials = source.map((entry) => {
-        const next = entry.clone() as THREE.MeshStandardMaterial
-        next.envMapIntensity = 1.15
-        if (entry.name === "fabric") {
-          next.color.set("#ffffff")
-          next.map = upholstery
-          next.normalMap = upholsteryNormal
-          next.normalScale.setScalar(0.42)
-          next.roughnessMap = upholsteryRoughness
-          next.roughness = 1
-        }
-        return patchVision(next)
-      })
-      child.material = Array.isArray(child.material) ? materials : materials[0]
-    })
-    return model
-  }, [scene, upholstery, upholsteryNormal, upholsteryRoughness])
+  const { scene } = useGLTF(model.path)
+  const parts = useMemo(() => {
+    scene.updateMatrixWorld(true)
+    const meshes: THREE.Mesh[] = []
+    const bounds = new THREE.Box3()
 
-  const objects = useMemo(
-    () =>
-      transforms.map((item, index) => {
-        const object = prepared.clone(true)
-        object.name = `${kind}-${index}`
-        object.position.set(item.x, item.y ?? 0, item.z)
-        object.rotation.set(0, item.rot, 0)
-        object.scale.set(item.sx ?? 1, item.sy ?? 1, item.sz ?? 1)
-        return object
-      }),
-    [kind, prepared, transforms],
-  )
+    scene.traverse((child) => {
+      if (!(child instanceof THREE.Mesh) || model.skipNodes?.includes(child.name)) return
+      child.geometry.computeBoundingBox()
+      if (child.geometry.boundingBox) bounds.union(child.geometry.boundingBox.clone().applyMatrix4(child.matrixWorld))
+      meshes.push(child)
+    })
+
+    const normalizer = new THREE.Matrix4()
+    if (model.fit && !bounds.isEmpty()) {
+      const originalSize = bounds.getSize(new THREE.Vector3())
+      const sourceLongOnX = originalSize.x > originalSize.z
+      const targetLongOnZ = model.fit.depth > model.fit.width
+      const rotation = new THREE.Matrix4().makeRotationY(sourceLongOnX === targetLongOnZ ? Math.PI / 2 : 0)
+      const fittedBounds = bounds.clone().applyMatrix4(rotation)
+      const fittedSize = fittedBounds.getSize(new THREE.Vector3())
+      const scale = Math.min(model.fit.width / fittedSize.x, model.fit.depth / fittedSize.z)
+      const scaling = new THREE.Matrix4().makeScale(scale, scale, scale)
+      fittedBounds.applyMatrix4(scaling)
+      const center = fittedBounds.getCenter(new THREE.Vector3())
+      const translation = new THREE.Matrix4().makeTranslation(-center.x, -fittedBounds.min.y, -center.z)
+      normalizer.copy(translation).multiply(scaling).multiply(rotation)
+    }
+
+    return meshes.flatMap((mesh, index) => {
+      const source = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      if (source.length !== 1) return []
+      const entry = source[0]
+      const material = entry.clone() as THREE.MeshStandardMaterial
+      material.envMapIntensity = 1.15
+      if (entry.name === "fabric") {
+        material.color.set("#ffffff")
+        material.map = upholstery
+        material.normalMap = upholsteryNormal
+        material.normalScale.setScalar(0.42)
+        material.roughnessMap = upholsteryRoughness
+        material.roughness = 1
+      }
+      return [{
+        key: `${kind}-${index}-${mesh.name}`,
+        geometry: mesh.geometry,
+        material: patchVision(material),
+        matrix: normalizer.clone().multiply(mesh.matrixWorld),
+      }]
+    })
+  }, [kind, model, scene, upholstery, upholsteryNormal, upholsteryRoughness])
 
   useEffect(
     () => () => {
-      prepared.traverse((child) => {
-        if (!(child instanceof THREE.Mesh)) return
-        const materials = Array.isArray(child.material) ? child.material : [child.material]
-        materials.forEach((material) => material.dispose())
-      })
+      parts.forEach((part) => part.material.dispose())
     },
-    [prepared],
+    [parts],
   )
 
-  return <>{objects.map((object) => <primitive key={object.name} object={object} />)}</>
+  return (
+    <>
+      {parts.map((part) => (
+        <DetailedPartInstances key={part.key} part={part} transforms={transforms} />
+      ))}
+    </>
+  )
+}
+
+function DetailedPartInstances({
+  part,
+  transforms,
+}: {
+  part: {
+    geometry: THREE.BufferGeometry
+    material: THREE.Material
+    matrix: THREE.Matrix4
+  }
+  transforms: Placement[]
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null)
+
+  useLayoutEffect(() => {
+    const mesh = ref.current
+    if (!mesh) return
+    const placement = new THREE.Object3D()
+    const matrix = new THREE.Matrix4()
+    transforms.forEach((item, index) => {
+      placement.position.set(item.x, item.y ?? 0, item.z)
+      placement.rotation.set(0, item.rot, 0)
+      placement.scale.set(item.sx ?? 1, item.sy ?? 1, item.sz ?? 1)
+      placement.updateMatrix()
+      matrix.multiplyMatrices(placement.matrix, part.matrix)
+      mesh.setMatrixAt(index, matrix)
+    })
+    mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage)
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.computeBoundingBox()
+    mesh.computeBoundingSphere()
+  }, [part.matrix, transforms])
+
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[part.geometry, part.material, transforms.length]}
+      castShadow
+      receiveShadow
+      dispose={null}
+    />
+  )
 }
 
 function PropKind({

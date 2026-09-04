@@ -3,6 +3,7 @@ import path from "node:path"
 import * as THREE from "three"
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js"
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js"
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 
 globalThis.FileReader = class FileReader {
   result = null
@@ -117,6 +118,17 @@ function chair() {
   return group
 }
 
+function computer() {
+  const group = new THREE.Group()
+  rounded(group, [0.7, 0.46, 0.065], [0, 1.08, 0], finishes.plastic, 0.045)
+  rounded(group, [0.61, 0.355, 0.014], [0, 1.08, 0.041], finishes.screen, 0.018)
+  rounded(group, [0.16, 0.19, 0.055], [0, 0.81, 0], finishes.lightMetal, 0.022)
+  rounded(group, [0.42, 0.035, 0.25], [0, 0.72, 0.08], finishes.lightMetal, 0.025)
+  rounded(group, [0.1, 0.022, 0.014], [0, 0.875, 0.043], finishes.darkMetal, 0.006)
+  cylinder(group, 0.018, 0.018, 0.012, [0, 1.285, 0.043], finishes.screen, [Math.PI / 2, 0, 0], 12)
+  return group
+}
+
 function meetingTable() {
   const group = new THREE.Group()
   rounded(group, [6.65, 0.16, 2.5], [0, 0.78, 0], finishes.wood, 0.12)
@@ -135,7 +147,35 @@ function meetingTable() {
 
 async function exportModel(name, build) {
   const scene = new THREE.Scene()
-  const model = build()
+  const source = build()
+  source.updateMatrixWorld(true)
+  const buckets = new Map()
+
+  source.traverse((child) => {
+    if (!(child instanceof THREE.Mesh) || Array.isArray(child.material)) return
+    let geometry = child.geometry.clone()
+    if (geometry.index) {
+      const flat = geometry.toNonIndexed()
+      geometry.dispose()
+      geometry = flat
+    }
+    geometry.applyMatrix4(child.matrixWorld)
+    const bucket = buckets.get(child.material.uuid) ?? { material: child.material, geometries: [] }
+    bucket.geometries.push(geometry)
+    buckets.set(child.material.uuid, bucket)
+  })
+
+  const model = new THREE.Group()
+  for (const { material: finish, geometries } of buckets.values()) {
+    const geometry = mergeGeometries(geometries, false)
+    geometries.forEach((item) => item.dispose())
+    if (!geometry) throw new Error(`Não foi possível unir as geometrias de ${name}.`)
+    const mesh = new THREE.Mesh(geometry, finish)
+    mesh.name = finish.name
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    model.add(mesh)
+  }
   model.name = name
   scene.add(model)
   scene.updateMatrixWorld(true)
@@ -152,6 +192,7 @@ await mkdir(outputDirectory, { recursive: true })
 await Promise.all([
   exportModel("desk", desk),
   exportModel("office-chair", chair),
+  exportModel("computer", computer),
   exportModel("meeting-table", meetingTable),
 ])
 

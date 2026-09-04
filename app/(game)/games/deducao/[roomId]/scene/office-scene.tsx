@@ -125,6 +125,7 @@ interface Props {
   lookRef: React.MutableRefObject<LookState>
   poseRef: React.MutableRefObject<{ x: number; z: number; dir: number }>
   onTargets: (targets: Targets) => void
+  onReady: () => void
 }
 
 export function OfficeScene(props: Props) {
@@ -133,6 +134,7 @@ export function OfficeScene(props: Props) {
     <Canvas
       shadows={quality !== "baixo"}
       dpr={quality === "alto" ? [1, 1.35] : quality === "medio" ? [1, 1.2] : 1}
+      frameloop={props.snapshot.phase === "lobby" ? "demand" : "always"}
       gl={{
         antialias: quality !== "baixo",
         powerPreference: "high-performance",
@@ -241,6 +243,7 @@ function SceneContent({
   lookRef,
   poseRef,
   onTargets,
+  onReady,
 }: Props) {
   const { camera, gl } = useThree()
   const local = useRef(new THREE.Vector2())
@@ -264,6 +267,8 @@ function SceneContent({
   const ambient = useRef<THREE.AmbientLight>(null)
   const flashlight = useRef<THREE.SpotLight>(null)
   const flashlightTarget = useRef<THREE.Object3D>(null)
+
+  useEffect(() => onReady(), [onReady])
   const meetingCameraReady = useRef(false)
 
   const mineSnapshot = snapshot.players.find((player) => player.id === me)
