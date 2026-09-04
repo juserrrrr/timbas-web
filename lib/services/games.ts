@@ -1,5 +1,5 @@
 import { API_URL } from "../api-base"
-import { post, put, remove, request } from "./http"
+import { post, request } from "./http"
 
 export interface GameSummary {
   id: string
@@ -26,6 +26,7 @@ export interface WallBox {
   minZ: number
   maxX: number
   maxZ: number
+  height?: number
   accent?: string
   /// Chega na altura dos olhos, então além de barrar o corpo também corta a
   /// linha de visão. Mesa e sofá não.
@@ -181,10 +182,6 @@ export interface GameMapSummary {
   updatedAt: string | null
 }
 
-export interface GameMapEntry extends GameMapSummary {
-  map: OfficeMap
-}
-
 export function listOfficeMaps(): Promise<{ maps: GameMapSummary[] }> {
   return request<{ maps: GameMapSummary[] }>("/games/deducao/maps")
 }
@@ -197,26 +194,6 @@ export function getOfficeMap(mapId = "original"): Promise<{
   return request<{ map: OfficeMap; minPlayers: number; maxPlayers: number }>(
     `/games/deducao/maps/${encodeURIComponent(mapId)}`,
   )
-}
-
-export function listAdminOfficeMaps(): Promise<{ maps: GameMapSummary[] }> {
-  return request<{ maps: GameMapSummary[] }>("/games/deducao/admin/maps")
-}
-
-export function getAdminOfficeMap(mapId = "original"): Promise<GameMapEntry> {
-  return request<GameMapEntry>(`/games/deducao/admin/maps/${encodeURIComponent(mapId)}`)
-}
-
-export function createAdminOfficeMap(map: OfficeMap): Promise<GameMapEntry> {
-  return post<GameMapEntry>("/games/deducao/admin/maps", { map })
-}
-
-export function updateAdminOfficeMap(mapId: string, map: OfficeMap): Promise<GameMapEntry> {
-  return put<GameMapEntry>(`/games/deducao/admin/maps/${encodeURIComponent(mapId)}`, { map })
-}
-
-export function deleteAdminOfficeMap(mapId: string): Promise<{ ok: true }> {
-  return remove<{ ok: true }>(`/games/deducao/admin/maps/${encodeURIComponent(mapId)}`)
 }
 
 /// O jogo fala com a mesma API, na mesma porta, só que por WebSocket. Trocar o

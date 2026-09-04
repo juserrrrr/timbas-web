@@ -5,6 +5,10 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { Html } from "@react-three/drei"
 import * as THREE from "three"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import type { Room } from "@colyseus/sdk"
 import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/games/collision"
 import { playGameSound } from "@/lib/games/game-audio"
@@ -12,7 +16,7 @@ import type { OfficeMap } from "@/lib/services/games"
 import { NO_TARGETS, type LookState, type Quality, type Targets } from "../match-types"
 import type { Role, Snapshot } from "../use-deducao-room"
 import { FLOOR_HEIGHT, OfficeWorld } from "./office-world"
-import { setVision, useVisionMaterial } from "./vision-material"
+import { setBlackout, useVisionMaterial } from "./vision-material"
 
 const VOID_COLOR = "#7892b8"
 
@@ -24,6 +28,8 @@ const PITCH_LIMIT = 1.05
 
 const WALK_SPEED = 4.6
 const RUN_SPEED = 7.1
+const JUMP_SPEED = 5.1
+const GRAVITY = 15.5
 const SEND_EVERY_MS = 50
 const TASK_RANGE = 2.2
 const REPORT_RANGE = 2.6
@@ -68,6 +74,34 @@ function stairSampleAt(map: OfficeMap, x: number, z: number): StairSample | null
   return closest
     ? { y: closest.y, progress: closest.progress, level: closest.level, targetLevel: closest.targetLevel }
     : null
+}
+
+function collidersAtHeight(map: OfficeMap, level: number, feetHeight: number) {
+  return [
+    ...map.walls.filter((box) => (box.level ?? 0) === level),
+    ...map.obstacles.filter(
+      (box) =>
+        (box.level ?? 0) === level &&
+        (box.height === undefined || box.height > feetHeight + 0.06),
+    ),
+  ]
+}
+
+function surfaceHeightAt(map: OfficeMap, level: number, x: number, z: number, maxHeight: number) {
+  return map.obstacles.reduce((height, box) => {
+    if (
+      (box.level ?? 0) !== level ||
+      box.height === undefined ||
+      box.height > maxHeight ||
+      x < box.minX ||
+      x > box.maxX ||
+      z < box.minZ ||
+      z > box.maxZ
+    ) {
+      return height
+    }
+    return Math.max(height, box.height)
+  }, 0)
 }
 
 export interface InputState {
@@ -161,6 +195,39 @@ function ProceduralEnvironment({ quality, blackout }: { quality: Quality; blacko
   return null
 }
 
+function CinematicEffects({ blackout }: { blackout: boolean }) {
+  const { gl, scene, camera, size } = useThree()
+  const pipeline = useMemo(() => {
+    const composer = new EffectComposer(gl)
+    composer.addPass(new RenderPass(scene, camera))
+    const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.025, 0.16, 1.08)
+    composer.addPass(bloom)
+    composer.addPass(new OutputPass())
+    return { composer, bloom }
+  }, [camera, gl, scene])
+
+  useEffect(() => {
+    pipeline.composer.setPixelRatio(Math.min(gl.getPixelRatio(), 1.25))
+    pipeline.composer.setSize(size.width, size.height)
+  }, [gl, pipeline, size.height, size.width])
+
+  useEffect(() => {
+    pipeline.bloom.strength = blackout ? 0.045 : 0.025
+    pipeline.bloom.threshold = blackout ? 0.94 : 1.08
+  }, [blackout, pipeline])
+
+  useEffect(
+    () => () => {
+      pipeline.bloom.dispose()
+      pipeline.composer.dispose()
+    },
+    [pipeline],
+  )
+
+  useFrame((_, delta) => pipeline.composer.render(delta), 1)
+  return null
+}
+
 function SceneContent({
   map,
   snapshot,
@@ -213,10 +280,6 @@ function SceneContent({
     () => [...map.walls, ...map.obstacles].filter((box) => (box.level ?? 0) === currentLevel),
     [map.walls, map.obstacles, currentLevel],
   )
-  const collidersByLevel = useMemo(() => {
-    const all = [...map.walls, ...map.obstacles]
-    return new Map([0, 1].map((floor) => [floor, all.filter((box) => (box.level ?? 0) === floor)]))
-  }, [map.obstacles, map.walls])
   const walls = useMemo(
     () =>
       [...map.walls.filter((box) => box.style !== "guarda-corpo"), ...map.obstacles.filter((box) => box.tall)].filter(
@@ -355,7 +418,7 @@ function SceneContent({
 
     // Uma resposta curta preserva a precisão e elimina o tranco ao apertar ou
     // soltar a tecla. A velocidade residual também faz a animação parar suave.
-    const response = hasInput ? 13 : 10
+    const response = hasInput ? 22 : 28
     velocity.current.lerp(targetVelocity, 1 - Math.exp(-response * delta))
     if (!hasInput && velocity.current.lengthSq() < 0.0025) velocity.current.set(0, 0)
     const moving = velocity.current.lengthSq() > 0.0064
@@ -369,7 +432,7 @@ function SceneContent({
         z: beforeZ + velocity.current.y * delta,
       }
       // Jogador morto atravessa paredes.
-      const movementColliders = collidersByLevel.get(visualLevel.current) ?? colliders
+      const movementColliders = collidersAtHeight(map, visualLevel.current, jumpHeight.current)
       const next = alive ? moveTowards({ x: local.current.x, z: local.current.y }, wanted, movementColliders) : wanted
       local.current.set(
         THREE.MathUtils.clamp(next.x, map.bounds.x + PLAYER_RADIUS, map.bounds.x + map.bounds.w - PLAYER_RADIUS),
@@ -391,8 +454,8 @@ function SceneContent({
     if (drift > 2.8) {
       local.current.set(mine.x, mine.z)
       velocity.current.set(0, 0)
-    } else if (drift > 0.06) {
-      const correction = 1 - Math.exp(-3.4 * delta)
+    } else if (drift > (hasInput ? 0.9 : 0.06)) {
+      const correction = 1 - Math.exp(-(hasInput ? 1.5 : 7) * delta)
       local.current.x += (mine.x - local.current.x) * correction
       local.current.y += (mine.z - local.current.y) * correction
     }
@@ -405,22 +468,52 @@ function SceneContent({
       visualLevel.current = stair.progress >= 0.5 ? stair.targetLevel : stair.level
       stairExitGraceUntil.current = now + 500
       visualY.current = stair.y
+      jumpHeight.current = 0
+      jumpVelocity.current = 0
     } else {
       if (now >= stairExitGraceUntil.current) visualLevel.current = liveLevel
       visualY.current = visualLevel.current * FLOOR_HEIGHT
     }
     climbing.current = onStairs && moving
 
+    const supportBeforeJump = surfaceHeightAt(
+      map,
+      visualLevel.current,
+      local.current.x,
+      local.current.y,
+      jumpHeight.current + 0.08,
+    )
     if (input.jumpSerial !== handledJump.current) {
       handledJump.current = input.jumpSerial
-      if (!inMeeting && !inVent && !onStairs && jumpHeight.current <= 0.001) jumpVelocity.current = 5.25
+      const grounded = Math.abs(jumpHeight.current - supportBeforeJump) <= 0.025 && jumpVelocity.current <= 0
+      if (!inMeeting && !inVent && !onStairs && grounded) jumpVelocity.current = JUMP_SPEED
     }
-    if (jumpVelocity.current !== 0 || jumpHeight.current > 0) {
-      jumpVelocity.current -= 15.5 * delta
-      jumpHeight.current = Math.max(0, jumpHeight.current + jumpVelocity.current * delta)
-      if (jumpHeight.current === 0 && jumpVelocity.current < 0) jumpVelocity.current = 0
+    if (!onStairs && (jumpVelocity.current !== 0 || jumpHeight.current > supportBeforeJump + 0.001)) {
+      jumpVelocity.current -= GRAVITY * delta
+      const nextHeight = Math.max(0, jumpHeight.current + jumpVelocity.current * delta)
+      const landingHeight = surfaceHeightAt(
+        map,
+        visualLevel.current,
+        local.current.x,
+        local.current.y,
+        Math.max(jumpHeight.current, nextHeight) + 0.08,
+      )
+      if (jumpVelocity.current <= 0 && nextHeight <= landingHeight) {
+        jumpHeight.current = landingHeight
+        jumpVelocity.current = 0
+      } else {
+        jumpHeight.current = nextHeight
+      }
     }
-    const crouching = input.crouch && !inMeeting && !inVent && !onStairs && jumpHeight.current === 0
+    const support = surfaceHeightAt(
+      map,
+      visualLevel.current,
+      local.current.x,
+      local.current.y,
+      jumpHeight.current + 0.08,
+    )
+    const airborne = jumpVelocity.current !== 0 || jumpHeight.current > support + 0.025
+    const crouching = input.crouch && !inMeeting && !inVent && !onStairs && !airborne
     const targetEyeHeight = inMeeting ? 1.22 : crouching ? 1.08 : EYE_HEIGHT
     eyeHeight.current += (targetEyeHeight - eyeHeight.current) * (1 - Math.exp(-14 * delta))
 
@@ -439,7 +532,8 @@ function SceneContent({
           moving,
           sprint: running,
           crouching,
-          airborne: jumpHeight.current > 0.02,
+          airborne,
+          elevation: jumpHeight.current,
         } as never,
       )
     }
@@ -466,7 +560,7 @@ function SceneContent({
     poseRef.current.dir = heading.current
 
     const dark = blackoutForViewer
-    setVision(local.current.x, local.current.y, activeVision * 0.68, activeVision, blackoutForViewer)
+    setBlackout(blackoutForViewer)
     if (sun.current) {
       sun.current.position.set(local.current.x - 14, visualY.current + 26, local.current.y - 10)
       sun.current.target.position.set(local.current.x, visualY.current, local.current.y)
@@ -525,6 +619,7 @@ function SceneContent({
   return (
     <>
       <ProceduralEnvironment quality={quality} blackout={blackoutForViewer} />
+      {quality === "alto" && <CinematicEffects blackout={blackoutForViewer} />}
       <ambientLight ref={ambient} color="#e9f1fa" intensity={0.14} />
       <hemisphereLight ref={sky} args={["#fff6e7", "#66768e", 0.46]} />
       <directionalLight
@@ -563,7 +658,6 @@ function SceneContent({
           level={floor}
           baseY={floor * FLOOR_HEIGHT}
           active={floor === currentLevel}
-          focusRef={local}
         />
       ))}
       <group position-y={currentLevel * FLOOR_HEIGHT}>
@@ -593,8 +687,6 @@ function SceneContent({
           quality={quality}
           hideBody={player.id === me}
           seated={inMeeting}
-          walls={walls}
-          visionRange={activeVision}
           blackout={blackoutForViewer}
           map={map}
         />
@@ -633,8 +725,6 @@ function Actor({
   quality,
   hideBody,
   seated,
-  walls,
-  visionRange,
   blackout,
   map,
 }: {
@@ -652,8 +742,6 @@ function Actor({
   /// enxerga o miolo do crânio e nada mais.
   hideBody: boolean
   seated: boolean
-  walls: OfficeMap["walls"]
-  visionRange: number
   blackout: boolean
   map: OfficeMap
 }) {
@@ -667,24 +755,27 @@ function Actor({
   const passo = useRef(0)
   const balanco = useRef(0)
   const placed = useRef(false)
-  const lastVisibleAt = useRef(0)
 
   const tomBase = blackout ? "#6f7c8e" : player.color
   const tomMembro = useMemo(() => `#${new THREE.Color(tomBase).multiplyScalar(0.72).getHexString()}`, [tomBase])
   const body = useVisionMaterial({
     color: tomBase,
+    emissive: blackout ? "#9aa7b8" : undefined,
+    emissiveIntensity: blackout ? 0.7 : 0,
     roughness: 0.38,
     metalness: 0.06,
   })
   const limbs = useVisionMaterial({
     color: tomMembro,
+    emissive: blackout ? "#758195" : undefined,
+    emissiveIntensity: blackout ? 0.55 : 0,
     roughness: 0.45,
     metalness: 0.04,
   })
   const visor = useVisionMaterial({
     color: "#121a26",
     emissive: "#9fdcff",
-    emissiveIntensity: 0.7,
+    emissiveIntensity: blackout ? 1.3 : 0.7,
     roughness: 0.15,
   })
 
@@ -703,7 +794,9 @@ function Actor({
     const targetX = isMe ? localRef.current.x : live.x
     const targetZ = isMe ? localRef.current.y : live.z
     const liveLevel = Number(live.level ?? 0)
-    const targetY = isMe ? localYRef.current : (stairSampleAt(map, live.x, live.z)?.y ?? liveLevel * FLOOR_HEIGHT)
+    const targetY = isMe
+      ? localYRef.current + Number(live.elevation ?? 0)
+      : (stairSampleAt(map, live.x, live.z)?.y ?? liveLevel * FLOOR_HEIGHT) + Number(live.elevation ?? 0)
     const pull = isMe ? 1 : 1 - Math.exp(-10 * delta)
 
     if (!placed.current) {
@@ -717,15 +810,7 @@ function Actor({
     node.position.z += (targetZ - node.position.z) * pull
     const verticalGap = Math.abs(targetY - localYRef.current)
     const sameLayer = verticalGap < FLOOR_HEIGHT * 0.62
-    const planarGap = distance({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z })
-    const spatialGap = Math.hypot(planarGap, verticalGap)
-    const inSight =
-      !viewerAlive ||
-      isMe ||
-      (spatialGap <= visionRange &&
-        (!sameLayer || hasLineOfSight({ x: localRef.current.x, z: localRef.current.y }, { x: live.x, z: live.z }, walls)))
-    if (inSight) lastVisibleAt.current = performance.now()
-    node.visible = !hideBody && !hidden && !live.inVent && (inSight || performance.now() - lastVisibleAt.current < 120)
+    node.visible = !hideBody && !hidden && !live.inVent
     // O corpo dos outros andares é ocluído pela geometria 3D real. O nome não:
     // por isso a etiqueta só aparece na mesma camada e nunca atravessa a laje.
     if (label.current) label.current.style.visibility = node.visible && sameLayer ? "visible" : "hidden"
@@ -753,7 +838,7 @@ function Actor({
       const sobe = seated
         ? -0.43
         : airborne
-          ? 0.38
+          ? 0
           : crouching
             ? -0.42
             : Math.abs(Math.sin(passo.current)) * balanco.current * 0.07

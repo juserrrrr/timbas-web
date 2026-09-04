@@ -56,14 +56,28 @@ export function resolveCollisions(point: Vec2, walls: WallBox[], radius = PLAYER
   return resolved
 }
 
+function moveAxis(point: Vec2, delta: number, axis: "x" | "z", walls: WallBox[], radius: number): Vec2 {
+  if (delta === 0) return point
+  const next = { x: point.x, z: point.z }
+  next[axis] += delta
+
+  for (const wall of walls) {
+    if (!overlaps(next, wall, radius)) continue
+    if (axis === "x") next.x = delta > 0 ? wall.minX - radius : wall.maxX + radius
+    else next.z = delta > 0 ? wall.minZ - radius : wall.maxZ + radius
+  }
+  return next
+}
+
 export function moveTowards(from: Vec2, to: Vec2, walls: WallBox[], radius = PLAYER_RADIUS): Vec2 {
   const steps = Math.max(1, Math.ceil(distance(from, to) / (radius * 0.8)))
   const stepX = (to.x - from.x) / steps
   const stepZ = (to.z - from.z) / steps
 
-  let current = { x: from.x, z: from.z }
+  let current = resolveCollisions(from, walls, radius)
   for (let step = 0; step < steps; step += 1) {
-    current = resolveCollisions({ x: current.x + stepX, z: current.z + stepZ }, walls, radius)
+    current = moveAxis(current, stepX, "x", walls, radius)
+    current = moveAxis(current, stepZ, "z", walls, radius)
   }
   return current
 }

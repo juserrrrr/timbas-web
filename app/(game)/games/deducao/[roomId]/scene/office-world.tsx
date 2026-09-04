@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { useGLTF, useTexture } from "@react-three/drei"
-import { useFrame, useThree } from "@react-three/fiber"
+import { useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js"
@@ -674,7 +674,7 @@ const FLOOR_ASSET_NAMES: Record<FloorFinish, string> = {
 const DETAILED_MODELS = {
   desk: "/models/games/deducao/desk.glb",
   chair: "/models/games/deducao/office-chair.glb",
-  sofa: "/models/games/deducao/sofa.glb",
+  sofa: "/models/games/deducao/glam-velvet-sofa.glb",
   meetingTable: "/models/games/deducao/meeting-table.glb",
 } as const
 
@@ -920,64 +920,26 @@ function Instances({
   )
 }
 
-function LocalRoomLights({
-  lights,
-  height,
-  blackout,
-  active,
-  focusRef,
-}: {
-  lights: RoomLightSource[]
-  height: number
-  blackout: boolean
-  active: boolean
-  focusRef: MutableRefObject<THREE.Vector2>
-}) {
-  const refs = useRef<Array<THREE.SpotLight | null>>([])
-  const nextSearch = useRef(0)
-  const selected = useRef<RoomLightSource[]>([])
-  const targets = useMemo(() => Array.from({ length: 4 }, () => new THREE.Object3D()), [])
-
-  useFrame(({ clock }, delta) => {
-    if (clock.elapsedTime >= nextSearch.current) {
-      nextSearch.current = clock.elapsedTime + 0.2
-      selected.current = [...lights]
-        .sort(
-          (left, right) =>
-            (left.x - focusRef.current.x) ** 2 + (left.z - focusRef.current.y) ** 2 -
-            ((right.x - focusRef.current.x) ** 2 + (right.z - focusRef.current.y) ** 2),
-        )
-        .slice(0, targets.length)
-    }
-
-    refs.current.forEach((light, index) => {
-      if (!light) return
-      const source = selected.current[index]
-      light.visible = Boolean(source) && active
-      if (!source) return
-      light.position.set(source.x, height, source.z)
-      light.color.set(source.color)
-      light.distance = source.distance
-      light.intensity += ((active && !blackout ? source.intensity : 0) - light.intensity) * Math.min(1, delta * 8)
-      targets[index].position.set(source.x, 0.04, source.z)
-      light.target = targets[index]
-    })
-  })
+function RoomSpotlight({ light, height, blackout }: { light: RoomLightSource; height: number; blackout: boolean }) {
+  const target = useMemo(() => {
+    const object = new THREE.Object3D()
+    object.position.set(light.x, 0.04, light.z)
+    return object
+  }, [light.x, light.z])
 
   return (
     <>
-      {targets.map((target, index) => <primitive key={`light-target-${index}`} object={target} />)}
-      {targets.map((target, index) => (
-        <spotLight
-          key={`local-light-${index}`}
-          ref={(light) => { refs.current[index] = light }}
-          target={target}
-          intensity={0}
-          angle={0.72}
-          penumbra={0.82}
-          decay={2}
-        />
-      ))}
+      <primitive object={target} />
+      <spotLight
+        position={[light.x, height, light.z]}
+        target={target}
+        color={light.color}
+        intensity={blackout ? 0 : light.intensity}
+        distance={light.distance}
+        angle={0.72}
+        penumbra={0.82}
+        decay={2}
+      />
     </>
   )
 }
@@ -989,7 +951,6 @@ export function OfficeWorld({
   level,
   baseY = 0,
   active = true,
-  focusRef,
 }: {
   map: OfficeMap
   quality: Quality
@@ -997,7 +958,6 @@ export function OfficeWorld({
   level: number
   baseY?: number
   active?: boolean
-  focusRef: MutableRefObject<THREE.Vector2>
 }) {
   const wallHeight = WALL_HEIGHT
   const [
@@ -1766,13 +1726,15 @@ export function OfficeWorld({
           <Instances geometry={ceilingGeometry} material={ceilingMaterial} transforms={ceilingFixtures} shadows={false} />
         </>
       )}
-      <LocalRoomLights
-        lights={roomLights}
-        height={Math.max(2.8, wallHeight - 0.2)}
-        blackout={blackout}
-        active={active}
-        focusRef={focusRef}
-      />
+      {active &&
+        roomLights.map((light, index) => (
+          <RoomSpotlight
+            key={`room-light-${index}`}
+            light={light}
+            height={Math.max(2.8, wallHeight - 0.2)}
+            blackout={blackout}
+          />
+        ))}
       {quality !== "baixo" &&
         emergencyLights.map((light, index) => (
           <pointLight
@@ -1830,6 +1792,10 @@ function DetailedPropKind({
   const prepared = useMemo(() => {
     const model = scene.clone(true)
     model.traverse((child) => {
+      if (child instanceof THREE.Light) {
+        child.visible = false
+        return
+      }
       if (!(child instanceof THREE.Mesh)) return
       child.castShadow = true
       child.receiveShadow = true
