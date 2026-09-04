@@ -2,7 +2,7 @@ import { apiFetch, authHeaders } from "@/lib/api"
 import { getToken } from "@/lib/auth"
 import type {
   EaClub, EaClubDashboard, EaClubPlayer, EaClubPlayerProfile, EaClubPreview,
-  EaLeaderboardCategory, EaSyncResult,
+  EaClubFieldPlayer, EaLeaderboardCategory, EaSyncResult,
 } from "./ea-clubs.types"
 import { API_URL } from "../api-base"
 
@@ -66,6 +66,11 @@ export async function getEaClubPlayers(clubId: string): Promise<EaClubPlayer[]> 
 
 export function getEaClubPlayer(clubId: string, playerId: string): Promise<EaClubPlayerProfile> {
   return request(`/ea-clubs/${encodeURIComponent(clubId)}/players/${encodeURIComponent(playerId)}`)
+}
+
+export async function getEaClubField(clubId: string): Promise<EaClubFieldPlayer[]> {
+  const body = await request<EaClubFieldPlayer[] | { data: EaClubFieldPlayer[] }>(`/ea-clubs/${encodeURIComponent(clubId)}/field`)
+  return Array.isArray(body) ? body : body.data
 }
 
 export async function getEaClubLeaderboard(clubId: string): Promise<EaLeaderboardCategory[]> {

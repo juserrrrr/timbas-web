@@ -136,3 +136,14 @@ export interface EaSyncResult {
   errors?: string[];
   lastSyncAt?: string;
 }
+
+export interface EaClubFieldPlayer {
+  id: string;
+  playerName: string;
+  primaryPosition: string;
+  primaryPositionAppearances: number;
+  averageRating?: number | null;
+  bestPosition?: string | null;
+  bestPositionRating?: number | null;
+  matchesAvailable: number;
+}
