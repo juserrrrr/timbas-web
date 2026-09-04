@@ -24,7 +24,18 @@ Os dois modelos externos foram otimizados para entrega no navegador com glTF Tra
 
 - Arquivo: `timbas-coupe-suv.glb`
 - Modelo e materiais: criação original do projeto Timbas
-- Fonte: `scripts/build-deducao-models.mjs`
+- Fonte paramétrica: `scripts/build-coupe-suv-blender.py`
+- Fonte editável: `assets/models/deducao/timbas-coupe-suv.blend`
 - Dependências externas: nenhuma
 
-A carroceria, o interior e os materiais PBR são gerados do zero. O desenho segue a categoria SUV cupê sem copiar logotipos ou elementos de marca.
+A carroceria contínua, o interior, as rodas e os materiais PBR são gerados do zero no Blender. O desenho segue a categoria SUV cupê sem copiar logotipos ou elementos de marca.
+
+## Timbas Office Kit
+
+- Arquivos: 24 modelos GLB modulares de móveis, equipamentos, vegetação e luminárias
+- Modelo e materiais: criação original do projeto Timbas
+- Fonte paramétrica: `scripts/build-office-kit-blender.py`
+- Fonte editável: `assets/models/deducao/timbas-office-kit.blend`
+- Dependências externas: nenhuma
+
+O kit inclui mesas, cadeira, monitor, sofá, balcão, rack, armário, estante, cafeteira, caixa, impressora, quadro, cone, pia, vending machine, cozinha, planta, árvore, poste, banco e luminárias normal e de emergência. As peças são modeladas no Blender e unidas por material somente durante a exportação para o navegador.

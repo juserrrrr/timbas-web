@@ -697,14 +697,28 @@ interface DetailedModelConfig {
 }
 
 const DETAILED_MODELS = {
-  desk: { path: "/models/games/deducao/desk.glb" },
-  chair: { path: "/models/games/deducao/office-chair.glb" },
-  monitor: { path: "/models/games/deducao/computer.glb" },
-  sofa: {
-    path: "/models/games/deducao/glam-velvet-sofa.glb",
-    fit: { width: 2.2, depth: 1.03 },
-  },
-  meetingTable: { path: "/models/games/deducao/meeting-table.glb" },
+  desk: { path: "/models/games/deducao/desk-blender.glb" },
+  chair: { path: "/models/games/deducao/office-chair-blender.glb" },
+  monitor: { path: "/models/games/deducao/computer-blender.glb" },
+  plant: { path: "/models/games/deducao/plant-blender.glb" },
+  sofa: { path: "/models/games/deducao/timbas-blue-sofa.glb" },
+  counter: { path: "/models/games/deducao/reception-counter.glb" },
+  meetingTable: { path: "/models/games/deducao/meeting-table-blender.glb" },
+  cafeTable: { path: "/models/games/deducao/cafe-table.glb" },
+  rack: { path: "/models/games/deducao/server-rack.glb" },
+  locker: { path: "/models/games/deducao/locker.glb" },
+  shelf: { path: "/models/games/deducao/office-shelf.glb" },
+  coffee: { path: "/models/games/deducao/coffee-machine.glb" },
+  crate: { path: "/models/games/deducao/wooden-crate.glb" },
+  printer: { path: "/models/games/deducao/office-printer.glb" },
+  whiteboard: { path: "/models/games/deducao/whiteboard.glb" },
+  cone: { path: "/models/games/deducao/traffic-cone.glb" },
+  sink: { path: "/models/games/deducao/utility-sink.glb" },
+  vending: { path: "/models/games/deducao/vending-machine.glb" },
+  kitchen: { path: "/models/games/deducao/office-kitchen.glb" },
+  tree: { path: "/models/games/deducao/courtyard-tree.glb" },
+  streetLamp: { path: "/models/games/deducao/street-lamp.glb" },
+  bench: { path: "/models/games/deducao/courtyard-bench.glb" },
   car: {
     path: "/models/games/deducao/toy-car.glb",
     fit: { width: 2, depth: 4.3 },
@@ -713,9 +727,14 @@ const DETAILED_MODELS = {
   sportCar: { path: "/models/games/deducao/timbas-coupe-suv.glb" },
 } as const satisfies Record<string, DetailedModelConfig>
 
+const CEILING_LIGHT_MODEL = { path: "/models/games/deducao/ceiling-light.glb" } as const
+const EMERGENCY_LIGHT_MODEL = { path: "/models/games/deducao/emergency-light.glb" } as const
+
 type DetailedModelKind = keyof typeof DETAILED_MODELS
 
 Object.values(DETAILED_MODELS).forEach(({ path }) => useGLTF.preload(path))
+useGLTF.preload(CEILING_LIGHT_MODEL.path)
+useGLTF.preload(EMERGENCY_LIGHT_MODEL.path)
 Object.values(FLOOR_TEXTURE_PATHS).forEach((path) => useTexture.preload(path))
 Object.values(FLOOR_ASSET_NAMES).forEach((name) => {
   useTexture.preload(`/images/games/deducao/textures/${name}-normal.webp`)
@@ -1182,28 +1201,11 @@ export function OfficeWorld({
     roughness: 0.18,
     metalness: 0.16,
   })
-  const fixtureFrameMaterial = useVisionMaterial({
-    color: "#c6d0dc",
-    roughness: 0.3,
-    metalness: 0.62,
-  })
   const ventMaterial = useVisionMaterial({
     color: "#ffffff",
     roughness: 0.5,
     metalness: 0.4,
     vertexColors: true,
-  })
-  const ceilingMaterial = useVisionMaterial({
-    color: "#eef1f2",
-    emissive: "#fff0cf",
-    emissiveIntensity: blackout ? 0.01 : 0.14,
-    roughness: 0.3,
-  })
-  const emergencyFixtureMaterial = useVisionMaterial({
-    color: "#ff4b5f",
-    emissive: "#ff1738",
-    emissiveIntensity: blackout ? 2.8 : 0,
-    roughness: 0.24,
   })
   const ceilingSlabMaterial = useVisionMaterial({
     color: "#f5f2e9",
@@ -1282,17 +1284,6 @@ export function OfficeWorld({
           )
         }),
     [ceilingHoles, map.rooms, wallHeight, level],
-  )
-  const fixtureFrames = useMemo(
-    () =>
-      ceilingFixtures.map((fixture) => ({
-        ...fixture,
-        y: (fixture.y ?? 0) + 0.018,
-        sx: 1.12,
-        sy: 1.45,
-        sz: 1.2,
-      })),
-    [ceilingFixtures],
   )
   const emergencyFixtures = useMemo(() => {
     const corridors = map.rooms.filter((room) => (room.level ?? 0) === level && room.kind === "corredor")
@@ -1758,14 +1749,6 @@ export function OfficeWorld({
     return box
   }, [])
 
-  const ceilingGeometry = useMemo(() => {
-    const box = new RoundedBoxGeometry(1.45, 0.07, 0.46, 2, 0.08)
-    return box
-  }, [])
-
-  const fixtureFrameGeometry = useMemo(() => new RoundedBoxGeometry(1.58, 0.075, 0.58, 2, 0.07), [])
-  const emergencyFixtureGeometry = useMemo(() => new RoundedBoxGeometry(1.2, 0.025, 0.3, 2, 0.035), [])
-
   const plinthGeometry = useMemo(() => {
     const box = new THREE.BoxGeometry(1, 1, 1)
     box.translate(0, -0.5, 0)
@@ -1808,9 +1791,6 @@ export function OfficeWorld({
   useEffect(() => {
     const geometries = [
       groundGeometry,
-      ceilingGeometry,
-      fixtureFrameGeometry,
-      emergencyFixtureGeometry,
       plinthGeometry,
       rugGeometry,
       wallGeometry,
@@ -1823,9 +1803,6 @@ export function OfficeWorld({
     return () => geometries.forEach((geometry) => geometry.dispose())
   }, [
     groundGeometry,
-    ceilingGeometry,
-    fixtureFrameGeometry,
-    emergencyFixtureGeometry,
     plinthGeometry,
     rugGeometry,
     wallGeometry,
@@ -1872,19 +1849,27 @@ export function OfficeWorld({
       <Instances geometry={ventGeometry} material={ventMaterial} transforms={ventPlacements} shadows={false} />
       <Instances geometry={stairGeometry} material={ventMaterial} transforms={stairPlacements} />
       <Instances geometry={bandGeometry} material={ceilingSlabMaterial} transforms={ceilings} shadows={false} />
-      {quality !== "baixo" && (
-        <>
-          <Instances geometry={fixtureFrameGeometry} material={fixtureFrameMaterial} transforms={fixtureFrames} />
-          <Instances geometry={ceilingGeometry} material={ceilingMaterial} transforms={ceilingFixtures} shadows={false} />
-          {blackout && (
-            <Instances
-              geometry={emergencyFixtureGeometry}
-              material={emergencyFixtureMaterial}
-              transforms={emergencyFixtures}
-              shadows={false}
-            />
-          )}
-        </>
+      <DetailedPropKind
+        kind="ceilingLight"
+        model={CEILING_LIGHT_MODEL}
+        transforms={ceilingFixtures}
+        emissiveScale={blackout ? 0.003 : 1}
+        shadows={false}
+        upholstery={materialTextures.upholstery}
+        upholsteryNormal={materialTextures.upholsteryNormal}
+        upholsteryRoughness={materialTextures.upholsteryRoughness}
+      />
+      {blackout && (
+        <DetailedPropKind
+          kind="emergencyLight"
+          model={EMERGENCY_LIGHT_MODEL}
+          transforms={emergencyFixtures}
+          emissiveScale={1}
+          shadows={false}
+          upholstery={materialTextures.upholstery}
+          upholsteryNormal={materialTextures.upholsteryNormal}
+          upholsteryRoughness={materialTextures.upholsteryRoughness}
+        />
       )}
       {active && !blackout && (
         <RoomLightPool lights={roomLights} quality={quality} />
@@ -1894,12 +1879,14 @@ export function OfficeWorld({
       )}
       {propGroups.map((group) => {
         const model = DETAILED_MODELS[group.kind as DetailedModelKind]
-        return quality !== "baixo" && model && (!generatedOutdoor || map.props.length < 70) ? (
+        return model ? (
           <DetailedPropKind
             key={group.kind}
             kind={group.kind}
             model={model}
             transforms={group.transforms}
+            emissiveScale={blackout ? 0.04 : 1}
+            shadows={quality === "alto"}
             upholstery={materialTextures.upholstery}
             upholsteryNormal={materialTextures.upholsteryNormal}
             upholsteryRoughness={materialTextures.upholsteryRoughness}
@@ -1923,6 +1910,8 @@ function DetailedPropKind({
   kind,
   model,
   transforms,
+  emissiveScale = 1,
+  shadows = true,
   upholstery,
   upholsteryNormal,
   upholsteryRoughness,
@@ -1930,6 +1919,8 @@ function DetailedPropKind({
   kind: string
   model: DetailedModelConfig
   transforms: Placement[]
+  emissiveScale?: number
+  shadows?: boolean
   upholstery: THREE.Texture
   upholsteryNormal: THREE.Texture
   upholsteryRoughness: THREE.Texture
@@ -1969,6 +1960,7 @@ function DetailedPropKind({
       const entry = source[0]
       const material = entry.clone() as THREE.MeshStandardMaterial
       material.envMapIntensity = 1.15
+      material.emissiveIntensity *= emissiveScale
       if (entry.name === "fabric") {
         material.color.set("#ffffff")
         material.map = upholstery
@@ -1984,7 +1976,7 @@ function DetailedPropKind({
         matrix: normalizer.clone().multiply(mesh.matrixWorld),
       }]
     })
-  }, [kind, model, scene, upholstery, upholsteryNormal, upholsteryRoughness])
+  }, [emissiveScale, kind, model, scene, upholstery, upholsteryNormal, upholsteryRoughness])
 
   useEffect(
     () => () => {
@@ -1996,7 +1988,7 @@ function DetailedPropKind({
   return (
     <>
       {parts.map((part) => (
-        <DetailedPartInstances key={part.key} part={part} transforms={transforms} />
+        <DetailedPartInstances key={part.key} part={part} transforms={transforms} shadows={shadows} />
       ))}
     </>
   )
@@ -2005,6 +1997,7 @@ function DetailedPropKind({
 function DetailedPartInstances({
   part,
   transforms,
+  shadows,
 }: {
   part: {
     geometry: THREE.BufferGeometry
@@ -2012,6 +2005,7 @@ function DetailedPartInstances({
     matrix: THREE.Matrix4
   }
   transforms: Placement[]
+  shadows: boolean
 }) {
   const ref = useRef<THREE.InstancedMesh>(null)
 
@@ -2038,8 +2032,8 @@ function DetailedPartInstances({
     <instancedMesh
       ref={ref}
       args={[part.geometry, part.material, transforms.length]}
-      castShadow
-      receiveShadow
+      castShadow={shadows}
+      receiveShadow={shadows}
       dispose={null}
     />
   )

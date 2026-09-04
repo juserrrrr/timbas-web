@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "assets:deducao": "node scripts/build-deducao-models.mjs && node scripts/build-deducao-materials.mjs",
+    "assets:deducao": "node scripts/run-deducao-blender-builds.mjs && node scripts/build-deducao-materials.mjs",
+    "assets:deducao:check": "node scripts/check-deducao-models.mjs",
+    "assets:deducao:legacy-models": "node scripts/build-deducao-models.mjs",
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
