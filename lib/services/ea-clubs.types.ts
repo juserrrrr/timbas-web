@@ -140,10 +140,13 @@ export interface EaSyncResult {
 export interface EaClubFieldPlayer {
   id: string;
   playerName: string;
-  primaryPosition: string;
-  primaryPositionAppearances: number;
-  averageRating?: number | null;
-  bestPosition?: string | null;
-  bestPositionRating?: number | null;
-  matchesAvailable: number;
+  position: string;
+  rating?: number | null;
+}
+
+export interface EaClubField {
+  match: { playedAt: string } | null;
+  formation: string | null;
+  summary: { matches: number; wins: number; draws: number } | null;
+  players: EaClubFieldPlayer[];
 }
