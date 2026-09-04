@@ -59,12 +59,14 @@ export function PlayerRatingCard({
   adapted = false,
   compact = false,
   className,
+  emptyLabel = "A definir",
 }: {
   player: RatingCardPlayer | null
   position: string
   adapted?: boolean
   compact?: boolean
   className?: string
+  emptyLabel?: string
 }) {
   const rating = player ? Math.max(0, Math.min(10, player.averageRating ?? 0)) : null
   const index = player?.craqueScore == null ? null : Math.max(0, Math.min(10, player.craqueScore))
@@ -80,7 +82,7 @@ export function PlayerRatingCard({
     return (
       <article className={cn("relative flex aspect-[3/4] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/25 px-2 text-center", className)}>
         <span className="text-[11px] font-black text-gray-500">{position}</span>
-        <span className="mt-1 text-[9px] uppercase tracking-wider text-gray-700">A definir</span>
+        <span className="mt-1 text-[9px] uppercase tracking-wider text-gray-700">{emptyLabel}</span>
       </article>
     )
   }
