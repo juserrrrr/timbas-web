@@ -140,5 +140,48 @@ export default function DeducaoRoomPage() {
 }
 
 function GameScreen({ children }: { children: React.ReactNode }) {
-  return <main className="h-[100dvh] overflow-hidden bg-zinc-950 text-white">{children}</main>
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const oldHtmlOverflow = html.style.overflow
+    const oldHtmlOverscroll = html.style.overscrollBehavior
+    const oldBodyOverflow = body.style.overflow
+    const oldBodyOverscroll = body.style.overscrollBehavior
+    const oldBodyPosition = body.style.position
+    const oldBodyWidth = body.style.width
+    const oldViewport = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
+    const viewport = oldViewport ?? document.createElement("meta")
+    const oldViewportContent = viewport.content
+    if (!oldViewport) {
+      viewport.name = "viewport"
+      document.head.appendChild(viewport)
+    }
+    viewport.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    html.style.overflow = "hidden"
+    html.style.overscrollBehavior = "none"
+    body.style.overflow = "hidden"
+    body.style.overscrollBehavior = "none"
+    body.style.position = "fixed"
+    body.style.width = "100%"
+
+    const blockGesture = (event: Event) => event.preventDefault()
+    document.addEventListener("gesturestart", blockGesture, { passive: false })
+    document.addEventListener("gesturechange", blockGesture, { passive: false })
+    document.addEventListener("gestureend", blockGesture, { passive: false })
+    return () => {
+      document.removeEventListener("gesturestart", blockGesture)
+      document.removeEventListener("gesturechange", blockGesture)
+      document.removeEventListener("gestureend", blockGesture)
+      html.style.overflow = oldHtmlOverflow
+      html.style.overscrollBehavior = oldHtmlOverscroll
+      body.style.overflow = oldBodyOverflow
+      body.style.overscrollBehavior = oldBodyOverscroll
+      body.style.position = oldBodyPosition
+      body.style.width = oldBodyWidth
+      if (oldViewport) viewport.content = oldViewportContent
+      else viewport.remove()
+    }
+  }, [])
+
+  return <main className="fixed inset-0 overflow-hidden overscroll-none bg-zinc-950 text-white">{children}</main>
 }

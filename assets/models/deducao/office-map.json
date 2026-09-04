@@ -237,8 +237,8 @@
       ]
     },
     {
-      "id": "dispensa",
-      "name": "Dispensa",
+      "id": "banheiro",
+      "name": "Banheiro",
       "rect": {
         "x": 55,
         "z": 35,
@@ -246,9 +246,9 @@
         "d": 10
       },
       "kind": "sala",
-      "floor": "#718d7b",
-      "finish": "pantry",
-      "light": "#facc15",
+      "floor": "#778493",
+      "finish": "bathroom",
+      "light": "#67e8f9",
       "doors": [
         {
           "side": "west",
@@ -739,7 +739,7 @@
       "minZ": 44.8,
       "maxX": 61.4,
       "maxZ": 45.2,
-      "accent": "#facc15",
+      "accent": "#67e8f9",
       "level": 0,
       "style": "parede"
     },
@@ -748,7 +748,7 @@
       "minZ": 44.8,
       "maxX": 71,
       "maxZ": 45.2,
-      "accent": "#facc15",
+      "accent": "#67e8f9",
       "level": 0,
       "style": "parede"
     },
@@ -1449,21 +1449,35 @@
       "level": 0
     },
     {
-      "minX": 57.7,
-      "minZ": 37.7,
-      "maxX": 58.3,
-      "maxZ": 40.3,
-      "height": 1.9,
-      "tall": true,
+      "minX": 69.31,
+      "minZ": 39,
+      "maxX": 69.99000000000001,
+      "maxZ": 41.8,
+      "height": 0.94,
       "level": 0
     },
     {
-      "minX": 67.7,
-      "minZ": 37.7,
-      "maxX": 68.3,
-      "maxZ": 40.3,
-      "height": 1.9,
-      "tall": true,
+      "minX": 58.14,
+      "minZ": 42.06,
+      "maxX": 58.86,
+      "maxZ": 43.14,
+      "height": 0.48,
+      "level": 0
+    },
+    {
+      "minX": 61.84,
+      "minZ": 42.06,
+      "maxX": 62.56,
+      "maxZ": 43.14,
+      "height": 0.48,
+      "level": 0
+    },
+    {
+      "minX": 68.24,
+      "minZ": 36.24,
+      "maxX": 68.76,
+      "maxZ": 36.76,
+      "height": 0.38,
       "level": 0
     },
     {
@@ -2662,16 +2676,28 @@
       "rot": 0.2
     },
     {
-      "kind": "shelf",
-      "x": 58,
-      "z": 39,
-      "rot": 1.5707963267948966
+      "kind": "bathroomVanity",
+      "x": 69.65,
+      "z": 40.4,
+      "rot": -1.5707963267948966
     },
     {
-      "kind": "shelf",
-      "x": 68,
-      "z": 39,
-      "rot": -1.5707963267948966
+      "kind": "toilet",
+      "x": 58.5,
+      "z": 42.6,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "toilet",
+      "x": 62.2,
+      "z": 42.6,
+      "rot": 3.141592653589793
+    },
+    {
+      "kind": "plant",
+      "x": 68.5,
+      "z": 36.5,
+      "rot": 0
     },
     {
       "kind": "shelf",
@@ -3603,12 +3629,12 @@
       "z": 25.1
     },
     {
-      "id": "estoque-dispensa",
+      "id": "higiene-banheiro",
       "kind": "estoque",
-      "room": "dispensa",
-      "label": "Conferir os mantimentos",
-      "x": 61,
-      "z": 42
+      "room": "banheiro",
+      "label": "Repor itens de higiene",
+      "x": 68.35,
+      "z": 40.4
     },
     {
       "id": "senha-c",

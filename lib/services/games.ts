@@ -50,6 +50,7 @@ export interface MapRoom {
     | "terrazzo"
     | "vinyl"
     | "pantry"
+    | "bathroom"
     | "concrete"
     | "grass"
     | "water"

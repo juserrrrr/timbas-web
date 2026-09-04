@@ -10,6 +10,7 @@ import { Meeting } from "./meeting"
 import { TaskOverlay } from "./minigames"
 import { OfficeScene, type InputState } from "./scene/office-scene"
 import type { Notice, Role, Snapshot } from "./use-deducao-room"
+import { useProximityVoice } from "./use-proximity-voice"
 
 interface Props {
   map: OfficeMap
@@ -92,6 +93,7 @@ export function Match({
   const actions = useRef({ snapshot, targets, role, openTask, onSend, map, intro })
   actions.current = { snapshot, targets, role, openTask, onSend, map, intro }
   const markSceneReady = useCallback(() => setSceneReady(true), [])
+  const voice = useProximityVoice({ roomRef, me, snapshot, poseRef })
 
   useEffect(() => {
     try {
@@ -276,7 +278,7 @@ export function Match({
   const inMeeting = snapshot.phase === "reuniao" || snapshot.phase === "votacao"
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-black">
+    <div className="relative h-full w-full overflow-hidden overscroll-none bg-black">
       <OfficeScene
         key={`office-${quality}`}
         map={map}
@@ -312,6 +314,8 @@ export function Match({
         }}
         onLeave={onLeave}
         inputRef={inputRef}
+        touchEnabled={snapshot.phase === "jogando" && !openTask && !intro}
+        voice={voice}
       />
 
       {openTask && (

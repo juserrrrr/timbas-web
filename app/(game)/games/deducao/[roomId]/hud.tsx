@@ -1,13 +1,14 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AlertOctagon, Ghost, Hand, LogOut, Map as MapIcon, Search, Siren, Skull, Wind, X } from "lucide-react"
+import { AlertOctagon, Ghost, Hand, LoaderCircle, LogOut, Map as MapIcon, Mic, MicOff, Search, Siren, Skull, Wind, X } from "lucide-react"
 import { playGameSound, unlockGameAudio } from "@/lib/games/game-audio"
 import type { MapTaskSpot, OfficeMap } from "@/lib/services/games"
 import type { Quality, Targets } from "./match-types"
 import type { InputState } from "./scene/office-scene"
 import { Minimap } from "./minimap"
 import type { Notice, Role, Snapshot } from "./use-deducao-room"
+import type { VoiceControls } from "./use-proximity-voice"
 
 interface Props {
   snapshot: Snapshot
@@ -24,6 +25,8 @@ interface Props {
   onOpenTask: (spot: MapTaskSpot) => void
   onLeave: () => void
   inputRef: React.MutableRefObject<InputState>
+  touchEnabled: boolean
+  voice: VoiceControls
 }
 
 const ROLE_COPY: Record<Role, { title: string; tone: string }> = {
@@ -47,6 +50,8 @@ export function Hud({
   onOpenTask,
   onLeave,
   inputRef,
+  touchEnabled,
+  voice,
 }: Props) {
   const [mapaAberto, setMapaAberto] = useState(false)
   const mine = snapshot.players.find((player) => player.id === me)
@@ -83,9 +88,15 @@ export function Hud({
   return (
     <div className="pointer-events-none absolute inset-0 select-none">
       {snapshot.blackout && (
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_18%,rgba(0,0,0,0.82)_78%)]">
+        <div
+          className={
+            role === "assassino" && alive
+              ? "absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_48%,rgba(35,0,4,0.28)_100%)]"
+              : "absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_18%,rgba(0,0,0,0.82)_78%)]"
+          }
+        >
           <p className="absolute left-1/2 top-6 -translate-x-1/2 font-mono text-[11px] font-bold uppercase tracking-[0.4em] text-red-400/80">
-            Luz apagada
+            {role === "assassino" && alive ? "Visão noturna ativa" : "Luz apagada"}
           </p>
         </div>
       )}
@@ -117,6 +128,30 @@ export function Hud({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={voice.toggle}
+            disabled={voice.busy}
+            className={`cursor-pointer rounded-lg border p-2 transition disabled:cursor-wait ${
+              voice.enabled
+                ? "border-emerald-400/45 bg-emerald-400/15 text-emerald-200"
+                : "border-white/10 bg-black/60 text-zinc-400 hover:border-emerald-400/40 hover:text-emerald-300"
+            }`}
+            aria-label={voice.enabled ? "Desligar áudio de voz" : "Ligar áudio de voz"}
+            title={
+              voice.enabled
+                ? `Voz ativa com ${voice.peerCount} conexão(ões). Proximidade no mapa e geral na reunião.`
+                : "Ligar voz por proximidade"
+            }
+          >
+            {voice.busy ? (
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+            ) : voice.enabled ? (
+              <Mic className="h-4 w-4" />
+            ) : (
+              <MicOff className="h-4 w-4" />
+            )}
+          </button>
+          <button
+            type="button"
             onClick={() => setMapaAberto((aberto) => !aberto)}
             className="cursor-pointer rounded-lg border border-white/10 bg-black/60 p-2 text-zinc-400 transition hover:border-amber-400/40 hover:text-amber-300"
             aria-label="Abrir a planta"
@@ -143,6 +178,12 @@ export function Hud({
             <LogOut className="h-4 w-4" />
           </button>
         </div>
+
+        {voice.error && (
+          <p className="max-w-64 rounded-lg border border-red-400/25 bg-red-950/80 px-3 py-2 text-right text-[10px] leading-snug text-red-100">
+            {voice.error}
+          </p>
+        )}
 
         {/* O mapa fica sempre à vista para orientar tanto cenários internos
             quanto casas, campos e áreas abertas geradas pelo criador. */}
@@ -338,7 +379,7 @@ export function Hud({
         ))}
       </div>
 
-      <TouchStick inputRef={inputRef} />
+      <TouchStick inputRef={inputRef} enabled={touchEnabled} />
     </div>
   )
 }
@@ -389,24 +430,45 @@ function ActionButton({
 
 /// Manche de toque. Só aparece quando a tela é de dedo, e escreve no mesmo ref
 /// que o teclado usa, então a cena não precisa saber de onde veio o movimento.
-function TouchStick({ inputRef }: { inputRef: React.MutableRefObject<InputState> }) {
+function TouchStick({ inputRef, enabled }: { inputRef: React.MutableRefObject<InputState>; enabled: boolean }) {
   const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null)
   const [knob, setKnob] = useState({ x: 0, y: 0 })
   const touchId = useRef<number | null>(null)
+  const originRef = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
+    const reset = () => {
+      touchId.current = null
+      originRef.current = null
+      setOrigin(null)
+      setKnob({ x: 0, y: 0 })
+      inputRef.current = { ...inputRef.current, x: 0, z: 0, sprint: false }
+    }
+    if (!enabled) {
+      reset()
+      return
+    }
+
     const onStart = (event: TouchEvent) => {
-      const touch = event.changedTouches[0]
-      if (touchId.current !== null || touch.clientX > window.innerWidth * 0.55) return
+      if (touchId.current !== null) return
+      const target = event.target instanceof Element ? event.target : null
+      if (target?.closest("button,input,textarea,select,a,[role='button']")) return
+      const touch = Array.from(event.changedTouches).find((candidate) => candidate.clientX <= window.innerWidth * 0.55)
+      if (!touch) return
+      event.preventDefault()
       unlockGameAudio()
       touchId.current = touch.identifier
-      setOrigin({ x: touch.clientX, y: touch.clientY })
+      originRef.current = { x: touch.clientX, y: touch.clientY }
+      setOrigin(originRef.current)
     }
     const onMove = (event: TouchEvent) => {
+      const start = originRef.current
+      if (!start) return
       for (const touch of Array.from(event.changedTouches)) {
-        if (touch.identifier !== touchId.current || !origin) continue
-        const dx = touch.clientX - origin.x
-        const dy = touch.clientY - origin.y
+        if (touch.identifier !== touchId.current) continue
+        event.preventDefault()
+        const dx = touch.clientX - start.x
+        const dy = touch.clientY - start.y
         const length = Math.min(Math.hypot(dx, dy), 56)
         const angle = Math.atan2(dy, dx)
         const knobX = Math.cos(angle) * length
@@ -418,24 +480,23 @@ function TouchStick({ inputRef }: { inputRef: React.MutableRefObject<InputState>
     const onEnd = (event: TouchEvent) => {
       for (const touch of Array.from(event.changedTouches)) {
         if (touch.identifier !== touchId.current) continue
-        touchId.current = null
-        setOrigin(null)
-        setKnob({ x: 0, y: 0 })
-        inputRef.current = { ...inputRef.current, x: 0, z: 0, sprint: false }
+        event.preventDefault()
+        reset()
       }
     }
 
-    window.addEventListener("touchstart", onStart, { passive: true })
-    window.addEventListener("touchmove", onMove, { passive: true })
-    window.addEventListener("touchend", onEnd)
-    window.addEventListener("touchcancel", onEnd)
+    window.addEventListener("touchstart", onStart, { passive: false })
+    window.addEventListener("touchmove", onMove, { passive: false })
+    window.addEventListener("touchend", onEnd, { passive: false })
+    window.addEventListener("touchcancel", onEnd, { passive: false })
     return () => {
       window.removeEventListener("touchstart", onStart)
       window.removeEventListener("touchmove", onMove)
       window.removeEventListener("touchend", onEnd)
       window.removeEventListener("touchcancel", onEnd)
+      reset()
     }
-  }, [origin, inputRef])
+  }, [enabled, inputRef])
 
   if (!origin) return null
   return (

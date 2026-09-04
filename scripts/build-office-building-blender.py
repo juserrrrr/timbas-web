@@ -20,6 +20,7 @@ PANTRY_PREVIEW_PATH = Path.home() / "AppData" / "Local" / "Temp" / "timbas-offic
 LOUNGE_PREVIEW_PATH = Path.home() / "AppData" / "Local" / "Temp" / "timbas-office-lounge-preview.png"
 STAIR_PREVIEW_PATH = Path.home() / "AppData" / "Local" / "Temp" / "timbas-office-stair-preview.png"
 MEETING_PREVIEW_PATH = Path.home() / "AppData" / "Local" / "Temp" / "timbas-office-meeting-preview.png"
+BATHROOM_PREVIEW_PATH = Path.home() / "AppData" / "Local" / "Temp" / "timbas-office-bathroom-preview.png"
 
 PROP_MODELS = {
     "desk": "desk-blender.glb",
@@ -39,6 +40,8 @@ PROP_MODELS = {
     "whiteboard": "whiteboard.glb",
     "cone": "traffic-cone.glb",
     "vending": "vending-machine.glb",
+    "bathroomVanity": "bathroom-vanity.glb",
+    "toilet": "modern-toilet.glb",
     "kitchen": "office-kitchen.glb",
     "gameTable": "lounge-game-table.glb",
     "arcade": "arcade-cabinet.glb",
@@ -121,7 +124,8 @@ def create_materials() -> None:
         walnut=make_material("Feature · walnut slats", (0.19, 0.065, 0.022, 1), roughness=0.38, coat=0.16),
         acoustic_blue=make_material("Feature · blue acoustic felt", (0.025, 0.18, 0.36, 1), roughness=0.9),
         acoustic_teal=make_material("Feature · teal acoustic felt", (0.015, 0.31, 0.32, 1), roughness=0.9),
-        glass=make_material("Stair · smoked safety glass", (0.10, 0.34, 0.46, 1), metallic=0.12, roughness=0.13, coat=0.35, alpha=0.36),
+        glass=make_material("Glass · solid smoked architectural", (0.035, 0.15, 0.21, 1), metallic=0.32, roughness=0.16, coat=0.62),
+        bathroom=make_material("Floor · bathroom mineral porcelain", (0.35, 0.43, 0.49, 1), roughness=0.4, coat=0.12),
         brass=make_material("Detail · satin brass", (0.48, 0.26, 0.065, 1), metallic=0.8, roughness=0.25),
         cyan=make_material("Detail · cyan guidance", (0.015, 0.35, 0.62, 1), roughness=0.25, emission=(0.02, 0.72, 1, 1), emission_strength=2.2),
         amber=make_material("Detail · amber guidance", (0.62, 0.23, 0.025, 1), roughness=0.25, emission=(1, 0.3, 0.025, 1), emission_strength=1.8),
@@ -330,11 +334,12 @@ def add_floor(target: bpy.types.Collection, room: dict, piece: dict, base: float
         "terrazzo": "terrazzo",
         "vinyl": "vinyl",
         "pantry": "pantry",
+        "bathroom": "bathroom",
         "concrete": "concrete",
     }.get(finish, "concrete")
     box(target, f"Floor finish · {room['id']}", (piece["w"], piece["d"], 0.035), world_location(x, z, top), MAT[material_key])
 
-    if finish == "pantry":
+    if finish in ("pantry", "bathroom"):
         lines: list[tuple[float, float, float, float, float, float]] = []
         step = 1.2
         value = piece["x"]
@@ -413,12 +418,18 @@ def add_doors(target: bpy.types.Collection, game_map: dict) -> None:
             for x in (cx - width / 2 + frame / 2, cx + width / 2 - frame / 2):
                 box(target, f"Portal post {index}", (frame, 0.47, DOOR_HEIGHT), world_location(x, cz, base + DOOR_HEIGHT / 2), MAT["structure"], bevel=0.025)
             box(target, f"Portal header {index}", (width, 0.47, frame), world_location(cx, cz, base + DOOR_HEIGHT - frame / 2), MAT["structure"], bevel=0.025)
-            box(target, f"Open glass door {index}", (width * 0.46, 0.045, 2.3), world_location(cx - width * 0.27, cz + 0.46, base + 1.15), MAT["glass"], bevel=0.02, rotation=(0, 0, math.radians(72)))
+            for sign in (-1, 1):
+                edge_x = cx + sign * (width / 2 - 0.11)
+                box(target, f"Glass portal sidelight {index}", (0.17, 0.07, 2.3), world_location(edge_x, cz + 0.24, base + 1.15), MAT["glass"], bevel=0.025)
+            box(target, f"Door presence sensor {index}", (0.42, 0.08, 0.075), world_location(cx, cz + 0.255, base + DOOR_HEIGHT - 0.2), MAT["cyan"], bevel=0.028)
         else:
             for z in (cz - width / 2 + frame / 2, cz + width / 2 - frame / 2):
                 box(target, f"Portal post {index}", (0.47, frame, DOOR_HEIGHT), world_location(cx, z, base + DOOR_HEIGHT / 2), MAT["structure"], bevel=0.025)
             box(target, f"Portal header {index}", (0.47, width, frame), world_location(cx, cz, base + DOOR_HEIGHT - frame / 2), MAT["structure"], bevel=0.025)
-            box(target, f"Open glass door {index}", (0.045, width * 0.46, 2.3), world_location(cx + 0.46, cz - width * 0.27, base + 1.15), MAT["glass"], bevel=0.02, rotation=(0, 0, math.radians(72)))
+            for sign in (-1, 1):
+                edge_z = cz + sign * (width / 2 - 0.11)
+                box(target, f"Glass portal sidelight {index}", (0.07, 0.17, 2.3), world_location(cx + 0.24, edge_z, base + 1.15), MAT["glass"], bevel=0.025)
+            box(target, f"Door presence sensor {index}", (0.08, 0.42, 0.075), world_location(cx + 0.255, cz, base + DOOR_HEIGHT - 0.2), MAT["cyan"], bevel=0.028)
 
 
 def add_ceilings(target: bpy.types.Collection, game_map: dict) -> None:
@@ -525,6 +536,18 @@ def add_room_details(target: bpy.types.Collection, game_map: dict) -> None:
     for x in (28, 34.2, 40.4, 46.6):
         box(target, "Operations cable guide", (0.035, 10.2, 0.014), world_location(x, 10, FLOOR_HEIGHT + 0.06), MAT["cyan"])
 
+    # Banheiro completo: duas cabines, portas elevadas, divisórias e acessórios.
+    # As louças e a bancada são móveis Blender independentes; aqui fica a
+    # arquitetura que pertence ao cômodo.
+    for x in (56.75, 60.35, 64.0):
+        box(target, "Bathroom privacy partition", (0.075, 3.25, 1.86), world_location(x, 42.55, 0.99), MAT["structure"], bevel=0.035)
+    for x in (58.55, 62.18):
+        box(target, "Bathroom floating stall door", (1.18, 0.075, 1.54), world_location(x, 40.96, 1.05), MAT["glass"], bevel=0.055)
+        cylinder(target, "Bathroom occupancy light", 0.035, 0.03, world_location(x, 40.90, 1.5), MAT["cyan"], vertices=18, bevel=0.006)
+    for index, x in enumerate((66.5, 67.05, 67.6)):
+        box(target, "Folded hand towel", (0.38, 0.055, 0.58), world_location(x, 44.74, 1.55), MAT[("white", "acoustic_teal", "white")[index]], bevel=0.035)
+    box(target, "Touchless hand dryer", (0.5, 0.22, 0.62), world_location(65.5, 44.67, 1.5), MAT["white"], bevel=0.12)
+
     emergency = game_map["emergency"]
     button_base = emergency.get("level", 0) * FLOOR_HEIGHT + emergency.get("y", 0)
     button_location = world_location(emergency["x"], emergency["z"], button_base)
@@ -548,7 +571,7 @@ def add_room_details(target: bpy.types.Collection, game_map: dict) -> None:
         bevel=0.035,
     )
 
-    for room_id, text in (("recepcao", "TIMBAS"), ("operacoes", "OPERAÇÕES"), ("servidores", "DATA CORE"), ("chefe", "DIRETORIA")):
+    for room_id, text in (("recepcao", "TIMBAS"), ("operacoes", "OPERAÇÕES"), ("servidores", "DATA CORE"), ("chefe", "DIRETORIA"), ("banheiro", "BANHEIRO")):
         room = by_id[room_id]
         base_y = room.get("level", 0) * FLOOR_HEIGHT
         rect = room["rect"]
@@ -629,6 +652,40 @@ def add_modern_decor(target: bpy.types.Collection) -> None:
     for x in (5.5, 9.5, 13.5, 17.5, 21.0):
         box(target, "Data core overhead cable tray", (0.12, 10.4, 0.1), world_location(x, 10, 3.26), MAT["structure"], bevel=0.025)
         box(target, "Data core ceiling status LED", (0.025, 9.8, 0.025), world_location(x, 10, 3.19), MAT["cyan"], bevel=0.01)
+
+    # Terraço de trabalho: pergolado, jardineiras e luz integrada, para o lado
+    # de fora parecer continuação do escritório em vez de uma laje vazia.
+    terrace_base = FLOOR_HEIGHT
+    for x in (57.25, 68.75):
+        for z in (32.0, 42.0):
+            box(target, "Terrace pergola column", (0.18, 0.18, 2.72), world_location(x, z, terrace_base + 1.36), MAT["structure"], bevel=0.035)
+    for z in (32.0, 42.0):
+        box(target, "Terrace pergola beam", (11.7, 0.18, 0.2), world_location(63, z, terrace_base + 2.72), MAT["structure"], bevel=0.04)
+    for index in range(10):
+        z = 32.25 + index * 1.05
+        box(target, "Terrace solar louver", (11.35, 0.11, 0.11), world_location(63, z, terrace_base + 2.83), MAT["walnut"], bevel=0.025)
+        if index in (1, 4, 7):
+            box(target, "Terrace integrated LED", (10.8, 0.028, 0.028), world_location(63, z, terrace_base + 2.75), MAT["amber"], bevel=0.01)
+    for x, z, sx, sz in ((57.2, 20.5, 1.1, 4.2), (68.8, 29.5, 1.1, 5.2), (57.2, 51.5, 1.1, 4.2)):
+        box(target, "Terrace mineral planter", (sx, sz, 0.48), world_location(x, z, terrace_base + 0.24), MAT["terrazzo"], bevel=0.12)
+        box(target, "Terrace planter shadow gap", (sx + 0.04, sz + 0.04, 0.055), world_location(x, z, terrace_base + 0.05), MAT["structure"], bevel=0.025)
+
+    # Um skyline geométrico muito leve fecha a vista externa sem fotografia ou
+    # textura grande. Tudo se une por material na exportação.
+    towers = (
+        (80.0, 13.0, 6.5, 9.0, 12.0),
+        (87.5, 27.0, 7.0, 8.0, 17.0),
+        (79.0, 43.0, 5.5, 7.5, 11.0),
+        (91.0, 53.0, 8.5, 9.0, 20.0),
+    )
+    tower_boxes = [(x, -z, height / 2, width, depth, height) for x, z, width, depth, height in towers]
+    mesh_boxes(target, "Exterior skyline masses", tower_boxes, MAT["structure"])
+    windows: list[tuple[float, float, float, float, float, float]] = []
+    for tower_index, (x, z, width, _depth, height) in enumerate(towers):
+        for floor in range(2, int(height), 2):
+            for column in (-0.28, 0, 0.28):
+                windows.append((x - width / 2 - 0.025, -z + column * width, floor, 0.035, 0.42, 0.22))
+    mesh_boxes(target, "Exterior skyline windows", windows, MAT["cyan"])
 
 
 def add_vent_grilles(target: bpy.types.Collection, game_map: dict) -> None:
@@ -788,6 +845,7 @@ def render_review_views(scene: bpy.types.Scene) -> None:
         (LOUNGE_PREVIEW_PATH, (5.0, -32.5, FLOOR_HEIGHT + 1.72), (15.8, -21.0, FLOOR_HEIGHT + 1.15), (12.0, -26.0, FLOOR_HEIGHT + 3.0)),
         (STAIR_PREVIEW_PATH, (22.8, -32.5, 1.72), (22.8, -23.5, 2.5), (23.0, -27.0, 4.9)),
         (MEETING_PREVIEW_PATH, (61.0, -15.4, 1.72), (61.0, -9.5, 0.9), (61.0, -11.0, 3.0)),
+        (BATHROOM_PREVIEW_PATH, (56.0, -36.2, 1.68), (64.0, -42.0, 1.1), (64.0, -39.0, 3.0)),
     )
     bpy.ops.object.light_add(type="POINT", location=(0, 0, 3))
     review_light = bpy.context.object

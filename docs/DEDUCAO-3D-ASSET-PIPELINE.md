@@ -22,7 +22,13 @@ Uma segunda falha foi tratar arquitetura e mobiliário como duas cenas. O navega
 - escadas sem vão arquitetônico coerente;
 - objetos apoiados na altura errada, porque o modelo visual e a planta não eram revisados juntos.
 
-A regra atual é uma fonte Blender para o edifício completo. `timbas-office-building.blend` contém os dois pavimentos, arquitetura, acabamentos, móveis, equipamentos, luminárias, carros e decoração. O navegador carrega um GLB único e conserva apenas interações e um pequeno pool de luzes reais.
+As revisões seguintes revelaram mais três regras importantes:
+
+- transparência ordenada em dezenas de portas de vidro pode piscar, atravessar outra folha e mudar de ordem conforme a câmera; vidro arquitetônico de gameplay deve usar material sólido, escuro e reflexivo, com o vão de circulação realmente livre;
+- uma luz real transferida instantaneamente para a luminária mais próxima denuncia o pool e faz o prédio "acender" quando o jogador chega; o preenchimento precisa seguir a câmera suavemente enquanto todas as luminárias continuam emissivas;
+- um corpo feito no React e escondido por distância não parece parte do mundo e pode sumir antes do report; personagem vivo e corpo agora têm fontes Blender próprias, e só a laje decide em qual pavimento o corpo aparece.
+
+A regra atual é uma fonte Blender para o edifício completo. `timbas-office-building.blend` contém os dois pavimentos, arquitetura, acabamentos, móveis, equipamentos, luminárias, carros e decoração. O navegador carrega um GLB único e conserva apenas interações, uma ou duas luzes de preenchimento estáveis e as luzes vermelhas do blackout.
 
 ## Padrão visual
 
@@ -43,6 +49,14 @@ Para móveis e equipamentos:
 - separação visual entre estrutura, superfície de contato, acabamento e peças funcionais;
 - materiais PBR simples e coerentes, como metal, madeira, tecido, plástico, vidro e emissão;
 - pequenos detalhes somente quando permanecem legíveis na câmera normal do jogo.
+
+Para personagens repetidos:
+
+- malha original criada no Blender, inclusive a versão deitada usada pelo corpo;
+- pivôs nomeados para braços e pernas, sem esqueleto complexo quando quatro rotações resolvem a animação;
+- peças estáticas unidas por material e por pivô, nunca entre pivôs diferentes;
+- cor do jogador aplicada em cópias dos materiais, mantendo geometria compartilhada;
+- corpo morto permanece renderizado até a reunião, sem culling por distância.
 
 ## Fluxo obrigatório
 
@@ -79,17 +93,29 @@ Os valores são metas, não uma desculpa para deformar a silhueta.
 | Móvel de destaque | até 25 mil | até 6 | no máximo 1 conjunto PBR | instanciado |
 | Veículo de destaque | até 90 mil | até 12 | evitar quando cor sólida resolve | instanciado |
 | Luminária repetida | até 2 mil | até 3 | nenhuma | instanciada |
+| Personagem repetido | até 35 mil | até 12 draw calls | nenhuma | geometria compartilhada e pivôs simples |
 
 O orçamento decisivo da cena é a combinação de draw calls, luzes com sombra, pixels processados e objetos visíveis. Polígonos isoladamente não explicam o uso da GPU.
 
 ## Iluminação
 
 - A peça emissiva deve existir dentro de uma luminária física.
-- Emissão dá aparência de luz, mas somente um conjunto pequeno de luzes reais próximas ao jogador ilumina o ambiente.
-- O pool de luzes acompanha a área ativa. Não deve haver uma PointLight para cada luminária do prédio.
+- Emissão dá aparência de luz, mas uma ou duas luzes reais de preenchimento acompanham a câmera com interpolação suave.
+- A luz de preenchimento nunca salta entre luminárias. Não deve haver uma PointLight para cada peça do teto.
 - Apenas uma luz principal pode projetar sombra dinâmica quando necessário.
 - No blackout, as luzes normais apagam e as luminárias de emergência do corredor acendem em vermelho.
-- A qualidade baixa preserva emissão e leitura espacial, mas remove luzes dinâmicas caras.
+- O assassino recebe leitura noturna reduzida no blackout, sem reacender as luminárias normais para os demais jogadores.
+- A qualidade baixa preserva emissão e leitura espacial, mas reduz luzes dinâmicas caras.
+
+## Controles móveis e áudio
+
+- O canvas usa `touch-action: none`, e somente os dois controles ativos cancelam seus respectivos gestos.
+- O manche guarda origem e identificador em refs; reinstalar listeners a cada movimento causa saltos e dedos perdidos.
+- A tela de jogo bloqueia zoom, gesto de pinça e overscroll durante a partida, restaurando o documento ao sair.
+- Voz usa WebRTC ponto a ponto; o Colyseus transporta somente oferta, resposta e ICE, nunca o áudio.
+- No mapa, o volume cai suavemente entre 3 e 15 metros e zera em outro pavimento ou dentro do duto.
+- Na reunião, todos do mesmo estado de vida se ouvem por igual. Mortos continuam isolados dos vivos.
+- O microfone só é solicitado depois de um clique explícito no botão do HUD.
 
 ## Organização dos arquivos
 
@@ -97,6 +123,7 @@ O orçamento decisivo da cena é a combinação de draw calls, luzes com sombra,
 - `scripts/build-coupe-suv-blender.py`: fonte paramétrica do SUV cupê.
 - `scripts/build-office-kit-blender.py`: fonte paramétrica dos objetos do escritório.
 - `scripts/build-office-building-blender.py`: monta o prédio completo a partir da planta exportada pelo servidor.
+- `scripts/build-crew-character-blender.py`: gera personagem, pivôs animáveis e corpo reportável.
 - `assets/models/deducao/office-map.json`: fotografia da planta usada pelo Blender na geração.
 - `assets/models/deducao/timbas-office-building.blend`: fonte editável da cena completa.
 - `assets/models/deducao/`: arquivos `.blend` editáveis.

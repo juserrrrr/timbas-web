@@ -32,13 +32,23 @@ A carroceria contínua, o interior, as rodas e os materiais PBR são gerados do 
 
 ## Timbas Office Kit
 
-- Arquivos: 26 modelos GLB modulares de móveis, equipamentos, jogos, vegetação e luminárias
+- Arquivos: 28 modelos GLB modulares de móveis, equipamentos, jogos, banheiro, vegetação e luminárias
 - Modelo e materiais: criação original do projeto Timbas
 - Fonte paramétrica: `scripts/build-office-kit-blender.py`
 - Fonte editável: `assets/models/deducao/timbas-office-kit.blend`
 - Dependências externas: nenhuma
 
-O kit inclui mesas, cadeira, monitor, sofá, balcão, rack, armário, estante, cafeteira, caixa, impressora, quadro, cone, pia, vending machine, cozinha, sinuca, arcade, planta, árvore, poste, banco e luminárias normal e de emergência. As peças são modeladas no Blender e unidas por material somente durante a exportação para o navegador.
+O kit inclui mesas, cadeira, monitor, sofá, balcão, rack, armário, estante, cafeteira, caixa, impressora, quadro, cone, pia, bancada dupla de banheiro, vaso sanitário, vending machine, cozinha, sinuca, arcade, planta, árvore, poste, banco e luminárias normal e de emergência. As peças são modeladas no Blender e unidas por material somente durante a exportação para o navegador.
+
+## Personagem e corpo do Dedução
+
+- Arquivos: `timbas-crew-character.glb` e `timbas-crew-corpse.glb`
+- Autoria: original do projeto Timbas
+- Fonte paramétrica: `scripts/build-crew-character-blender.py`
+- Fonte editável: `assets/models/deducao/timbas-crew-character.blend`
+- Licença: código e arte proprietários do projeto
+
+O personagem de escritório, uniforme, viseira, pivôs de animação e pose do corpo foram criados do zero no Blender. Nenhuma malha ou textura externa foi incorporada.
 
 ## Timbas Office Building
 

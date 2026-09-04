@@ -12,18 +12,6 @@ export const FLOOR_HEIGHT = 4.2
 const WALL_HEIGHT = 4.02
 const BUILDING_MODEL = "/models/games/deducao/timbas-office-building.glb"
 
-const ROOM_LIGHT_POOL_SIZE: Record<Quality, number> = {
-  alto: 8,
-  medio: 5,
-  baixo: 2,
-}
-
-const EMERGENCY_LIGHT_POOL_SIZE: Record<Quality, number> = {
-  alto: 6,
-  medio: 4,
-  baixo: 2,
-}
-
 interface Placement {
   x: number
   z: number
@@ -93,25 +81,6 @@ export function OfficeBuilding({ blackout, quality }: { blackout: boolean; quali
   return <primitive object={building} dispose={null} />
 }
 
-function fixturePlacements(map: OfficeMap, level: number) {
-  return map.rooms
-    .filter((room) => (room.level ?? 0) === level && room.kind !== "terraco")
-    .flatMap((room) => {
-      const columns = Math.max(1, Math.min(3, Math.floor((room.rect.w - 2) / 6)))
-      const rows = Math.max(1, Math.min(3, Math.floor((room.rect.d - 2) / 7)))
-      return Array.from({ length: columns * rows }, (_, index) => {
-        const column = index % columns
-        const row = Math.floor(index / columns)
-        return {
-          x: room.rect.x + ((column + 1) * room.rect.w) / (columns + 1),
-          y: WALL_HEIGHT - 0.08,
-          z: room.rect.z + ((row + 1) * room.rect.d) / (rows + 1),
-          rot: Math.PI / 2,
-        }
-      })
-    })
-}
-
 function emergencyPlacements(map: OfficeMap, level: number): Placement[] {
   const corridors = map.rooms.filter(
     (room) => (room.level ?? 0) === level && room.kind === "corredor",
@@ -132,81 +101,57 @@ function emergencyPlacements(map: OfficeMap, level: number): Placement[] {
   })
 }
 
-function LightPool({ lights, quality }: { lights: RoomLightSource[]; quality: Quality }) {
+function StableOfficeFill({ quality }: { quality: Quality }) {
   const { camera } = useThree()
-  const poolSize = Math.min(lights.length, ROOM_LIGHT_POOL_SIZE[quality])
-  const pool = useMemo(
-    () =>
-      Array.from({ length: poolSize }, () => {
-        const light = new THREE.PointLight("#fff3dc", 0)
+  const direction = useMemo(() => new THREE.Vector3(), [])
+  const lights = useMemo(
+    () => {
+      const count = quality === "alto" ? 2 : 1
+      return Array.from({ length: count }, (_, index) => {
+        const light = new THREE.PointLight(index === 0 ? "#fff2dc" : "#dcecff", 0)
         light.decay = 2
-        return { light, source: -1 }
-      }),
-    [poolSize],
+        return light
+      })
+    },
+    [quality],
   )
+  const targets = useMemo(() => lights.map(() => new THREE.Vector3()), [lights])
 
-  useFrame(() => {
-    const closest = lights
-      .map((light, index) => ({
-        index,
-        distance: (light.x - camera.position.x) ** 2 + (light.z - camera.position.z) ** 2,
-      }))
-      .sort((left, right) => left.distance - right.distance)
-      .slice(0, pool.length)
-    pool.forEach((entry, index) => {
-      const sourceIndex = closest[index]?.index
-      const source = sourceIndex === undefined ? undefined : lights[sourceIndex]
-      if (!source) {
-        entry.light.intensity = 0
-        return
-      }
-      entry.source = sourceIndex
-      entry.light.position.set(source.x, source.y, source.z)
-      entry.light.color.set(source.color)
-      entry.light.intensity = source.intensity
-      entry.light.distance = source.distance
+  useEffect(() => () => lights.forEach((light) => light.dispose()), [lights])
+
+  useFrame((_, delta) => {
+    camera.getWorldDirection(direction)
+    direction.y = 0
+    if (direction.lengthSq() < 0.001) direction.set(0, 0, -1)
+    else direction.normalize()
+    lights.forEach((light, index) => {
+      const ahead = index === 0 ? 1.5 : 9
+      const target = targets[index].set(
+        camera.position.x + direction.x * ahead,
+        WALL_HEIGHT - (index === 0 ? 0.62 : 0.88),
+        camera.position.z + direction.z * ahead,
+      )
+      light.position.lerp(target, 1 - Math.exp(-10 * Math.min(delta, 0.1)))
+      light.intensity = quality === "baixo" ? 7 : index === 0 ? 9.5 : 6.5
+      light.distance = quality === "baixo" ? 19 : index === 0 ? 23 : 20
     })
   })
 
-  return pool.map((entry, index) => <primitive key={index} object={entry.light} />)
+  return lights.map((light, index) => <primitive key={index} object={light} />)
 }
 
 function EmergencyLightPool({ lights, quality }: { lights: RoomLightSource[]; quality: Quality }) {
-  const { camera } = useThree()
-  const poolSize = Math.min(lights.length, EMERGENCY_LIGHT_POOL_SIZE[quality])
-  const pool = useMemo(
-    () =>
-      Array.from({ length: poolSize }, () => {
-        const light = new THREE.PointLight("#ff2038", 0)
-        light.decay = 2
-        return { light, source: -1 }
-      }),
-    [poolSize],
-  )
-
-  useFrame(() => {
-    const closest = lights
-      .map((light, index) => ({
-        index,
-        distance: (light.x - camera.position.x) ** 2 + (light.z - camera.position.z) ** 2,
-      }))
-      .sort((left, right) => left.distance - right.distance)
-      .slice(0, pool.length)
-    pool.forEach((entry, index) => {
-      const sourceIndex = closest[index]?.index
-      const source = sourceIndex === undefined ? undefined : lights[sourceIndex]
-      if (!source) {
-        entry.light.intensity = 0
-        return
-      }
-      entry.source = sourceIndex
-      entry.light.position.set(source.x, source.y, source.z)
-      entry.light.intensity = source.intensity
-      entry.light.distance = source.distance
-    })
-  })
-
-  return pool.map((entry, index) => <primitive key={index} object={entry.light} />)
+  const scale = quality === "baixo" ? 0.62 : quality === "medio" ? 0.82 : 1
+  return lights.map((light, index) => (
+    <pointLight
+      key={index}
+      position={[light.x, light.y, light.z]}
+      color={light.color}
+      intensity={light.intensity * scale}
+      distance={light.distance}
+      decay={2}
+    />
+  ))
 }
 
 export function OfficeWorld({
@@ -224,20 +169,7 @@ export function OfficeWorld({
   baseY?: number
   active?: boolean
 }) {
-  const ceilingFixtures = useMemo(() => fixturePlacements(map, level), [level, map])
   const emergencyFixtures = useMemo(() => emergencyPlacements(map, level), [level, map])
-  const roomLights = useMemo<RoomLightSource[]>(
-    () =>
-      ceilingFixtures.map((fixture) => ({
-        x: fixture.x,
-        y: fixture.y ?? WALL_HEIGHT,
-        z: fixture.z,
-        color: "#fff3dc",
-        intensity: 11,
-        distance: 11,
-      })),
-    [ceilingFixtures],
-  )
   const emergencyLights = useMemo<RoomLightSource[]>(
     () => [
       ...emergencyFixtures.map((fixture) => ({
@@ -272,7 +204,7 @@ export function OfficeWorld({
           shadows={false}
         />
       )}
-      {active && !blackout && <LightPool lights={roomLights} quality={quality} />}
+      {active && !blackout && <StableOfficeFill quality={quality} />}
       {active && blackout && <EmergencyLightPool lights={emergencyLights} quality={quality} />}
     </group>
   )

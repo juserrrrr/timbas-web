@@ -18,6 +18,7 @@ if (!executable) {
 for (const script of [
   "build-coupe-suv-blender.py",
   "build-office-kit-blender.py",
+  "build-crew-character-blender.py",
   "build-office-building-blender.py",
 ]) {
   const source = path.join("scripts", script)

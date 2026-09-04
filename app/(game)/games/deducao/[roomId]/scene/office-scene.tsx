@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
-import { Html } from "@react-three/drei"
+import { Html, Sky, useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
@@ -16,10 +16,15 @@ import type { OfficeMap } from "@/lib/services/games"
 import { NO_TARGETS, type LookState, type Quality, type Targets } from "../match-types"
 import type { Role, Snapshot } from "../use-deducao-room"
 import { FLOOR_HEIGHT, OfficeBuilding, OfficeWorld } from "./office-world"
-import { setBlackout, useVisionMaterial } from "./vision-material"
+import { patchVision, setBlackout, useVisionMaterial } from "./vision-material"
 
 const VOID_COLOR = "#7892b8"
 const MAX_RENDER_FPS = 60
+const CREW_MODEL = "/models/games/deducao/timbas-crew-character.glb"
+const CORPSE_MODEL = "/models/games/deducao/timbas-crew-corpse.glb"
+
+useGLTF.preload(CREW_MODEL)
+useGLTF.preload(CORPSE_MODEL)
 
 /// Altura dos olhos. A câmera de primeira pessoa fica aqui, e é por isso que a
 /// parede precisa passar dos 2,5m: a 1,55m dava para ver o escritório inteiro
@@ -143,6 +148,7 @@ export function OfficeScene(props: Props) {
         stencil: false,
       }}
       camera={{ fov: 68, near: 0.05, far: cameraFar, position: [0, EYE_HEIGHT, 0] }}
+      style={{ touchAction: "none", overscrollBehavior: "none" }}
       onCreated={({ gl }) => {
         // O vazio em volta do escritório é um azul de fim de tarde, não preto:
         // ele precisa ler como ar em volta das lajes, e não como buraco.
@@ -328,10 +334,16 @@ function SceneContent({
   const alive = mineSnapshot?.alive ?? true
   const inVent = mineSnapshot?.inVent ?? false
   const visionRange = Number(snapshot.config.visionRange ?? 13)
-  // O apagão é físico e vale para todos. O assassino continua com as próprias
-  // ações, mas não recebe iluminação nem alcance de visão privilegiados.
-  const blackoutForViewer = snapshot.blackout
-  const activeVision = blackoutForViewer ? Math.min(4.2, visionRange * 0.42) : visionRange
+  // O prédio entra no mesmo apagão para todos. O assassino mantém alcance e
+  // contraste suficientes para caçar; a tripulação fica limitada às luzes de
+  // emergência e ao cone curto da lanterna.
+  const assassinNightVision = snapshot.blackout && role === "assassino" && alive
+  const blackoutForViewer = snapshot.blackout && !assassinNightVision
+  const activeVision = snapshot.blackout
+    ? assassinNightVision
+      ? visionRange
+      : Math.min(4.2, visionRange * 0.42)
+    : visionRange
 
   // Olhar com o mouse. O clique tranca o ponteiro; o Esc destranca, e aí o
   // jogador volta a ter cursor para clicar nos botões do HUD.
@@ -374,13 +386,17 @@ function SceneContent({
 
     const comeca = (event: TouchEvent) => {
       const toque = [...event.changedTouches].find((item) => item.clientX > window.innerWidth / 2)
-      if (toque && !ultimo) ultimo = { id: toque.identifier, x: toque.clientX, y: toque.clientY }
+      if (toque && !ultimo) {
+        event.preventDefault()
+        ultimo = { id: toque.identifier, x: toque.clientX, y: toque.clientY }
+      }
     }
     const arrasta = (event: TouchEvent) => {
       if (!ultimo) return
       const marca = ultimo
       const toque = [...event.changedTouches].find((item) => item.identifier === marca.id)
       if (!toque) return
+      event.preventDefault()
       lookRef.current.yaw -= (toque.clientX - marca.x) * 0.006
       lookRef.current.pitch = THREE.MathUtils.clamp(
         lookRef.current.pitch - (toque.clientY - marca.y) * 0.006,
@@ -391,13 +407,16 @@ function SceneContent({
     }
     const termina = (event: TouchEvent) => {
       const marca = ultimo
-      if (marca && [...event.changedTouches].some((item) => item.identifier === marca.id)) ultimo = null
+      if (marca && [...event.changedTouches].some((item) => item.identifier === marca.id)) {
+        event.preventDefault()
+        ultimo = null
+      }
     }
 
-    canvas.addEventListener("touchstart", comeca, { passive: true })
-    canvas.addEventListener("touchmove", arrasta, { passive: true })
-    canvas.addEventListener("touchend", termina, { passive: true })
-    canvas.addEventListener("touchcancel", termina, { passive: true })
+    canvas.addEventListener("touchstart", comeca, { passive: false })
+    canvas.addEventListener("touchmove", arrasta, { passive: false })
+    canvas.addEventListener("touchend", termina, { passive: false })
+    canvas.addEventListener("touchcancel", termina, { passive: false })
     return () => {
       canvas.removeEventListener("touchstart", comeca)
       canvas.removeEventListener("touchmove", arrasta)
@@ -592,20 +611,38 @@ function SceneContent({
     poseRef.current.z = local.current.y
     poseRef.current.dir = heading.current
 
-    const dark = blackoutForViewer
+    const dark = snapshot.blackout
+    const nightVision = assassinNightVision
     setBlackout(blackoutForViewer)
     if (sun.current) {
       sun.current.position.set(local.current.x - 14, visualY.current + 26, local.current.y - 10)
       sun.current.target.position.set(local.current.x, visualY.current, local.current.y)
       sun.current.target.updateMatrixWorld()
-      sun.current.intensity += ((dark ? 0.025 : 1.5) - sun.current.intensity) * Math.min(1, delta * 3)
+      sun.current.intensity +=
+        ((dark ? (nightVision ? 0.34 : 0.025) : 1.35) - sun.current.intensity) * Math.min(1, delta * 3)
     }
     if (sky.current) {
-      const skyTarget = dark ? 0.025 : quality === "baixo" ? 0.72 : quality === "alto" ? 0.48 : 0.44
+      const skyTarget = dark
+        ? nightVision
+          ? 0.24
+          : 0.025
+        : quality === "baixo"
+          ? 0.78
+          : quality === "alto"
+            ? 0.62
+            : 0.68
       sky.current.intensity += (skyTarget - sky.current.intensity) * Math.min(1, delta * 3)
     }
     if (ambient.current) {
-      const ambientTarget = dark ? 0.018 : quality === "baixo" ? 0.38 : quality === "alto" ? 0.13 : 0.15
+      const ambientTarget = dark
+        ? nightVision
+          ? 0.15
+          : 0.018
+        : quality === "baixo"
+          ? 0.42
+          : quality === "alto"
+            ? 0.24
+            : 0.29
       ambient.current.intensity += (ambientTarget - ambient.current.intensity) * Math.min(1, delta * 3)
     }
     if (flashlight.current && flashlightTarget.current) {
@@ -620,10 +657,19 @@ function SceneContent({
         local.current.y + forwardZ * 7,
       )
       flashlight.current.target = flashlightTarget.current
-      flashlight.current.intensity += ((dark ? 24 : 0) - flashlight.current.intensity) * Math.min(1, delta * 7)
-      flashlight.current.distance = dark ? activeVision * 1.45 : 0
+      flashlight.current.intensity +=
+        ((dark ? (nightVision ? 11 : 24) : 0) - flashlight.current.intensity) * Math.min(1, delta * 7)
+      flashlight.current.distance = dark ? activeVision * (nightVision ? 1.7 : 1.45) : 0
     }
-    const exposure = dark ? 0.84 : quality === "alto" ? 0.92 : quality === "medio" ? 0.95 : 0.98
+    const exposure = dark
+      ? nightVision
+        ? 0.94
+        : 0.84
+      : quality === "alto"
+        ? 0.92
+        : quality === "medio"
+          ? 0.95
+          : 0.98
     gl.toneMappingExposure += (exposure - gl.toneMappingExposure) * Math.min(1, delta * 3)
 
     if (onStairs) {
@@ -653,8 +699,16 @@ function SceneContent({
     <>
       <ProceduralEnvironment quality={quality} blackout={blackoutForViewer} />
       {quality === "alto" && <CinematicEffects blackout={blackoutForViewer} />}
-      <ambientLight ref={ambient} color="#e9f1fa" intensity={0.14} />
-      <hemisphereLight ref={sky} args={["#fff6e7", "#66768e", 0.46]} />
+      <Sky
+        distance={420000}
+        sunPosition={[4, 2.5, -6]}
+        turbidity={7.5}
+        rayleigh={1.25}
+        mieCoefficient={0.006}
+        mieDirectionalG={0.82}
+      />
+      <ambientLight ref={ambient} color="#edf4ff" intensity={0.24} />
+      <hemisphereLight ref={sky} args={["#fff6e7", "#66768e", 0.62]} />
       <directionalLight
         ref={sun}
         color="#fff0d1"
@@ -674,7 +728,7 @@ function SceneContent({
       <object3D ref={flashlightTarget} />
       <spotLight
         ref={flashlight}
-        visible={blackoutForViewer}
+        visible={snapshot.blackout}
         color="#e8f2ff"
         intensity={0}
         distance={0}
@@ -683,13 +737,13 @@ function SceneContent({
         decay={2}
       />
 
-      <OfficeBuilding blackout={blackoutForViewer} quality={quality} />
+      <OfficeBuilding blackout={snapshot.blackout} quality={quality} />
       {renderedFloors.map((floor) => (
         <OfficeWorld
           key={floor}
           map={map}
           quality={quality}
-          blackout={blackoutForViewer}
+          blackout={snapshot.blackout}
           level={floor}
           baseY={floor * FLOOR_HEIGHT}
           active={floor === currentLevel}
@@ -731,13 +785,10 @@ function SceneContent({
         <Corpse
           key={corpse.id}
           corpse={corpse}
-          localRef={local}
           localYRef={visualY}
-          viewerAlive={alive}
-          walls={walls}
-          visionRange={activeVision}
           blackout={blackoutForViewer}
           viewerLevel={currentLevel}
+          quality={quality}
           floorY={stairSampleAt(map, corpse.x, corpse.z)?.y ?? corpse.level * FLOOR_HEIGHT}
         />
       ))}
@@ -746,6 +797,47 @@ function SceneContent({
 }
 
 // ── Atores ────────────────────────────────────────────────────────────────────
+
+function cloneCrewScene(source: THREE.Group, color: string, blackout: boolean, shadows: boolean) {
+  const clone = source.clone(true)
+  const playerColor = new THREE.Color(color)
+  const materialCopies = new Map<THREE.Material, THREE.Material>()
+
+  const copyMaterial = (original: THREE.Material) => {
+    const existing = materialCopies.get(original)
+    if (existing) return existing
+    const material = original.clone()
+    if (material instanceof THREE.MeshStandardMaterial) {
+      if (original.name.includes("Crew Body Color")) {
+        material.color.copy(playerColor)
+      } else if (original.name.includes("Crew Accent Color")) {
+        material.color.copy(playerColor).lerp(new THREE.Color("#bfe9ff"), 0.36)
+      } else if (original.name.includes("Crew Dark Uniform")) {
+        material.color.copy(playerColor).multiplyScalar(0.16).addScalar(0.012)
+      }
+      if (blackout && !original.name.includes("Crew Visor") && !original.name.includes("Report Beacon")) {
+        material.color.lerp(new THREE.Color("#778494"), 0.48)
+        material.emissive.copy(material.color)
+        material.emissiveIntensity = 0.16
+      }
+      material.envMapIntensity = blackout ? 0.48 : 1.05
+    }
+    const patched = patchVision(material)
+    materialCopies.set(original, patched)
+    return patched
+  }
+
+  clone.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return
+    child.material = Array.isArray(child.material)
+      ? child.material.map(copyMaterial)
+      : copyMaterial(child.material)
+    child.castShadow = shadows
+    child.receiveShadow = true
+    child.frustumCulled = false
+  })
+  return { clone, materials: [...materialCopies.values()] }
+}
 
 function Actor({
   player,
@@ -782,37 +874,20 @@ function Actor({
 }) {
   const group = useRef<THREE.Group>(null)
   const bodyGroup = useRef<THREE.Group>(null)
-  const pernaEsquerda = useRef<THREE.Group>(null)
-  const pernaDireita = useRef<THREE.Group>(null)
-  const bracoEsquerdo = useRef<THREE.Group>(null)
-  const bracoDireito = useRef<THREE.Group>(null)
+  const pernaEsquerda = useRef<THREE.Object3D>(null)
+  const pernaDireita = useRef<THREE.Object3D>(null)
+  const bracoEsquerdo = useRef<THREE.Object3D>(null)
+  const bracoDireito = useRef<THREE.Object3D>(null)
   const label = useRef<HTMLSpanElement>(null)
   const passo = useRef(0)
   const balanco = useRef(0)
   const placed = useRef(false)
 
-  const tomBase = blackout ? "#6f7c8e" : player.color
-  const tomMembro = useMemo(() => `#${new THREE.Color(tomBase).multiplyScalar(0.72).getHexString()}`, [tomBase])
-  const body = useVisionMaterial({
-    color: tomBase,
-    emissive: blackout ? "#9aa7b8" : undefined,
-    emissiveIntensity: blackout ? 0.7 : 0,
-    roughness: 0.38,
-    metalness: 0.06,
-  })
-  const limbs = useVisionMaterial({
-    color: tomMembro,
-    emissive: blackout ? "#758195" : undefined,
-    emissiveIntensity: blackout ? 0.55 : 0,
-    roughness: 0.45,
-    metalness: 0.04,
-  })
-  const visor = useVisionMaterial({
-    color: "#121a26",
-    emissive: "#9fdcff",
-    emissiveIntensity: blackout ? 1.3 : 0.7,
-    roughness: 0.15,
-  })
+  const { scene: crewSource } = useGLTF(CREW_MODEL)
+  const crew = useMemo(
+    () => cloneCrewScene(crewSource, player.color, blackout, quality !== "baixo"),
+    [blackout, crewSource, player.color, quality],
+  )
 
   // Quem está vivo não vê fantasma. É a única informação que a tela esconde por
   // conta própria, e ela vale para todo mundo do mesmo jeito.
@@ -820,10 +895,13 @@ function Actor({
   const ghost = !player.alive && !viewerAlive
 
   useLayoutEffect(() => {
-    group.current?.traverse((child) => {
-      if (child instanceof THREE.Mesh) child.frustumCulled = false
-    })
-  }, [])
+    bracoEsquerdo.current = crew.clone.getObjectByName("LeftArmRig") ?? null
+    bracoDireito.current = crew.clone.getObjectByName("RightArmRig") ?? null
+    pernaEsquerda.current = crew.clone.getObjectByName("LeftLegRig") ?? null
+    pernaDireita.current = crew.clone.getObjectByName("RightLegRig") ?? null
+  }, [crew])
+
+  useEffect(() => () => crew.materials.forEach((material) => material.dispose()), [crew])
 
   useFrame((_, rawDelta) => {
     const node = group.current
@@ -895,60 +973,10 @@ function Actor({
     }
   })
 
-  const sombras = quality !== "baixo"
-
   return (
     <group ref={group}>
       <group ref={bodyGroup}>
-        {/* Quadril e tronco. A cápsula estreita no ombro e larga na cintura é o
-            que dá silhueta de gente em vez de cápsula em pé. */}
-        <mesh position={[0, 1.12, 0]} castShadow={sombras} material={body}>
-          <capsuleGeometry args={[0.26, 0.36, 4, 12]} />
-        </mesh>
-        <mesh position={[0, 1.35, 0]} castShadow={sombras} material={body}>
-          <capsuleGeometry args={[0.21, 0.14, 3, 12]} />
-        </mesh>
-        <mesh position={[0, 1.16, -0.24]} castShadow={sombras} material={limbs}>
-          <boxGeometry args={[0.34, 0.44, 0.18]} />
-        </mesh>
-
-        {/* Cabeça e viseira. */}
-        <mesh position={[0, 1.62, 0]} castShadow={sombras} material={body}>
-          <sphereGeometry args={[0.21, 16, 14]} />
-        </mesh>
-        <mesh position={[0, 1.63, 0.15]} material={visor}>
-          <boxGeometry args={[0.27, 0.13, 0.1]} />
-        </mesh>
-
-        {/* Braços, presos no ombro. */}
-        <group ref={bracoEsquerdo} position={[-0.31, 1.36, 0]}>
-          <mesh position={[0, -0.26, 0]} castShadow={sombras} material={limbs}>
-            <capsuleGeometry args={[0.083, 0.38, 3, 8]} />
-          </mesh>
-        </group>
-        <group ref={bracoDireito} position={[0.31, 1.36, 0]}>
-          <mesh position={[0, -0.26, 0]} castShadow={sombras} material={limbs}>
-            <capsuleGeometry args={[0.083, 0.38, 3, 8]} />
-          </mesh>
-        </group>
-
-        {/* Pernas, presas no quadril. */}
-        <group ref={pernaEsquerda} position={[-0.13, 0.88, 0]}>
-          <mesh position={[0, -0.3, 0]} castShadow={sombras} material={limbs}>
-            <capsuleGeometry args={[0.105, 0.44, 3, 8]} />
-          </mesh>
-          <mesh position={[0, -0.6, 0.05]} castShadow={sombras} material={visor}>
-            <boxGeometry args={[0.17, 0.1, 0.28]} />
-          </mesh>
-        </group>
-        <group ref={pernaDireita} position={[0.13, 0.88, 0]}>
-          <mesh position={[0, -0.3, 0]} castShadow={sombras} material={limbs}>
-            <capsuleGeometry args={[0.105, 0.44, 3, 8]} />
-          </mesh>
-          <mesh position={[0, -0.6, 0.05]} castShadow={sombras} material={visor}>
-            <boxGeometry args={[0.17, 0.1, 0.28]} />
-          </mesh>
-        </group>
+        <primitive object={crew.clone} />
       </group>
 
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.03, 0]}>
@@ -979,50 +1007,43 @@ function Actor({
 
 function Corpse({
   corpse,
-  localRef,
   localYRef,
-  viewerAlive,
-  walls,
-  visionRange,
   blackout,
   viewerLevel,
+  quality,
   floorY,
 }: {
   corpse: Snapshot["corpses"][number]
-  localRef: React.MutableRefObject<THREE.Vector2>
   localYRef: React.MutableRefObject<number>
-  viewerAlive: boolean
-  walls: OfficeMap["walls"]
-  visionRange: number
   blackout: boolean
   viewerLevel: number
+  quality: Quality
   floorY: number
 }) {
   const group = useRef<THREE.Group>(null)
-  const material = useVisionMaterial({
-    color: blackout ? "#657180" : corpse.color,
-    roughness: 0.7,
-  })
+  const { scene: corpseSource } = useGLTF(CORPSE_MODEL)
+  const body = useMemo(
+    () => cloneCrewScene(corpseSource, corpse.color, blackout, quality !== "baixo"),
+    [blackout, corpse.color, corpseSource, quality],
+  )
+
+  useEffect(() => () => body.materials.forEach((material) => material.dispose()), [body])
 
   useFrame(() => {
     if (!group.current) return
-    const planarGap = distance({ x: localRef.current.x, z: localRef.current.y }, corpse)
     const verticalGap = Math.abs(localYRef.current - floorY)
     const sameLayer = corpse.level === viewerLevel || verticalGap < FLOOR_HEIGHT * 0.62
-    group.current.visible =
-      !viewerAlive ||
-      (Math.hypot(planarGap, verticalGap) <= visionRange &&
-        (!sameLayer || hasLineOfSight({ x: localRef.current.x, z: localRef.current.y }, corpse, walls)))
+    // O corpo pertence ao mundo e fica no chão até alguém reportá-lo. A
+    // parede e a laje fazem a oclusão normal; distância nunca mais o apaga.
+    group.current.visible = sameLayer
   })
 
   return (
     <group ref={group} position={[corpse.x, floorY, corpse.z]}>
-      <mesh rotation={[Math.PI / 2, 0, 0.6]} position={[0, 0.3, 0]} material={material}>
-        <capsuleGeometry args={[0.32, 0.42, 4, 8]} />
-      </mesh>
+      <primitive object={body.clone} />
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.04, 0]}>
-        <circleGeometry args={[0.95, 20]} />
-        <meshBasicMaterial color="#7f1d1d" transparent opacity={0.55} />
+        <circleGeometry args={[0.82, 24]} />
+        <meshBasicMaterial color="#5b1018" transparent opacity={0.38} depthWrite={false} />
       </mesh>
     </group>
   )

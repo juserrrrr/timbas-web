@@ -36,6 +36,8 @@ ASSET_FILES: dict[str, str] = {
     "whiteboard": "whiteboard",
     "cone": "traffic-cone",
     "sink": "utility-sink",
+    "bathroomVanity": "bathroom-vanity",
+    "toilet": "modern-toilet",
     "vending": "vending-machine",
     "kitchen": "office-kitchen",
     "gameTable": "lounge-game-table",
@@ -357,7 +359,9 @@ def build_chair() -> bpy.types.Collection:
     box(c, "Seat shell", (0.64, 0.61, 0.105), (0, 0.015, 0.53), MAT["black"], bevel=0.095)
     box(c, "Tailored seat cushion", (0.55, 0.52, 0.105), (0, 0.055, 0.61), MAT["leather"], bevel=0.085)
     ergonomic_back(c)
-    tube(c, "Backbone", [(0, -0.16, 0.44), (0, -0.23, 0.69), (0, -0.31, 1.13)], 0.035, MAT["metal"])
+    # O encosto encontra o assento pela própria concha. O antigo tubo central
+    # atravessava visualmente a malha e parecia estar tanto na frente quanto
+    # atrás da cadeira em tempo real.
     box(c, "Lumbar accent", (0.34, 0.045, 0.075), (0, -0.17, 0.82), MAT["fabric"], bevel=0.032)
     for x in (-0.34, 0.34):
         tube(c, "Arm support", [(x, -0.08, 0.57), (x, -0.02, 0.78), (x, 0.12, 0.82)], 0.025, MAT["metal"])
@@ -553,6 +557,41 @@ def build_sink() -> bpy.types.Collection:
     return c
 
 
+def build_bathroom_vanity() -> bpy.types.Collection:
+    c = collection("bathroomVanity")
+    box(c, "Floating vanity carcass", (2.8, 0.62, 0.58), (0, -0.02, 0.58), MAT["wood_dark"], bevel=0.065)
+    box(c, "Quartz vanity top", (2.86, 0.68, 0.095), (0, 0, 0.91), MAT["stone"], bevel=0.045)
+    box(c, "Recessed toe shadow", (2.45, 0.08, 0.12), (0, 0.25, 0.25), MAT["black"], bevel=0.025)
+    for x in (-0.68, 0.68):
+        sphere(c, "Integrated oval basin", (0.43, 0.23, 0.055), (x, 0.015, 0.965), MAT["metal_light"])
+        sphere(c, "Basin inner shadow", (0.32, 0.16, 0.025), (x, 0.025, 0.995), MAT["black"])
+        tube(c, "Brushed faucet", [(x, -0.16, 0.96), (x, -0.16, 1.22), (x, 0.01, 1.22), (x, 0.08, 1.12)], 0.022, MAT["metal_light"])
+        box(c, "Vanity drawer pull", (0.46, 0.028, 0.025), (x, 0.305, 0.67), MAT["brass"], bevel=0.01)
+    box(c, "Backlit mirror", (2.66, 0.045, 1.18), (0, -0.29, 1.77), MAT["screen"], bevel=0.12)
+    box(c, "Mirror top LED", (2.42, 0.025, 0.028), (0, -0.318, 2.29), MAT["cyan"], bevel=0.012)
+    box(c, "Mirror bottom LED", (2.42, 0.025, 0.028), (0, -0.318, 1.25), MAT["cyan"], bevel=0.012)
+    cylinder(c, "Soap dispenser", 0.045, 0.2, (1.1, 0.08, 1.06), MAT["metal_light"], vertices=18)
+    return c
+
+
+def build_toilet() -> bpy.types.Collection:
+    c = collection("toilet")
+    box(c, "Concealed toilet base", (0.42, 0.66, 0.34), (0, -0.03, 0.22), MAT["white"], bevel=0.15)
+    sphere(c, "Sculpted ceramic bowl", (0.34, 0.48, 0.23), (0, 0.1, 0.43), MAT["white"])
+    opening = sphere(c, "Bowl opening", (0.25, 0.36, 0.045), (0, 0.14, 0.61), MAT["black"])
+    opening.scale.z = 0.7
+    seat = torus(c, "Soft-close seat", 0.24, 0.035, (0, 0.13, 0.635), MAT["white"])
+    seat.scale.y = 1.38
+    bpy.context.view_layer.objects.active = seat
+    seat.select_set(True)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    seat.select_set(False)
+    box(c, "Slim cistern", (0.58, 0.26, 0.66), (0, -0.37, 0.66), MAT["white"], bevel=0.095)
+    cylinder(c, "Flush control", 0.055, 0.018, (0, -0.51, 0.84), MAT["metal_light"], vertices=20, rotation=(math.pi / 2, 0, 0))
+    box(c, "Closed lid hinge", (0.36, 0.08, 0.055), (0, -0.16, 0.64), MAT["metal_light"], bevel=0.025)
+    return c
+
+
 def build_vending() -> bpy.types.Collection:
     c = collection("vending")
     box(c, "Vending cabinet", (1.1, 0.75, 2.0), (0, 0, 1), MAT["black"], bevel=0.075)
@@ -709,6 +748,8 @@ BUILDERS = {
     "whiteboard": build_whiteboard,
     "cone": build_cone,
     "sink": build_sink,
+    "bathroomVanity": build_bathroom_vanity,
+    "toilet": build_toilet,
     "vending": build_vending,
     "kitchen": build_kitchen,
     "gameTable": build_game_table,

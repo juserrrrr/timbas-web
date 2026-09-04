@@ -5,6 +5,8 @@ const directory = path.join("public", "models", "games", "deducao")
 const files = [
   "timbas-office-building.glb",
   "timbas-coupe-suv.glb",
+  "timbas-crew-character.glb",
+  "timbas-crew-corpse.glb",
   "desk-blender.glb",
   "office-chair-blender.glb",
   "computer-blender.glb",
@@ -22,6 +24,8 @@ const files = [
   "whiteboard.glb",
   "traffic-cone.glb",
   "utility-sink.glb",
+  "bathroom-vanity.glb",
+  "modern-toilet.glb",
   "vending-machine.glb",
   "office-kitchen.glb",
   "lounge-game-table.glb",
