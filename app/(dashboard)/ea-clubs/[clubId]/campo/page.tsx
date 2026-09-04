@@ -215,27 +215,28 @@ function performanceStats(player: EaClubFieldPlayer, sector: FieldLine) {
   const performance = performanceFor(player, sector) ?? player.positionRatings?.[0]
   if (!performance) return []
   const percent = (value: number | null) => value === null ? "-" : `${Math.round(value)}%`
+  const games = `${performance.appearances}/${player.appearances}`
   if (sector === "attack") return [
     { label: "Gols", value: String(performance.goals) },
     { label: "Assist.", value: String(performance.assists) },
     { label: "Conversão", value: percent(performance.shotConversion) },
-    { label: "Jogos", value: String(performance.appearances) },
+    { label: "Jogos", value: games },
   ]
   if (sector === "midfield") return [
     { label: "Assist.", value: String(performance.assists) },
     { label: "Passes", value: String(performance.passesCompleted) },
     { label: "Precisão", value: percent(performance.passAccuracy) },
-    { label: "Jogos", value: String(performance.appearances) },
+    { label: "Jogos", value: games },
   ]
   if (sector === "defense") return [
     { label: "Desarmes", value: String(performance.tacklesCompleted) },
     { label: "Precisão", value: percent(performance.tackleAccuracy) },
     { label: "Passes", value: String(performance.passesCompleted) },
-    { label: "Jogos", value: String(performance.appearances) },
+    { label: "Jogos", value: games },
   ]
   return [
     { label: "Defesas", value: String(performance.saves) },
-    { label: "Jogos", value: String(performance.appearances) },
+    { label: "Jogos", value: games },
   ]
 }
 
