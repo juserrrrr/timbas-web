@@ -8,6 +8,7 @@ import type { Quality, Targets } from "./match-types"
 import { gameKeyCode, isGameControlTarget } from "./keyboard-controls"
 import type { InputState } from "./scene/office-scene"
 import { Minimap } from "./minimap"
+import { canSabotage, sabotageRemainingMs, type SabotageStatus } from "./sabotage-cooldown"
 import type { Notice, Role, Snapshot } from "./use-deducao-room"
 import type { VoiceControls } from "./use-proximity-voice"
 
@@ -16,6 +17,8 @@ interface Props {
   map: OfficeMap
   me: string
   role: Role | null
+  sabotageStatus: SabotageStatus | null
+  onSabotage: () => void
   pendingTasks: string[]
   targets: Targets
   notices: Notice[]
@@ -53,6 +56,8 @@ export function Hud({
   map,
   me,
   role,
+  sabotageStatus,
+  onSabotage,
   pendingTasks,
   targets,
   notices,
@@ -114,7 +119,7 @@ export function Hud({
           }
         >
           <p className="absolute left-1/2 top-6 -translate-x-1/2 font-mono text-[11px] font-bold uppercase tracking-[0.4em] text-red-400/80">
-            {role === "assassino" && alive ? "Visão noturna ativa" : "Luz apagada"}
+            {role === "assassino" && alive ? "Sabotagem: visão noturna ativa" : "Sabotagem: luz apagada"}
           </p>
         </div>
       )}
@@ -296,16 +301,13 @@ export function Hud({
                 }}
               />
             )}
-            <ActionButton
-              label="Apagar a luz"
-              icon={<AlertOctagon className="h-5 w-5" />}
-              tone="neutro"
-              small
-              shortcut="F"
-              onClick={() => {
-                playGameSound("action")
-                onSend("sabotage")
-              }}
+            <SabotageButton
+              snapshot={snapshot}
+              me={me}
+              role={role}
+              status={sabotageStatus}
+              controlsEnabled={controlsEnabled}
+              onSabotage={onSabotage}
             />
           </>
         )}
@@ -414,6 +416,47 @@ export function Hud({
 
       <TouchStick inputRef={inputRef} enabled={controlsEnabled} />
     </div>
+  )
+}
+
+export function SabotageButton({ snapshot, me, role, status, controlsEnabled, onSabotage }: {
+  snapshot: Snapshot
+  me: string
+  role: Role | null
+  status: SabotageStatus | null
+  controlsEnabled: boolean
+  onSabotage: () => void
+}) {
+  const [now, setNow] = useState(() => performance.now())
+  useEffect(() => {
+    let timer: number | undefined
+    const update = () => {
+      const updatedNow = performance.now()
+      const remaining = sabotageRemainingMs(status, updatedNow)
+      const next = Math.ceil(remaining / 1000)
+      setNow(updatedNow)
+      if (Number.isFinite(remaining) && remaining > 0) {
+        timer = window.setTimeout(update, Math.max(16, remaining - (next - 1) * 1000))
+      }
+    }
+    update()
+    return () => { if (timer !== undefined) window.clearTimeout(timer) }
+  }, [status])
+
+  const seconds = Math.ceil(sabotageRemainingMs(status, now) / 1000)
+  const label = !status ? "Sincronizando"
+    : seconds > 0 ? `Recarga · ${seconds}s`
+      : snapshot.blackout ? "Luz apagada" : "Apagar a luz"
+  return (
+    <ActionButton
+      label={label}
+      icon={<AlertOctagon className="h-5 w-5" />}
+      tone="neutro"
+      small
+      shortcut="F"
+      disabled={!controlsEnabled || !canSabotage(snapshot, me, role, status, now)}
+      onClick={onSabotage}
+    />
   )
 }
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import type { Quality } from "../match-types"
 
-const LIMITS = { baixo: [0.7, 1], medio: [0.8, 1.15], alto: [0.85, 1.25] } as const
+const LIMITS = { baixo: [0.6, 1], medio: [0.65, 1.15], alto: [0.7, 1.25] } as const
 
 export function createRenderBudget(quality: Quality, deviceRatio: number) {
   const [minimum, ceiling] = LIMITS[quality]
@@ -15,17 +15,22 @@ export function createRenderBudget(quality: Quality, deviceRatio: number) {
     get ratio() { return ratio },
     sample(delta: number) {
       // Aba oculta e retomada não representam carga gráfica sustentada.
-      if (delta <= 0 || delta > 0.25) { frames = []; elapsed = 0; return null }
+      if (delta <= 0 || delta > 0.25) { frames = []; elapsed = 0; healthy = 0; return null }
       if (warmup > 0) { warmup -= delta; return null }
       frames.push(delta * 1000)
       elapsed += delta
-      if (elapsed < 2) return null
+      if (elapsed < 1) return null
+      const average = frames.reduce((sum, time) => sum + time, 0) / frames.length
+      const overloaded = average > 25
+      if (elapsed < 2 && !overloaded) return null
       frames.sort((a, b) => a - b)
       const slow = frames.filter((time) => time > 22).length / frames.length
-      const average = frames.reduce((sum, time) => sum + time, 0) / frames.length
       const p95 = frames[Math.floor((frames.length - 1) * 0.95)]
       let next = ratio
-      if (slow > 0.18 || average > 19) { next = Math.max(minimum, ratio - 0.1); healthy = 0 }
+      if (overloaded || slow > 0.18 || average > 19) {
+        next = Math.max(minimum, overloaded ? ratio * 0.8 : ratio - 0.1)
+        healthy = 0
+      }
       else if (p95 < 21.5 && average < 17.8) {
         if (++healthy >= 4) { next = Math.min(maximum, ratio + 0.05); healthy = 0 }
       } else healthy = 0

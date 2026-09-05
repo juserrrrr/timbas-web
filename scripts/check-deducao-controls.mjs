@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import vm from "node:vm"
 import ts from "typescript"
+import babel from "next/dist/compiled/babel/core.js"
+import reactCompiler from "babel-plugin-react-compiler"
 
 const root = new URL("../", import.meta.url)
 const directory = "app/(game)/games/deducao/[roomId]/"
@@ -47,6 +49,7 @@ function createEnvironment() {
   const timers = new Map()
   let serial = 0
   return {
+    now: 0,
     document: { ...eventBus(), activeElement: null, pointerLockElement: null, hidden: false },
     window: {
       ...eventBus(), innerWidth: 1000,
@@ -54,7 +57,8 @@ function createEnvironment() {
       setTimeout(callback) { timers.set(++serial, callback); return serial },
       clearTimeout(id) { timers.delete(id) },
     },
-    runTimers() { for (const [id, callback] of timers) { timers.delete(id); callback() } },
+    runTimers() { for (const [id, callback] of [...timers]) { timers.delete(id); callback() } },
+    timerCount() { return timers.size },
   }
 }
 
@@ -105,22 +109,25 @@ const placeholder = (name) => {
 const jsx = (type, props) => ({ type, props })
 const context = vm.createContext({
   Element: MockElement, HTMLElement: MockElement,
+  performance: { now: () => environment.now },
   get window() { return environment.window },
   get document() { return environment.document },
 })
 const noTargets = { task: null, kill: null, vent: null, corpse: null, emergency: false }
 const modules = new Map()
 
-function load(name, expose = "") {
-  const output = ts.transpileModule(source(name) + expose, {
+function load(name, expose = "", transform = (value) => value) {
+  const output = ts.transpileModule(transform(source(name) + expose), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
     fileName: name,
   }).outputText
   const module = { exports: {} }
   const require = (id) => {
     if (id === "react") return react
+    if (id === "react/compiler-runtime") return { c: (size) => react.useMemo(() => Array(size).fill(Symbol.for("react.memo_cache_sentinel")), []) }
     if (id === "react/jsx-runtime") return { jsx, jsxs: jsx, Fragment: "fragment" }
     if (id === "./keyboard-controls") return modules.get("keyboard-controls.ts")
+    if (id === "./sabotage-cooldown") return modules.get("sabotage-cooldown.ts")
     if (id === "./match-types") return { NO_TARGETS: noTargets }
     if (id === "./use-proximity-voice") return { useProximityVoice: () => ({}) }
     if (id === "@/lib/games/game-audio") return { playGameSound() {}, unlockGameAudio() {} }
@@ -132,8 +139,9 @@ function load(name, expose = "") {
 }
 
 const { gameKeyCode, isGameControlTarget } = load("keyboard-controls.ts")
+const { calibrateSabotageStatus } = load("sabotage-cooldown.ts")
 const { Match } = load("match.tsx")
-const { Hud, TouchStick, ActionButton } = load("hud.tsx", "\nexport { TouchStick, ActionButton }\n")
+const { Hud, TouchStick, ActionButton, SabotageButton } = load("hud.tsx", "\nexport { TouchStick, ActionButton }\n")
 
 function mount(component, initialProps) {
   const hooks = { index: 0, slots: [], effects: [], dirty: false }
@@ -190,6 +198,7 @@ function matchFixture() {
     map: { taskSpots: [], rooms: [], vents: [] },
     snapshot: { phase: "jogando", blackout: false, players: [{ id: "me", alive: true, emergenciesLeft: 1 }] },
     roomRef: { current: null }, me: "me", role: "assassino", allies: [], myTasks: [], finalRoles: {}, notices: [],
+    sabotageStatus: calibrateSabotageStatus({ readyAt: 0, serverNow: 10_000, cooldownMs: 40_000 }),
     onSend: (...args) => sends.push(args), onLeave() {},
   }
   const mounted = mount(Match, props)
@@ -339,6 +348,128 @@ test("vent exits and linked destinations work without key repeats", () => {
   down("Digit1"); down("Digit2"); down("Digit2", { repeat: true }); down("KeyV")
   assert.deepEqual(fixture.sends.map(([, payload]) => payload.ventId), ["a", "b", ""])
   fixture.unmount()
+})
+
+test("F and sabotage button share calibrated cooldown, blackout and connection restrictions", () => {
+  const fixture = matchFixture()
+  down("KeyF")
+  fixture.hud().onSabotage()
+  assert.equal(fixture.sends.length, 2)
+  const status = calibrateSabotageStatus({ readyAt: 140_000, serverNow: 100_000, cooldownMs: 40_000 })
+  fixture.update({ sabotageStatus: status })
+  for (const now of [0, 1_000, 39_999]) {
+    environment.now = now
+    down("KeyF")
+    fixture.hud().onSabotage()
+    assert.equal(fixture.sends.length, 2)
+  }
+  environment.now = 40_000
+  down("KeyF")
+  fixture.hud().onSabotage()
+  assert.equal(fixture.sends.length, 4)
+  for (const snapshot of [
+    { phase: "jogando", blackout: true, players: [{ id: "me", alive: true }] },
+    { phase: "jogando", blackout: false, players: [{ id: "me", alive: true, connected: false }] },
+    { phase: "jogando", blackout: false, players: [{ id: "me", alive: false }] },
+  ]) {
+    fixture.update({ snapshot })
+    down("KeyF")
+    fixture.hud().onSabotage()
+    assert.equal(fixture.sends.length, 4)
+  }
+  fixture.update({ snapshot: { phase: "jogando", blackout: false, players: [{ id: "me", alive: true, inVent: true }] } })
+  down("KeyF")
+  fixture.hud().onSabotage()
+  assert.equal(fixture.sends.length, 6, "Duto preserva a permissão existente no servidor")
+  fixture.unmount()
+})
+
+test("sabotage countdown redraws its button only and cleans up timers on ready, resync and unmount", () => {
+  environment = createEnvironment()
+  let props = {
+    snapshot: { phase: "jogando", blackout: false, players: [{ id: "me", alive: true, inVent: false }] },
+    me: "me", role: "assassino", controlsEnabled: true, onSabotage() {},
+    status: calibrateSabotageStatus({ readyAt: 940_000, serverNow: 900_000, cooldownMs: 40_000 }),
+  }
+  const mounted = mount(SabotageButton, props)
+  assert.equal(mounted.tree.props.label, "Recarga · 40s")
+  assert.equal(mounted.tree.props.disabled, true)
+  assert.equal(environment.timerCount(), 1)
+  environment.now = 1_000
+  environment.runTimers()
+  mounted.render()
+  assert.equal(mounted.tree.props.label, "Recarga · 39s")
+  environment.now = 40_000
+  environment.runTimers()
+  mounted.render()
+  assert.equal(mounted.tree.props.label, "Apagar a luz")
+  assert.equal(mounted.tree.props.disabled, false)
+  assert.equal(environment.timerCount(), 0)
+  props = { ...props, snapshot: { ...props.snapshot, blackout: true } }
+  mounted.render(props)
+  assert.equal(mounted.tree.props.label, "Luz apagada")
+  assert.equal(mounted.tree.props.disabled, true)
+  props = { ...props, status: calibrateSabotageStatus({ readyAt: 955_000, serverNow: 930_000, cooldownMs: 40_000 }) }
+  mounted.render(props)
+  assert.equal(mounted.tree.props.label, "Recarga · 25s", "Contador é a recarga, não a duração do apagão")
+  assert.equal(environment.timerCount(), 1)
+  props = { ...props, status: null }
+  mounted.render(props)
+  assert.equal(mounted.tree.props.label, "Sincronizando")
+  assert.equal(mounted.tree.props.disabled, true)
+  assert.equal(environment.timerCount(), 0)
+  props = { ...props, status: calibrateSabotageStatus({ readyAt: 980_000, serverNow: 940_000, cooldownMs: 40_000 }) }
+  mounted.render(props)
+  assert.equal(environment.timerCount(), 1)
+  mounted.unmount()
+  assert.equal(environment.timerCount(), 0)
+})
+
+test("compiled sabotage button releases after 40s with stable props and rejects the implicit-clock regression", () => {
+  for (const explicitClock of [false, true]) {
+    const { SabotageButton: CompiledButton } = load("hud.tsx", "", (text) => {
+      if (!explicitClock) {
+        const implicit = text.replace("canSabotage(snapshot, me, role, status, now)", "canSabotage(snapshot, me, role, status)")
+        assert.notEqual(implicit, text, "Controle negativo retira apenas a dependência explícita do relógio")
+        text = implicit
+      }
+      const compiled = babel.transformSync(text, {
+        filename: "hud.tsx", parserOpts: { plugins: ["jsx", "typescript"] },
+        plugins: [reactCompiler], configFile: false, babelrc: false,
+      }).code
+      assert.ok(compiled.includes("react/compiler-runtime"), "Teste executa o React Compiler real habilitado pelo Next")
+      return compiled
+    })
+    environment = createEnvironment()
+    let props = {
+      snapshot: { phase: "jogando", blackout: true, players: [{ id: "me", alive: true, connected: true }] },
+      me: "me", role: "assassino", controlsEnabled: true, onSabotage() {},
+      status: calibrateSabotageStatus({ readyAt: 940_000, serverNow: 900_000, cooldownMs: 40_000 }),
+    }
+    const mounted = mount(CompiledButton, props)
+    assert.equal(mounted.tree.props.disabled, true)
+    environment.now = 25_000
+    environment.runTimers()
+    props = { ...props, snapshot: { ...props.snapshot, blackout: false } }
+    mounted.render(props)
+    assert.equal(mounted.tree.props.label, "Recarga · 15s")
+    assert.equal(mounted.tree.props.disabled, true)
+    environment.now = 39_999
+    environment.runTimers()
+    mounted.render()
+    assert.equal(mounted.tree.props.label, "Recarga · 1s")
+    assert.equal(mounted.tree.props.disabled, true, "Botão não libera antes do prazo")
+    environment.now = 40_000
+    environment.runTimers()
+    mounted.render()
+    assert.equal(mounted.tree.props.label, "Apagar a luz")
+    assert.equal(mounted.tree.props.disabled, !explicitClock, "Apenas o relógio explícito invalida o cache da elegibilidade")
+    assert.equal(environment.timerCount(), 0)
+    environment.now = 90_000
+    mounted.render()
+    assert.equal(mounted.tree.props.disabled, !explicitClock, "Controle negativo reproduz botão travado após 90s")
+    mounted.unmount()
+  }
 })
 
 test("changing graphics pauses controls until the new scene is ready", () => {

@@ -36,7 +36,7 @@ class Surface extends EventTarget {
   closest() { return this.control ? this : null }
   blur() {}
 }
-function harness({ quality = "alto", blackout = false, role = "funcionario", position = map.spawns[0], controlsEnabled = true } = {}) {
+function harness({ quality = "alto", blackout = false, role = "funcionario", position = map.spawns[0], controlsEnabled = true, latency = 0 } = {}) {
   const document = Object.assign(new EventTarget(), { activeElement: null, pointerLockElement: null, hidden: false })
   const window = Object.assign(new EventTarget(), { innerWidth: 1280 })
   const canvas = new Surface()
@@ -48,6 +48,13 @@ function harness({ quality = "alto", blackout = false, role = "funcionario", pos
   const mine = { id: "local", name: "Teste", color: "#38bdf8", alive: true, connected: true, ready: true, inVent: false, dir: 0, ...position }
   const state = { players: new Map([[mine.id, mine]]) }
   const sent = []
+  const pending = []
+  const acknowledge = payload => {
+    if (snapshot.phase !== "jogando") return
+    Object.assign(mine, payload, { moveSequence: payload.sequence })
+    const sample = api.stairSampleAt(map, mine.x, mine.z)
+    if (sample) mine.level = sample.progress >= 0.5 ? sample.targetLevel : sample.level
+  }
   const snapshot = { players: [mine], phase: "jogando", config: {}, blackout, corpses: [] }
   const props = {
     map, snapshot, me: mine.id, role, allies: [], pendingTasks: [], quality, controlsEnabled,
@@ -56,9 +63,8 @@ function harness({ quality = "alto", blackout = false, role = "funcionario", pos
     onTargets: value => { targets = value }, onReady: () => {},
     roomRef: { current: { state, send(type, payload) {
       sent.push({ type, ...payload })
-      Object.assign(mine, payload)
-      const sample = api.stairSampleAt(map, mine.x, mine.z)
-      if (sample) mine.level = sample.progress >= 0.5 ? sample.targetLevel : sample.level
+      if (latency) pending.push({ at: now + latency, payload })
+      else acknowledge(payload)
     } } },
   }
   const noop = () => null
@@ -86,7 +92,11 @@ function harness({ quality = "alto", blackout = false, role = "funcionario", pos
   api.SceneContent(props)
   const cleanup = effects.map(effect => effect()).filter(Boolean)
   function tick(count = 1, delta = 1 / 60) {
-    for (let index = 0; index < count; index++) { now += delta * 1000; frame({}, delta) }
+    for (let index = 0; index < count; index++) {
+      now += delta * 1000
+      while (pending[0]?.at <= now) acknowledge(pending.shift().payload)
+      frame({}, delta)
+    }
   }
   tick()
   return { ...api, props, camera, gl, lights, sent, mine, canvas, document, window, tick,
@@ -109,7 +119,7 @@ check("Camera e luzes reais da cena usam o mesmo perfil nas três qualidades e p
     for (const [name, key] of [["directionalLight", "sun"], ["hemisphereLight", "sky"], ["ambientLight", "ambient"]]) near(h.lights[name].intensity, profile[key], key)
     assert.equal(h.blackoutValue, blackout && role !== "assassino")
     near(h.camera.position.y, 1.62, "Altura dos olhos")
-    assert.ok(h.sent.length >= 25, "Loop real envia movimento")
+    assert.ok(h.sent.length >= 7 && h.sent.length <= 9, "Parado mantém heartbeat de 4Hz, sem 20 pacotes iguais por segundo")
     h.dispose()
   }
 })
@@ -140,12 +150,60 @@ check("Percorre os dois lances e patamar da escada com câmera contínua nos doi
   }
 })
 
+check("Parada não volta para ecos atrasados da rede e transmite o último movimento", () => {
+  for (const fps of [30, 60, 120]) for (const latency of [50, 150, 300]) {
+    const h = harness({ latency, position: { x: 25, z: 23, level: 0 } })
+    h.props.inputRef.current.x = 1
+    h.tick(fps, 1 / fps)
+    h.props.inputRef.current.x = 0
+    let previous = h.camera.position.x
+    const stop = previous
+    for (let frame = 0; frame < fps * 2; frame++) {
+      h.tick(1, 1 / fps)
+      assert.ok(h.camera.position.x >= previous - 0.0001, `${fps}fps/${latency}ms: eco puxou a câmera para trás`)
+      previous = h.camera.position.x
+    }
+    assert.ok(previous - stop < 0.3, "Desaceleração curta, sem deslizar pelo mapa")
+    assert.equal(h.sent.at(-1).moving, false)
+    assert.ok(h.sent.every((packet, index) => !index || packet.sequence > h.sent[index - 1].sequence))
+    near(h.mine.x, h.camera.position.x, "Posição final aceita pelo servidor", 0.01)
+    h.dispose()
+  }
+})
+
 check("Interação fica bloqueada na escada e volta no desembarque", () => {
   const stair = map.stairs[0]
   const h = harness({ position: { x: stair.turnX, z: stair.turnZ, level: 0 } })
   assert.equal(h.targets.task, null)
   assert.equal(h.targets.vent, null)
   near(h.camera.position.y, 3.72, "Patamar plano")
+  h.dispose()
+})
+
+check("Servidor ainda pode corrigir uma posição rejeitada ou teleportar", () => {
+  const h = harness({ position: { x: 25, z: 23, level: 0 } })
+  h.tick(30)
+  h.mine.x = 20
+  h.tick()
+  near(h.camera.position.x, 20, "Teleporte autoritativo não é ignorado pela confirmação")
+  h.props.lookRef.current.yaw = 1
+  h.tick(5)
+  near(h.sent.at(-1).dir, 1 + Math.PI, "Olhar parado não espera o heartbeat lento")
+  h.dispose()
+})
+
+check("Reunião aceita teleporte curto mesmo com movimento sem confirmação", () => {
+  const h = harness({ latency: 300, position: { x: 25, z: 23, level: 0 } })
+  h.props.inputRef.current.x = 1
+  h.tick(60)
+  const meetingX = h.camera.position.x - 1
+  h.props.inputRef.current.x = 0
+  h.props.snapshot.phase = "reuniao"
+  Object.assign(h.mine, { x: meetingX, moving: false })
+  h.tick()
+  near(h.camera.position.x, meetingX, "Reunião não espera ack de movimento descartado")
+  h.tick(120)
+  near(h.camera.position.x, meetingX, "Ecos antigos não tiram o jogador do assento")
   h.dispose()
 })
 

@@ -9,6 +9,7 @@ import { gameKeyCode, isGameControlTarget } from "./keyboard-controls"
 import { NO_TARGETS, type LookState, type Quality, type Targets } from "./match-types"
 import { Meeting } from "./meeting"
 import { TaskOverlay } from "./minigames"
+import { canSabotage, type SabotageStatus } from "./sabotage-cooldown"
 import { OfficeScene, type InputState } from "./scene/office-scene"
 import type { Notice, Role, Snapshot } from "./use-deducao-room"
 import { useProximityVoice } from "./use-proximity-voice"
@@ -19,6 +20,7 @@ interface Props {
   roomRef: React.MutableRefObject<any>
   me: string
   role: Role | null
+  sabotageStatus: SabotageStatus | null
   allies: string[]
   myTasks: string[]
   finalRoles: Record<string, string>
@@ -59,6 +61,7 @@ export function Match({
   roomRef,
   me,
   role,
+  sabotageStatus,
   allies,
   myTasks,
   finalRoles,
@@ -83,8 +86,14 @@ export function Match({
   const previousPhase = useRef(snapshot.phase)
   const previousAlive = useRef(snapshot.players.find((player) => player.id === me)?.alive ?? true)
   const controlsEnabled = sceneReady && snapshot.phase === "jogando" && !openTask && !intro && !mapOpen
-  const actions = useRef({ snapshot, targets, role, onSend, controlsEnabled })
-  actions.current = { snapshot, targets, role, onSend, controlsEnabled }
+  const actions = useRef({ snapshot, targets, role, sabotageStatus, onSend, controlsEnabled })
+  actions.current = { snapshot, targets, role, sabotageStatus, onSend, controlsEnabled }
+  const requestSabotage = useCallback(() => {
+    const current = actions.current
+    if (!current.controlsEnabled || !canSabotage(current.snapshot, me, current.role, current.sabotageStatus)) return
+    playGameSound("action")
+    current.onSend("sabotage")
+  }, [me])
   const markSceneReady = useCallback(() => setSceneReady(true), [])
   const resetInput = useCallback(() => {
     pressed.current.clear()
@@ -235,8 +244,7 @@ export function Match({
         }
       } else if (code === "KeyF" && current.role === "assassino" && alive) {
         event.preventDefault()
-        playGameSound("action")
-        current.onSend("sabotage")
+        requestSabotage()
       } else if (code === "KeyR" && alive && current.targets.corpse) {
         event.preventDefault()
         playGameSound("action")
@@ -275,7 +283,7 @@ export function Match({
       document.removeEventListener("pointerlockchange", pointerLock)
       resetInput()
     }
-  }, [me, resetInput])
+  }, [me, resetInput, requestSabotage])
 
   // A tarefa aberta fecha sozinha quando a reunião começa: ninguém termina o
   // cabeamento no meio de uma discussão.
@@ -318,6 +326,8 @@ export function Match({
         map={map}
         me={me}
         role={role}
+        sabotageStatus={sabotageStatus}
+        onSabotage={requestSabotage}
         pendingTasks={pendingTasks}
         targets={targets}
         notices={notices}

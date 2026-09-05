@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Client, type Room } from "@colyseus/sdk"
 import { getToken } from "@/lib/auth"
 import { clearDeducaoRoomPassword, createGameTicket, gameServerUrl, getDeducaoRoomPassword } from "@/lib/services/games"
+import { calibrateSabotageStatus, type SabotageStatus } from "./sabotage-cooldown"
 
 export type Phase = "lobby" | "jogando" | "reuniao" | "votacao" | "fim"
 export type Role = "assassino" | "detetive" | "funcionario"
@@ -88,7 +89,7 @@ export interface Notice {
   text: string
 }
 
-const BLACKOUT_NOTICE = "A luz caiu. Ninguém enxerga direito."
+const BLACKOUT_NOTICE = "Sabotagem: luz apagada. Use as luzes de emergência."
 
 interface Options {
   roomId: string
@@ -213,7 +214,6 @@ function snapshotOf(state: any): Snapshot {
       voteSeconds: state.config.voteSeconds,
       revealRoleOnEject: state.config.revealRoleOnEject,
       emergencyPerPlayer: state.config.emergencyPerPlayer,
-      blackoutEverySeconds: state.config.blackoutEverySeconds,
       blackoutSeconds: state.config.blackoutSeconds,
     },
   }
@@ -245,7 +245,8 @@ async function withConnectionTimeout<T>(request: Promise<T>, message: string): P
 
 function rememberReconnect(roomId: string, ticket: string) {
   try {
-    window.sessionStorage.setItem(reconnectKey(roomId), ticket)
+    const key = reconnectKey(roomId)
+    if (window.sessionStorage.getItem(key) !== ticket) window.sessionStorage.setItem(key, ticket)
   } catch {
     // Sem sessionStorage a pessoa só perde a volta automática depois da queda.
   }
@@ -316,6 +317,7 @@ export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
   const [error, setError] = useState("")
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [role, setRole] = useState<Role | null>(null)
+  const [sabotageStatus, setSabotageStatus] = useState<SabotageStatus | null>(null)
   const [allies, setAllies] = useState<string[]>([])
   const [myTasks, setMyTasks] = useState<string[]>([])
   const [notices, setNotices] = useState<Notice[]>([])
@@ -401,9 +403,14 @@ export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
 
       room.onMessage("papel", (payload: { role: Role; tasks: string[]; allies: string[] }) => {
         setFinalRoles({})
+        setSabotageStatus(null)
         setRole(payload.role)
         setAllies(payload.allies)
         setMyTasks(payload.tasks)
+      })
+      room.onMessage("sabotage:status", (payload: unknown) => {
+        const next = calibrateSabotageStatus(payload)
+        if (next) setSabotageStatus(next)
       })
       room.onMessage("morte", (payload: { by: string }) => {
         notice("perigo", `${payload.by} te pegou. Agora você observa e termina suas tarefas.`)
@@ -444,6 +451,7 @@ export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
         setError("A conexão com a sala caiu. Sua vaga fica guardada por 40 segundos.")
         setStatus("erro")
       })
+      room.send("sabotage:status")
     }
 
     connect().catch((problem: Error) => {
@@ -476,6 +484,7 @@ export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
     error,
     snapshot,
     role,
+    sabotageStatus,
     allies,
     myTasks,
     notices,

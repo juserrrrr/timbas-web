@@ -47,7 +47,8 @@ export function NightSky({ quality }: { quality: Quality }) {
 
   return (
     <group ref={sky}>
-      <mesh renderOrder={-1000} frustumCulled={false}>
+      {/* Paredes preenchem o depth buffer antes do céu, poupando pixels internos. */}
+      <mesh renderOrder={1000} frustumCulled={false}>
         <sphereGeometry args={[100, 32, 16]} />
         <shaderMaterial
           vertexShader={VERTEX_SHADER}

@@ -116,7 +116,8 @@ effects.length = 0
 const svg = render(1)
 const marker = tagged(svg, "data-map-player")[0]
 const attributes = new Map()
-marker.props.ref.current = { setAttribute: (name, value) => attributes.set(name, value) }
+let attributeWrites = 0
+marker.props.ref.current = { setAttribute: (name, value) => { attributeWrites++; attributes.set(name, value) } }
 const cleanup = effects[0]()
 const advance = () => {
   const [id, callback] = [...frames][0]
@@ -128,6 +129,8 @@ assert.equal(attributes.get("transform"), "translate(31.56 30.00) rotate(0.0)")
 poseRef.current = { x: 34.1, z: 32.2, dir: Math.PI / 2 }
 advance()
 assert.equal(attributes.get("transform"), "translate(34.10 32.20) rotate(90.0)")
+for (let frame = 0; frame < 600; frame++) advance()
+assert.equal(attributeWrites, 2, "Parado não reescreve o mesmo SVG a cada quadro")
 cleanup()
 assert.equal(frames.size, 0, "Animation callbacks are removed on unmount")
 checks++

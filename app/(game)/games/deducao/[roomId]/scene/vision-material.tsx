@@ -8,8 +8,8 @@ export const visionUniforms = {
   uBlackout: { value: 0 },
 }
 
-export function setBlackout(blackout: boolean) {
-  visionUniforms.uBlackout.value += ((blackout ? 1 : 0) - visionUniforms.uBlackout.value) * 0.12
+export function setBlackout(blackout: boolean, delta = 1 / 60) {
+  visionUniforms.uBlackout.value += ((blackout ? 1 : 0) - visionUniforms.uBlackout.value) * (1 - Math.exp(-7.67 * delta))
 }
 
 /// Nenhuma superfície, piso ou parede. O desenho sai de conta feita em cima da

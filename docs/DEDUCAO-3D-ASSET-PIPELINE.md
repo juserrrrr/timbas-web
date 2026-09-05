@@ -64,6 +64,10 @@ Para personagens repetidos:
 - cor do jogador aplicada em cópias dos materiais, mantendo geometria compartilhada;
 - corpo morto permanece renderizado até a reunião, sem culling por distância.
 
+O tripulante revisado tem torso contínuo, visor panorâmico integrado ao casco, luvas e botas grafite e uniforme fosco. A cor de jogador altera somente `Crew Body Color`; acessórios neutros e visor conservam seus materiais. A base das botas é Y=0 e o topo do capacete Y=1,94 no GLB. `BodyRig`, `LeftArmRig`, `RightArmRig`, `LeftLegRig` e `RightLegRig` são contratos de animação. O cadáver deriva da mesma malha, com pose própria. A compressão Draco reduz o download, não a quantidade de triângulos renderizados.
+
+Ao agachar, o deslocamento vertical do corpo é acompanhado pela escala vertical das pernas ancoradas nos quadris. A transição parada deve conservar as solas no piso; ao sentar, a escala volta a 1. `check-deducao-actors.mjs` mede vértices do GLB real em 30/60/120 FPS. A passada usa quatro pivôs, sem IK; a pequena penetração dinâmica das pontas das botas está registrada em `DEDUCAO-VALIDACAO.md`. Para o cadáver estático, cada luva e bota deve ficar entre -1 e +8 mm do plano de apoio, conferido pela auditoria Blender.
+
 ## Fluxo obrigatório
 
 1. Definir medidas, orientação e ponto de origem compatíveis com o mapa.
@@ -116,7 +120,7 @@ Os valores são metas, não uma desculpa para deformar a silhueta.
 | Móvel de destaque | até 25 mil | até 6 | no máximo 1 conjunto PBR | instanciado |
 | Veículo de destaque | até 90 mil | até 12 | evitar quando cor sólida resolve | instanciado |
 | Luminária repetida | até 2 mil | até 3 | nenhuma | instanciada |
-| Personagem repetido | até 35 mil | até 12 draw calls | nenhuma | geometria compartilhada e pivôs simples |
+| Personagem repetido | até 2 mil vivo, 2,4 mil corpo | até 4 vivo, 5 corpo | nenhuma | até 12/5 draw calls; geometria compartilhada e pivôs simples |
 
 O orçamento decisivo da cena é a combinação de draw calls, luzes com sombra, pixels processados e objetos visíveis. Polígonos isoladamente não explicam o uso da GPU.
 
@@ -136,7 +140,7 @@ Janelas externas fixas usam um único plano de vidro claro, com baixa opacidade,
 - As fontes normais não projetam sombras adicionais e permanecem acesas nos dois pavimentos. O alcance é limitado; subir a escada nunca altera quais luzes existem no mundo.
 - As 57 fontes fixas são indexadas em uma grade mundial de células de 2 m. Cada fragmento consulta somente as fontes cujo alcance cruza sua célula, sem desligar pisos ou transferir fontes para a câmera. As listas normal/emergência estão nas mesmas três texturas; o apagão troca um uniforme, sem reconstruir a grade ou recompilar materiais. A lanterna continua independente.
 - Das fontes fixas, 56 são segmentos finitos e uma é pontual, no botão de emergência. O shader aproxima a irradiância da linha e conserva a resposta PBR, sem simular dezenas de pontos por barra. Não é uma integração fotométrica exata nem produz sombras de área. Cores RGB são aceitas, inclusive verde; os LEDs existentes continuam azuis e amarelos.
-- Antes de liberar a cena, `scene-warmup.ts` antecipa compilação, texturas e buffers dos dois pisos. Um render temporário de 1 pixel inclui malhas fora da câmera sem revelar objetos ocultos. No alto, a compilação usa o destino de pós-processamento; o mapa de sombras usa `PCFShadowMap` estável inclusive nos rerenders do Canvas. Subida e apagão não reiniciam essa preparação. Cancelamento ou erro restauram o destino/culling e descartam o temporário.
+- Antes de liberar a cena, `scene-warmup.ts` antecipa compilação, texturas e buffers dos dois pisos. Um render temporário de 1 pixel inclui malhas fora da câmera sem revelar objetos ocultos. No alto, a compilação usa o destino de pós-processamento; o mapa de sombras usa `PCFShadowMap` estável inclusive nos rerenders do Canvas. No Leve, usar `{ enabled: false, type: PCFShadowMap }`, não o booleano `false`: o R3F alteraria o tipo e invalidaria shaders já aquecidos mesmo sem desenhar sombras. Subida e apagão não reiniciam essa preparação. Cancelamento ou erro restauram o destino/culling e descartam o temporário.
 - As seis fitas verticais dos átrios iluminam suas paredes ao longo de 2,18 m, em azul ou amarelo, diante do difusor e com alcance curto. Essas luzes decorativas acompanham o apagão global.
 - Emergências de corredor ficam a 1,30 m da parede, fora da sanca de gesso. O corpo continua preso ao teto e o ponto luminoso fica imediatamente abaixo do difusor. A auditoria deve testar visibilidade por baixo, não apenas contato com o forro.
 - Nenhuma luminária pode ser criada dentro do recorte da laje sobre uma escada.
@@ -150,13 +154,19 @@ Janelas externas fixas usam um único plano de vidro claro, com baixa opacidade,
 
 Os pavimentos são camadas de colisão e da planta, não cenas independentes. Não existe aviso ou carregamento ao subir a escada. Jogadores, cadáveres e nomes usam o depth buffer da geometria 3D para a oclusão, sem sumir pelo andar do observador; fantasmas e dutos conservam as regras de jogo.
 
-`render-budget.tsx` ajusta a resolução com meta de 60 FPS, sem mudar as fontes, cores ou claridade. Os limites de DPR são 0,70 a 1 no leve, 0,80 a 1,15 no médio e 0,85 a 1,25 no alto, respeitando a densidade do dispositivo. Sobrecarga sustentada reduz 0,10; quatro janelas saudáveis permitem recuperar 0,05. Há aquecimento, histerese e descarte de pausas da aba. O Canvas e o compositor recebem o mesmo DPR. A meta não garante 60 FPS em qualquer hardware.
+`render-budget.tsx` ajusta a resolução com meta mínima de 60 FPS, sem mudar as fontes, cores ou claridade. Os limites de DPR são 0,60 a 1 no leve, 0,65 a 1,15 no médio e 0,70 a 1,25 no alto, respeitando a densidade do dispositivo. A qualidade não é reduzida quando há folga. Sobrecarga forte, com média acima de 25 ms, reduz 20% do DPR em uma janela de 1 s; carga moderada reduz 0,10 após 2 s. Quatro janelas saudáveis permitem recuperar 0,05. Há aquecimento, histerese e descarte de pausas da aba. O Canvas e o compositor recebem o mesmo DPR.
+
+O Canvas acompanha o RAF nativo, sem o antigo limitador manual de 60 FPS que descartava quadros em telas de 120/144 Hz. A meta não garante 60 FPS em qualquer hardware. O céu opaco é desenhado depois da geometria opaca: paredes e teto já ocupam o depth buffer, evitando calcular o céu nos pixels ocultos. Vidros e estrelas continuam na etapa transparente. Matrizes locais da arquitetura estática são preparadas uma vez, sem recompô-las a cada quadro.
 
 `movement-geometry.ts` mantém a rota da escada e os colisores em cache por planta imutável. A altura ainda determina colisão e apoio, sem ocultar jogadores ou luzes. O HUD usa fundos translúcidos sem `backdrop-filter`, evitando refiltrar a cena atrás de cada painel.
+
+O apagão é uma sabotagem manual exclusiva do assassino vivo durante a partida, com recarga de 40 s validada pela API. Não existe temporizador de apagão automático. A duração continua configurável entre 10 e 60 s, com padrão de 25 s. Reunião/fim restauram a luz. `sabotage:status` transmite a recarga somente ao seu dono; F e botão usam a mesma regra e o contador se atualiza isoladamente, sem redesenhar a cena a cada segundo.
 
 ## Controles e áudio
 
 - `prepareGameAudio()` cria o contexto silenciosamente durante a preparação inicial, antes de liberar os controles. O primeiro passo não inicializa o dispositivo de áudio; os gestos continuam responsáveis por retomá-lo. Falhas de áudio não bloqueiam a cena.
+- Movimento usa `sequence` crescente e confirmação `moveSequence` da API. A câmera compara a resposta à posição enviada naquele pacote, sem confundir atraso de rede com rejeição. Ao parar, aguarda a confirmação final antes de corrigir pequenas diferenças; teleporte e rejeições reais continuam autoritativos.
+- A parada física desacelera brevemente e a passada usa fase contínua com envelope amortecido. Trocar para idle não congela os membros em uma pose intermediária. Movimento/olhar continuam transmitidos em até 20 Hz; parado há heartbeat de até 4 Hz e envio imediato nas transições. A planta não reescreve o SVG quando o marcador não mudou.
 - O HUD mantém ajuda de teclado legível, com teclas destacadas. WASD e setas compartilham os eixos, sem somar duas vezes a mesma direção, e as diagonais são normalizadas.
 - Tarefas, mapa expandido, apresentação do papel e fases sem jogo bloqueiam movimento e ações. Controles HTML focados recebem suas teclas sem interferência do jogo.
 - Perder foco, ocultar a aba ou liberar o ponteiro zera as teclas pressionadas; repetição automática não retoma movimento nem repete ações.
@@ -176,6 +186,7 @@ Os pavimentos são camadas de colisão e da planta, não cenas independentes. N�
 - `scripts/build-office-kit-blender.py`: fonte paramétrica dos objetos do escritório.
 - `scripts/build-office-building-blender.py`: monta o prédio completo a partir da planta exportada pelo servidor.
 - `scripts/build-crew-character-blender.py`: gera personagem, pivôs animáveis e corpo reportável.
+- `scripts/check-crew-character-blender.py`: audita origem, pivôs, visor fechado/encaixado, apoio do corpo, materiais, orçamento Draco e correspondência GLB/Blender sem alterar os arquivos.
 - `assets/models/deducao/office-map.json`: fotografia da planta usada pelo Blender na geração.
 - `assets/models/deducao/timbas-office-building.blend`: fonte editável da cena completa.
 - `assets/models/deducao/`: arquivos `.blend` editáveis.
@@ -202,6 +213,8 @@ node scripts/check-deducao-light-grid.mjs
 node scripts/check-deducao-render-budget.mjs
 node scripts/check-deducao-movement-geometry.mjs
 node scripts/check-deducao-audio.mjs
+node scripts/check-deducao-actor-motion.mjs
+node scripts/check-deducao-sabotage.mjs
 ```
 
 A auditoria Blender verifica portas e molduras, degraus/patamar, pés e duplicação dos postes, conectividade das luminárias, janelas, contato do pergolado e paisagem com seus apoios. Reimporta o GLB para comparar geometria com o `.blend` e confirma por hash que as entradas não foram alteradas. Os testes da cena exercitam os handlers reais de movimento, câmera e luz com transporte local. Nenhum desses testes substitui uma partida multiplayer nem a medição de desempenho em dispositivo físico.

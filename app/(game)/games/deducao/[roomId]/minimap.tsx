@@ -49,6 +49,7 @@ export function Minimap({ map, spots, role, level, poseRef, grande = false }: Pr
 
   useEffect(() => {
     let frame = 0
+    let previousTransform = ""
     const seguir = () => {
       const node = marker.current
       if (node) {
@@ -56,7 +57,11 @@ export function Minimap({ map, spots, role, level, poseRef, grande = false }: Pr
         // O ponteiro nasce apontando para cima; girar 180 menos a direção do
         // jogo é o que alinha o norte da planta com o norte do escritório.
         const giro = 180 - (dir * 180) / Math.PI
-        node.setAttribute("transform", `translate(${x.toFixed(2)} ${z.toFixed(2)}) rotate(${giro.toFixed(1)})`)
+        const transform = `translate(${x.toFixed(2)} ${z.toFixed(2)}) rotate(${giro.toFixed(1)})`
+        if (transform !== previousTransform) {
+          node.setAttribute("transform", transform)
+          previousTransform = transform
+        }
       }
       frame = requestAnimationFrame(seguir)
     }

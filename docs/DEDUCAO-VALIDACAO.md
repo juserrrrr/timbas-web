@@ -1,5 +1,41 @@
 # Validação de Dedução, 4 e 5/09/2026
 
+## Cadência, parada e sabotagem manual, 05/09/2026
+
+O relato posterior ao commit `9a6c8f7` inclui engasgos também em PC potente. A revisão separa custo gráfico, cadência de apresentação e correção de rede: a média de FPS isolada não prova fluidez.
+
+- Removido o limitador manual de 60 FPS; o Canvas acompanha o RAF nativo. Isso permite aproveitar a atualização de telas mais rápidas sem o padrão artificial de quadros descartados. Não foi medida uma tela física de 120/144 Hz.
+- A câmera não trata ecos antigos como posição final quando o jogador solta a tecla. Pacotes recebem `sequence`, confirmada pela API em `moveSequence`; o histórico local é limitado a 128 entradas. Rejeições reais, colisões e teleporte continuam corrigidos. Testes com atrasos de 50/150/300 ms em 30/60/120 FPS não apresentaram recuo na parada; posição final, sequência crescente e teleporte autoritativo foram conferidos.
+- A animação continua a fase da passada enquanto desacelera, com envelope criticamente amortecido. Quatro testes novos com 48 fases de parada e 2.400 alternâncias verificam continuidade, idle e mesma pose em 30/60/120 FPS. Os oito grupos de atores também passaram; sentar converge sem sobrescrever a postura das pernas a cada quadro.
+- O servidor tinha apagão automático a cada 150 s além do poder do assassino. Esse agendamento e a opção `blackoutEverySeconds` foram removidos. Somente a ação explícita de um assassino vivo/conectado em partida inicia o apagão. Recarga inicial e entre ativações: 40 s; duração padrão: 25 s. Tentativas durante apagão ou recarga não consomem outra carga. Tempo de recarga é privado, sincronizado com relógio monotônico e compartilhado pela regra do botão/F.
+- Otimizações adicionais: céu após a geometria opaca para aproveitar rejeição por profundidade, matrizes locais estáticas, atualização de alvos em 10 Hz, heartbeat parado em até 4 Hz e SVG da planta atualizado somente quando muda. Sobrecarga gráfica forte reduz o DPR mais rapidamente, preservando os valores de iluminação e mantendo resolução máxima quando há folga.
+
+API: 59 suítes e 595 testes passaram, assim como TypeScript e build. Incluem 29 testes novos da sala real para ausência de apagão automático mesmo após um dia, autorização, recarga, duas tentativas simultâneas, reunião/fim, reconexão e sequência de movimento. Frontend: controles 19/19, sabotagem 6/6, atores 8/8, animação 4/4, cena 9/9, planta 17/17 e todos os 12 scripts `check-deducao-*.mjs` passaram. TypeScript dedicado à entrada da Dedução e suas dependências passou. O TypeScript global mantém os mesmos 14 erros preexistentes fora do jogo.
+
+No primeiro trecho da sessão de navegador, o RAF foi entregue a 30 Hz mesmo com o Canvas completamente desmontado, página visível e focada. O contador independente de DOM manteve p95 de 33,4 ms sem a cena. Mais tarde o próprio navegador passou a entregar RAF a 180 Hz, sem alteração de configurações por nós. As amostras de 30 Hz e 180 Hz são separadas e não representam ganho causado pelo jogo. Não foram controlados Edge/Opera nem medidos os computadores das pessoas que relataram travamentos.
+
+No A/B do céu em alta, com o mesmo enquadramento e DPR fixo 1 (1279 × 912), GPU p95 foi 15,34 ms antes e 15,30 ms depois, sem ganho mensurável relevante nesta amostra. A ordem posterior conserva o depth test e foi inspecionada visualmente. No corredor em alta, caminhada/parada com eco local de 300 ms e ativação da sabotagem registraram p95 de CPU do quadro de 2,5 ms, sem quadro acima de 80 ms, long task ou programa gráfico novo. A câmera parou na mesma posição confirmada pelo transporte. O botão real ficou desabilitado com contagem regressiva após ativar, voltou a disponível depois da recarga e permaneceu bloqueado ao trocar para funcionário. Esses controles usam transporte de QA local, não um servidor multiplayer no navegador.
+
+Foi reproduzida uma pausa específica do Leve ao visitar o terraço pela primeira vez: long task de 361 ms, intervalo máximo de 371,4 ms e quatro programas gráficos novos. A prop booleana `shadows={false}` fazia o R3F reconfigurar o tipo para PCFSoft após o aquecimento feito com PCF. Mesmo com sombras desligadas, o tipo participa da chave de compilação do Three. O Leve agora usa um objeto estável `{ enabled: false, type: PCFShadowMap }`. Um teste executa a configuração real do R3F instalado em oito trocas de qualidade e compara as chaves reais de `WebGLPrograms`.
+
+Após a correção, a mesma sequência em sessão limpa (Leve, primeira visita ao terraço, DPR 1, 1279 × 912) manteve 30 programas, zero compilações novas, zero long tasks e intervalo máximo de 11,4 ms em 2.296 quadros. Média local de 179,3 FPS, GPU p95 de 4,23 ms. Isso confirma a remoção da pausa reproduzida, não garante essa taxa em outros dispositivos.
+
+As alterações exigem publicar frontend e API juntos para a confirmação de movimento e o status privado de recarga. Os testes de rede usam atraso simulado e os handlers reais em verificações separadas, não substituem uma partida multiplayer no PC do usuário.
+
+A conferência final encontrou um bloqueio adicional no botão: o React Compiler memorizava `canSabotage` sem perceber a passagem do tempo. O contador chegava a zero, mas o botão permanecia desabilitado. O relógio monotônico agora é estado explícito e o quinto argumento da autorização visual. O teste com o compilador real reproduz a falha retirando esse argumento e confirma liberação exatamente em 40.000 ms, sem nova prop. No navegador, o ciclo completo passou de recarga para disponível e aceitou uma segunda ativação, sem recarregar a página. Console final sem erros de execução, com aviso preexistente de descontinuação de `THREE.Clock`.
+
+O build final do frontend passou após remover a página, o servidor e o cache temporários de QA. A rota de revisão não aparece na saída de produção; `next-env.d.ts` voltou a apontar para os tipos de `dist`. Os testes permanentes, o `.blend` editável e os dois GLBs revisados permanecem no projeto. Nenhuma alteração desta revisão foi publicada automaticamente.
+
+### Personagem e validação final de apresentação
+
+O personagem recebeu torso contínuo, visor panorâmico integrado ao capacete, uniforme fosco, luvas e botas grafite e identificação discreta. A cor de jogador muda somente o traje; o visor e os acessórios permanecem neutros. As etiquetas ficaram 25% menores em altura. O modelo vivo mantém 12 chamadas de desenho e passa de seis para quatro materiais; usa 1.880 triângulos, contra 1.640 antes. O aumento de 240 triângulos foi destinado à silhueta, não é uma redução de geometria.
+
+Com Draco, o GLB vivo passou de 88.732 para 23.780 bytes (menos 73,2%) e o corpo de 67.924 para 20.656 bytes (menos 69,6%). Isso mede download, não ganho de FPS. O cadáver mantém cinco chamadas e 2.112 triângulos. O `.blend` editável é preservado antes da união destrutiva para exportação. A auditoria `check-crew-character-blender.py` conferiu pivôs, limites, materiais, malha fechada do capacete/visor, orçamento e reimportação. Botas e luvas do corpo ficaram a aproximadamente 3 mm do piso, dentro do limite de -1 a +8 mm, sem penetração.
+
+Agachar/levantar usa compressão suave das pernas a partir dos quadris, sem afundar as botas inteiras. O teste decodifica o GLB real e mede as solas: menos de 0,2 mm de diferença do piso nas transições paradas em 30/60/120 FPS. Sentar restaura a escala das pernas. Limitação do rig simples: durante a passada, a ponta da bota ainda pode penetrar aproximadamente 2,04 cm andando em pé e 4,32 cm agachado; não há IK ou ajuste individual ao terreno nesta revisão.
+
+Renders frontal, traseiro e conjunto foram gerados e inspecionados. Na cena real foram conferidos o personagem novo em alto/médio/leve, movimento/parada e postura agachada. Em sessão limpa no corredor, alta, 1.279 × 912, DPR 1, a janela de 4.223 quadros registrou 175,3 FPS, intervalo p95 de 6,9 ms, máximo de 16,4 ms, CPU do quadro p95 de 2,6 ms e GPU p95 de 5,49 ms, sem long tasks ou compilações novas. São medidas locais da fixture de QA, sem outros computadores ou partida multiplayer real.
+
 ## Luzes lineares e desempenho, 05/09/2026
 
 Esta revisão substitui o sistema de pontos descrito no histórico abaixo. As 57 fontes fixas agora usam uma grade espacial: 56 segmentos luminosos e o ponto do botão de emergência. As barras verticais iluminam ao longo de 2,18 m; as duas barras do pergolado acompanham aproximadamente 7,19 m. A fonte admite RGB, inclusive verde, sem trocar as cores azuis/amarelas dos modelos existentes. O cálculo é uma aproximação de luz linear com resposta PBR, não uma simulação fotométrica exata nem sombra de área.
@@ -109,6 +145,8 @@ node scripts/check-deducao-light-grid.mjs
 node scripts/check-deducao-render-budget.mjs
 node scripts/check-deducao-movement-geometry.mjs
 node scripts/check-deducao-audio.mjs
+node scripts/check-deducao-actor-motion.mjs
+node scripts/check-deducao-sabotage.mjs
 node scripts/check-deducao-minimap.mjs
 node scripts/check-deducao-models.mjs
 & 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --factory-startup --python-exit-code 1 --python scripts/check-office-architecture-blender.py

@@ -72,6 +72,8 @@ export function OfficeBuilding({ blackout, quality }: { blackout: boolean; quali
       return copies.get(source)!
     }
     clone.traverse((child) => {
+      child.updateMatrix()
+      child.matrixAutoUpdate = false
       if (!(child instanceof THREE.Mesh)) return
       child.material = Array.isArray(child.material)
         ? child.material.map(copy)

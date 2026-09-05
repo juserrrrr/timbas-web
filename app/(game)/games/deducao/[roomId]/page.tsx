@@ -116,6 +116,7 @@ export default function DeducaoRoomPage() {
           roomRef={room.roomRef}
           me={room.me}
           role={room.role}
+          sabotageStatus={room.sabotageStatus}
           allies={room.allies}
           myTasks={room.myTasks}
           finalRoles={room.finalRoles}

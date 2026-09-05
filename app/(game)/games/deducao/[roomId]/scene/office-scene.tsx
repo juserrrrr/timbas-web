@@ -20,10 +20,12 @@ import { collidersAtHeight, stairSampleAt, surfaceHeightAt } from "./movement-ge
 import { patchVision, setBlackout } from "./vision-material"
 import { OfficeLightGrid } from "./office-light-grid"
 import { AdaptiveResolution } from "./render-budget"
+import { createActorMotion, updateActorMotion } from "./actor-motion"
 
 const VOID_COLOR = "#07111f"
-const MAX_RENDER_FPS = 60
 const SHADOW_SETTINGS = { type: THREE.PCFShadowMap }
+// R3F maps boolean false to PCFSoft even when shadows are disabled.
+const LOW_SHADOW_SETTINGS = { enabled: false, type: THREE.PCFShadowMap }
 const CREW_MODEL = "/models/games/deducao/timbas-crew-character.glb"
 const CORPSE_MODEL = "/models/games/deducao/timbas-crew-corpse.glb"
 
@@ -80,9 +82,8 @@ export function OfficeScene(props: Props) {
   const cameraFar = Math.max(130, Math.hypot(props.map.bounds.w, props.map.bounds.d) + 24)
   return (
     <Canvas
-      shadows={quality !== "baixo" ? SHADOW_SETTINGS : false}
+      shadows={quality !== "baixo" ? SHADOW_SETTINGS : LOW_SHADOW_SETTINGS}
       dpr={dpr}
-      frameloop="never"
       gl={{
         antialias: quality !== "baixo",
         powerPreference: "high-performance",
@@ -101,37 +102,11 @@ export function OfficeScene(props: Props) {
         gl.shadowMap.type = THREE.PCFShadowMap
       }}
     >
-      <CappedFrameLoop />
       <Suspense fallback={null}>
         <SceneContent {...props} onResolution={setDpr} />
       </Suspense>
     </Canvas>
   )
-}
-
-function CappedFrameLoop() {
-  const advance = useThree((state) => state.advance)
-
-  useEffect(() => {
-    // O modo automático acompanha monitores de 120/144 Hz e redesenha a mesma
-    // cena mais vezes do que o movimento e a rede conseguem aproveitar.
-    const interval = 1000 / MAX_RENDER_FPS
-    let nextFrame = 0
-    let frame = 0
-
-    const render = (now: number) => {
-      if (now + 0.5 >= nextFrame) {
-        advance(now / 1000)
-        nextFrame = nextFrame === 0 || now - nextFrame > interval * 2 ? now + interval : nextFrame + interval
-      }
-      frame = window.requestAnimationFrame(render)
-    }
-
-    frame = window.requestAnimationFrame(render)
-    return () => window.cancelAnimationFrame(frame)
-  }, [advance])
-
-  return null
 }
 
 function SceneContent({
@@ -165,6 +140,12 @@ function SceneContent({
   const climbing = useRef(false)
   const started = useRef(false)
   const lastSent = useRef(0)
+  const moveSequence = useRef(0)
+  const lastMovingSequence = useRef(0)
+  const sentPositions = useRef(new Map<number, { x: number; z: number }>())
+  const lastMotionState = useRef("")
+  const lastSentHeading = useRef(0)
+  const lastInteractionCheck = useRef(-Infinity)
   const lastStep = useRef(0)
   const heading = useRef(0)
   const targetSignature = useRef("")
@@ -327,6 +308,7 @@ function SceneContent({
       started.current = true
       visualLevel.current = Number(mine.level ?? 0)
       visualY.current = visualLevel.current * FLOOR_HEIGHT
+      moveSequence.current = Number(mine.moveSequence ?? 0)
     }
 
     const liveLevel = Number(mine.level ?? 0)
@@ -361,7 +343,7 @@ function SceneContent({
 
     // Uma resposta curta preserva a precisão e elimina o tranco ao apertar ou
     // soltar a tecla. A velocidade residual também faz a animação parar suave.
-    const response = hasInput ? 22 : 28
+    const response = hasInput ? 22 : 18
     velocity.current.lerp(targetVelocity, 1 - Math.exp(-response * delta))
     if (!hasInput && velocity.current.lengthSq() < 0.0025) velocity.current.set(0, 0)
     const moving = velocity.current.lengthSq() > 0.0064
@@ -394,11 +376,25 @@ function SceneContent({
     // O servidor é a verdade. Quando ele discorda muito, a tela salta; quando
     // discorda pouco, ela vai sendo puxada de volta sem ninguém perceber.
     const drift = Math.hypot(mine.x - local.current.x, mine.z - local.current.y)
-    if (drift > 2.8) {
+    const acknowledgedPosition = sentPositions.current.get(Number(mine.moveSequence ?? 0))
+    const serverDisagrees = !acknowledgedPosition || Math.hypot(
+      mine.x - acknowledgedPosition.x, mine.z - acknowledgedPosition.z,
+    ) > 0.08
+    if (snapshot.phase !== "jogando" || inVent) {
       local.current.set(mine.x, mine.z)
       velocity.current.set(0, 0)
-    } else if (drift > (hasInput ? 0.9 : 0.06)) {
-      const correction = 1 - Math.exp(-(hasInput ? 1.5 : 7) * delta)
+      visualLevel.current = liveLevel
+      stairExitGraceUntil.current = 0
+      lastMovingSequence.current = 0
+      sentPositions.current.clear()
+    } else if (drift > 2.8 && serverDisagrees) {
+      local.current.set(mine.x, mine.z)
+      velocity.current.set(0, 0)
+    } else if (serverDisagrees && drift > (moving ? 0.9 : 0.06) && (moving || (
+      !mine.moving && Number(mine.moveSequence ?? 0) >= lastMovingSequence.current
+    ))) {
+      // Um eco ainda em movimento não é a posição final após soltar a tecla.
+      const correction = 1 - Math.exp(-(moving ? 1.5 : 7) * delta)
       local.current.x += (mine.x - local.current.x) * correction
       local.current.y += (mine.z - local.current.y) * correction
     }
@@ -464,8 +460,16 @@ function SceneContent({
       lastStep.current = now
       playGameSound("step")
     }
-    if (now - lastSent.current > SEND_EVERY_MS) {
+    const motionState = `${moving}:${running}:${crouching}:${airborne}:${inVent}`
+    const turning = Math.abs(Math.atan2(Math.sin(heading.current - lastSentHeading.current), Math.cos(heading.current - lastSentHeading.current))) > 0.005
+    if (motionState !== lastMotionState.current || now - lastSent.current > (moving || airborne || turning ? SEND_EVERY_MS : 250)) {
       lastSent.current = now
+      lastMotionState.current = motionState
+      lastSentHeading.current = heading.current
+      moveSequence.current = Math.max(moveSequence.current, Number(mine.moveSequence ?? 0)) + 1
+      if (moving) lastMovingSequence.current = moveSequence.current
+      sentPositions.current.set(moveSequence.current, { x: local.current.x, z: local.current.y })
+      if (sentPositions.current.size > 128) sentPositions.current.delete(sentPositions.current.keys().next().value!)
       roomRef.current?.send(
         "move" as never,
         {
@@ -477,6 +481,7 @@ function SceneContent({
           crouching,
           airborne,
           elevation: jumpHeight.current,
+          sequence: moveSequence.current,
         } as never,
       )
     }
@@ -505,7 +510,7 @@ function SceneContent({
     const dark = snapshot.blackout
     const nightVision = assassinNightVision
     const lighting = viewerLighting(dark, nightVision)
-    setBlackout(blackoutForViewer)
+    setBlackout(blackoutForViewer, delta)
     if (sun.current) {
       sun.current.position.set(local.current.x - 14, visualY.current + 26, local.current.y - 10)
       sun.current.target.position.set(local.current.x, visualY.current, local.current.y)
@@ -541,7 +546,8 @@ function SceneContent({
         targetSignature.current = "stairs"
         onTargets(NO_TARGETS)
       }
-    } else {
+    } else if (targetSignature.current === "stairs" || now - lastInteractionCheck.current >= 100) {
+      lastInteractionCheck.current = now
       reportTargets({
         state,
         me,
@@ -666,10 +672,6 @@ function cloneCrewScene(source: THREE.Group, color: string) {
     if (material instanceof THREE.MeshStandardMaterial) {
       if (original.name.includes("Crew Body Color")) {
         material.color.copy(playerColor)
-      } else if (original.name.includes("Crew Accent Color")) {
-        material.color.copy(playerColor).lerp(new THREE.Color("#bfe9ff"), 0.36)
-      } else if (original.name.includes("Crew Dark Uniform")) {
-        material.color.copy(playerColor).multiplyScalar(0.16).addScalar(0.012)
       }
       surfaces.push({ material, color: material.color.clone(), emissive: material.emissive.clone(), emissiveIntensity: material.emissiveIntensity })
     }
@@ -700,7 +702,7 @@ function cloneCrewScene(source: THREE.Group, color: string) {
           material.emissive.copy(material.color)
           material.emissiveIntensity = 0.16
         }
-        material.envMapIntensity = blackout ? 0.48 : 1.05
+        material.envMapIntensity = blackout ? 0.48 : 0.75
       }
       for (const mesh of meshes) mesh.castShadow = shadows
     },
@@ -717,7 +719,7 @@ function PlayerNameplate({ name, color, ally, ghost, visible }: {
   const texture = useMemo(() => {
     const canvas = document.createElement("canvas")
     const context = canvas.getContext("2d")!
-    const font = "900 52px system-ui, sans-serif"
+    const font = "700 52px system-ui, sans-serif"
     context.font = font
     canvas.width = Math.ceil(context.measureText(name + (ally ? " ◆" : "")).width) + 28
     canvas.height = 76
@@ -741,7 +743,7 @@ function PlayerNameplate({ name, color, ally, ghost, visible }: {
 
   // A etiqueta usa o mesmo depth buffer do corpo, inclusive pela abertura da escada.
   return (
-    <sprite position={[0, 2.1, 0]} scale={[0.32 * texture.image.width / texture.image.height, 0.32, 1]} visible={visible}>
+    <sprite position={[0, 2.1, 0]} scale={[0.24 * texture.image.width / texture.image.height, 0.24, 1]} visible={visible}>
       <spriteMaterial map={texture} transparent opacity={ghost ? 0.5 : 1} depthTest depthWrite={false} toneMapped={false} />
     </sprite>
   )
@@ -786,8 +788,8 @@ function Actor({
   const pernaDireita = useRef<THREE.Object3D>(null)
   const bracoEsquerdo = useRef<THREE.Object3D>(null)
   const bracoDireito = useRef<THREE.Object3D>(null)
-  const passo = useRef(0)
-  const balanco = useRef(0)
+  const motion = useMemo(createActorMotion, [])
+  const crouchDrop = useRef(0)
   const placed = useRef(false)
 
   const { scene: crewSource } = useGLTF(CREW_MODEL, true, false)
@@ -844,36 +846,35 @@ function Actor({
     node.rotation.y +=
       Math.atan2(Math.sin(facing - node.rotation.y), Math.cos(facing - node.rotation.y)) * (1 - Math.exp(-12 * delta))
 
-    // Braço e perna andam em oposição, e a amplitude sobe e desce em rampa: o
-    // boneco não pode travar a passada no meio quando o jogador solta a tecla.
     const walking = !seated && (Boolean(live.moving) || (isMe && climbingRef.current))
-    passo.current += walking ? delta * 9 : 0
-    balanco.current += ((walking ? 0.62 : 0) - balanco.current) * (1 - Math.exp(-9 * delta))
-    const giro = Math.sin(passo.current) * balanco.current
-    if (pernaEsquerda.current) pernaEsquerda.current.rotation.x = giro
-    if (pernaDireita.current) pernaDireita.current.rotation.x = -giro
+    updateActorMotion(motion, walking, seated, delta)
+    const giro = motion.swing * (1 - motion.seatedWeight)
+    const seatedLeg = -1.25 * motion.seatedWeight
+    if (pernaEsquerda.current) pernaEsquerda.current.rotation.x = giro + seatedLeg
+    if (pernaDireita.current) pernaDireita.current.rotation.x = -giro + seatedLeg
     if (bracoEsquerdo.current) bracoEsquerdo.current.rotation.x = -giro * 0.8
     if (bracoDireito.current) bracoDireito.current.rotation.x = giro * 0.8
 
     if (bodyGroup.current) {
       const crouching = Boolean(live.crouching)
       const airborne = Boolean(live.airborne)
-      const sobe = seated
-        ? -0.43
-        : airborne
-          ? 0
-          : crouching
-            ? -0.42
-            : Math.abs(Math.sin(passo.current)) * balanco.current * 0.07
-      bodyGroup.current.position.y += (sobe - bodyGroup.current.position.y) * (1 - Math.exp(-16 * delta))
+      const standingHeight = airborne
+        ? 0
+        : crouching
+          ? -0.42
+          : motion.bob
+      const sobe = -0.43 * motion.seatedWeight + standingHeight * (1 - motion.seatedWeight)
+      const verticalBlend = 1 - Math.exp(-16 * delta)
+      bodyGroup.current.position.y += (sobe - bodyGroup.current.position.y) * verticalBlend
+      const crouchTarget = crouching && !airborne ? -0.42 * (1 - motion.seatedWeight) : 0
+      crouchDrop.current += (crouchTarget - crouchDrop.current) * verticalBlend
+      // Encurta somente as pernas pelo quadril, mantendo as botas no piso ao agachar.
+      const leftLeg = pernaEsquerda.current
+      const rightLeg = pernaDireita.current
+      if (leftLeg && leftLeg.position.y > 0) leftLeg.scale.y = Math.max(0.25, 1 + crouchDrop.current / leftLeg.position.y)
+      if (rightLeg && rightLeg.position.y > 0) rightLeg.scale.y = Math.max(0.25, 1 + crouchDrop.current / rightLeg.position.y)
       bodyGroup.current.rotation.x +=
-        ((seated ? -0.08 : 0) - bodyGroup.current.rotation.x) * (1 - Math.exp(-12 * delta))
-    }
-    if (pernaEsquerda.current && seated) {
-      pernaEsquerda.current.rotation.x += (-1.25 - pernaEsquerda.current.rotation.x) * (1 - Math.exp(-12 * delta))
-    }
-    if (pernaDireita.current && seated) {
-      pernaDireita.current.rotation.x += (-1.25 - pernaDireita.current.rotation.x) * (1 - Math.exp(-12 * delta))
+        (-0.08 * motion.seatedWeight - bodyGroup.current.rotation.x) * (1 - Math.exp(-12 * delta))
     }
   })
 

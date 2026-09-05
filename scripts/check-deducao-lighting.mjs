@@ -1,8 +1,9 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
+import { readFile, readdir } from "node:fs/promises"
 import vm from "node:vm"
 import ts from "typescript"
 import * as THREE from "three"
+import { WebGLPrograms } from "three/src/renderers/webgl/WebGLPrograms.js"
 
 const sceneDirectory = "app/(game)/games/deducao/[roomId]/scene"
 async function sourceFile(filename) {
@@ -34,7 +35,13 @@ const { FIXTURE_INTENSITY, viewerLighting } = await isolatedModule("lighting-pro
   "NORMAL", "BLACKOUT", "NIGHT_VISION", "FIXTURE_INTENSITY", "viewerLighting",
 ])
 const gridApi = await isolatedModule("light-grid.ts", ["dataTexture", "buildLightGrid", "CELL_SIZE", "TEXTURE_WIDTH", "MAX_CELL_LIGHTS", "officeLightUniforms", "officeLightDeclarations", "officeLightFragment"])
-const { patchVision } = await isolatedModule("vision-material.tsx", ["SURFACE_CODE", "visionUniforms", "patchVision"], gridApi)
+const { patchVision, setBlackout, visionUniforms } = await isolatedModule("vision-material.tsx", ["SURFACE_CODE", "visionUniforms", "patchVision", "setBlackout"], gridApi)
+for (const fps of [30, 60, 120, 144]) {
+  visionUniforms.uBlackout.value = 0
+  for (let frame = 0; frame < fps; frame++) setBlackout(true, 1 / fps)
+  assert.ok(Math.abs(visionUniforms.uBlackout.value - (1 - Math.exp(-7.67))) < 1e-12, "Transição de apagão independe da frequência da tela")
+}
+visionUniforms.uBlackout.value = 0
 const { cloneMaterial, ceilingFixturePlacements, emergencyPlacements, normalLightSources, terraceLightSources, accentLightSources, isInsideStairOpening, OfficeWorld, worldLightSources, WALL_HEIGHT } = await isolatedModule("office-world.tsx", [
   "cloneMaterial", "isInsideStairOpening", "ceilingFixturePlacements", "emergencyPlacements", "normalLightSources", "terraceLightSources", "accentLightSources", "worldLightSources", "OfficeWorld",
   "WALL_HEIGHT", "STAIR_OPENING_HALF_WIDTH", "STAIR_OPENING_END_PADDING", "EMERGENCY_LIGHT_MODEL",
@@ -306,6 +313,40 @@ fixtureHooks.dispose()
 warm.dispose(); exterior.dispose(); geometry.dispose()
 
 const scene = await sourceFile("office-scene.tsx")
+const shadowSettings = await isolatedModule("office-scene.tsx", ["SHADOW_SETTINGS", "LOW_SHADOW_SETTINGS"])
+let canvasShadows
+function findCanvasShadows(node) {
+  if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && node.tagName.getText(scene) === "Canvas") {
+    const attribute = node.attributes.properties.find((item) => ts.isJsxAttribute(item) && item.name.text === "shadows")
+    assert.ok(attribute && ts.isJsxExpression(attribute.initializer), "Canvas configura sombras explicitamente")
+    canvasShadows = attribute.initializer.expression.getText(scene)
+  }
+  ts.forEachChild(node, findCanvasShadows)
+}
+findCanvasShadows(scene)
+assert.ok(canvasShadows, "Validação usa a prop real de sombras do Canvas")
+const fiberDirectory = "node_modules/@react-three/fiber/dist"
+const fiberFiles = (await readdir(fiberDirectory)).filter((file) => /^events-.*\.esm\.js$/.test(file))
+const fiberSource = (await Promise.all(fiberFiles.map((file) => readFile(`${fiberDirectory}/${file}`, "utf8")))).find((source) => source.includes("// Set shadowmap"))
+assert.ok(fiberSource, "Validação encontra a configuração real do R3F instalado")
+const shadowConfigure = fiberSource.slice(fiberSource.indexOf("// Set shadowmap"), fiberSource.indexOf("THREE.ColorManagement.enabled", fiberSource.indexOf("// Set shadowmap")))
+const shadowRenderer = { shadowMap: { enabled: false, type: THREE.PCFShadowMap, needsUpdate: false }, outputColorSpace: THREE.SRGBColorSpace }
+const shadowPrograms = WebGLPrograms(shadowRenderer, {}, {}, { precision: "highp" }, {}, {})
+const programKey = () => shadowPrograms.getProgramCacheKey({ shaderID: "physical", isRawShaderMaterial: false, shadowMapEnabled: false, shadowMapType: shadowRenderer.shadowMap.type, customProgramCacheKey: "office" })
+const warmedLowProgram = programKey()
+const shadowTypes = { boo: (value) => typeof value === "boolean", str: (value) => typeof value === "string", obj: (value) => value !== null && typeof value === "object" }
+for (const quality of ["baixo", "baixo", "alto", "medio", "baixo", "baixo", "alto", "baixo"]) {
+  const settings = vm.runInNewContext(canvasShadows, { quality, ...shadowSettings })
+  assert.equal(settings, quality === "baixo" ? shadowSettings.LOW_SHADOW_SETTINGS : shadowSettings.SHADOW_SETTINGS, "Rerender reutiliza o mesmo objeto de configuração")
+  for (let rerender = 0; rerender < 3; rerender++) {
+    shadowRenderer.shadowMap.needsUpdate = false
+    vm.runInNewContext(shadowConfigure, { gl: shadowRenderer, shadows: settings, is: shadowTypes, THREE })
+    assert.equal(shadowRenderer.shadowMap.enabled, quality !== "baixo", "Leve continua sem renderização de sombras")
+    assert.equal(shadowRenderer.shadowMap.type, THREE.PCFShadowMap, "Troca de qualidade e rerender não mudam PCF para PCFSoft")
+    if (rerender > 0) assert.equal(shadowRenderer.shadowMap.needsUpdate, false, "Rerender estável não invalida sombras")
+    if (quality === "baixo") assert.equal(programKey(), warmedLowProgram, "Primeira visita ao terraço reutiliza a chave aquecida mesmo com sombras desligadas")
+  }
+}
 function stableSceneNodes(node) {
   if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node))) {
     const tag = node.tagName.getText(scene)

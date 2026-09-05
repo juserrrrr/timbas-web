@@ -46,12 +46,12 @@ const RULES: { key: string; label: string; hint: string; min: number; max: numbe
   },
   { key: "voteSeconds", label: "Votação", hint: "Tempo para escolher quem sai", min: 15, max: 120, step: 5, unit: "s" },
   {
-    key: "blackoutEverySeconds",
-    label: "Apagão a cada",
-    hint: "De quanto em quanto tempo a luz apaga",
-    min: 60,
-    max: 600,
-    step: 30,
+    key: "blackoutSeconds",
+    label: "Duração da sabotagem",
+    hint: "Luzes apagadas pelo assassino, com recarga de 40 segundos",
+    min: 10,
+    max: 60,
+    step: 5,
     unit: "s",
   },
 ]
@@ -182,7 +182,7 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
 
               <div className="mt-3 grid gap-x-5 gap-y-3 lg:grid-cols-2">
                 {RULES.map((rule) => {
-                  const raw = Number(snapshot.config[rule.key] ?? 0)
+                  const raw = Number(snapshot.config[rule.key] ?? (rule.key === "blackoutSeconds" ? 25 : 0))
                   const shown = rule.unit === "s" && rule.key.endsWith("Ms") ? raw / 1000 : raw
                   return (
                     <div key={rule.key}>
