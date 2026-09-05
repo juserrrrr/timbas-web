@@ -34,8 +34,8 @@ const { FIXTURE_INTENSITY, viewerLighting } = await isolatedModule("lighting-pro
   "NORMAL", "BLACKOUT", "NIGHT_VISION", "FIXTURE_INTENSITY", "viewerLighting",
 ])
 const { patchVision } = await isolatedModule("vision-material.tsx", ["SURFACE_CODE", "visionUniforms", "patchVision"])
-const { cloneMaterial, ceilingFixturePlacements, emergencyPlacements, normalLightSources, terraceLightSources, isInsideStairOpening, OfficeWorld, WALL_HEIGHT } = await isolatedModule("office-world.tsx", [
-  "cloneMaterial", "isInsideStairOpening", "ceilingFixturePlacements", "emergencyPlacements", "normalLightSources", "terraceLightSources", "FixedOfficeLights", "OfficeWorld",
+const { cloneMaterial, ceilingFixturePlacements, emergencyPlacements, normalLightSources, terraceLightSources, accentLightSources, isInsideStairOpening, OfficeWorld, WALL_HEIGHT } = await isolatedModule("office-world.tsx", [
+  "cloneMaterial", "isInsideStairOpening", "ceilingFixturePlacements", "emergencyPlacements", "normalLightSources", "terraceLightSources", "accentLightSources", "FixedOfficeLights", "OfficeWorld",
   "WALL_HEIGHT", "STAIR_OPENING_HALF_WIDTH", "STAIR_OPENING_END_PADDING", "EMERGENCY_LIGHT_MODEL",
 ], {
   FIXTURE_INTENSITY,
@@ -172,6 +172,18 @@ for (const level of [0, 1]) {
     assert.ok(light.distance >= 7.2 && light.distance <= 9.6)
   }
   const terraceLights = terraceLightSources(map, level)
+  const accentLights = accentLightSources(map, level)
+  assert.equal(accentLights.length, 3, "Cada piso tem duas fitas azuis e uma amarela iluminando a parede")
+  assert.equal(accentLights.filter((light) => light.color === "#38bfff").length, 2)
+  assert.equal(accentLights.filter((light) => light.color === "#ffbd45").length, 1)
+  const hall = map.rooms.find((room) => room.id === (level === 0 ? "hall-central" : "hall-superior"))
+  for (const light of accentLights) {
+    const inward = light.color === "#38bfff" ? 1 : -1
+    const wallX = hall.rect.x + (inward === -1 ? hall.rect.w : 0)
+    close(light.x, wallX + inward * 0.34, "Luz colorida fica diante do difusor fixado na parede")
+    close(light.y, 1.75, "Luz colorida segue o centro vertical da fita")
+    assert.ok(light.distance <= 3.2, "Cor localizada, sem pintar o cômodo inteiro")
+  }
   assert.equal(terraceLights.length, level === 1 ? 2 : 0, "As duas fitas do pergolado devem iluminar")
   if (terraceLights.length) {
     const terrace = map.rooms.find((room) => room.kind === "terraco")
@@ -184,18 +196,163 @@ for (const level of [0, 1]) {
   }
   for (const blackout of [false, true]) {
     const baseline = renderedLights(OfficeWorld({ map, level, blackout }))
-    assert.equal(baseline.length, blackout ? emergencies.length + Number((map.emergency.level ?? 0) === level) : lights.length + terraceLights.length)
+    const normalCount = lights.length + terraceLights.length + accentLights.length
+    const emergencyCount = emergencies.length + Number((map.emergency.level ?? 0) === level)
+    assert.equal(baseline.length, normalCount + emergencyCount, "Normal e emergência ficam montadas para não recompilar shaders ao apagar")
+    const illuminated = baseline.filter((light) => light.intensity > 0)
+    assert.equal(illuminated.length, blackout ? emergencyCount : normalCount)
+    assert.deepEqual(baseline.map(({ intensity, ...light }) => light), renderedLights(OfficeWorld({ map, level, blackout: !blackout })).map(({ intensity, ...light }) => light), "Apagão muda intensidade, nunca quantidade ou posição das luzes")
     if (blackout) {
-      baseline.forEach((light, index) => close(light.intensity, index < emergencies.length ? FIXTURE_INTENSITY.emergency : FIXTURE_INTENSITY.emergencyButton, "Emergência segue o perfil compartilhado"))
+      illuminated.forEach((light, index) => close(light.intensity, index < emergencies.length ? FIXTURE_INTENSITY.emergency : FIXTURE_INTENSITY.emergencyButton, "Emergência segue o perfil compartilhado"))
     }
     for (const quality of ["baixo", "medio", "alto"]) {
       assert.deepEqual(renderedLights(OfficeWorld({ map, level, blackout, quality })), baseline, `${quality}: posições, cores, alcance e intensidades devem coincidir`)
-      assert.equal(renderedLights(OfficeWorld({ map, level, blackout, quality, active: false })).length, 0, "Andares inativos não mantêm luzes físicas")
-      console.log(`Andar ${level}, ${quality}, ${blackout ? "apagão" : "normal"}: ${baseline.length} fontes iguais ao perfil comum.`)
+      assert.deepEqual(renderedLights(OfficeWorld({ map, level, blackout, quality, active: false })), baseline, "Trocar o andar do observador nunca apaga fontes do prédio")
+      console.log(`Andar ${level}, ${quality}, ${blackout ? "apagão" : "normal"}: ${illuminated.length} fontes acesas, ${baseline.length} fontes persistentes.`)
     }
   }
 }
 
 const turn = map.stairs.find((stair) => stair.turnX !== undefined)
 assert.ok(isInsideStairOpening(map, 0, turn.turnX + 1, turn.turnZ + 1), "O canto externo do patamar também é um vão no teto")
+
+function hookHarness() {
+  const slots = []
+  let cursor = 0, pending = []
+  const changed = (previous, next) => !previous || next.some((value, index) => value !== previous[index])
+  const useMemo = (factory, dependencies) => {
+    const index = cursor++
+    if (!slots[index] || changed(slots[index].dependencies, dependencies)) slots[index] = { dependencies, value: factory() }
+    return slots[index].value
+  }
+  const effect = (run, dependencies) => {
+    const index = cursor++
+    if (!slots[index] || changed(slots[index].dependencies, dependencies)) {
+      pending.push(() => { slots[index]?.cleanup?.(); slots[index] = { dependencies, cleanup: run() } })
+    }
+  }
+  return {
+    useMemo, useEffect: effect, useLayoutEffect: effect,
+    render(component, props) {
+      cursor = 0; pending = []
+      const tree = component(props)
+      pending.forEach((run) => run())
+      return tree
+    },
+    dispose() { slots.forEach((slot) => slot.cleanup?.()) },
+  }
+}
+const lifecycle = hookHarness()
+const warm = new THREE.MeshStandardMaterial({ emissive: "#fff1dc", emissiveIntensity: 2 })
+warm.name = "Warm diffuser"
+const exterior = warm.clone()
+exterior.name = "Exterior windows"
+const geometry = new THREE.BoxGeometry()
+const source = new THREE.Group()
+for (const material of [warm, warm, exterior]) source.add(new THREE.Mesh(geometry, material))
+const { OfficeBuilding } = await isolatedModule("office-world.tsx", ["cloneMaterial", "OfficeBuilding", "BUILDING_MODEL"], {
+  ...lifecycle, patchVision, useGLTF: () => ({ scene: source }),
+  React: { createElement: (type, props, ...children) => ({ type, props: { ...props, children } }) },
+})
+const initial = lifecycle.render(OfficeBuilding, { blackout: false, quality: "alto" }).props.object
+const materials = initial.children.map((mesh) => mesh.material)
+assert.equal(materials[0], materials[1], "Meshes que compartilham material não precisam de clones duplicados")
+let disposed = 0
+new Set(materials).forEach((material) => material.addEventListener("dispose", () => disposed++))
+for (let index = 0; index < 120; index++) {
+  const blackout = index % 2 === 0
+  const tree = lifecycle.render(OfficeBuilding, { blackout, quality: ["baixo", "medio", "alto"][index % 3] }).props.object
+  assert.equal(tree, initial, "Apagão/qualidade não recriam o prédio")
+  tree.children.forEach((mesh, part) => {
+    assert.equal(mesh.material, materials[part], "Mesmo material antes e depois do apagão")
+    assert.equal(mesh.geometry, geometry, "Geometria preservada")
+    assert.equal(mesh.material.version, 0, "Apagão não pede recompilação de material")
+  })
+  close(materials[0].emissiveIntensity, blackout ? 0.07 : 2, "Emissão atualiza no material existente")
+  close(materials[2].emissiveIntensity, 2, "Janelas externas não apagam")
+}
+assert.equal(disposed, 0, "Alternância não descarta materiais em uso")
+close(warm.emissiveIntensity, 2, "Fonte compartilhada GLTF não é alterada")
+lifecycle.dispose()
+assert.equal(disposed, 2, "Cada cópia é descartada uma única vez ao sair da cena")
+
+const fixtureHooks = hookHarness()
+const DetailedPartInstances = () => null
+const { DetailedPropKind } = await isolatedModule("office-world.tsx", ["DetailedPropKind"], {
+  ...fixtureHooks, patchVision, DetailedPartInstances, useGLTF: () => ({ scene: source }),
+  React: { Fragment: "fragment", createElement: (type, props, ...children) => ({ type, props: { ...props, children } }) },
+})
+const model = { path: "fixture.glb" }, transforms = [{ x: 2, y: 3.9445, z: 4, rot: 0 }]
+const fixtureTree = fixtureHooks.render(DetailedPropKind, { kind: "emergencyLight", model, transforms, emissiveScale: 0 })
+const fixtureParts = fixtureTree.props.children[0].map((node) => node.props.part)
+for (let index = 0; index < 120; index++) {
+  const emissiveScale = index % 2
+  const nodes = fixtureHooks.render(DetailedPropKind, { kind: "emergencyLight", model, transforms, emissiveScale }).props.children[0]
+  nodes.forEach((node, part) => {
+    assert.equal(node.props.part, fixtureParts[part], "Emergência não recria material nem matriz no apagão")
+    close(node.props.part.material.emissiveIntensity, 2 * emissiveScale, "Difusor responde sem trocar de material")
+  })
+}
+fixtureHooks.dispose()
+warm.dispose(); exterior.dispose(); geometry.dispose()
+
+const scene = await sourceFile("office-scene.tsx")
+function stableSceneNodes(node) {
+  if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node))) {
+    const tag = node.tagName.getText(scene)
+    const attributes = node.attributes.properties.filter(ts.isJsxAttribute).map((attribute) => attribute.name.text)
+    if (tag === "OfficeWorld") assert.ok(!attributes.includes("active"), "Piso do jogador não ativa/desativa outra parte do mundo")
+    if (tag === "spotLight") assert.ok(!attributes.includes("visible"), "Lanterna fica no shader mesmo quando apagada")
+  }
+  ts.forEachChild(node, stableSceneNodes)
+}
+stableSceneNodes(scene)
+const { prepareScene } = await isolatedModule("scene-warmup.ts", ["prepareScene"])
+const nameTexture = new THREE.Texture()
+const hiddenName = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTexture }))
+hiddenName.visible = false
+const warmupScene = new THREE.Scene()
+warmupScene.add(hiddenName, new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTexture })))
+let compiled = 0
+const uploaded = []
+await prepareScene({
+  getRenderTarget: () => null,
+  async compileAsync(scene, camera) { assert.equal(scene, warmupScene); assert.ok(camera instanceof THREE.Camera); compiled++ },
+  initTexture(texture) { assert.equal(compiled, 1); uploaded.push(texture) },
+}, warmupScene, new THREE.PerspectiveCamera())
+assert.deepEqual(uploaded, [nameTexture], "Texturas inclusive fora da câmera são preparadas uma única vez antes de jogar")
+assert.equal(hiddenName.visible, false, "Pré-compilação não revela jogadores ou etiquetas ocultos")
+const previousTarget = new THREE.WebGLRenderTarget(2, 2)
+let activeTarget = previousTarget, disposedTarget = 0, finishCompilation
+const controller = new AbortController()
+const warming = prepareScene({
+  getRenderTarget: () => activeTarget,
+  setRenderTarget(target) { activeTarget = target },
+  compileAsync() {
+    assert.notEqual(activeTarget, previousTarget, "Alta compila com destino de pós-processamento")
+    activeTarget.addEventListener("dispose", () => disposedTarget++)
+    return new Promise((resolve) => { finishCompilation = resolve })
+  },
+  initTexture() { assert.fail("Cena cancelada não envia texturas ao renderer descartado") },
+}, warmupScene, new THREE.PerspectiveCamera(), true, controller.signal)
+assert.equal(activeTarget, previousTarget, "Destino é restaurado antes de aguardar a compilação")
+controller.abort()
+finishCompilation(warmupScene)
+await warming
+assert.equal(disposedTarget, 1, "Destino temporário é descartado mesmo ao cancelar")
+await assert.rejects(prepareScene({
+  getRenderTarget: () => previousTarget,
+  setRenderTarget(target) { activeTarget = target },
+  compileAsync() {
+    activeTarget.addEventListener("dispose", () => disposedTarget++)
+    throw new Error("warmup-test")
+  },
+}, warmupScene, new THREE.PerspectiveCamera(), true), /warmup-test/)
+assert.equal(activeTarget, previousTarget, "Erro síncrono também restaura o destino")
+assert.equal(disposedTarget, 2, "Erro não vaza destino temporário")
+await prepareScene({ compileAsync() { assert.fail("Cancelamento anterior evita qualquer preparação") } }, warmupScene, new THREE.PerspectiveCamera(), false, controller.signal)
+previousTarget.dispose()
+nameTexture.dispose()
+warmupScene.children.forEach((child) => child.material.dispose())
+console.log("Ciclo de vida validado: 240 alternâncias sem recriar prédio, materiais ou instâncias de emergência.")
 console.log("Iluminação validada: três qualidades com a mesma energia, dois andares, apagão, visão noturna e shaders no espaço linear.")

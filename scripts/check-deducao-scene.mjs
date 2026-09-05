@@ -63,9 +63,9 @@ function harness({ quality = "alto", blackout = false, role = "funcionario", pos
   const noop = () => null
   const api = evaluate(sceneCode, {
     ...collision, viewerLighting, FLOOR_HEIGHT: 4.2, NO_TARGETS: { task: null, corpse: null, emergency: false, vent: null, kill: null },
-    document, window, Element: Surface, HTMLElement: Surface, performance: { now: () => now },
+    document, window, AbortController, Element: Surface, HTMLElement: Surface, performance: { now: () => now },
     isGameControlTarget: target => target instanceof Surface && target.control,
-    playGameSound: () => {}, setBlackout: value => { blackoutValue = value },
+    playGameSound: () => {}, setBlackout: value => { blackoutValue = value }, prepareScene: () => Promise.resolve(),
     useThree: () => ({ camera, gl }), useRef: current => ({ current }), useMemo: factory => factory(),
     useEffect: effect => effects.push(effect), useFrame: callback => { frame = callback },
     ProceduralEnvironment: noop, CinematicEffects: noop, NightSky: noop, OfficeBuilding: noop, OfficeWorld: noop, Markers: noop, Actor: noop, Corpse: noop,

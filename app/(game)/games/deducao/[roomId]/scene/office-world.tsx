@@ -48,7 +48,7 @@ const EMERGENCY_LIGHT_MODEL = { path: "/models/games/deducao/emergency-light.glb
 useGLTF.preload(BUILDING_MODEL, true, false)
 useGLTF.preload(EMERGENCY_LIGHT_MODEL.path, true, false)
 
-function cloneMaterial(source: THREE.Material, blackout: boolean) {
+function cloneMaterial(source: THREE.Material, blackout = false) {
   const material = source.clone()
   if (material instanceof THREE.MeshStandardMaterial) {
     material.envMapIntensity = 1.1
@@ -59,30 +59,38 @@ function cloneMaterial(source: THREE.Material, blackout: boolean) {
 
 export function OfficeBuilding({ blackout, quality }: { blackout: boolean; quality: Quality }) {
   const { scene } = useGLTF(BUILDING_MODEL, true, false)
-  const building = useMemo(() => {
+  const { building, materials, meshes } = useMemo(() => {
     const clone = scene.clone(true)
+    const copies = new Map<THREE.Material, THREE.Material>()
+    const meshes: THREE.Mesh[] = []
+    const copy = (source: THREE.Material) => {
+      if (!copies.has(source)) copies.set(source, cloneMaterial(source))
+      return copies.get(source)!
+    }
     clone.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return
       child.material = Array.isArray(child.material)
-        ? child.material.map((material) => cloneMaterial(material, blackout))
-        : cloneMaterial(child.material, blackout)
-      child.castShadow = quality === "alto" && (child.name.startsWith("Wall") || child.name.startsWith("Structure"))
+        ? child.material.map(copy)
+        : copy(child.material)
       child.receiveShadow = true
       child.frustumCulled = true
+      meshes.push(child)
     })
-    return clone
-  }, [blackout, quality, scene])
+    return { building: clone, materials: copies, meshes }
+  }, [scene])
 
-  useEffect(
-    () => () => {
-      building.traverse((child) => {
-        if (!(child instanceof THREE.Mesh)) return
-        const materials = Array.isArray(child.material) ? child.material : [child.material]
-        materials.forEach((material) => material.dispose())
-      })
-    },
-    [building],
-  )
+  useLayoutEffect(() => {
+    materials.forEach((material, source) => {
+      if (material instanceof THREE.MeshStandardMaterial && source instanceof THREE.MeshStandardMaterial) {
+        material.emissiveIntensity = source.emissiveIntensity * (blackout && !source.name.startsWith("Exterior") ? 0.035 : 1)
+      }
+    })
+    meshes.forEach((mesh) => {
+      mesh.castShadow = quality === "alto" && (mesh.name.startsWith("Wall") || mesh.name.startsWith("Structure"))
+    })
+  }, [blackout, quality, materials, meshes])
+
+  useEffect(() => () => materials.forEach((material) => material.dispose()), [materials])
 
   return <primitive object={building} dispose={null} />
 }
@@ -144,10 +152,10 @@ function emergencyPlacements(map: OfficeMap, level: number): Placement[] {
       return Array.from({ length: count }, (_, index) => ({
         x: alongX
           ? room.rect.x + ((index + 1) * room.rect.w) / (count + 1)
-          : room.rect.x + 0.7,
+          : room.rect.x + 1.3,
         y: WALL_HEIGHT - 0.0755,
         z: alongX
-          ? room.rect.z + 0.7
+          ? room.rect.z + 1.3
           : room.rect.z + ((index + 1) * room.rect.d) / (count + 1),
         rot: alongX ? 0 : Math.PI / 2,
       }))
@@ -180,13 +188,30 @@ function terraceLightSources(map: OfficeMap, level: number): RoomLightSource[] {
     })))
 }
 
-function FixedOfficeLights({ lights }: { lights: RoomLightSource[] }) {
+function accentLightSources(map: OfficeMap, level: number): RoomLightSource[] {
+  const hall = map.rooms.find((room) => room.id === (level === 0 ? "hall-central" : "hall-superior"))
+  if (!hall) return []
+  const scaleZ = (map.bounds.d - 6) / 52
+  return [20.5, 37.5].flatMap((z) => [1, -1].flatMap((inward) => {
+    if (inward === -1 && z > 30) return []
+    return [{
+      x: hall.rect.x + (inward === -1 ? hall.rect.w : 0) + inward * 0.34,
+      y: 1.75,
+      z: 3 + (z - 3) * scaleZ,
+      color: inward === 1 ? "#38bfff" : "#ffbd45",
+      intensity: FIXTURE_INTENSITY.accent,
+      distance: 3.2,
+    }]
+  }))
+}
+
+function FixedOfficeLights({ lights, enabled }: { lights: RoomLightSource[]; enabled: boolean }) {
   return lights.map((light, index) => (
     <pointLight
       key={index}
       position={[light.x, light.y, light.z]}
       color={light.color}
-      intensity={light.intensity}
+      intensity={enabled ? light.intensity : 0}
       distance={light.distance}
       decay={2}
     />
@@ -198,13 +223,11 @@ export function OfficeWorld({
   blackout,
   level,
   baseY = 0,
-  active = true,
 }: {
   map: OfficeMap
   blackout: boolean
   level: number
   baseY?: number
-  active?: boolean
 }) {
   const ceilingFixtures = useMemo(() => ceilingFixturePlacements(map, level), [level, map])
   const emergencyFixtures = useMemo(() => emergencyPlacements(map, level), [level, map])
@@ -212,6 +235,7 @@ export function OfficeWorld({
     () => [
       ...normalLightSources(ceilingFixtures),
       ...terraceLightSources(map, level),
+      ...accentLightSources(map, level),
     ],
     [ceilingFixtures, map, level],
   )
@@ -248,8 +272,8 @@ export function OfficeWorld({
         emissiveScale={blackout ? 1 : 0}
         shadows={false}
       />
-      {active && !blackout && <FixedOfficeLights lights={normalLights} />}
-      {active && blackout && <FixedOfficeLights lights={emergencyLights} />}
+      <FixedOfficeLights lights={normalLights} enabled={!blackout} />
+      <FixedOfficeLights lights={emergencyLights} enabled={blackout} />
     </group>
   )
 }
@@ -301,16 +325,22 @@ function DetailedPropKind({
       const material = source[0].clone()
       if (material instanceof THREE.MeshStandardMaterial) {
         material.envMapIntensity = 1.15
-        material.emissiveIntensity *= emissiveScale
       }
       return [{
         key: `${kind}-${index}-${mesh.name}`,
         geometry: mesh.geometry,
         material: patchVision(material),
         matrix: normalizer.clone().multiply(mesh.matrixWorld),
+        emission: source[0] instanceof THREE.MeshStandardMaterial ? source[0].emissiveIntensity : 0,
       }]
     })
-  }, [emissiveScale, kind, model, scene])
+  }, [kind, model, scene])
+
+  useLayoutEffect(() => {
+    parts.forEach((part) => {
+      if (part.material instanceof THREE.MeshStandardMaterial) part.material.emissiveIntensity = part.emission * emissiveScale
+    })
+  }, [parts, emissiveScale])
 
   useEffect(() => () => parts.forEach((part) => part.material.dispose()), [parts])
 

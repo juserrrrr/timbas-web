@@ -133,7 +133,11 @@ Janelas externas fixas usam um único plano de vidro claro, com baixa opacidade,
 - A qualidade altera resolução, sombras, definição dos reflexos e brilho localizado. O ambiente PBR mantém a mesma energia, com mapas de 64, 128 e 256 pixels para leve, médio e alto.
 - Os ajustes de visão e o céu passam pelo tone mapping em espaço linear, tanto na renderização direta quanto no pós-processamento do alto. O bloom destaca apenas emissões fortes, sem clarear o ambiente inteiro.
 - No alto, os buffers de pós-processamento usam MSAA de até 4 amostras, limitado pelo dispositivo, para não perder a suavização de bordas ao ativar o bloom.
-- As fontes normais não projetam sombras adicionais e ficam ativas apenas no pavimento atual. O alcance é limitado para controlar o custo no navegador.
+- As fontes normais não projetam sombras adicionais e permanecem acesas nos dois pavimentos. O alcance é limitado; subir a escada nunca altera quais luzes existem no mundo.
+- Luzes normais, decorativas, de emergência e lanterna permanecem montadas. O apagão altera intensidades, não a quantidade de luzes no shader. Prédio, personagens, cadáveres e luminárias preservam suas geometrias e materiais, atualizando apenas valores de aparência.
+- Antes de liberar a cena, `scene-warmup.ts` antecipa a compilação dos materiais dos dois pisos e o envio de texturas, inclusive etiquetas ocultas. No alto, usa o destino de pós-processamento; o mapa de sombras usa `PCFShadowMap`, suportado pela versão atual do Three. Subida e apagão não reiniciam essa preparação. A saída da sala cancela uploads pendentes e descarta o destino temporário.
+- As seis fitas verticais dos átrios iluminam suas paredes em azul ou amarelo, com uma fonte fixa diante de cada difusor e alcance curto. Essas luzes decorativas acompanham o apagão global.
+- Emergências de corredor ficam a 1,30 m da parede, fora da sanca de gesso. O corpo continua preso ao teto e o ponto luminoso fica imediatamente abaixo do difusor. A auditoria deve testar visibilidade por baixo, não apenas contato com o forro.
 - Nenhuma luminária pode ser criada dentro do recorte da laje sobre uma escada.
 - Apenas uma luz principal pode projetar sombra dinâmica quando necessário.
 - No blackout, as luzes normais apagam e as luminárias de emergência do corredor acendem em vermelho. Os equipamentos de emergência permanecem presos ao teto mesmo quando apagados, separados das luminárias normais.
@@ -142,6 +146,8 @@ Janelas externas fixas usam um único plano de vidro claro, com baixa opacidade,
 - O `NightSky` procedural mantém o céu azul-escuro, com laranja localizado no horizonte. Sua esfera tem raio de 100 m e as estrelas ficam entre 94 e 98 m, dentro do alcance mínimo de 130 m da câmera.
 - O terraço recebe duas luzes quentes fixas, uma sob cada LED lateral do pergolado.
 - As janelas das casas vizinhas mantêm a emissão durante o blackout do escritório.
+
+Os pavimentos são camadas de colisão e da planta, não cenas independentes. Não existe aviso ou carregamento ao subir a escada. Jogadores, cadáveres e nomes usam o depth buffer da geometria 3D para a oclusão, sem sumir pelo andar do observador; fantasmas e dutos conservam as regras de jogo.
 
 ## Controles e áudio
 
@@ -181,8 +187,10 @@ Após reconstruir o kit e o prédio, execute também a auditoria independente do
 ```powershell
 & 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --factory-startup --python-exit-code 1 --python scripts/check-office-architecture-blender.py
 & 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --factory-startup --python-exit-code 1 --python scripts/check-office-seating-blender.py
+& 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --factory-startup --python-exit-code 1 --python scripts/check-office-emergency-blender.py
 node scripts/check-deducao-controls.mjs
 node scripts/check-deducao-scene.mjs
+node scripts/check-deducao-actors.mjs
 node scripts/check-deducao-minimap.mjs
 ```
 

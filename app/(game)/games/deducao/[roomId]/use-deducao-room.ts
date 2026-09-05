@@ -409,9 +409,6 @@ export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
         notice("perigo", `${payload.by} te pegou. Agora você observa e termina suas tarefas.`)
       })
       room.onMessage("apagao", () => notice("perigo", BLACKOUT_NOTICE))
-      room.onMessage("andar", (payload: { level: number }) =>
-        notice("aviso", payload.level === 1 ? "Você chegou ao 2º andar." : "Você voltou ao térreo."),
-      )
       room.onMessage("investigacao", (payload: { status: string; name: string }) => {
         if (payload.status === "anotado")
           notice("pista", `${payload.name} entrou na sua lista. A leitura sai na próxima reunião.`)

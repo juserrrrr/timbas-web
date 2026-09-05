@@ -23,11 +23,24 @@ A escala horizontal passou de 0,84 para 0,74, mantendo 77,61% da área anterior,
 | Armários, bancada e espelho | Reposicionados junto à parede real. 54 raios independentes confirmam o contato dos seis componentes, sem folga flutuante e sem a janela atravessar o espelho. |
 | Banheiro e depósito separados | Duas cabines com painéis e portas opacas fechadas, batentes, dobradiças e colisão. Eliminada a passagem atrás das cabines. O depósito passa a ter acesso pelo corredor de serviço, sem atravessar o banheiro. |
 
+## Continuidade entre pavimentos e apagão
+
+A revisão após o push `94c2a4b`/`b994c29` remove o aviso de andar e a ativação de luzes baseada no pavimento do observador. Os dois pisos mantêm 46 fontes normais/decorativas acesas, incluindo seis novas fontes azuis/amarelas diante das fitas dos átrios. Durante o apagão global, 11 fontes de emergência as substituem visualmente, mas todas as 57 fontes pontuais e a lanterna permanecem montadas, sem alterar a quantidade de luzes compiladas pelo shader.
+
+Prédio, personagens, cadáveres e luminárias preservam clones, geometrias e materiais ao alternar o apagão. A emissão, cor e intensidade mudam nos objetos existentes. Cadáveres não são ocultados pelo andar; nomes usam sprites 3D com oclusão real pelas paredes e lajes, sem elementos HTML por jogador nem raycasts por etiqueta. Colisão, tarefas, dutos e regras de fantasmas continuam respeitando a planta.
+
+A preparação inicial antecipa compilação e texturas dos dois pisos. Foi substituído `PCFSoftShadowMap`, que a versão instalada do Three converte para `PCFShadowMap` durante o primeiro render, para evitar preparar uma variante diferente da usada na partida. A preparação não depende do andar ou apagão, restaura o destino de renderização e não envia texturas após cancelamento.
+
+As dez luminárias de emergência estavam no interior da sanca, a 0,70 m da parede. Foram reposicionadas a 1,30 m, mantendo apoio no teto e ponto de luz sob o difusor. A auditoria independente do Blender passou em 60 amostras de corpo/difusor, conferiu as seis fontes coloridas a 0,08 m dos respectivos difusores e reproduziu o defeito ao devolver as dez emergências à posição antiga. Não foi necessário reconstruir os modelos.
+
 ## Testes executados
 
-- API: 57 suítes e 561 testes passaram. Incluem área compacta, retirada dos objetos extras, orientação de todas as cadeiras, estações completas, 12 lugares de reunião, circulação do mobiliário, seis assentos da cozinha, cafeteira de piso, montagem dos armários, privacidade das cabines e acesso independente ao depósito. A planta JSON exportada foi comparada com a serialização de `OFFICE_MAP`.
+- API: 58 suítes e 565 testes passaram. Incluem área compacta, retirada dos objetos extras, orientação de todas as cadeiras, estações completas, 12 lugares de reunião, circulação do mobiliário, seis assentos da cozinha, cafeteira de piso, montagem dos armários, privacidade das cabines e acesso independente ao depósito. O handler real de movimento atravessou a escada nos dois sentidos sem mensagem ou teleporte, preservando limites de velocidade e validação de entrada. A planta JSON exportada foi comparada com a serialização de `OFFICE_MAP`.
 - Controles: 16 verificações passaram em `scripts/check-deducao-controls.mjs`.
 - Cena integrada: 6 grupos passaram em `scripts/check-deducao-scene.mjs`, incluindo subida/descida, câmera, lanterna e bloqueio de interação no patamar.
+- Personagens: cinco grupos passaram em `scripts/check-deducao-actors.mjs`, incluindo corpos nos dois pisos, nomes com depth test, subida contínua e alternâncias do apagão sem novos clones ou materiais.
+- Ciclo de iluminação: 240 alternâncias passaram em `scripts/check-deducao-lighting.mjs`, mantendo geometrias, materiais e matrizes das luminárias. As fontes permanecem nas mesmas coordenadas e em quantidade constante nos dois estados.
+- Preparação da cena: texturas compartilhadas são enviadas uma única vez, sem revelar etiquetas ocultas. Cancelamento e erro síncrono restauram o destino anterior e descartam o temporário. A checagem TypeScript dedicada à cena também passou.
 - Planta: 17 verificações passaram em `scripts/check-deducao-minimap.mjs`.
 - Iluminação: `scripts/check-deducao-lighting.mjs` passou nos três níveis de qualidade, dois andares e estados normal/apagão/visão noturna.
 - Modelos: 34 arquivos passaram em `scripts/check-deducao-models.mjs`, incluindo os novos modelos próprios de mesa e cadeira de jantar.
@@ -39,10 +52,12 @@ A escala horizontal passou de 0,84 para 0,74, mantendo 77,61% da área anterior,
 - Após a renovação, o GLB foi recarregado na `OfficeScene` real: comparação do mesmo átrio em leve/médio/alto, TVs do lounge e mezanino, recepção, corredores, abertura da escada e apagão do lounge. Nenhum erro de execução foi registrado. Os renders Blender do mezanino, lounge e escada também foram inspecionados, sem substituir a revisão no jogo.
 - Após reorganizar cozinha e banheiro, a exportação final foi novamente recarregada na `OfficeScene` real. Conferidos cozinha, cafeteira, mesa com seis cadeiras, portas fechadas das cabines, pia/espelho e novo acesso ao depósito. O mesmo corredor foi comparado em leve/médio/alto, mantendo a luminosidade geral, e o acesso de serviço foi conferido com luz normal e apagão. Console final sem erros de execução. Renders Blender da cozinha, cafeteira e banheiro também foram inspecionados.
 - Após a compactação adicional, o GLB final foi recarregado na `OfficeScene` real. Conferidos estações com um monitor cada, conselho com seis cadeiras, reunião com 12 lugares, cozinha, banheiro, sala do chefe, mezanino, terraço e escada por cima e por baixo. O mesmo mezanino foi comparado em leve/médio/alto e o corredor em apagão. Console final sem erros de execução. O render Blender final da escada também foi inspecionado e comparado com a cena no navegador.
+- Após as correções de continuidade, a cena real foi instrumentada temporariamente no navegador local. A primeira subida, a descida e o apagão em alta mantiveram 22 programas gráficos, 20 texturas, 89 materiais, 107 malhas monitoradas e 57 fontes pontuais; houve envio inicial de geometrias antes não vistas, mas nenhuma recriação de materiais/malhas. As 24 fontes normais do térreo e 22 superiores permaneceram acesas durante a travessia. Foi visto um jogador do térreo pelo vão da escada a partir do piso superior. Emergências físicas e luzes azuis/amarelas foram inspecionadas; as três qualidades mantiveram a claridade geral. No apagão em leve, a quantidade de programas permaneceu em 45 após as trocas de qualidade, com zero mudanças de identidade e console sem erros.
+- Nas janelas locais amostradas após o carregamento, o p95 do tempo de CPU dentro de `renderer.render` ficou em 4,3 ms na subida em alta e 1,4 ms no apagão em leve. Isso não mede tempo total de quadro, GPU ou FPS. A primeira preparação/carregamento e a troca de qualidade ainda podem custar mais; esses números não são uma promessa de desempenho no tablet.
 
 ## Limites e pendências de validação
 
-O navegador de revisão não usou servidor multiplayer, banco, WebSocket ou microfone. A mudança de andar foi exercitada nos testes de movimento, não em uma partida Colyseus real. Não foram medidos FPS, consumo de memória ou gestos em tablet físico, nem leitor de tela real. Os testes geométricos são amostrados e não representam prova de ausência absoluta de defeitos.
+O navegador de revisão não usou servidor multiplayer, banco, WebSocket ou microfone. A mudança de andar foi exercitada nos testes de movimento e na câmera real com transporte local, não em uma partida Colyseus real. Foram observadas contagens de recursos e amostras de CPU do renderizador local, mas não FPS, memória em bytes, tempo de GPU ou gestos em tablet físico, nem leitor de tela real. Os testes geométricos são amostrados e não representam prova de ausência absoluta de defeitos.
 
 As portas das cabines são cenográficas e permanecem fechadas, com colisão correspondente. Esta revisão não adiciona um sistema interativo para abrir ou fechar portas.
 
@@ -57,11 +72,13 @@ No frontend:
 ```powershell
 node scripts/check-deducao-controls.mjs
 node scripts/check-deducao-scene.mjs
+node scripts/check-deducao-actors.mjs
 node scripts/check-deducao-lighting.mjs
 node scripts/check-deducao-minimap.mjs
 node scripts/check-deducao-models.mjs
 & 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --factory-startup --python-exit-code 1 --python scripts/check-office-architecture-blender.py
 & 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --factory-startup --python-exit-code 1 --python scripts/check-office-seating-blender.py
+& 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --factory-startup --python-exit-code 1 --python scripts/check-office-emergency-blender.py
 npm run build
 ```
 

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
-import { Html, useGLTF } from "@react-three/drei"
+import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import type { Room } from "@colyseus/sdk"
 import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/games/collision"
@@ -15,7 +15,8 @@ import { FLOOR_HEIGHT, OfficeBuilding, OfficeWorld } from "./office-world"
 import { NightSky } from "./night-sky"
 import { CinematicEffects, ProceduralEnvironment } from "./office-lighting"
 import { viewerLighting } from "./lighting-profile"
-import { patchVision, setBlackout, useVisionMaterial } from "./vision-material"
+import { prepareScene } from "./scene-warmup"
+import { patchVision, setBlackout } from "./vision-material"
 
 const VOID_COLOR = "#07111f"
 const MAX_RENDER_FPS = 60
@@ -206,7 +207,7 @@ export function OfficeScene(props: Props) {
         gl.toneMapping = THREE.ACESFilmicToneMapping
         gl.toneMappingExposure = initialLighting.exposure
         scene.environmentIntensity = initialLighting.environment
-        gl.shadowMap.type = THREE.PCFSoftShadowMap
+        gl.shadowMap.type = THREE.PCFShadowMap
       }}
     >
       <CappedFrameLoop />
@@ -258,7 +259,7 @@ function SceneContent({
   onTargets,
   onReady,
 }: Props) {
-  const { camera, gl } = useThree()
+  const { camera, gl, scene } = useThree()
   const local = useRef(new THREE.Vector2())
   const velocity = useRef(new THREE.Vector2())
   const desiredVelocity = useRef(new THREE.Vector2())
@@ -281,7 +282,13 @@ function SceneContent({
   const flashlight = useRef<THREE.SpotLight>(null)
   const flashlightTarget = useRef<THREE.Object3D>(null)
 
-  useEffect(() => onReady(), [onReady])
+  useEffect(() => {
+    const controller = new AbortController()
+    void prepareScene(gl, scene, camera, quality === "alto", controller.signal).catch((error) => {
+      console.warn("Não foi possível antecipar a compilação da cena.", error)
+    }).then(() => { if (!controller.signal.aborted) onReady() })
+    return () => { controller.abort() }
+  }, [camera, gl, scene, onReady, quality])
   const meetingCameraReady = useRef(false)
 
   const mineSnapshot = snapshot.players.find((player) => player.id === me)
@@ -292,12 +299,7 @@ function SceneContent({
     [map.rooms],
   )
 
-  // Duas listas, e a diferença importa: no armário você esbarra e some atrás
-  // dele; na mesa você esbarra mas continua à vista.
-  const colliders = useMemo(
-    () => [...map.walls, ...map.obstacles].filter((box) => (box.level ?? 0) === currentLevel),
-    [map.walls, map.obstacles, currentLevel],
-  )
+  // Mesas baixas não bloqueiam a linha de visão das interações.
   const walls = useMemo(
     () =>
       [...map.walls.filter((box) => box.style !== "guarda-corpo"), ...map.obstacles.filter((box) => box.tall)].filter(
@@ -690,7 +692,6 @@ function SceneContent({
       <object3D ref={flashlightTarget} />
       <spotLight
         ref={flashlight}
-        visible={snapshot.blackout}
         color="#e8f2ff"
         intensity={0}
         distance={0}
@@ -707,7 +708,6 @@ function SceneContent({
           blackout={snapshot.blackout}
           level={floor}
           baseY={floor * FLOOR_HEIGHT}
-          active={floor === currentLevel}
         />
       ))}
       <group position-y={currentLevel * FLOOR_HEIGHT}>
@@ -746,9 +746,7 @@ function SceneContent({
         <Corpse
           key={corpse.id}
           corpse={corpse}
-          localYRef={visualY}
           blackout={blackoutForViewer}
-          viewerLevel={currentLevel}
           quality={quality}
           floorY={stairSampleAt(map, corpse.x, corpse.z)?.y ?? corpse.level * FLOOR_HEIGHT}
         />
@@ -759,10 +757,12 @@ function SceneContent({
 
 // ── Atores ────────────────────────────────────────────────────────────────────
 
-function cloneCrewScene(source: THREE.Group, color: string, blackout: boolean, shadows: boolean) {
+function cloneCrewScene(source: THREE.Group, color: string) {
   const clone = source.clone(true)
   const playerColor = new THREE.Color(color)
   const materialCopies = new Map<THREE.Material, THREE.Material>()
+  const surfaces: { material: THREE.MeshStandardMaterial; color: THREE.Color; emissive: THREE.Color; emissiveIntensity: number }[] = []
+  const meshes: THREE.Mesh[] = []
 
   const copyMaterial = (original: THREE.Material) => {
     const existing = materialCopies.get(original)
@@ -776,12 +776,7 @@ function cloneCrewScene(source: THREE.Group, color: string, blackout: boolean, s
       } else if (original.name.includes("Crew Dark Uniform")) {
         material.color.copy(playerColor).multiplyScalar(0.16).addScalar(0.012)
       }
-      if (blackout && !original.name.includes("Crew Visor") && !original.name.includes("Report Beacon")) {
-        material.color.lerp(new THREE.Color("#778494"), 0.48)
-        material.emissive.copy(material.color)
-        material.emissiveIntensity = 0.16
-      }
-      material.envMapIntensity = blackout ? 0.48 : 1.05
+      surfaces.push({ material, color: material.color.clone(), emissive: material.emissive.clone(), emissiveIntensity: material.emissiveIntensity })
     }
     const patched = patchVision(material)
     materialCopies.set(original, patched)
@@ -793,11 +788,68 @@ function cloneCrewScene(source: THREE.Group, color: string, blackout: boolean, s
     child.material = Array.isArray(child.material)
       ? child.material.map(copyMaterial)
       : copyMaterial(child.material)
-    child.castShadow = shadows
+    meshes.push(child)
     child.receiveShadow = true
     child.frustumCulled = false
   })
-  return { clone, materials: [...materialCopies.values()] }
+  return {
+    clone,
+    materials: [...materialCopies.values()],
+    updateAppearance(blackout: boolean, shadows: boolean) {
+      for (const { material, color: normalColor, emissive, emissiveIntensity } of surfaces) {
+        material.color.copy(normalColor)
+        material.emissive.copy(emissive)
+        material.emissiveIntensity = emissiveIntensity
+        if (blackout && !material.name.includes("Crew Visor") && !material.name.includes("Report Beacon")) {
+          material.color.lerp(new THREE.Color("#778494"), 0.48)
+          material.emissive.copy(material.color)
+          material.emissiveIntensity = 0.16
+        }
+        material.envMapIntensity = blackout ? 0.48 : 1.05
+      }
+      for (const mesh of meshes) mesh.castShadow = shadows
+    },
+  }
+}
+
+function PlayerNameplate({ name, color, ally, ghost, visible }: {
+  name: string
+  color: string
+  ally: boolean
+  ghost: boolean
+  visible: boolean
+}) {
+  const texture = useMemo(() => {
+    const canvas = document.createElement("canvas")
+    const context = canvas.getContext("2d")!
+    const font = "900 52px system-ui, sans-serif"
+    context.font = font
+    canvas.width = Math.ceil(context.measureText(name + (ally ? " ◆" : "")).width) + 28
+    canvas.height = 76
+    context.font = font
+    context.textBaseline = "middle"
+    context.shadowColor = "rgba(0,0,0,0.9)"
+    context.shadowBlur = 8
+    context.shadowOffsetY = 3
+    context.fillStyle = color
+    context.fillText(name, 14, 38)
+    if (ally) {
+      context.fillStyle = "#f87171"
+      context.fillText(" ◆", 14 + context.measureText(name).width, 38)
+    }
+    const bitmap = new THREE.CanvasTexture(canvas)
+    bitmap.colorSpace = THREE.SRGBColorSpace
+    return bitmap
+  }, [name, color, ally])
+
+  useEffect(() => () => texture.dispose(), [texture])
+
+  // A etiqueta usa o mesmo depth buffer do corpo, inclusive pela abertura da escada.
+  return (
+    <sprite position={[0, 2.1, 0]} scale={[0.32 * texture.image.width / texture.image.height, 0.32, 1]} visible={visible}>
+      <spriteMaterial map={texture} transparent opacity={ghost ? 0.5 : 1} depthTest depthWrite={false} toneMapped={false} />
+    </sprite>
+  )
 }
 
 function Actor({
@@ -839,16 +891,17 @@ function Actor({
   const pernaDireita = useRef<THREE.Object3D>(null)
   const bracoEsquerdo = useRef<THREE.Object3D>(null)
   const bracoDireito = useRef<THREE.Object3D>(null)
-  const label = useRef<HTMLSpanElement>(null)
   const passo = useRef(0)
   const balanco = useRef(0)
   const placed = useRef(false)
 
   const { scene: crewSource } = useGLTF(CREW_MODEL, true, false)
   const crew = useMemo(
-    () => cloneCrewScene(crewSource, player.color, blackout, quality !== "baixo"),
-    [blackout, crewSource, player.color, quality],
+    () => cloneCrewScene(crewSource, player.color),
+    [crewSource, player.color],
   )
+
+  useLayoutEffect(() => crew.updateAppearance(blackout, quality !== "baixo"), [blackout, crew, quality])
 
   // Quem está vivo não vê fantasma. É a única informação que a tela esconde por
   // conta própria, e ela vale para todo mundo do mesmo jeito.
@@ -888,12 +941,7 @@ function Actor({
     node.position.x += (targetX - node.position.x) * pull
     node.position.y += (targetY - node.position.y) * pull
     node.position.z += (targetZ - node.position.z) * pull
-    const verticalGap = Math.abs(targetY - localYRef.current)
-    const sameLayer = verticalGap < FLOOR_HEIGHT * 0.62
     node.visible = !hideBody && !hidden && !live.inVent
-    // O corpo dos outros andares é ocluído pela geometria 3D real. O nome não:
-    // por isso a etiqueta só aparece na mesma camada e nunca atravessa a laje.
-    if (label.current) label.current.style.visibility = node.visible && sameLayer ? "visible" : "hidden"
     if (!node.visible) return
 
     const rawFacing = isMe ? localHeadingRef.current : live.dir
@@ -945,62 +993,34 @@ function Actor({
         <meshBasicMaterial color="#101728" transparent opacity={0.22} />
       </mesh>
 
-      {/* Nome no duto entregaria o assassino escondido, então a plaquinha some
-          junto com o corpo. */}
-      {!blackout && !hidden && !player.inVent && (
-        <Html position={[0, 2.1, 0]} center distanceFactor={17} pointerEvents="none" zIndexRange={[10, 0]}>
-          <span
-            ref={label}
-            className={`whitespace-nowrap rounded-md px-1.5 py-0.5 text-[13px] font-black tracking-tight ${ghost ? "opacity-50" : ""}`}
-            style={{
-              color: blackout ? "#cbd5e1" : player.color,
-              textShadow: "0 1px 3px rgba(0,0,0,0.9)",
-            }}
-          >
-            {player.name}
-            {ally && !blackout && <span className="ml-1 text-red-400">◆</span>}
-          </span>
-        </Html>
-      )}
+      <PlayerNameplate name={player.name} color={player.color} ally={ally} ghost={ghost} visible={!blackout && !hidden && !player.inVent} />
     </group>
   )
 }
 
 function Corpse({
   corpse,
-  localYRef,
   blackout,
-  viewerLevel,
   quality,
   floorY,
 }: {
   corpse: Snapshot["corpses"][number]
-  localYRef: React.MutableRefObject<number>
   blackout: boolean
-  viewerLevel: number
   quality: Quality
   floorY: number
 }) {
-  const group = useRef<THREE.Group>(null)
   const { scene: corpseSource } = useGLTF(CORPSE_MODEL, true, false)
   const body = useMemo(
-    () => cloneCrewScene(corpseSource, corpse.color, blackout, quality !== "baixo"),
-    [blackout, corpse.color, corpseSource, quality],
+    () => cloneCrewScene(corpseSource, corpse.color),
+    [corpse.color, corpseSource],
   )
+
+  useLayoutEffect(() => body.updateAppearance(blackout, quality !== "baixo"), [blackout, body, quality])
 
   useEffect(() => () => body.materials.forEach((material) => material.dispose()), [body])
 
-  useFrame(() => {
-    if (!group.current) return
-    const verticalGap = Math.abs(localYRef.current - floorY)
-    const sameLayer = corpse.level === viewerLevel || verticalGap < FLOOR_HEIGHT * 0.62
-    // O corpo pertence ao mundo e fica no chão até alguém reportá-lo. A
-    // parede e a laje fazem a oclusão normal; distância nunca mais o apaga.
-    group.current.visible = sameLayer
-  })
-
   return (
-    <group ref={group} position={[corpse.x, floorY, corpse.z]}>
+    <group position={[corpse.x, floorY, corpse.z]}>
       <primitive object={body.clone} />
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.04, 0]}>
         <circleGeometry args={[0.82, 24]} />
