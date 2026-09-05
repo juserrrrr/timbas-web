@@ -32,7 +32,9 @@ As revisões seguintes revelaram mais sete regras importantes:
 - representar cada lance de uma escada como uma escada independente duplica acessos e quebra altura, colisão e recorte da laje; a escada em L é uma única polilinha com início, curva e desembarque compartilhada pelo servidor, cliente e Blender;
 - construir cada degrau como uma coluna até o térreo transforma o segundo lance em um bloco parecido com uma parede; degraus finos, patamar e longarinas precisam ser revisados também por baixo.
 
-A regra atual é uma fonte Blender para o edifício completo. `timbas-office-building.blend` contém os dois pavimentos, arquitetura, acabamentos, móveis, equipamentos, luminárias, carros e decoração. O navegador carrega um GLB único e conserva apenas interações, luzes fixas sem sombra sob luminárias reais e as luzes vermelhas do blackout.
+A regra atual é uma fonte Blender para o edifício completo. `timbas-office-building.blend` contém os dois pavimentos, arquitetura, acabamentos, móveis, equipamentos, luminárias e decoração. O navegador carrega um GLB único e conserva apenas interações, luzes fixas sem sombra sob luminárias reais e as luzes vermelhas do blackout.
+
+O escritório não possui garagem, veículos, cones ou vagas de estacionamento. O espaço sob a sala do conselho é uma sala de apoio, com estantes e posto de trabalho. A tarefa de recarga foi removida e o duto pertence à sala de apoio. Modelos autorais e créditos dos veículos permanecem preservados separadamente, sem integrar o prédio ou seu carregamento no jogo.
 
 ## Padrão visual
 
@@ -88,6 +90,19 @@ Para cenários completos, a revisão também precisa confirmar:
 8. Escadas com curva usam a mesma polilinha para degraus, altura contínua, colisão, guarda-corpo, luzes e recorte da laje.
 9. O patamar é um quadrado plano de 2,42 m de lado. Cliente e servidor reconhecem toda a superfície, inclusive os cantos fora do eixo dos lances.
 10. O recorte da laje inclui o quadrado do patamar no canto da escada, com corrimãos interno e externo contínuos entre os dois lances.
+11. O friso preto continua sobre todos os portais. O gerador testa o vão livre, a parede superior e o friso com raycasts antes de salvar.
+12. Luminárias, perfis de LED e seus suportes encostam no teto ou na parede. Sensores sem apoio e placas soltas no forro não fazem parte da arquitetura.
+13. Janelas são recortes reais apenas em paredes externas, com peitoril, caixilho e vidro fixo. Divisórias, portas, quadros, painéis e a faixa dos guarda-corpos da escada devem ser preservados. Raycasts nos dois sentidos verificam cada abertura.
+14. O embasamento do escritório chega ao terreno. A paisagem externa usa volumes baixos apoiados no solo, sem torres suspensas junto ao terraço.
+15. Molduras de gesso são volumes presos ao forro. Preservam a fixação das luminárias e o vão da escada, sem placas suspensas ou tetos falsos atravessando o caminho.
+16. Os nove sofás formam grupos de conversa, TV, recepção e contemplação. A frente de cada assento aponta para seu uso e mantém passagem entre sofá e mesa; os dutos continuam acessíveis.
+17. A base clara é quente, complementada por lambris sálvia, terracota ou azul-escuro e frisos de carvalho. As galerias variam entre paisagens, botânicos, órbitas, dípticos e linhas. Lounge e mezanino possuem TVs fixas 16:9 de baixa emissão.
+18. A copa usa uma mesa de jantar de 2,8 × 1,2 m e seis cadeiras fixas de madeira, sem rodas. A máquina de café tem corpo próprio de 0,85 × 0,82 × 1,95 m, apoiado no piso e separado da bancada, do fogão e da máquina de venda. Sua tarefa fica diante do dispensador.
+19. O depósito tem acesso pelo corredor de serviço, nunca pelo banheiro. As duas cabines têm portas opacas fechadas, frentes preenchidas e divisórias conectadas à parede dos fundos; as quatro barreiras equivalentes pertencem a `obstacles`. As cabines são cenográficas, sem nova mecânica de abrir portas; a tarefa de higiene permanece na área livre dos lavatórios.
+20. Os corredores recebem galerias nas paredes, sem móveis no percurso. O corredor de serviço possui luminária normal e duas de emergência próprias, usando o mesmo perfil de iluminação das outras áreas.
+21. Armários superiores, bancada e espelho precisam de contato real com a parede, não apenas de estarem dentro do cômodo. O peitoril do banheiro fica em 2,50 m, acima do espelho de 2,36 m e das cabines de 2,34 m.
+22. Compactar a planta não pode comprimir a distância funcional dentro dos conjuntos: mesas, assentos e monitores acompanham uma âncora comum com offsets físicos preservados. Armários mantêm sua distância da face da parede; a escada preserva largura e patamar, com seu vão inteiramente dentro do átrio.
+23. A frente real da cadeira de escritório é +Z no GLB com rotação zero. O encosto deve ficar do lado oposto à mesa. Cadeiras com rodízios pertencem a postos de trabalho ou mesas de reunião, não a grupos soltos no átrio, mezanino ou terraço.
 
 No Three.js, a frente funcional do objeto aponta para `+Z`, a largura usa `X` e a altura usa `Y`. A fonte Blender permanece com `Z` para cima e `+Y` para a frente. O exportador aplica a compensação de 180 graus na cópia otimizada para conservar o padrão do mapa.
 
@@ -107,18 +122,26 @@ O orçamento decisivo da cena é a combinação de draw calls, luzes com sombra,
 
 Os GLBs usam compressão Draco. O carregamento usa `useGLTF(path, true, false)`, com Draco ativo e Meshopt desativado para evitar inicializar um decodificador desnecessário.
 
+Janelas externas fixas usam um único plano de vidro claro, com baixa opacidade, para permitir a vista da paisagem. Essa exceção não se aplica às portas de circulação. O peitoril e a colisão da parede permanecem, sem permitir sair do mapa pela janela.
+
 ## Iluminação
 
 - A peça emissiva deve existir dentro de uma luminária física.
 - Emissão dá aparência de luz; a fonte que ilumina o ambiente fica fixa logo abaixo da mesma luminária, nunca na câmera ou no jogador.
-- Nem toda peça emissiva precisa de uma PointLight. Em qualidade alta há no máximo uma por ambiente; média e baixa preservam primeiro os corredores, halls e salas maiores.
+- Cada luminária de teto tem sua própria fonte fixa, com a mesma intensidade em todas as qualidades. Mudar a qualidade nunca elimina a luz de uma luminária acesa.
+- `lighting-profile.ts` centraliza exposição e intensidades para luz normal, blackout e visão noturna. Leve, médio e alto compartilham a mesma claridade base.
+- A qualidade altera resolução, sombras, definição dos reflexos e brilho localizado. O ambiente PBR mantém a mesma energia, com mapas de 64, 128 e 256 pixels para leve, médio e alto.
+- Os ajustes de visão e o céu passam pelo tone mapping em espaço linear, tanto na renderização direta quanto no pós-processamento do alto. O bloom destaca apenas emissões fortes, sem clarear o ambiente inteiro.
+- No alto, os buffers de pós-processamento usam MSAA de até 4 amostras, limitado pelo dispositivo, para não perder a suavização de bordas ao ativar o bloom.
+- As fontes normais não projetam sombras adicionais e ficam ativas apenas no pavimento atual. O alcance é limitado para controlar o custo no navegador.
 - Nenhuma luminária pode ser criada dentro do recorte da laje sobre uma escada.
 - Apenas uma luz principal pode projetar sombra dinâmica quando necessário.
-- No blackout, as luzes normais apagam e as luminárias de emergência do corredor acendem em vermelho.
+- No blackout, as luzes normais apagam e as luminárias de emergência do corredor acendem em vermelho. Os equipamentos de emergência permanecem presos ao teto mesmo quando apagados, separados das luminárias normais.
 - O assassino recebe leitura noturna reduzida no blackout, sem reacender as luminárias normais para os demais jogadores.
-- A qualidade baixa preserva emissão e leitura espacial, mas reduz luzes dinâmicas caras.
+- A qualidade baixa preserva todas as fontes fixas e a leitura espacial, mas desativa sombras dinâmicas e pós-processamento.
 - O `NightSky` procedural mantém o céu azul-escuro, com laranja localizado no horizonte. Sua esfera tem raio de 100 m e as estrelas ficam entre 94 e 98 m, dentro do alcance mínimo de 130 m da câmera.
-- O terraço recebe uma única luz quente fixa sob o LED lateral do pergolado.
+- O terraço recebe duas luzes quentes fixas, uma sob cada LED lateral do pergolado.
+- As janelas das casas vizinhas mantêm a emissão durante o blackout do escritório.
 
 ## Controles e áudio
 
@@ -150,6 +173,26 @@ Os GLBs usam compressão Draco. O carregamento usa `useGLTF(path, true, false)`,
 Os geradores legados de materiais e texturas não podem exportar modelos que já possuem uma fonte Blender. Isso evita regressões silenciosas.
 
 Para reconstruir todos os modelos e materiais, execute `npm run assets:deducao`. Em uma instalação fora dos caminhos comuns, defina `BLENDER_BIN` com o caminho do executável do Blender. Para validar os GLBs sem reconstruí-los, execute `npm run assets:deducao:check`.
+
+Execute `node scripts/check-deducao-lighting.mjs` para verificar as fontes reais, a montagem das luminárias, o blackout, a paridade entre qualidades e a ordem dos shaders de visão e céu. Erros nos validadores Blender encerram a geração com status de falha, sem exportar o prédio incompleto.
+
+Após reconstruir o kit e o prédio, execute também a auditoria independente do arquivo salvo:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --factory-startup --python-exit-code 1 --python scripts/check-office-architecture-blender.py
+& 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --factory-startup --python-exit-code 1 --python scripts/check-office-seating-blender.py
+node scripts/check-deducao-controls.mjs
+node scripts/check-deducao-scene.mjs
+node scripts/check-deducao-minimap.mjs
+```
+
+A auditoria Blender verifica portas e molduras, degraus/patamar, pés e duplicação dos postes, conectividade das luminárias, janelas, contato do pergolado e paisagem com seus apoios. Reimporta o GLB para comparar geometria com o `.blend` e confirma por hash que as entradas não foram alteradas. Os testes da cena exercitam os handlers reais de movimento, câmera e luz com transporte local. Nenhum desses testes substitui uma partida multiplayer nem a medição de desempenho em dispositivo físico.
+
+Na API, `src/games/deducao/seating.spec.ts` testa a orientação dos sofás, alinhamento com mesas/TVs e circulação dos grupos. `map.spec.ts` cobre o acesso a todas as tarefas e dutos, inclusive após uma mudança de mobiliário.
+
+`scripts/check-office-seating-blender.py` confere o arquivo Blender salvo, relacionando cadeiras às mesas e verificando a frente real dos assentos. O teste evita aceitar uma rotação visual invertida apenas porque a posição da cadeira pertence ao cômodo correto.
+
+`src/games/deducao/pantry.spec.ts` verifica mesa/cadeiras/café, circulação do jantar, entrada e saída do depósito sem passar pelo banheiro e colisão/visão bloqueadas pelas cabines. A auditoria Blender complementa esses testes com medidas reais dos modelos, apoio no piso, material opaco e raios através das frentes e laterais das cabines.
 
 ## Checklist de aprovação
 

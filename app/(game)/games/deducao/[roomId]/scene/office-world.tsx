@@ -6,6 +6,7 @@ import * as THREE from "three"
 import type { OfficeMap } from "@/lib/services/games"
 import type { Quality } from "../match-types"
 import { patchVision } from "./vision-material"
+import { FIXTURE_INTENSITY } from "./lighting-profile"
 
 export const FLOOR_HEIGHT = 4.2
 const WALL_HEIGHT = 4.02
@@ -33,8 +34,6 @@ interface RoomLightSource {
 }
 
 interface CeilingFixturePlacement extends Placement {
-  roomId: string
-  roomKind: OfficeMap["rooms"][number]["kind"]
   roomArea: number
 }
 
@@ -53,7 +52,7 @@ function cloneMaterial(source: THREE.Material, blackout: boolean) {
   const material = source.clone()
   if (material instanceof THREE.MeshStandardMaterial) {
     material.envMapIntensity = 1.1
-    material.emissiveIntensity *= blackout ? 0.035 : 1
+    material.emissiveIntensity *= blackout && !source.name.startsWith("Exterior") ? 0.035 : 1
   }
   return patchVision(material)
 }
@@ -124,11 +123,9 @@ function ceilingFixturePlacements(map: OfficeMap, level: number): CeilingFixture
         const row = Math.floor(index / columns)
         return {
           x: room.rect.x + ((column + 1) * room.rect.w) / (columns + 1),
-          y: WALL_HEIGHT - 0.08,
+          y: WALL_HEIGHT - 0.0625,
           z: room.rect.z + ((row + 1) * room.rect.d) / (rows + 1),
           rot: Math.PI / 2,
-          roomId: room.id,
-          roomKind: room.kind,
           roomArea: room.rect.w * room.rect.d,
         }
       })
@@ -147,10 +144,10 @@ function emergencyPlacements(map: OfficeMap, level: number): Placement[] {
       return Array.from({ length: count }, (_, index) => ({
         x: alongX
           ? room.rect.x + ((index + 1) * room.rect.w) / (count + 1)
-          : room.rect.x + room.rect.w / 2,
-        y: WALL_HEIGHT - 0.13,
+          : room.rect.x + 0.7,
+        y: WALL_HEIGHT - 0.0755,
         z: alongX
-          ? room.rect.z + room.rect.d / 2
+          ? room.rect.z + 0.7
           : room.rect.z + ((index + 1) * room.rect.d) / (count + 1),
         rot: alongX ? 0 : Math.PI / 2,
       }))
@@ -158,37 +155,29 @@ function emergencyPlacements(map: OfficeMap, level: number): Placement[] {
     .filter((fixture) => !isInsideStairOpening(map, level, fixture.x, fixture.z))
 }
 
-function normalLightSources(
-  fixtures: CeilingFixturePlacement[],
-  quality: Quality,
-): RoomLightSource[] {
-  const roomAnchors = [...new Set(fixtures.map((fixture) => fixture.roomId))]
-    .map((roomId) => {
-      const candidates = fixtures.filter((fixture) => fixture.roomId === roomId)
-      const centerX = candidates.reduce((sum, fixture) => sum + fixture.x, 0) / candidates.length
-      const centerZ = candidates.reduce((sum, fixture) => sum + fixture.z, 0) / candidates.length
-      return candidates.reduce((closest, fixture) =>
-        Math.hypot(fixture.x - centerX, fixture.z - centerZ) <
-        Math.hypot(closest.x - centerX, closest.z - centerZ)
-          ? fixture
-          : closest,
-      )
-    })
-    .filter((fixture) => {
-      if (quality === "alto") return true
-      if (quality === "medio") return fixture.roomKind === "corredor" || fixture.roomArea >= 190
-      return fixture.roomKind === "corredor" || fixture.roomId.includes("hall") || fixture.roomId === "openspace" || fixture.roomId === "operacoes"
-    })
-
-  const intensity = quality === "alto" ? 8.2 : quality === "medio" ? 7 : 5.8
-  return roomAnchors.map((fixture) => ({
+function normalLightSources(fixtures: CeilingFixturePlacement[]): RoomLightSource[] {
+  return fixtures.map((fixture) => ({
     x: fixture.x,
     y: (fixture.y ?? WALL_HEIGHT) - 0.2,
     z: fixture.z,
     color: "#fff1dc",
-    intensity,
-    distance: Math.min(10.5, Math.max(7.2, Math.sqrt(fixture.roomArea) * 0.64)),
+    intensity: FIXTURE_INTENSITY.ceiling,
+    distance: Math.min(9.6, Math.max(7.2, Math.sqrt(fixture.roomArea) * 0.64)),
   }))
+}
+
+function terraceLightSources(map: OfficeMap, level: number): RoomLightSource[] {
+  return map.rooms
+    .filter((room) => room.kind === "terraco" && (room.level ?? 0) === level)
+    .flatMap((room) => [0.140625, 0.859375].map((side) => ({
+      // Uma fonte fixa sob cada fita de LED das duas vigas laterais.
+      x: room.rect.x + room.rect.w * side,
+      y: 2.49,
+      z: room.rect.z + room.rect.d * (10 / 19),
+      color: "#ffc18a",
+      intensity: FIXTURE_INTENSITY.terrace,
+      distance: 10.5,
+    })))
 }
 
 function FixedOfficeLights({ lights }: { lights: RoomLightSource[] }) {
@@ -204,30 +193,14 @@ function FixedOfficeLights({ lights }: { lights: RoomLightSource[] }) {
   ))
 }
 
-function EmergencyLightPool({ lights, quality }: { lights: RoomLightSource[]; quality: Quality }) {
-  const scale = quality === "baixo" ? 0.62 : quality === "medio" ? 0.82 : 1
-  return lights.map((light, index) => (
-    <pointLight
-      key={index}
-      position={[light.x, light.y, light.z]}
-      color={light.color}
-      intensity={light.intensity * scale}
-      distance={light.distance}
-      decay={2}
-    />
-  ))
-}
-
 export function OfficeWorld({
   map,
-  quality,
   blackout,
   level,
   baseY = 0,
   active = true,
 }: {
   map: OfficeMap
-  quality: Quality
   blackout: boolean
   level: number
   baseY?: number
@@ -237,29 +210,19 @@ export function OfficeWorld({
   const emergencyFixtures = useMemo(() => emergencyPlacements(map, level), [level, map])
   const normalLights = useMemo(
     () => [
-      ...normalLightSources(ceilingFixtures, quality),
-      ...map.rooms
-        .filter((room) => room.kind === "terraco" && (room.level ?? 0) === level)
-        .map((room) => ({
-          // Centro da fita de LED na viga lateral do pergolado Blender.
-          x: room.rect.x + room.rect.w * 0.140625 + 0.085,
-          y: 2.49,
-          z: room.rect.z + room.rect.d * (10 / 19),
-          color: "#ffc18a",
-          intensity: quality === "alto" ? 30 : quality === "medio" ? 26 : 22,
-          distance: 12,
-        })),
+      ...normalLightSources(ceilingFixtures),
+      ...terraceLightSources(map, level),
     ],
-    [ceilingFixtures, quality, map.rooms, level],
+    [ceilingFixtures, map, level],
   )
   const emergencyLights = useMemo<RoomLightSource[]>(
     () => [
       ...emergencyFixtures.map((fixture) => ({
         x: fixture.x,
-        y: fixture.y ?? WALL_HEIGHT,
+        y: (fixture.y ?? WALL_HEIGHT) - 0.08,
         z: fixture.z,
         color: "#ff2038",
-        intensity: 20,
+        intensity: FIXTURE_INTENSITY.emergency,
         distance: 8,
       })),
       ...((map.emergency.level ?? 0) === level
@@ -268,7 +231,7 @@ export function OfficeWorld({
             y: (map.emergency.y ?? 0) + 0.18,
             z: map.emergency.z,
             color: "#ff2038",
-            intensity: 12,
+            intensity: FIXTURE_INTENSITY.emergencyButton,
             distance: 4.8,
           }]
         : []),
@@ -278,16 +241,15 @@ export function OfficeWorld({
 
   return (
     <group position-y={baseY}>
-      {blackout && (
-        <DetailedPropKind
-          kind="emergencyLight"
-          model={EMERGENCY_LIGHT_MODEL}
-          transforms={emergencyFixtures}
-          shadows={false}
-        />
-      )}
+      <DetailedPropKind
+        kind="emergencyLight"
+        model={EMERGENCY_LIGHT_MODEL}
+        transforms={emergencyFixtures}
+        emissiveScale={blackout ? 1 : 0}
+        shadows={false}
+      />
       {active && !blackout && <FixedOfficeLights lights={normalLights} />}
-      {active && blackout && <EmergencyLightPool lights={emergencyLights} quality={quality} />}
+      {active && blackout && <FixedOfficeLights lights={emergencyLights} />}
     </group>
   )
 }

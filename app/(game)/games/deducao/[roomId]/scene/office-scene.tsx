@@ -4,11 +4,6 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { Html, useGLTF } from "@react-three/drei"
 import * as THREE from "three"
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
-import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
-import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import type { Room } from "@colyseus/sdk"
 import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/games/collision"
 import { playGameSound } from "@/lib/games/game-audio"
@@ -18,6 +13,8 @@ import { isGameControlTarget } from "../keyboard-controls"
 import type { Role, Snapshot } from "../use-deducao-room"
 import { FLOOR_HEIGHT, OfficeBuilding, OfficeWorld } from "./office-world"
 import { NightSky } from "./night-sky"
+import { CinematicEffects, ProceduralEnvironment } from "./office-lighting"
+import { viewerLighting } from "./lighting-profile"
 import { patchVision, setBlackout, useVisionMaterial } from "./vision-material"
 
 const VOID_COLOR = "#07111f"
@@ -184,6 +181,10 @@ interface Props {
 
 export function OfficeScene(props: Props) {
   const { quality } = props
+  const initialLighting = viewerLighting(
+    props.snapshot.blackout,
+    props.role === "assassino" && (props.snapshot.players.find((player) => player.id === props.me)?.alive ?? true),
+  )
   const cameraFar = Math.max(130, Math.hypot(props.map.bounds.w, props.map.bounds.d) + 24)
   return (
     <Canvas
@@ -197,13 +198,14 @@ export function OfficeScene(props: Props) {
       }}
       camera={{ fov: 68, near: 0.05, far: cameraFar, position: [0, EYE_HEIGHT, 0] }}
       style={{ touchAction: "none", overscrollBehavior: "none" }}
-      onCreated={({ gl }) => {
+      onCreated={({ gl, scene }) => {
         // O vazio conserva o azul profundo da noite mesmo antes do céu procedural
         // terminar de compilar.
         gl.setClearColor(VOID_COLOR)
         gl.outputColorSpace = THREE.SRGBColorSpace
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = quality === "alto" ? 0.84 : quality === "medio" ? 0.87 : 0.9
+        gl.toneMappingExposure = initialLighting.exposure
+        scene.environmentIntensity = initialLighting.environment
         gl.shadowMap.type = THREE.PCFSoftShadowMap
       }}
     >
@@ -237,80 +239,6 @@ function CappedFrameLoop() {
     return () => window.cancelAnimationFrame(frame)
   }, [advance])
 
-  return null
-}
-
-function ProceduralEnvironment({ quality, blackout }: { quality: Quality; blackout: boolean }) {
-  const { gl, scene } = useThree()
-  const enabled = quality !== "baixo"
-
-  useEffect(() => {
-    const previous = scene.environment
-    if (!enabled) {
-      scene.environment = null
-      return () => {
-        scene.environment = previous
-      }
-    }
-
-    const generator = new THREE.PMREMGenerator(gl)
-    generator.compileCubemapShader()
-    const environment = new RoomEnvironment()
-    const target = generator.fromScene(environment, quality === "alto" ? 0.025 : 0.04)
-    scene.environment = target.texture
-
-    environment.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return
-      child.geometry.dispose()
-      const materials = Array.isArray(child.material) ? child.material : [child.material]
-      materials.forEach((material) => material.dispose())
-    })
-    generator.dispose()
-
-    return () => {
-      if (scene.environment === target.texture) scene.environment = previous
-      target.dispose()
-    }
-  }, [enabled, gl, quality, scene])
-
-  useFrame((_, delta) => {
-    const target = blackout ? 0.025 : quality === "alto" ? 0.18 : quality === "medio" ? 0.14 : 0
-    scene.environmentIntensity += (target - scene.environmentIntensity) * Math.min(1, delta * 3.5)
-  })
-
-  return null
-}
-
-function CinematicEffects({ blackout }: { blackout: boolean }) {
-  const { gl, scene, camera, size } = useThree()
-  const pipeline = useMemo(() => {
-    const composer = new EffectComposer(gl)
-    composer.addPass(new RenderPass(scene, camera))
-    const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.025, 0.16, 1.08)
-    composer.addPass(bloom)
-    composer.addPass(new OutputPass())
-    return { composer, bloom }
-  }, [camera, gl, scene])
-
-  useEffect(() => {
-    pipeline.composer.setPixelRatio(Math.min(gl.getPixelRatio(), 1.25))
-    pipeline.composer.setSize(size.width, size.height)
-  }, [gl, pipeline, size.height, size.width])
-
-  useEffect(() => {
-    pipeline.bloom.strength = blackout ? 0.045 : 0.025
-    pipeline.bloom.threshold = blackout ? 0.94 : 1.08
-  }, [blackout, pipeline])
-
-  useEffect(
-    () => () => {
-      pipeline.bloom.dispose()
-      pipeline.composer.dispose()
-    },
-    [pipeline],
-  )
-
-  useFrame((_, delta) => pipeline.composer.render(delta), 1)
   return null
 }
 
@@ -465,16 +393,30 @@ function SceneContent({
         ultimo = null
       }
     }
+    const limparToque = () => { ultimo = null }
+    const visibilidade = () => {
+      if (document.hidden) limparToque()
+    }
+    const foco = (event: FocusEvent) => {
+      if (isGameControlTarget(event.target)) limparToque()
+    }
 
     canvas.addEventListener("touchstart", comeca, { passive: false })
     canvas.addEventListener("touchmove", arrasta, { passive: false })
     canvas.addEventListener("touchend", termina, { passive: false })
     canvas.addEventListener("touchcancel", termina, { passive: false })
+    window.addEventListener("blur", limparToque)
+    document.addEventListener("visibilitychange", visibilidade)
+    document.addEventListener("focusin", foco)
     return () => {
       canvas.removeEventListener("touchstart", comeca)
       canvas.removeEventListener("touchmove", arrasta)
       canvas.removeEventListener("touchend", termina)
       canvas.removeEventListener("touchcancel", termina)
+      window.removeEventListener("blur", limparToque)
+      document.removeEventListener("visibilitychange", visibilidade)
+      document.removeEventListener("focusin", foco)
+      limparToque()
     }
   }, [gl, controlsEnabled, lookRef])
 
@@ -667,64 +609,37 @@ function SceneContent({
 
     const dark = snapshot.blackout
     const nightVision = assassinNightVision
+    const lighting = viewerLighting(dark, nightVision)
     setBlackout(blackoutForViewer)
     if (sun.current) {
       sun.current.position.set(local.current.x - 14, visualY.current + 26, local.current.y - 10)
       sun.current.target.position.set(local.current.x, visualY.current, local.current.y)
       sun.current.target.updateMatrixWorld()
       sun.current.intensity +=
-        ((dark ? (nightVision ? 0.28 : 0.02) : 0.46) - sun.current.intensity) * Math.min(1, delta * 3)
+        (lighting.sun - sun.current.intensity) * Math.min(1, delta * 3)
     }
     if (sky.current) {
-      const skyTarget = dark
-        ? nightVision
-          ? 0.24
-          : 0.025
-        : quality === "baixo"
-          ? 0.24
-          : quality === "alto"
-            ? 0.16
-            : 0.19
-      sky.current.intensity += (skyTarget - sky.current.intensity) * Math.min(1, delta * 3)
+      sky.current.intensity += (lighting.sky - sky.current.intensity) * Math.min(1, delta * 3)
     }
     if (ambient.current) {
-      const ambientTarget = dark
-        ? nightVision
-          ? 0.15
-          : 0.018
-        : quality === "baixo"
-          ? 0.16
-          : quality === "alto"
-            ? 0.1
-            : 0.12
-      ambient.current.intensity += (ambientTarget - ambient.current.intensity) * Math.min(1, delta * 3)
+      ambient.current.intensity += (lighting.ambient - ambient.current.intensity) * Math.min(1, delta * 3)
     }
     if (flashlight.current && flashlightTarget.current) {
-      const eyeY = visualY.current + EYE_HEIGHT
       const forwardX = -Math.sin(lookRef.current.yaw) * Math.cos(lookRef.current.pitch)
       const forwardY = Math.sin(lookRef.current.pitch)
       const forwardZ = -Math.cos(lookRef.current.yaw) * Math.cos(lookRef.current.pitch)
-      flashlight.current.position.set(local.current.x, eyeY, local.current.y)
+      flashlight.current.position.copy(camera.position)
       flashlightTarget.current.position.set(
-        local.current.x + forwardX * 7,
-        eyeY + forwardY * 7,
-        local.current.y + forwardZ * 7,
+        camera.position.x + forwardX * 7,
+        camera.position.y + forwardY * 7,
+        camera.position.z + forwardZ * 7,
       )
       flashlight.current.target = flashlightTarget.current
       flashlight.current.intensity +=
         ((dark ? (nightVision ? 11 : 24) : 0) - flashlight.current.intensity) * Math.min(1, delta * 7)
       flashlight.current.distance = dark ? activeVision * (nightVision ? 1.7 : 1.45) : 0
     }
-    const exposure = dark
-      ? nightVision
-        ? 0.94
-        : 0.84
-      : quality === "alto"
-        ? 0.84
-        : quality === "medio"
-          ? 0.87
-          : 0.9
-    gl.toneMappingExposure += (exposure - gl.toneMappingExposure) * Math.min(1, delta * 3)
+    gl.toneMappingExposure += (lighting.exposure - gl.toneMappingExposure) * Math.min(1, delta * 3)
 
     if (onStairs) {
       if (targetSignature.current !== "stairs") {
@@ -751,15 +666,15 @@ function SceneContent({
 
   return (
     <>
-      <ProceduralEnvironment quality={quality} blackout={blackoutForViewer} />
+      <ProceduralEnvironment quality={quality} blackout={snapshot.blackout} nightVision={assassinNightVision} />
       {quality === "alto" && <CinematicEffects blackout={blackoutForViewer} />}
       <NightSky quality={quality} />
-      <ambientLight ref={ambient} color="#91a9d4" intensity={0.1} />
-      <hemisphereLight ref={sky} args={["#738bb8", "#09101b", 0.16]} />
+      <ambientLight ref={ambient} color="#91a9d4" intensity={viewerLighting(snapshot.blackout, assassinNightVision).ambient} />
+      <hemisphereLight ref={sky} args={["#738bb8", "#09101b", viewerLighting(snapshot.blackout, assassinNightVision).sky]} />
       <directionalLight
         ref={sun}
         color="#9ab5e8"
-        intensity={0.46}
+        intensity={viewerLighting(snapshot.blackout, assassinNightVision).sun}
         castShadow={quality !== "baixo"}
         shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-20}
@@ -789,7 +704,6 @@ function SceneContent({
         <OfficeWorld
           key={floor}
           map={map}
-          quality={quality}
           blackout={snapshot.blackout}
           level={floor}
           baseY={floor * FLOOR_HEIGHT}

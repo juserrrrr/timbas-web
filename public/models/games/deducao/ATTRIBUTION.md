@@ -32,13 +32,13 @@ A carroceria contínua, o interior, as rodas e os materiais PBR são gerados do 
 
 ## Timbas Office Kit
 
-- Arquivos: 28 modelos GLB modulares de móveis, equipamentos, jogos, banheiro, vegetação e luminárias
+- Arquivos: 30 modelos GLB modulares de móveis, equipamentos, jogos, banheiro, vegetação e luminárias
 - Modelo e materiais: criação original do projeto Timbas
 - Fonte paramétrica: `scripts/build-office-kit-blender.py`
 - Fonte editável: `assets/models/deducao/timbas-office-kit.blend`
 - Dependências externas: nenhuma
 
-O kit inclui mesas, cadeira, monitor, sofá, balcão, rack, armário, estante, cafeteira, caixa, impressora, quadro, cone, pia, bancada dupla de banheiro, vaso sanitário, vending machine, cozinha, sinuca, arcade, planta, árvore, poste, banco e luminárias normal e de emergência. As peças são modeladas no Blender e unidas por material somente durante a exportação para o navegador.
+O kit inclui mesas e cadeiras de escritório e de jantar, monitor, sofá, balcão, rack, armário, estante, máquina de café de piso, caixa, impressora, quadro, cone, pia, bancada dupla de banheiro, vaso sanitário, vending machine, cozinha, sinuca, arcade, planta, árvore, poste, banco e luminárias normal e de emergência. As peças são modeladas no Blender e unidas por material somente durante a exportação para o navegador.
 
 ## Personagem e corpo do Dedução
 
@@ -57,4 +57,4 @@ O personagem de escritório, uniforme, viseira, pivôs de animação e pose do c
 - Fonte paramétrica: `scripts/build-office-building-blender.py`
 - Fonte editável: `assets/models/deducao/timbas-office-building.blend`
 
-O edifício consolida os dois pavimentos, escadas, acabamentos, arte, iluminação e todos os objetos do mapa em uma cena Blender. O modelo Toy Car e seus materiais CC0 permanecem identificados acima; os demais elementos do edifício são originais do projeto.
+O edifício consolida os dois pavimentos, escadas, acabamentos, arte, iluminação e todos os objetos do mapa em uma cena Blender. Seus elementos atuais são originais do projeto. Toy Car e Timbas Coupe SUV não integram mais o edifício; os arquivos independentes e seus créditos acima foram preservados.

@@ -22,7 +22,7 @@ for (const script of [
   "build-office-building-blender.py",
 ]) {
   const source = path.join("scripts", script)
-  const result = spawnSync(executable, ["--background", "--factory-startup", "--python", source], {
+  const result = spawnSync(executable, ["--background", "--factory-startup", "--python-exit-code", "1", "--python", source], {
     cwd: process.cwd(),
     stdio: "inherit",
   })

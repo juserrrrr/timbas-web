@@ -29,6 +29,7 @@ const FRAGMENT_SHADER = `
     color = mix(color, dusk, sunsetBearing * sunsetHeight * 0.66);
     color *= mix(0.45, 1.0, smoothstep(-0.18, 0.02, direction.y));
     gl_FragColor = vec4(color, 1.0);
+    #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
 `
@@ -54,7 +55,6 @@ export function NightSky({ quality }: { quality: Quality }) {
           uniforms={uniforms}
           side={THREE.BackSide}
           depthWrite={false}
-          toneMapped={false}
         />
       </mesh>
       {quality !== "baixo" && (

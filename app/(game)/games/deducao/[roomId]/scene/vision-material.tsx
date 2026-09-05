@@ -42,9 +42,7 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
         #endif`,
       )
 
-    // O cenário inteiro permanece legível. Alcance e paredes limitam ações,
-    // sem apagar jogadores nem pintar o prédio de preto. No apagão a
-    // escuridão vem das luzes físicas desligadas.
+    // Ajustar em espaço linear mantém a mesma claridade com ou sem pós-processamento.
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "void main() {",
@@ -59,8 +57,8 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
         void main() {`,
       )
       .replace(
-        "#include <dithering_fragment>",
-        `#include <dithering_fragment>
+        "#include <tonemapping_fragment>",
+        `
 
         // Piso: junta de placa a cada dois metros e um grão fino por cima, para
         // a superfície parar de ser plástico liso. Parede: emenda de painel em
@@ -88,12 +86,12 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
           gl_FragColor.rgb *= darkness;
         }
 
-        gl_FragColor.rgb = max(gl_FragColor.rgb, vec3(0.012));`,
+        #include <tonemapping_fragment>`,
       )
   }
   // Materiais com onBeforeCompile diferente precisam de programas diferentes, e
   // o three só percebe isso pela chave de cache.
-  material.customProgramCacheKey = () => "timbas-vision"
+  material.customProgramCacheKey = () => "timbas-vision-linear-v2"
   return material
 }
 

@@ -15,6 +15,8 @@ const files = [
   "reception-counter.glb",
   "meeting-table-blender.glb",
   "cafe-table.glb",
+  "dining-table.glb",
+  "dining-chair.glb",
   "server-rack.glb",
   "locker.glb",
   "office-shelf.glb",
@@ -66,6 +68,12 @@ for (const filename of files) {
   const gltf = parseGlb(buffer, filename)
   const drawCalls = (gltf.meshes ?? []).reduce((total, mesh) => total + mesh.primitives.length, 0)
   const materialCount = gltf.materials?.length ?? 0
+  if (filename === "timbas-office-building.glb") {
+    const removedGarageMaterials = new Set(["ToyCar", "Timbas steel blue paint", "Performance tire"])
+    if (gltf.materials?.some((material) => removedGarageMaterials.has(material.name))) {
+      throw new Error(`${filename}: ainda contém materiais dos carros da garagem removida`)
+    }
+  }
   const hasLights = Boolean(gltf.extensions?.KHR_lights_punctual?.lights?.length)
   if (gltf.cameras?.length || gltf.animations?.length || hasLights) {
     throw new Error(`${filename}: contém câmera, animação ou luz de apresentação`)

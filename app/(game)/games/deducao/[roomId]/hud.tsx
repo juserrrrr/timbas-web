@@ -211,7 +211,7 @@ export function Hud({
         {/* O mapa fica sempre à vista para orientar tanto cenários internos
             quanto casas, campos e áreas abertas geradas pelo criador. */}
         <div className="hidden w-44 rounded-xl border border-white/10 bg-black/55 p-1.5 backdrop-blur-sm sm:block lg:w-56">
-          <Minimap map={map} spots={spots} role={role} poseRef={poseRef} />
+          <Minimap map={map} spots={spots} role={role} poseRef={poseRef} level={mine?.level ?? 0} />
         </div>
       </div>
 
@@ -352,7 +352,7 @@ export function Hud({
 
       {mapOpen && (
         <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-zinc-950/80 p-4">
+          <div className="max-h-full w-full max-w-4xl overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950/80 p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-400">{map.name}</p>
               <button
@@ -367,7 +367,7 @@ export function Hud({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <Minimap map={map} spots={spots} role={role} poseRef={poseRef} grande />
+            <Minimap map={map} spots={spots} role={role} poseRef={poseRef} level={mine?.level ?? 0} grande />
             <p className="mt-3 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
               Amarelo é tarefa sua, vermelho é o botão de emergência
             </p>
@@ -485,7 +485,7 @@ function TouchStick({ inputRef, enabled }: { inputRef: React.MutableRefObject<In
     const onStart = (event: TouchEvent) => {
       if (touchId.current !== null) return
       if (isGameControlTarget(event.target)) return
-      const touch = Array.from(event.changedTouches).find((candidate) => candidate.clientX <= window.innerWidth * 0.55)
+      const touch = Array.from(event.changedTouches).find((candidate) => candidate.clientX <= window.innerWidth / 2)
       if (!touch) return
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
       event.preventDefault()
@@ -523,6 +523,9 @@ function TouchStick({ inputRef, enabled }: { inputRef: React.MutableRefObject<In
     const onBlur = () => {
       if (touchId.current !== null) reset()
     }
+    const onFocus = (event: FocusEvent) => {
+      if (touchId.current !== null && isGameControlTarget(event.target)) reset()
+    }
 
     window.addEventListener("touchstart", onStart, { passive: false })
     window.addEventListener("touchmove", onMove, { passive: false })
@@ -530,6 +533,7 @@ function TouchStick({ inputRef, enabled }: { inputRef: React.MutableRefObject<In
     window.addEventListener("touchcancel", onEnd, { passive: false })
     window.addEventListener("blur", onBlur)
     document.addEventListener("visibilitychange", onVisibilityChange)
+    document.addEventListener("focusin", onFocus)
     return () => {
       window.removeEventListener("touchstart", onStart)
       window.removeEventListener("touchmove", onMove)
@@ -537,6 +541,7 @@ function TouchStick({ inputRef, enabled }: { inputRef: React.MutableRefObject<In
       window.removeEventListener("touchcancel", onEnd)
       window.removeEventListener("blur", onBlur)
       document.removeEventListener("visibilitychange", onVisibilityChange)
+      document.removeEventListener("focusin", onFocus)
       reset()
     }
   }, [enabled, inputRef])

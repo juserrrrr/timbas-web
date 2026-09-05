@@ -27,6 +27,8 @@ ASSET_FILES: dict[str, str] = {
     "counter": "reception-counter",
     "meetingTable": "meeting-table-blender",
     "cafeTable": "cafe-table",
+    "diningTable": "dining-table",
+    "diningChair": "dining-chair",
     "rack": "server-rack",
     "locker": "locker",
     "shelf": "office-shelf",
@@ -445,6 +447,33 @@ def build_cafe_table() -> bpy.types.Collection:
     return c
 
 
+def build_dining_table() -> bpy.types.Collection:
+    c = collection("diningTable")
+    box(c, "Dining table oak top", (2.8, 1.2, 0.07), (0, 0, 0.745), MAT["wood_light"], bevel=0.035)
+    for y in (-0.45, 0.45):
+        box(c, "Dining table long apron", (2.4, 0.07, 0.12), (0, y, 0.65), MAT["wood"], bevel=0.014)
+    for x in (-1.16, 1.16):
+        box(c, "Dining table end apron", (0.07, 0.94, 0.12), (x, 0, 0.65), MAT["wood"], bevel=0.014)
+        for y in (-0.45, 0.45):
+            box(c, "Dining table solid leg", (0.095, 0.095, 0.69), (x, y, 0.365), MAT["wood"], bevel=0.012)
+            box(c, "Dining table fixed foot", (0.085, 0.085, 0.025), (x, y, 0.0125), MAT["black"], bevel=0.007)
+    return c
+
+
+def build_dining_chair() -> bpy.types.Collection:
+    c = collection("diningChair")
+    # Local +Y is forward, matching the office chair before the shared export rotation.
+    box(c, "Dining chair seat", (0.52, 0.50, 0.07), (0, 0.03, 0.425), MAT["wood_light"], bevel=0.032)
+    box(c, "Dining chair backrest", (0.50, 0.055, 0.29), (0, -0.2525, 0.755), MAT["wood_light"], bevel=0.035)
+    for x in (-0.205, 0.205):
+        box(c, "Dining chair back support", (0.052, 0.052, 0.54), (x, -0.248, 0.63), MAT["wood"], bevel=0.014)
+        box(c, "Dining chair side apron", (0.045, 0.42, 0.075), (x, 0, 0.365), MAT["wood"], bevel=0.01)
+        for y in (-0.205, 0.205):
+            box(c, "Dining chair leg", (0.058, 0.058, 0.385), (x, y, 0.2125), MAT["wood"], bevel=0.011)
+            box(c, "Dining chair foot", (0.052, 0.052, 0.025), (x, y, 0.0125), MAT["black"], bevel=0.006)
+    return c
+
+
 def build_rack() -> bpy.types.Collection:
     c = collection("rack")
     box(c, "Rack cabinet", (0.8, 1.0, 2.0), (0, 0, 1), MAT["metal"], bevel=0.045)
@@ -487,14 +516,29 @@ def build_shelf() -> bpy.types.Collection:
 
 def build_coffee() -> bpy.types.Collection:
     c = collection("coffee")
-    box(c, "Machine body", (0.7, 0.6, 1.0), (0, 0, 0.5), MAT["black"], bevel=0.07)
-    box(c, "Control fascia", (0.56, 0.035, 0.28), (0, 0.315, 0.79), MAT["metal_light"], bevel=0.025)
-    box(c, "Coffee screen", (0.25, 0.018, 0.11), (0, 0.337, 0.85), MAT["screen"], bevel=0.015)
-    box(c, "Cup recess", (0.42, 0.035, 0.34), (0, 0.318, 0.39), MAT["metal"], bevel=0.035)
-    for x in (-0.1, 0.1):
-        cylinder(c, "Nozzle", 0.018, 0.13, (x, 0.34, 0.58), MAT["metal_light"], vertices=14)
-    cylinder(c, "Cup", 0.075, 0.16, (0, 0.35, 0.21), MAT["white"], vertices=20)
-    box(c, "Drip tray", (0.45, 0.32, 0.035), (0, 0.17, 0.09), MAT["metal_light"], bevel=0.02)
+    box(c, "Coffee fixed plinth", (0.79, 0.76, 0.12), (0, 0, 0.06), MAT["black"], bevel=0.018)
+    box(c, "Coffee service cabinet", (0.85, 0.78, 0.9), (0, -0.02, 0.55), MAT["metal"], bevel=0.038)
+    box(c, "Coffee service door", (0.69, 0.04, 0.72), (0, 0.38, 0.55), MAT["black"], bevel=0.022)
+    box(c, "Coffee service handle", (0.075, 0.016, 0.025), (0.235, 0.402, 0.82), MAT["metal_light"], bevel=0.006)
+    box(c, "Coffee upper cabinet", (0.85, 0.78, 0.51), (0, -0.02, 1.695), MAT["black"], bevel=0.04)
+    box(c, "Coffee bay back", (0.85, 0.59, 0.47), (0, -0.115, 1.225), MAT["metal"], bevel=0.025)
+    for x in (-0.39, 0.39):
+        box(c, "Coffee bay cheek", (0.07, 0.82, 0.49), (x, 0, 1.235), MAT["black"], bevel=0.016)
+    box(c, "Coffee display bezel", (0.52, 0.035, 0.27), (0, 0.385, 1.695), MAT["metal_light"], bevel=0.018)
+    box(c, "Coffee screen", (0.42, 0.012, 0.17), (0, 0.404, 1.72), MAT["screen"], bevel=0.012)
+    for x in (-0.115, 0, 0.115):
+        box(c, "Coffee selector", (0.067, 0.012, 0.025), (x, 0.404, 1.613), MAT["black"], bevel=0.009)
+    box(c, "Coffee dispenser header", (0.38, 0.17, 0.09), (-0.08, 0.285, 1.425), MAT["metal_light"], bevel=0.018)
+    for x in (-0.16, 0):
+        cylinder(c, "Coffee dispensing nozzle", 0.02, 0.12, (x, 0.30, 1.35), MAT["metal_light"], vertices=14)
+    box(c, "Coffee cup drip tray", (0.66, 0.22, 0.045), (0, 0.295, 1.0175), MAT["metal_light"], bevel=0.012)
+    for x in (-0.27, -0.18, -0.09, 0, 0.09, 0.18, 0.27):
+        box(c, "Coffee tray drainage slot", (0.024, 0.145, 0.006), (x, 0.295, 1.043), MAT["black"], bevel=0.003)
+    for x in (-0.16, 0.20):
+        cylinder(c, "Coffee paper cup", 0.054, 0.13, (x, 0.30, 1.105), MAT["white"], vertices=20)
+        cylinder(c, "Coffee cup dark opening", 0.043, 0.005, (x, 0.30, 1.17), MAT["black"], vertices=20)
+    for z in (0.23, 0.27, 0.31):
+        box(c, "Coffee ventilation grille", (0.43, 0.016, 0.012), (0, 0.402, z), MAT["metal_light"], bevel=0.004)
     return c
 
 
@@ -710,9 +754,10 @@ def build_bench() -> bpy.types.Collection:
 
 def build_ceiling_light() -> bpy.types.Collection:
     c = collection("ceilingLight")
-    box(c, "Ceiling canopy", (0.54, 0.18, 0.055), (0, 0, 0.035), MAT["metal"], bevel=0.045)
+    box(c, "Ceiling canopy", (1.04, 0.18, 0.055), (0, 0, 0.035), MAT["metal"], bevel=0.018)
     for x in (-0.46, 0.46):
         box(c, "Suspension pin", (0.018, 0.018, 0.13), (x, 0, -0.055), MAT["metal_light"], bevel=0.007)
+        box(c, "Suspension crossbar", (0.075, 0.42, 0.055), (x, 0, -0.14), MAT["metal"], bevel=0.027)
     for y in (-0.17, 0.17):
         box(c, "Linear LED housing", (1.72, 0.075, 0.065), (0, y, -0.14), MAT["metal"], bevel=0.032)
         box(c, "Continuous warm LED", (1.59, 0.038, 0.025), (0, y, -0.181), MAT["warm_light"], bevel=0.018)
@@ -739,6 +784,8 @@ BUILDERS = {
     "counter": build_counter,
     "meetingTable": build_meeting_table,
     "cafeTable": build_cafe_table,
+    "diningTable": build_dining_table,
+    "diningChair": build_dining_chair,
     "rack": build_rack,
     "locker": build_locker,
     "shelf": build_shelf,

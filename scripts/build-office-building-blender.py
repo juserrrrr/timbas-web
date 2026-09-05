@@ -21,6 +21,12 @@ LOUNGE_PREVIEW_PATH = Path.home() / "AppData" / "Local" / "Temp" / "timbas-offic
 STAIR_PREVIEW_PATH = Path.home() / "AppData" / "Local" / "Temp" / "timbas-office-stair-preview.png"
 MEETING_PREVIEW_PATH = Path.home() / "AppData" / "Local" / "Temp" / "timbas-office-meeting-preview.png"
 BATHROOM_PREVIEW_PATH = Path.home() / "AppData" / "Local" / "Temp" / "timbas-office-bathroom-preview.png"
+PORTAL_PREVIEW_PATH = PREVIEW_PATH.with_name("timbas-office-portal-preview.png")
+TERRACE_PREVIEW_PATH = PREVIEW_PATH.with_name("timbas-office-terrace-preview.png")
+WINDOW_PREVIEW_PATH = PREVIEW_PATH.with_name("timbas-office-window-preview.png")
+SUPPORT_PREVIEW_PATH = PREVIEW_PATH.with_name("timbas-office-support-preview.png")
+MEZZANINE_PREVIEW_PATH = PREVIEW_PATH.with_name("timbas-office-mezzanine-preview.png")
+LOUNGE_MEDIA_PREVIEW_PATH = PREVIEW_PATH.with_name("timbas-office-lounge-media-preview.png")
 
 PROP_MODELS = {
     "desk": "desk-blender.glb",
@@ -31,6 +37,8 @@ PROP_MODELS = {
     "counter": "reception-counter.glb",
     "meetingTable": "meeting-table-blender.glb",
     "cafeTable": "cafe-table.glb",
+    "diningTable": "dining-table.glb",
+    "diningChair": "dining-chair.glb",
     "rack": "server-rack.glb",
     "locker": "locker.glb",
     "shelf": "office-shelf.glb",
@@ -85,6 +93,29 @@ def layout_world_point(game_map: dict, value: tuple[float, float, float]) -> tup
     return (x, -z, value[2])
 
 
+def wall_mounted_point(game_map: dict, x: float, z: float, level: int, *, vertical_wall: bool, inward_sign: int, surface_offset: float = -0.007) -> tuple[float, float]:
+    mapped_x, mapped_z = layout_point(game_map, x, z)
+    across, along = (mapped_x, mapped_z) if vertical_wall else (mapped_z, mapped_x)
+    candidates = []
+    for wall in game_map["walls"]:
+        if wall.get("level", 0) != level or wall.get("style") == "guarda-corpo":
+            continue
+        horizontal = wall["maxX"] - wall["minX"] > wall["maxZ"] - wall["minZ"]
+        if horizontal == vertical_wall:
+            continue
+        low, high = (wall["minX"], wall["maxX"]) if vertical_wall else (wall["minZ"], wall["maxZ"])
+        start, end = (wall["minZ"], wall["maxZ"]) if vertical_wall else (wall["minX"], wall["maxX"])
+        center = (low + high) / 2
+        if start <= along <= end and abs(center - across) <= 0.5:
+            candidates.append((abs(center - across), center, (high - low) / 2))
+    if not candidates:
+        raise ValueError(f"No supporting wall for mounted decoration at {(x, z, level)}")
+    _, center, half_depth = min(candidates)
+    # A planta muda de escala, mas o encaixe do objeto na face da parede não.
+    mounted = center + inward_sign * (half_depth + surface_offset)
+    return (mounted, mapped_z) if vertical_wall else (mapped_x, mounted)
+
+
 def clear_scene() -> None:
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
@@ -137,9 +168,15 @@ MAT: dict[str, bpy.types.Material] = {}
 
 def create_materials() -> None:
     MAT.update(
-        wall=make_material("Wall · warm architectural plaster", (0.68, 0.70, 0.72, 1), roughness=0.76),
+        wall=make_material("Wall · warm architectural plaster", (0.68, 0.67, 0.63, 1), roughness=0.76),
         wall_soft=make_material("Wall · soft warm white", (0.82, 0.82, 0.79, 1), roughness=0.72),
-        ceiling=make_material("Ceiling · seamless acoustic white", (0.72, 0.74, 0.74, 1), roughness=0.82),
+        ceiling=make_material("Ceiling · warm mineral plaster", (0.62, 0.61, 0.57, 1), roughness=0.88),
+        gypsum=make_material("Ceiling · sculpted warm gypsum", (0.78, 0.74, 0.66, 1), roughness=0.84),
+        plaster_sage=make_material("Wall · sage mineral paint", (0.24, 0.36, 0.30, 1), roughness=0.86),
+        plaster_clay=make_material("Wall · muted terracotta paint", (0.44, 0.24, 0.17, 1), roughness=0.86),
+        plaster_ink=make_material("Wall · ink blue wainscot", (0.085, 0.13, 0.20, 1), roughness=0.8),
+        fabric_sage=make_material("Seating · deep sage fabric", (0.12, 0.23, 0.17, 1), roughness=0.94),
+        fabric_clay=make_material("Seating · warm clay fabric", (0.26, 0.09, 0.06, 1), roughness=0.94),
         structure=make_material("Structure · graphite", (0.035, 0.055, 0.085, 1), metallic=0.52, roughness=0.32),
         concrete=make_material("Floor · industrial concrete", (0.24, 0.27, 0.3, 1), roughness=0.76),
         terrazzo=make_material("Floor · continuous terrazzo", (0.55, 0.57, 0.58, 1), roughness=0.42, coat=0.12),
@@ -161,9 +198,14 @@ def create_materials() -> None:
         sign=make_material("Sign · room lettering", (0.7, 0.82, 0.9, 1), metallic=0.34, roughness=0.28, emission=(0.18, 0.48, 0.76, 1), emission_strength=0.55),
         white=make_material("Detail · satin white", (0.76, 0.79, 0.8, 1), roughness=0.42),
         screen=make_material("Technology · active dashboard", (0.006, 0.035, 0.075, 1), roughness=0.18, emission=(0.02, 0.42, 0.92, 1), emission_strength=1.45),
+        tv_screen=make_material("Technology · television standby display", (0.006, 0.012, 0.02, 1), roughness=0.22, emission=(0.015, 0.04, 0.065, 1), emission_strength=0.22),
         art_coral=make_material("Art · coral", (0.86, 0.11, 0.08, 1), roughness=0.5),
         art_gold=make_material("Art · ochre", (0.88, 0.48, 0.04, 1), roughness=0.5),
         art_violet=make_material("Art · violet", (0.34, 0.08, 0.55, 1), roughness=0.5),
+        window_clear=make_material("Glass · clear fixed exterior windows", (0.24, 0.38, 0.43, 1), metallic=0.06, roughness=0.18, coat=0.25, alpha=0.075),
+        landscape=make_material("Exterior · muted park planting", (0.045, 0.095, 0.073, 1), roughness=0.98),
+        distant_facade=make_material("Exterior · distant residential plaster", (0.24, 0.26, 0.28, 1), roughness=0.88),
+        distant_window=make_material("Exterior · warm residential windows", (0.31, 0.22, 0.11, 1), roughness=0.7, emission=(0.45, 0.25, 0.10, 1), emission_strength=0.3),
         button_red=make_material(
             "Emergency button · illuminated red",
             (0.55, 0.012, 0.025, 1),
@@ -375,7 +417,7 @@ def ceiling_fixture_placements(game_map: dict) -> list[dict]:
                 continue
             placements.append({
                 "x": x,
-                "y": WALL_HEIGHT - 0.08,
+                "y": WALL_HEIGHT - 0.0625,
                 "z": z,
                 "rot": math.pi / 2,
                 "level": level,
@@ -441,10 +483,11 @@ def add_floor(target: bpy.types.Collection, room: dict, piece: dict, base: float
         mesh_boxes(target, f"Porcelain joints · {room['id']}", lines, MAT["grout"])
 
     if finish in ("carpet", "patternedCarpet") and room["kind"] == "sala":
-        inset_w, inset_d = max(1, piece["w"] - 3.0), max(1, piece["d"] - 3.0)
-        box(target, f"Carpet inset · {room['id']}", (inset_w, inset_d, 0.018), world_location(x, z, top + 0.028), MAT["carpet_accent"], bevel=0.12)
+        inset_w, inset_d = piece["w"] - 3.0, piece["d"] - 3.0
+        if inset_w >= 0.5 and inset_d >= 0.5:
+            box(target, f"Carpet inset · {room['id']}", (inset_w, inset_d, 0.018), world_location(x, z, top + 0.028), MAT["carpet_accent"], bevel=0.12)
 
-    if finish == "vinyl":
+    if finish == "vinyl" and room["kind"] == "corredor":
         if piece["w"] < piece["d"]:
             box(target, f"Corridor runner · {room['id']}", (piece["w"] - 2.0, piece["d"] - 0.5, 0.018), world_location(x, z, top + 0.025), MAT["carpet"])
             for edge in (-piece["w"] / 2 + 1.0, piece["w"] / 2 - 1.0):
@@ -460,10 +503,96 @@ def add_room_floors(target: bpy.types.Collection, game_map: dict) -> None:
             add_floor(target, room, piece, level * FLOOR_HEIGHT)
 
 
+def exterior_window_openings(game_map: dict, wall: dict) -> list[tuple[float, float, float, float]]:
+    if wall.get("style") == "guarda-corpo":
+        return []
+    horizontal = wall["maxX"] - wall["minX"] > wall["maxZ"] - wall["minZ"]
+    start = wall["minX"] if horizontal else wall["minZ"]
+    end = wall["maxX"] if horizontal else wall["maxZ"]
+    across = (wall["minZ"] + wall["maxZ"]) / 2 if horizontal else (wall["minX"] + wall["maxX"]) / 2
+    level = wall.get("level", 0)
+    rooms = [room for room in game_map["rooms"] if room.get("level", 0) == level and room["kind"] != "terraco"]
+    boundaries = {start, end}
+    for room in rooms:
+        rect = room["rect"]
+        near_wall = rect["z"] - 0.45 <= across <= rect["z"] + rect["d"] + 0.45 if horizontal else rect["x"] - 0.45 <= across <= rect["x"] + rect["w"] + 0.45
+        if not near_wall:
+            continue
+        for value in (rect["x"], rect["x"] + rect["w"]) if horizontal else (rect["z"], rect["z"] + rect["d"]):
+            if start < value < end:
+                boundaries.add(value)
+
+    galleries = (
+        (0, 3.23, 26), (0, 70.77, 10.5), (1, 3.23, 27.5),
+        (1, 70.77, 11.5), (1, 18.77, 45), (0, 47.23, 46.0),
+    )
+    stair_clearances = []
+    for stair in game_map["stairs"]:
+        if not stair["level"] <= level <= stair["targetLevel"]:
+            continue
+        for hole in stair_holes({"stairs": [stair]}):
+            if horizontal:
+                near_stair = wall["minZ"] <= hole["z"] + hole["d"] + 0.2 and wall["maxZ"] >= hole["z"] - 0.2
+                clearance = (hole["x"] - 0.2, hole["x"] + hole["w"] + 0.2)
+            else:
+                near_stair = wall["minX"] <= hole["x"] + hole["w"] + 0.2 and wall["maxX"] >= hole["x"] - 0.2
+                clearance = (hole["z"] - 0.2, hole["z"] + hole["d"] + 0.2)
+            if near_stair:
+                stair_clearances.append(clearance)
+    result = []
+    limits = sorted(boundaries)
+    for left, right in zip(limits, limits[1:]):
+        midpoint = (left + right) / 2
+        neighbors = []
+        for sign in (-1, 1):
+            x, z = (midpoint, across + sign * 0.45) if horizontal else (across + sign * 0.45, midpoint)
+            neighbors.append(next((room for room in rooms if room["rect"]["x"] < x < room["rect"]["x"] + room["rect"]["w"] and room["rect"]["z"] < z < room["rect"]["z"] + room["rect"]["d"]), None))
+        if (neighbors[0] is None) == (neighbors[1] is None):
+            continue
+        room = neighbors[0] or neighbors[1]
+        rect = room["rect"]
+        blocked = list(stair_clearances)
+        if horizontal and abs(across - rect["z"]) < 0.3 and room["id"] in ("recepcao", "reuniao", "chefe", "conselho", "servidores", "openspace", "operacoes", "lounge"):
+            feature_half = min(rect["w"] - 3.0, 11.0) / 2 + 0.25
+            center = rect["x"] + rect["w"] / 2
+            blocked.append((center - feature_half, center + feature_half))
+        if not horizontal:
+            for art_level, legacy_x, legacy_z in galleries:
+                art_x, art_z = layout_point(game_map, legacy_x, legacy_z)
+                if art_level == level and abs(art_x - across) < 0.35:
+                    blocked.append((art_z - 1.72, art_z + 1.72))
+        for prop in game_map["props"]:
+            if prop.get("level", 0) != level or prop["kind"] not in ("whiteboard", "shelf", "locker", "kitchen", "vending", "coffee"):
+                continue
+            prop_across, prop_along = (prop["z"], prop["x"]) if horizontal else (prop["x"], prop["z"])
+            if abs(prop_across - across) < 1.25:
+                clearance = 2.0 if prop["kind"] in ("whiteboard", "kitchen") else 1.1
+                blocked.append((prop_along - clearance, prop_along + clearance))
+        spans = [(left + 0.85, right - 0.85)]
+        for blocked_left, blocked_right in blocked:
+            spans = [part for span_left, span_right in spans for part in ((span_left, min(span_right, blocked_left)), (max(span_left, blocked_right), span_right)) if part[1] - part[0] >= 1.5]
+        sill = 2.50 if room["id"] == "banheiro" else 2.22 if room["id"] in ("servidores", "arquivo", "deposito") else 1.15
+        for span_left, span_right in spans:
+            available = span_right - span_left
+            if available < 1.5:
+                continue
+            count = max(1, math.ceil(available / 6.2))
+            pitch = available / count
+            width = min(4.4, pitch - (0.65 if count > 1 else 0))
+            for index in range(count):
+                center = span_left + pitch * (index + 0.5)
+                result.append((center - width / 2, center + width / 2, sill, 3.2))
+    return result
+
+
 def add_walls(target: bpy.types.Collection, game_map: dict) -> None:
     bases: list[tuple[float, float, float, float, float, float]] = []
     trims: list[tuple[float, float, float, float, float, float]] = []
     caps: list[tuple[float, float, float, float, float, float]] = []
+    frames: list[tuple[float, float, float, float, float, float]] = []
+    sills: list[tuple[float, float, float, float, float, float]] = []
+    glass_vertices: list[tuple[float, float, float]] = []
+    glass_faces: list[tuple[int, int, int, int]] = []
     for wall in game_map["walls"]:
         level = wall.get("level", 0)
         base = level * FLOOR_HEIGHT
@@ -472,12 +601,81 @@ def add_walls(target: bpy.types.Collection, game_map: dict) -> None:
         x = (wall["minX"] + wall["maxX"]) / 2
         z = (wall["minZ"] + wall["maxZ"]) / 2
         height = 1.05 if wall.get("style") == "guarda-corpo" else WALL_HEIGHT
-        bases.append((x, -z, base + height / 2, width, depth, height))
+        openings = exterior_window_openings(game_map, wall)
+        horizontal = width > depth
+        along_start = wall["minX"] if horizontal else wall["minZ"]
+        along_end = wall["maxX"] if horizontal else wall["maxZ"]
+
+        def wall_piece(left: float, right: float, bottom: float, top: float) -> tuple[float, float, float, float, float, float]:
+            center = (left + right) / 2
+            return (center if horizontal else x, -z if horizontal else -center, base + (bottom + top) / 2, right - left if horizontal else width, depth if horizontal else right - left, top - bottom)
+
+        def window_frame_piece(left: float, right: float, bottom: float, top: float) -> tuple[float, float, float, float, float, float]:
+            piece = list(wall_piece(left, right, bottom, top))
+            piece[4 if horizontal else 3] += 0.04
+            return tuple(piece)
+
+        cursor = along_start
+        for left, right, sill, head in openings:
+            if left > cursor:
+                bases.append(wall_piece(cursor, left, 0, height))
+            bases.append(wall_piece(left, right, 0, sill))
+            bases.append(wall_piece(left, right, head, height))
+            for edge in (left, right):
+                frames.append(window_frame_piece(edge - 0.035, edge + 0.035, sill, head))
+            for edge in (sill, head):
+                frames.append(window_frame_piece(left, right, edge - 0.035, edge + 0.035))
+            frames.append(window_frame_piece((left + right) / 2 - 0.022, (left + right) / 2 + 0.022, sill, head))
+            sill_piece = list(wall_piece(left - 0.08, right + 0.08, sill - 0.045, sill + 0.025))
+            sill_piece[4 if horizontal else 3] += 0.18
+            sills.append(tuple(sill_piece))
+            offset = len(glass_vertices)
+            glass_vertices.extend([world_location(a if horizontal else x, z if horizontal else a, base + h) for a, h in ((left, sill), (right, sill), (right, head), (left, head))])
+            glass_faces.append((offset, offset + 1, offset + 2, offset + 3))
+            cursor = right
+        if cursor < along_end:
+            bases.append(wall_piece(cursor, along_end, 0, height))
         trims.append((x, -z, base + 0.12, width + 0.04, depth + 0.04, 0.24))
         caps.append((x, -z, base + height - 0.065, width + 0.06, depth + 0.06, 0.13))
     mesh_boxes(target, "Continuous architectural walls", bases, MAT["wall"])
     mesh_boxes(target, "Continuous graphite baseboards", trims, MAT["structure"])
     mesh_boxes(target, "Continuous wall shadow gap", caps, MAT["structure"])
+    mesh_boxes(target, "Exterior window frames and mullions", frames, MAT["structure"])
+    mesh_boxes(target, "Exterior window mineral sills", sills, MAT["terrazzo"])
+    if glass_faces:
+        mesh = bpy.data.meshes.new("Clear fixed exterior glazing")
+        mesh.from_pydata(glass_vertices, [], glass_faces)
+        mesh.update()
+        glazing = bpy.data.objects.new("Clear fixed exterior glazing", mesh)
+        MAT["window_clear"].use_backface_culling = False
+        mesh.materials.append(MAT["window_clear"])
+        target.objects.link(glazing)
+
+
+def validate_exterior_windows(game_map: dict) -> None:
+    bpy.context.view_layer.update()
+    graph = bpy.context.evaluated_depsgraph_get()
+    count = 0
+    for wall in game_map["walls"]:
+        horizontal = wall["maxX"] - wall["minX"] > wall["maxZ"] - wall["minZ"]
+        across = (wall["minZ"] + wall["maxZ"]) / 2 if horizontal else (wall["minX"] + wall["maxX"]) / 2
+        base = wall.get("level", 0) * FLOOR_HEIGHT
+        for left, right, sill, head in exterior_window_openings(game_map, wall):
+            if sill < 1.1 or head >= WALL_HEIGHT - 0.2:
+                raise ValueError("Exterior window must preserve the sill and ceiling structure")
+            for fraction in (0.25, 0.75):
+                along = left + (right - left) * fraction
+                for height in (sill + 0.18, head - 0.18):
+                    for sign in (-1, 1):
+                        x, z = (along, across + sign * 0.5) if horizontal else (across + sign * 0.5, along)
+                        direction = Vector((0, sign, 0) if horizontal else (-sign, 0, 0))
+                        origin = Vector(world_location(x, z, base + height))
+                        hit = bpy.context.scene.ray_cast(graph, origin, direction, distance=0.8)
+                        if not hit[0] or hit[4].name != "Clear fixed exterior glazing":
+                            name = hit[4].name if hit[0] else "no glazing"
+                            raise ValueError(f"Exterior window {count} is obstructed: {name}")
+            count += 1
+    print(f"Validated {count} real exterior window openings with clear glazing")
 
 
 def unique_doors(game_map: dict) -> list[dict]:
@@ -506,18 +704,16 @@ def add_doors(target: bpy.types.Collection, game_map: dict) -> None:
         upper_height = WALL_HEIGHT - DOOR_HEIGHT
         if entry["horizontal"]:
             box(target, f"Wall above portal {index}", (width, 0.4, upper_height), world_location(cx, cz, base + DOOR_HEIGHT + upper_height / 2), MAT["wall"])
+            box(target, f"Continuous portal ceiling trim {index}", (width + 0.06, 0.46, 0.13), world_location(cx, cz, base + WALL_HEIGHT - 0.065), MAT["structure"])
             for x in (cx - width / 2 + frame / 2, cx + width / 2 - frame / 2):
                 box(target, f"Portal post {index}", (frame, frame_depth, DOOR_HEIGHT), world_location(x, cz, base + DOOR_HEIGHT / 2), MAT["structure"], bevel=0.014)
             box(target, f"Portal header {index}", (width, frame_depth, frame), world_location(cx, cz, base + DOOR_HEIGHT - frame / 2), MAT["structure"], bevel=0.014)
-            box(target, f"Door sensor housing {index}", (0.22, 0.035, 0.05), world_location(cx, cz + 0.228, base + DOOR_HEIGHT - 0.17), MAT["structure"], bevel=0.01)
-            box(target, f"Door sensor indicator {index}", (0.065, 0.012, 0.012), world_location(cx, cz + 0.252, base + DOOR_HEIGHT - 0.17), MAT["cyan"], bevel=0.004)
         else:
             box(target, f"Wall above portal {index}", (0.4, width, upper_height), world_location(cx, cz, base + DOOR_HEIGHT + upper_height / 2), MAT["wall"])
+            box(target, f"Continuous portal ceiling trim {index}", (0.46, width + 0.06, 0.13), world_location(cx, cz, base + WALL_HEIGHT - 0.065), MAT["structure"])
             for z in (cz - width / 2 + frame / 2, cz + width / 2 - frame / 2):
                 box(target, f"Portal post {index}", (frame_depth, frame, DOOR_HEIGHT), world_location(cx, z, base + DOOR_HEIGHT / 2), MAT["structure"], bevel=0.014)
             box(target, f"Portal header {index}", (frame_depth, width, frame), world_location(cx, cz, base + DOOR_HEIGHT - frame / 2), MAT["structure"], bevel=0.014)
-            box(target, f"Door sensor housing {index}", (0.035, 0.22, 0.05), world_location(cx + 0.228, cz, base + DOOR_HEIGHT - 0.17), MAT["structure"], bevel=0.01)
-            box(target, f"Door sensor indicator {index}", (0.012, 0.065, 0.012), world_location(cx + 0.252, cz, base + DOOR_HEIGHT - 0.17), MAT["cyan"], bevel=0.004)
 
 
 def add_ceilings(target: bpy.types.Collection, game_map: dict) -> None:
@@ -531,10 +727,69 @@ def add_ceilings(target: bpy.types.Collection, game_map: dict) -> None:
             z = piece["z"] + piece["d"] / 2
             height = level * FLOOR_HEIGHT + WALL_HEIGHT + 0.07
             box(target, f"Seamless ceiling · {room['id']}", (piece["w"], piece["d"], 0.14), world_location(x, z, height), MAT["ceiling"])
-            if room["kind"] == "sala" and piece["w"] > 9 and piece["d"] > 9:
-                raft_w = min(5.4, piece["w"] - 3)
-                raft_d = min(3.0, piece["d"] - 3)
-                box(target, f"Suspended acoustic raft · {room['id']}", (raft_w, raft_d, 0.07), world_location(x, z, height - 0.13), MAT["wall_soft"], bevel=0.08)
+
+        if room["id"] in ("servidores", "operacoes"):
+            continue
+        rect = room["rect"]
+        cuts = [{"x": hole["x"] - 0.12, "z": hole["z"] - 0.12, "w": hole["w"] + 0.24, "d": hole["d"] + 0.24} for hole in holes] if level == 0 else []
+        for fixture in ceiling_fixture_placements(game_map):
+            if fixture["level"] == level:
+                cuts.append({"x": fixture["x"] - 0.4, "z": fixture["z"] - 1.05, "w": 0.8, "d": 2.1})
+        for inset, width, drop in ((0.48, 0.42, 0.18), (0.90, 0.10, 0.095)):
+            left, front = rect["x"] + inset, rect["z"] + inset
+            frame_w, frame_d = rect["w"] - inset * 2, rect["d"] - inset * 2
+            bands = (
+                {"x": left, "z": front, "w": frame_w, "d": width},
+                {"x": left, "z": front + frame_d - width, "w": frame_w, "d": width},
+                {"x": left, "z": front + width, "w": width, "d": frame_d - width * 2},
+                {"x": left + frame_w - width, "z": front + width, "w": width, "d": frame_d - width * 2},
+            )
+            for band in bands:
+                for piece in split_around_holes(band, cuts):
+                    box(target, f"Gypsum stepped cornice · {room['id']}",
+                        (piece["w"], piece["d"], drop + 0.02),
+                        world_location(piece["x"] + piece["w"] / 2, piece["z"] + piece["d"] / 2, level * FLOOR_HEIGHT + WALL_HEIGHT - drop / 2 + 0.01),
+                        MAT["gypsum"], bevel=0.018)
+
+
+def add_wall_finishes(target: bpy.types.Collection, game_map: dict) -> None:
+    for room in game_map["rooms"]:
+        if room["kind"] == "terraco":
+            continue
+        rect = room["rect"]
+        level = room.get("level", 0)
+        base = level * FLOOR_HEIGHT
+        finish = "plaster_sage" if room["id"] in ("lounge", "copa", "hall-superior", "apoio") else "plaster_clay" if room["id"] in ("recepcao", "hall-central", "reuniao", "chefe", "conselho") else "plaster_ink"
+        sides = ((True, rect["z"], 1), (True, rect["z"] + rect["d"], -1), (False, rect["x"], 1), (False, rect["x"] + rect["w"], -1))
+        for horizontal, across, inward in sides:
+            start = (rect["x"] if horizontal else rect["z"]) + 0.22
+            end = (rect["x"] + rect["w"] if horizontal else rect["z"] + rect["d"]) - 0.22
+            for wall in game_map["walls"]:
+                if wall.get("level", 0) != level or wall.get("style") == "guarda-corpo":
+                    continue
+                wall_horizontal = wall["maxX"] - wall["minX"] > wall["maxZ"] - wall["minZ"]
+                wall_across = (wall["minZ"] + wall["maxZ"]) / 2 if horizontal else (wall["minX"] + wall["maxX"]) / 2
+                if wall_horizontal != horizontal or abs(wall_across - across) > 0.08:
+                    continue
+                left = max(start, wall["minX"] if horizontal else wall["minZ"])
+                right = min(end, wall["maxX"] if horizontal else wall["maxZ"])
+                if right - left < 0.2:
+                    continue
+                center = (left + right) / 2
+                x, z = (center, across + inward * 0.21) if horizontal else (across + inward * 0.21, center)
+                panel_size = (right - left, 0.05, 0.77) if horizontal else (0.05, right - left, 0.77)
+                cap_size = (right - left, 0.065, 0.025) if horizontal else (0.065, right - left, 0.025)
+                box(target, f"Interior wall wainscot · {room['id']}", panel_size, world_location(x, z, base + 0.635), MAT[finish], bevel=0.008)
+                box(target, f"Interior wall oak cap · {room['id']}", cap_size, world_location(x, z, base + 1.0325), MAT["oak_light"], bevel=0.008)
+
+    for level, room_id, finish in ((0, "hall-central", "plaster_clay"), (1, "hall-superior", "plaster_sage")):
+        for legacy_x in (31.2, 42.5):
+            x, z = layout_point(game_map, legacy_x, 17)
+            box(target, f"Interior wall gallery backing · {room_id}", (4.15, 0.025, 2.7), world_location(x, z + 0.19, level * FLOOR_HEIGHT + 1.88), MAT[finish], bevel=0.012)
+            for side in (-1, 1):
+                for index in range(3):
+                    slat_x = x + side * (1.88 + index * 0.075)
+                    box(target, f"Interior wall gallery slat · {room_id}", (0.045, 0.055, 2.7), world_location(slat_x, z + 0.215, level * FLOOR_HEIGHT + 1.88), MAT["oak_light"], bevel=0.01)
 
 
 def add_feature_walls(target: bpy.types.Collection, game_map: dict) -> None:
@@ -555,7 +810,7 @@ def add_feature_walls(target: bpy.types.Collection, game_map: dict) -> None:
             for index in range(count):
                 x = center_x - width / 2 + (index + 0.5) * width / count
                 slats.append((x, -wall_z - 0.045, base + 1.72, 0.055, 0.045, 2.45))
-            mesh_boxes(target, f"Walnut vertical slats · {room_id}", slats, MAT["brass"])
+            mesh_boxes(target, f"Walnut vertical slats · {room_id}", slats, MAT["oak_light"])
         else:
             panels: list[tuple[float, float, float, float, float, float]] = []
             panel_w = width / 5 - 0.08
@@ -665,7 +920,11 @@ def add_stairs(target: bpy.types.Collection, game_map: dict) -> None:
                     distance = rail_start + span * post_index / (post_count - 1)
                     point = flight_start + direction * distance + side * (STAIR_RAIL_OFFSET * sign)
                     surface = base + rise * (climbed + distance) / climb_length
-                    stair_posts.append((point.x, point.y, surface + 0.46, 0.045, 0.045, 0.84))
+                    run = length / counts[segment_index]
+                    tread_index = min(counts[segment_index] - 1, math.floor(distance / run))
+                    bottom = base + rise * (climbed + (tread_index + 1) * run) / climb_length - 0.01
+                    top = surface + 0.9
+                    stair_posts.append((point.x, point.y, (bottom + top) / 2, 0.045, 0.045, top - bottom))
             climbed += length
 
         if len(points) == 3:
@@ -679,7 +938,7 @@ def add_stairs(target: bpy.types.Collection, game_map: dict) -> None:
             for point in (first_outer, corner, second_outer):
                 point.z = turn_height
             tube(target, f"Stair outer landing rail {stair['id']}", [tuple(first_outer), tuple(corner), tuple(second_outer)], 0.045, MAT["structure"])
-            stair_posts.append((corner.x, corner.y, landing_surface + 0.46, 0.045, 0.045, 0.84))
+            stair_posts.append((corner.x, corner.y, landing_surface + 0.445, 0.045, 0.045, 0.91))
 
             first_inner = turn - directions[0] * landing_half + sides[0] * (STAIR_RAIL_OFFSET * inside_sign)
             inner_join = turn + (sides[0] + sides[1]) * (STAIR_RAIL_OFFSET * inside_sign)
@@ -708,7 +967,7 @@ def add_stairs(target: bpy.types.Collection, game_map: dict) -> None:
                 post_count = max(2, math.ceil(guard_length / 1.05) + 1)
                 for post_index in range(post_count):
                     point = guard_start + horizontal * (guard_length * post_index / (post_count - 1))
-                    upper_posts.append((point.x, point.y, upper_base + 0.53, 0.045, 0.045, 0.98))
+                    upper_posts.append((point.x, point.y, upper_base + 0.505, 0.045, 0.045, 1.03))
 
             start_left = opening_start + sides[0] * STAIR_OPENING_HALF_WIDTH
             start_right = opening_start - sides[0] * STAIR_OPENING_HALF_WIDTH
@@ -717,21 +976,15 @@ def add_stairs(target: bpy.types.Collection, game_map: dict) -> None:
             tube(target, f"Upper stair end guard {stair['id']}", [tuple(start_left), tuple(start_right)], 0.045, MAT["structure"])
             for sign in (-1, 0, 1):
                 point = opening_start + sides[0] * (STAIR_OPENING_HALF_WIDTH * sign)
-                upper_posts.append((point.x, point.y, upper_base + 0.53, 0.045, 0.045, 0.98))
+                upper_posts.append((point.x, point.y, upper_base + 0.505, 0.045, 0.045, 1.03))
             stair_posts.extend(upper_posts)
 
-        mesh_boxes(target, f"Stair rail posts {stair['id']}", stair_posts, MAT["structure"])
+        unique_posts = {tuple(round(value, 6) for value in post): post for post in stair_posts}
+        mesh_boxes(target, f"Stair rail posts {stair['id']}", list(unique_posts.values()), MAT["structure"])
 
 
 def add_room_details(target: bpy.types.Collection, game_map: dict) -> None:
     by_id = {room["id"]: room for room in game_map["rooms"]}
-    garage = by_id["garagem"]["rect"]
-    base = 0.055
-    cars = [prop for prop in game_map["props"] if prop["kind"] in ("car", "sportCar")]
-    for car in cars:
-        box(target, "Garage parking side", (0.055, 6.0, 0.018), world_location(car["x"] - 1.35, car["z"], base), MAT["white"])
-        box(target, "Garage parking side", (0.055, 6.0, 0.018), world_location(car["x"] + 1.35, car["z"], base), MAT["white"])
-        box(target, "Garage parking stop", (2.75, 0.055, 0.018), world_location(car["x"], garage["z"] + 1.2, base), MAT["white"])
     _, scale_z = layout_scales(game_map)
     for x in (5.5, 10.5, 15.5):
         mapped_x, mapped_z = layout_point(game_map, x, 10)
@@ -740,21 +993,33 @@ def add_room_details(target: bpy.types.Collection, game_map: dict) -> None:
         mapped_x, mapped_z = layout_point(game_map, x, 10)
         box(target, "Operations cable guide", (0.035, 10.2 * scale_z, 0.014), world_location(mapped_x, mapped_z, FLOOR_HEIGHT + 0.06), MAT["cyan"])
 
-    # Banheiro completo: duas cabines, portas elevadas, divisórias e acessórios.
-    # As louças e a bancada são móveis Blender independentes; aqui fica a
-    # arquitetura que pertence ao cômodo.
-    for x in (56.75, 60.35, 64.0):
-        mapped_x, mapped_z = layout_point(game_map, x, 42.55)
-        box(target, "Bathroom privacy partition", (0.075, 3.25, 1.86), world_location(mapped_x, mapped_z, 0.99), MAT["structure"], bevel=0.035)
-    for x in (58.55, 62.18):
-        door_x, door_z = layout_point(game_map, x, 40.96)
-        light_x, light_z = layout_point(game_map, x, 40.90)
-        box(target, "Bathroom floating stall door", (1.18, 0.075, 1.54), world_location(door_x, door_z, 1.05), MAT["glass"], bevel=0.055)
-        cylinder(target, "Bathroom occupancy light", 0.035, 0.03, world_location(light_x, light_z, 1.5), MAT["cyan"], vertices=18, bevel=0.006)
+    # Cabines fechadas: a mesma frente e as três laterais têm colisão na planta.
+    bathroom = by_id["banheiro"]["rect"]
+    _, front_z = layout_point(game_map, 0, 40.50)
+    back_z = bathroom["z"] + bathroom["d"] - 0.15
+    partitions = [layout_point(game_map, x, 0)[0] for x in (56.75, 60.35, 64.0)]
+    for x in partitions:
+        box(target, "Bathroom privacy partition", (0.085, back_z - front_z + 0.045, 2.22), world_location(x, (front_z - 0.045 + back_z) / 2, 1.21), MAT["white"], bevel=0.008)
+        box(target, "Bathroom cubicle frame upright", (0.065, 0.12, 2.34), world_location(x, front_z, 1.17), MAT["structure"], bevel=0.008)
+    for index, legacy_x in enumerate((58.55, 62.18)):
+        door_x, _ = layout_point(game_map, legacy_x, 0)
+        left, right = partitions[index], partitions[index + 1]
+        opening_left, opening_right = door_x - 0.522, door_x + 0.522
+        for start, end in ((left, opening_left), (opening_right, right)):
+            box(target, "Bathroom fixed front panel", (end - start, 0.085, 2.22), world_location((start + end) / 2, front_z, 1.21), MAT["plaster_sage"], bevel=0.006)
+        box(target, "Bathroom cubicle frame header", (right - left + 0.065, 0.12, 0.08), world_location((left + right) / 2, front_z, 2.30), MAT["structure"], bevel=0.008)
+        box(target, "Bathroom closed stall door", (1.02, 0.085, 2.14), world_location(door_x, front_z, 1.19), MAT["walnut"], bevel=0.006)
+        for side_x in (opening_left - 0.012, opening_right + 0.012):
+            box(target, "Bathroom cubicle door jamb", (0.035, 0.105, 2.22), world_location(side_x, front_z, 1.21), MAT["structure"], bevel=0.005)
+        for height in (0.42, 1.91):
+            box(target, "Bathroom door hinge", (0.085, 0.045, 0.13), world_location(opening_left + 0.015, front_z - 0.048, height), MAT["brass"], bevel=0.01)
+        box(target, "Bathroom lock plate", (0.12, 0.025, 0.24), world_location(door_x + 0.36, front_z - 0.052, 1.10), MAT["structure"], bevel=0.012)
+        box(target, "Bathroom door handle", (0.16, 0.055, 0.035), world_location(door_x + 0.315, front_z - 0.085, 1.10), MAT["brass"], bevel=0.012)
+        box(target, "Bathroom occupancy marker", (0.042, 0.012, 0.042), world_location(door_x + 0.36, front_z - 0.071, 1.17), MAT["plaster_clay"], bevel=0.008)
     for index, x in enumerate((66.5, 67.05, 67.6)):
-        mapped_x, mapped_z = layout_point(game_map, x, 44.74)
+        mapped_x, mapped_z = wall_mounted_point(game_map, x, 44.74, 0, vertical_wall=False, inward_sign=-1, surface_offset=0.018)
         box(target, "Folded hand towel", (0.38, 0.055, 0.58), world_location(mapped_x, mapped_z, 1.55), MAT[("white", "acoustic_teal", "white")[index]], bevel=0.035)
-    dryer_x, dryer_z = layout_point(game_map, 65.5, 44.67)
+    dryer_x, dryer_z = wall_mounted_point(game_map, 65.5, 44.67, 0, vertical_wall=False, inward_sign=-1, surface_offset=0.077)
     box(target, "Touchless hand dryer", (0.5, 0.22, 0.62), world_location(dryer_x, dryer_z, 1.5), MAT["white"], bevel=0.12)
 
     emergency = game_map["emergency"]
@@ -805,50 +1070,144 @@ def wall_art(
     *,
     vertical_wall: bool,
     inward_sign: int,
+    variant: str,
 ) -> None:
-    width, height = 2.8, 1.45
-    if vertical_wall:
-        frame_size = (0.075, width + 0.18, height + 0.18)
-        canvas_size = (0.045, width, height)
-        front_x = x + 0.065 * inward_sign
-        box(target, f"Artwork frame · {name}", frame_size, world_location(x, z, base + 2.05), MAT["structure"], bevel=0.035)
-        box(target, f"Artwork canvas · {name}", canvas_size, world_location(front_x, z, base + 2.05), MAT["wall_soft"], bevel=0.025)
-        for index, finish in enumerate((MAT["art_coral"], MAT["art_gold"], MAT["art_violet"], MAT["acoustic_teal"])):
-            offset = -0.86 + index * 0.57
-            height_piece = 0.76 + (index % 2) * 0.32
-            box(target, f"Artwork composition · {name}", (0.035, 0.38, height_piece), world_location(front_x + 0.03 * inward_sign, z + offset, base + 2.02 + (index % 2) * 0.08), finish, bevel=0.08, rotation=(0, math.radians(8 - index * 5), 0))
+    origin = Vector(world_location(x, z, base + 2.05))
+    tangent = Vector((0, inward_sign, 0) if vertical_wall else (inward_sign, 0, 0))
+    normal = Vector((inward_sign, 0, 0) if vertical_wall else (0, -inward_sign, 0))
+    up = Vector((0, 0, 1))
+    media = variant == "media"
+    width, height = (3.4, 1.9125) if media else (2.8, 1.45)
+
+    def point(u: float, v: float, depth: float) -> tuple[float, float, float]:
+        return tuple(origin + tangent * u + up * v + normal * depth)
+
+    def slab(label: str, u: float, v: float, w: float, h: float, depth: float, thickness: float, finish: str) -> None:
+        size = (thickness, w, h) if vertical_wall else (w, thickness, h)
+        box(target, f"{label} · {name}", size, point(u, v, depth), MAT[finish], bevel=0.012)
+
+    def relief(label: str, coordinates: list[tuple[float, float]], finish: str, depth: float = 0.074) -> None:
+        if sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(coordinates, coordinates[1:] + coordinates[:1])) < 0:
+            coordinates = list(reversed(coordinates))
+        count = len(coordinates)
+        vertices = [point(u, v, offset) for offset in (0.065, depth + 0.009) for u, v in coordinates]
+        faces = [tuple(reversed(range(count))), tuple(range(count, count * 2))]
+        faces.extend((index, (index + 1) % count, (index + 1) % count + count, index + count) for index in range(count))
+        mesh = bpy.data.meshes.new(f"Artwork relief · {name} · {label}")
+        mesh.from_pydata(vertices, [], faces)
+        mesh.materials.append(MAT[finish])
+        obj = bpy.data.objects.new(mesh.name, mesh)
+        target.objects.link(obj)
+
+    def disc(label: str, u: float, v: float, radius: float, finish: str, depth: float = 0.074) -> None:
+        relief(label, [(u + math.cos(index * math.tau / 32) * radius, v + math.sin(index * math.tau / 32) * radius) for index in range(32)], finish, depth)
+
+    def stroke(label: str, coordinates: list[tuple[float, float]], finish: str, radius: float = 0.017) -> None:
+        tube(target, f"Artwork relief · {name} · {label}", [point(u, v, 0.075) for u, v in coordinates], radius, MAT[finish])
+
+    if media:
+        if name == "Lounge media wall":
+            slab("Wall television timber backing", 0, -0.17, 4.15, 2.7, 0.01, 0.03, "oak_light")
+            for side in (-1, 1):
+                for index in range(3):
+                    slab("Wall television timber edge slat", side * (1.84 + index * 0.075), -0.17, 0.045, 2.7, 0.025, 0.035, "walnut")
+        slab("Wall television wall bracket", 0, 0, 1.25, 0.66, -0.065, 0.12, "structure")
+        slab("Wall television chassis", 0, 0, width, height, 0, 0.10, "structure")
+        slab("Wall television display", 0, 0, width - 0.12, height - 0.12, 0.057, 0.022, "tv_screen")
+        relief("night landscape distant ridge", [(-1.54, -0.48), (1.54, -0.48), (1.54, -0.02), (0.94, 0.33), (0.34, -0.1), (-0.32, 0.53), (-0.95, 0.13), (-1.54, 0.28)], "acoustic_blue", 0.076)
+        relief("night landscape foreground", [(-1.54, -0.65), (1.54, -0.65), (1.54, -0.35), (0.79, -0.19), (0.08, -0.31), (-0.62, -0.04), (-1.54, -0.35)], "acoustic_teal", 0.093)
+        disc("standby sun", 0.84, 0.46, 0.16, "art_gold", 0.077)
+        slab("Wall television media progress", 0, -0.77, 2.65, 0.014, 0.077, 0.018, "white")
+        slab("Wall television soundbar", 0, -1.14, 1.94, 0.12, -0.015, 0.17, "structure")
+        slab("Wall television soundbar grille", 0, -1.14, 1.73, 0.052, 0.072, 0.017, "glass")
+        return
+
+    if variant == "diptych":
+        for index, u in enumerate((-0.76, 0.76)):
+            slab("Artwork frame", u, 0, 1.38, height + 0.18, 0, 0.08, "walnut")
+            slab("Artwork canvas", u, 0, 1.22, height, 0.052, 0.03, "wall_soft")
+            disc("paired sun", u + (-0.12 if index == 0 else 0.12), 0.23, 0.29, "art_gold" if index == 0 else "art_coral")
+            for stripe in range(4):
+                v = -0.5 + stripe * 0.115
+                stroke("paired contour", [(u - 0.51, v), (u - 0.2, v + 0.12), (u + 0.19, v + 0.08), (u + 0.51, v + 0.2)], "acoustic_blue" if index == 0 else "acoustic_teal", 0.018)
+        return
+
+    slab("Artwork frame", 0, 0, width + 0.18, height + 0.18, 0, 0.08, "walnut" if variant in ("landscape", "botanical") else "structure")
+    slab("Artwork canvas", 0, 0, width, height, 0.052, 0.03, "wall_soft")
+    if variant in ("landscape", "dusk"):
+        dusk = variant == "dusk"
+        disc("sun", 0.66 if dusk else -0.64, 0.28, 0.29, "art_coral" if dusk else "art_gold")
+        relief("mountain silhouette", [(-1.28, -0.57), (1.28, -0.57), (1.28, -0.1), (0.7, 0.13), (0.09, -0.15), (-0.53, 0.07), (-1.28, -0.22)], "art_violet" if dusk else "acoustic_blue")
+        relief("foreground ridge", [(-1.28, -0.63), (1.28, -0.63), (1.28, -0.29), (0.66, -0.42), (-0.1, -0.25), (-0.72, -0.4), (-1.28, -0.32)], "art_coral" if dusk else "acoustic_teal", 0.09)
+        stroke("horizon", [(-1.15, -0.51), (-0.3, -0.49), (0.25, -0.54), (1.12, -0.49)], "art_gold", 0.011)
+    elif variant == "botanical":
+        for branch, center in enumerate((-0.7, 0.14, 0.82)):
+            lean = 0.13 if branch % 2 else -0.11
+            stroke("stem", [(center, -0.59), (center + lean, -0.1), (center + lean * 1.5, 0.51)], "walnut", 0.019)
+            for leaf in range(4):
+                v = -0.34 + leaf * 0.21
+                direction = -1 if leaf % 2 else 1
+                u = center + lean * (leaf + 1) / 3
+                relief("leaf", [(u, v), (u + direction * 0.24, v + 0.24), (u + direction * 0.38, v + 0.15), (u + direction * 0.2, v - 0.015)], "acoustic_teal" if (leaf + branch) % 2 else "landscape", 0.083)
+    elif variant == "orbits":
+        disc("ochre orbit", -0.57, 0.04, 0.49, "art_gold")
+        disc("orbit opening", -0.57, 0.04, 0.35, "wall_soft", 0.091)
+        disc("violet planet", 0.58, 0.24, 0.31, "art_violet")
+        disc("coral satellite", 0.94, -0.39, 0.14, "art_coral")
+        stroke("orbital sweep", [(-1.22, -0.45), (-0.63, -0.2), (0.02, 0.01), (0.61, -0.05), (1.19, 0.19)], "acoustic_blue", 0.026)
+    elif variant == "linework":
+        for index in range(5):
+            u = -1.05 + index * 0.42
+            stroke("architectural contour", [(u, -0.5), (u, 0.2 + index * 0.07), (u + 0.3, 0.2 + index * 0.07), (u + 0.3, -0.27)], "acoustic_blue", 0.018)
+        disc("plan focus", 0.66, -0.3, 0.23, "art_coral", 0.091)
+        stroke("plan datum", [(-1.21, -0.55), (1.16, -0.55)], "art_gold", 0.025)
     else:
-        frame_size = (width + 0.18, 0.075, height + 0.18)
-        canvas_size = (width, 0.045, height)
-        front_z = z + 0.065 * inward_sign
-        box(target, f"Artwork frame · {name}", frame_size, world_location(x, z, base + 2.05), MAT["structure"], bevel=0.035)
-        box(target, f"Artwork canvas · {name}", canvas_size, world_location(x, front_z, base + 2.05), MAT["wall_soft"], bevel=0.025)
-        for index, finish in enumerate((MAT["art_coral"], MAT["art_gold"], MAT["art_violet"], MAT["acoustic_teal"])):
-            offset = -0.86 + index * 0.57
-            height_piece = 0.76 + (index % 2) * 0.32
-            box(target, f"Artwork composition · {name}", (0.38, 0.035, height_piece), world_location(x + offset, front_z + 0.03 * inward_sign, base + 2.02 + (index % 2) * 0.08), finish, bevel=0.08, rotation=(0, 0, math.radians(8 - index * 5)))
+        raise ValueError(f"Unknown artwork variant: {variant}")
 
 
 def add_modern_decor(target: bpy.types.Collection, game_map: dict) -> None:
-    def mapped_art(name: str, x: float, z: float, base: float, *, vertical_wall: bool, inward_sign: int) -> None:
-        mapped_x, mapped_z = layout_point(game_map, x, z)
-        wall_art(target, name, mapped_x, mapped_z, base, vertical_wall=vertical_wall, inward_sign=inward_sign)
+    def mapped_art(name: str, x: float, z: float, base: float, *, vertical_wall: bool, inward_sign: int, variant: str) -> None:
+        mapped_x, mapped_z = wall_mounted_point(game_map, x, z, round(base / FLOOR_HEIGHT), vertical_wall=vertical_wall, inward_sign=inward_sign)
+        width = 4.15 if variant == "media" else 2.98
+        for entry in unique_doors(game_map):
+            if entry["horizontal"] == vertical_wall or entry["room"].get("level", 0) != round(base / FLOOR_HEIGHT):
+                continue
+            across = mapped_x if vertical_wall else mapped_z
+            door_across = entry["x"] if vertical_wall else entry["z"]
+            along = mapped_z if vertical_wall else mapped_x
+            door_along = entry["z"] if vertical_wall else entry["x"]
+            if abs(across - door_across) < 0.35 and abs(along - door_along) < (width + entry["door"]["width"]) / 2 + 0.1:
+                raise ValueError(f"{name} overlaps a doorway")
+        wall_art(target, name, mapped_x, mapped_z, base, vertical_wall=vertical_wall, inward_sign=inward_sign, variant=variant)
 
-    mapped_art("Reception gallery", 3.23, 26, 0, vertical_wall=True, inward_sign=1)
-    mapped_art("Meeting room gallery", 70.77, 10.5, 0, vertical_wall=True, inward_sign=-1)
-    mapped_art("Lounge gallery", 3.23, 27.5, FLOOR_HEIGHT, vertical_wall=True, inward_sign=1)
-    mapped_art("Executive gallery", 70.77, 11.5, FLOOR_HEIGHT, vertical_wall=True, inward_sign=-1)
-    mapped_art("Council gallery", 18.77, 45, FLOOR_HEIGHT, vertical_wall=True, inward_sign=-1)
-    mapped_art("Atrium gallery west", 31.5, 17.23, 0, vertical_wall=False, inward_sign=1)
-    mapped_art("Atrium gallery east", 42.5, 17.23, 0, vertical_wall=False, inward_sign=1)
-    mapped_art("Mezzanine gallery west", 31.5, 17.23, FLOOR_HEIGHT, vertical_wall=False, inward_sign=1)
-    mapped_art("Mezzanine gallery east", 42.5, 17.23, FLOOR_HEIGHT, vertical_wall=False, inward_sign=1)
+    mapped_art("Reception gallery", 3.23, 26, 0, vertical_wall=True, inward_sign=1, variant="landscape")
+    mapped_art("Meeting room gallery", 70.77, 10.5, 0, vertical_wall=True, inward_sign=-1, variant="orbits")
+    mapped_art("Lounge gallery", 3.23, 27.5, FLOOR_HEIGHT, vertical_wall=True, inward_sign=1, variant="botanical")
+    mapped_art("Executive gallery", 70.77, 11.5, FLOOR_HEIGHT, vertical_wall=True, inward_sign=-1, variant="diptych")
+    mapped_art("Council gallery", 18.77, 45, FLOOR_HEIGHT, vertical_wall=True, inward_sign=-1, variant="linework")
+    mapped_art("Atrium gallery west", 31.5, 17.23, 0, vertical_wall=False, inward_sign=1, variant="dusk")
+    mapped_art("Atrium gallery east", 42.5, 17.23, 0, vertical_wall=False, inward_sign=1, variant="diptych")
+    mapped_art("Mezzanine gallery east", 42.5, 17.23, FLOOR_HEIGHT, vertical_wall=False, inward_sign=1, variant="orbits")
+    mapped_art("Lounge media wall", 10.5, 34.77, FLOOR_HEIGHT, vertical_wall=False, inward_sign=-1, variant="media")
+    mapped_art("Mezzanine media wall", 31.2, 17.23, FLOOR_HEIGHT, vertical_wall=False, inward_sign=1, variant="media")
+    for name, x, z, level, inward, variant in (
+        ("West corridor gallery", 19.23, 20.5, 0, 1, "botanical"),
+        ("West corridor south gallery", 26.77, 35.0, 0, -1, "orbits"),
+        ("East corridor gallery", 47.23, 22.0, 0, 1, "linework"),
+        ("East corridor south gallery", 54.77, 32.5, 0, -1, "dusk"),
+        ("Upper west corridor north gallery", 19.23, 20.5, 1, 1, "linework"),
+        ("Upper west corridor gallery", 26.77, 35.0, 1, -1, "dusk"),
+        ("Upper east corridor gallery", 47.23, 22.0, 1, 1, "orbits"),
+        ("Upper east corridor south gallery", 47.23, 35.0, 1, 1, "botanical"),
+        ("Service corridor gallery", 47.23, 46.0, 0, 1, "landscape"),
+    ):
+        mapped_art(name, x, z, level * FLOOR_HEIGHT, vertical_wall=True, inward_sign=inward, variant=variant)
 
     for room_name, x, z, level in (
         ("Data core telemetry", 13, 16.77, 0),
         ("Operations command wall", 29.5, 16.77, 1),
     ):
-        x, z = layout_point(game_map, x, z)
+        x, z = wall_mounted_point(game_map, x, z, level, vertical_wall=False, inward_sign=-1)
         base = level * FLOOR_HEIGHT
         for entry in unique_doors(game_map):
             if entry["horizontal"] and entry["room"].get("level", 0) == level and abs(entry["z"] - z) < 0.3:
@@ -865,11 +1224,15 @@ def add_modern_decor(target: bpy.types.Collection, game_map: dict) -> None:
     for level in (0, 1):
         base = level * FLOOR_HEIGHT
         for z in (20.5, 37.5):
-            west_x, mapped_z = layout_point(game_map, 28.0, z)
-            east_x, _ = layout_point(game_map, 46.0, z)
-            box(target, "Atrium vertical LED", (0.055, 0.055, 2.2), world_location(west_x, mapped_z, base + 1.75), MAT["cyan"], bevel=0.02)
-            if z < 30:
-                box(target, "Atrium vertical LED", (0.055, 0.055, 2.2), world_location(east_x, mapped_z, base + 1.75), MAT["amber"], bevel=0.02)
+            hall = next(room for room in game_map["rooms"] if room["id"] == ("hall-central" if level == 0 else "hall-superior"))
+            _, mapped_z = layout_point(game_map, 27.0, z)
+            for side, inward, finish in (("west", 1, "cyan"), ("east", -1, "amber")):
+                if side == "east" and z > 30:
+                    continue
+                wall_x = hall["rect"]["x"] + (hall["rect"]["w"] if side == "east" else 0)
+                housing_x = wall_x + inward * 0.22
+                box(target, "Atrium wall-mounted LED housing", (0.065, 0.095, 2.26), world_location(housing_x, mapped_z, base + 1.75), MAT["structure"], bevel=0.012)
+                box(target, "Atrium recessed LED diffuser", (0.016, 0.045, 2.18), world_location(housing_x + inward * 0.032, mapped_z, base + 1.75), MAT[finish], bevel=0.006)
 
     _, scale_z = layout_scales(game_map)
     for x in (5.5, 9.5, 13.5, 17.5, 21.0):
@@ -892,8 +1255,7 @@ def add_modern_decor(target: bpy.types.Collection, game_map: dict) -> None:
     for x in (57.25, 68.75):
         mapped_x, mapped_z = layout_point(game_map, x, 37)
         box(target, "Terrace pergola side beam", (0.16, 10.14 * scale_z, 0.18), world_location(mapped_x, mapped_z, pergola_top), MAT["structure"], bevel=0.026)
-        led_x = mapped_x + (0.085 if x < 63 else -0.085)
-        box(target, "Terrace integrated LED", (0.024, 9.72 * scale_z, 0.024), world_location(led_x, mapped_z, pergola_top - 0.115), MAT["amber"], bevel=0.008)
+        box(target, "Terrace integrated LED", (0.024, 9.72 * scale_z, 0.024), world_location(mapped_x, mapped_z, pergola_top - 0.096), MAT["amber"], bevel=0.008)
     mapped_x, mapped_z = layout_point(game_map, 63, 37)
     box(target, "Terrace pergola center spine", (0.1, 9.86 * scale_z, 0.12), world_location(mapped_x, mapped_z, pergola_top + 0.015), MAT["structure"], bevel=0.02)
     for index in range(12):
@@ -905,26 +1267,60 @@ def add_modern_decor(target: bpy.types.Collection, game_map: dict) -> None:
         box(target, "Terrace mineral planter", (sx, sz, 0.48), world_location(mapped_x, mapped_z, terrace_base + 0.24), MAT["terrazzo"], bevel=0.12)
         box(target, "Terrace planter shadow gap", (sx + 0.04, sz + 0.04, 0.055), world_location(mapped_x, mapped_z, terrace_base + 0.05), MAT["structure"], bevel=0.025)
 
-    # Um skyline geométrico muito leve fecha a vista externa sem fotografia ou
-    # textura grande. Tudo se une por material na exportação.
-    legacy_towers = (
-        (80.0, 13.0, 6.5, 9.0, 12.0),
-        (87.5, 27.0, 7.0, 8.0, 17.0),
-        (79.0, 43.0, 5.5, 7.5, 11.0),
-        (91.0, 53.0, 8.5, 9.0, 20.0),
+    add_exterior_landscape(target, game_map)
+
+
+def add_exterior_landscape(target: bpy.types.Collection, game_map: dict) -> None:
+    rooms = [room["rect"] for room in game_map["rooms"] if room.get("level", 0) == 0]
+    min_x, max_x = min(rect["x"] for rect in rooms), max(rect["x"] + rect["w"] for rect in rooms)
+    min_z, max_z = min(rect["z"] for rect in rooms), max(rect["z"] + rect["d"] for rect in rooms)
+    center_x, center_z = (min_x + max_x) / 2, (min_z + max_z) / 2
+    ground = -0.55
+    box(target, "Exterior continuous park ground", (260, 260, 0.18), world_location(center_x, center_z, ground - 0.09), MAT["landscape"])
+    foundations = [(rect["x"] + rect["w"] / 2, -(rect["z"] + rect["d"] / 2), (ground - 0.16) / 2, rect["w"] + 0.4, rect["d"] + 0.4, -0.16 - ground) for rect in rooms]
+    mesh_boxes(target, "Office foundations continuous down to ground", foundations, MAT["concrete"])
+    paths = [
+        (center_x, -(min_z - 2.2), ground + 0.035, max_x - min_x + 8, 3.6, 0.07),
+        (center_x, -(max_z + 2.2), ground + 0.035, max_x - min_x + 8, 3.6, 0.07),
+        (min_x - 2.2, -center_z, ground + 0.035, 3.6, max_z - min_z, 0.07),
+        (max_x + 2.2, -center_z, ground + 0.035, 3.6, max_z - min_z, 0.07),
+    ]
+    mesh_boxes(target, "Exterior perimeter footpaths", paths, MAT["terrazzo"])
+    road_x = max_x + 17
+    box(target, "Grounded neighborhood road", (7.2, 170, 0.035), world_location(road_x, center_z, ground + 0.018), MAT["concrete"])
+    mesh_boxes(target, "Road lane markings", [(road_x, -(center_z - 76 + index * 7), ground + 0.042, 0.07, 2.8, 0.01) for index in range(23)], MAT["white"])
+
+    tree_positions = [(min_x - 8.5, z) for z in (min_z - 6, min_z + 10, center_z + 5, max_z + 7)]
+    tree_positions += [(max_x + 8.5, z) for z in (min_z - 7, min_z + 8, center_z + 6, max_z + 8)]
+    tree_positions += [(x, z) for x in (center_x - 13, center_x + 10) for z in (min_z - 12, max_z + 12)]
+    for index, (x, z) in enumerate(tree_positions):
+        height = 3.8 + (index % 3) * 0.4
+        cylinder(target, "Landscape tree trunk", 0.13, height * 0.7, world_location(x, z, ground + height * 0.35), MAT["walnut"], vertices=8)
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=1, location=world_location(x, z, ground + height * 0.77))
+        crown = move_to(bpy.context.object, target)
+        crown.name = "Landscape tree canopy"
+        crown.scale = (1.65, 1.65, height * 0.42)
+        crown.data.materials.append(MAT["landscape"])
+
+    homes = (
+        (max_x + 37, center_z - 25, 9, 12, 5.5),
+        (max_x + 42, center_z + 9, 11, 14, 6.4),
+        (max_x + 34, max_z + 24, 10, 9, 4.5),
+        (center_x - 18, min_z - 43, 14, 11, 5.2),
+        (min_x - 38, center_z + 15, 11, 14, 5.8),
     )
-    towers = tuple(
-        (*layout_point(game_map, x, z), width, depth, height)
-        for x, z, width, depth, height in legacy_towers
-    )
-    tower_boxes = [(x, -z, height / 2, width, depth, height) for x, z, width, depth, height in towers]
-    mesh_boxes(target, "Exterior skyline masses", tower_boxes, MAT["structure"])
-    windows: list[tuple[float, float, float, float, float, float]] = []
-    for tower_index, (x, z, width, _depth, height) in enumerate(towers):
-        for floor in range(2, int(height), 2):
-            for column in (-0.28, 0, 0.28):
-                windows.append((x - width / 2 - 0.025, -z + column * width, floor, 0.035, 0.42, 0.22))
-    mesh_boxes(target, "Exterior skyline windows", windows, MAT["cyan"])
+    mesh_boxes(target, "Distant grounded neighborhood buildings", [(x, -z, ground + height / 2, width, depth, height) for x, z, width, depth, height in homes], MAT["distant_facade"])
+    mesh_boxes(target, "Distant neighborhood roof caps", [(x, -z, ground + height + 0.12, width + 0.3, depth + 0.3, 0.24) for x, z, width, depth, height in homes], MAT["structure"])
+    windows = []
+    for index, (x, z, width, depth, height) in enumerate(homes):
+        for floor in (1.45, 3.7):
+            if floor + 0.55 > height:
+                continue
+            for column in (-0.27, 0, 0.27):
+                windows.append((x - width / 2 - 0.012, -z + column * depth, ground + floor, 0.02, 0.9, 1.0))
+                if index > 2:
+                    windows.append((x + column * width, -z - depth / 2 - 0.012, ground + floor, 0.9, 0.02, 1.0))
+    mesh_boxes(target, "Distant warm neighborhood windows", windows, MAT["distant_window"])
 
 
 def add_vent_grilles(target: bpy.types.Collection, game_map: dict) -> None:
@@ -966,10 +1362,16 @@ def add_furniture(target: bpy.types.Collection, game_map: dict) -> None:
         sources = [(obj, obj.matrix_world.copy()) for obj in imported if obj.type == "MESH"]
         for placement in placements:
             level = placement.get("level", 0)
+            room_id = next((room["id"] for room in game_map["rooms"] if room.get("level", 0) == level and room["rect"]["x"] <= placement["x"] <= room["rect"]["x"] + room["rect"]["w"] and room["rect"]["z"] <= placement["z"] <= room["rect"]["z"] + room["rect"]["d"]), "")
+            sofa_palette = ("fabric_sage", "plaster_sage") if room_id == "hall-superior" else ("fabric_clay", "plaster_clay") if room_id in ("recepcao", "lounge") else None
             transform = Matrix.Translation((placement["x"], -placement["z"], level * FLOOR_HEIGHT + placement.get("y", 0))) @ Matrix.Rotation(placement.get("rot", 0), 4, "Z")
             for source, source_matrix in sources:
                 duplicate = source.copy()
                 duplicate.data = source.data
+                if kind == "sofa" and sofa_palette and source.data.materials and "fabric" in source.data.materials[0].name.lower():
+                    duplicate.data = source.data.copy()
+                    accent = "accent" in source.data.materials[0].name.lower()
+                    duplicate.data.materials[0] = MAT[sofa_palette[1 if accent else 0]]
                 duplicate.name = f"{kind} · {source.name}"
                 duplicate.matrix_world = transform @ source_matrix
                 duplicate["timbas_static_instance"] = True
@@ -1070,6 +1472,12 @@ def render_review_views(scene: bpy.types.Scene, game_map: dict) -> None:
         (STAIR_PREVIEW_PATH, (34.0, -30.5, 1.72), (43.2, -37.2, 2.45), (39.0, -34.0, 5.4)),
         (MEETING_PREVIEW_PATH, (61.0, -15.4, 1.72), (61.0, -9.5, 0.9), (61.0, -11.0, 3.0)),
         (BATHROOM_PREVIEW_PATH, (56.0, -36.2, 1.68), (64.0, -42.0, 1.1), (64.0, -39.0, 3.0)),
+        (PORTAL_PREVIEW_PATH, (23, -25, FLOOR_HEIGHT + 1.72), (27, -29, FLOOR_HEIGHT + 2.3), (23, -26, FLOOR_HEIGHT + 3)),
+        (TERRACE_PREVIEW_PATH, (69, -35, FLOOR_HEIGHT + 1.72), (86, -39, 2.0), (67, -35, FLOOR_HEIGHT + 3)),
+        (WINDOW_PREVIEW_PATH, (13, -27, FLOOR_HEIGHT + 1.72), (3, -28, FLOOR_HEIGHT + 1.8), (10, -27, FLOOR_HEIGHT + 3)),
+        (SUPPORT_PREVIEW_PATH, (17, -38, 1.72), (8, -47, 1.1), (11, -45, 3)),
+        (MEZZANINE_PREVIEW_PATH, (37, -29, FLOOR_HEIGHT + 1.72), (31.2, -17.23, FLOOR_HEIGHT + 2.05), (33, -24, FLOOR_HEIGHT + 3)),
+        (LOUNGE_MEDIA_PREVIEW_PATH, (16, -24, FLOOR_HEIGHT + 1.72), (10.5, -34.77, FLOOR_HEIGHT + 2.05), (12, -29, FLOOR_HEIGHT + 3)),
     )
     bpy.ops.object.light_add(type="POINT", location=(0, 0, 3))
     review_light = bpy.context.object
@@ -1087,6 +1495,26 @@ def render_review_views(scene: bpy.types.Scene, game_map: dict) -> None:
         bpy.ops.render.render(write_still=True)
 
 
+def validate_portals(game_map: dict) -> None:
+    bpy.context.view_layer.update()
+    scene = bpy.context.scene
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    for index, entry in enumerate(unique_doors(game_map)):
+        base = entry["room"].get("level", 0) * FLOOR_HEIGHT
+        direction = Vector((0, 1, 0) if entry["horizontal"] else (1, 0, 0))
+        for height in (0.8, 1.7, 2.35, 3.5, WALL_HEIGHT - 0.065):
+            center = Vector(world_location(entry["x"], entry["z"], base + height))
+            hit, _, _, _, obj, _ = scene.ray_cast(depsgraph, center - direction * 0.32, direction, distance=0.64)
+            if height < DOOR_HEIGHT:
+                if hit:
+                    raise ValueError(f"Portal {index} blocked at {height:.2f} m by {obj.name}")
+            elif not hit:
+                raise ValueError(f"Portal {index} has an open lintel at {height:.2f} m")
+            elif height > WALL_HEIGHT - 0.13 and not obj.name.startswith("Continuous portal ceiling trim"):
+                raise ValueError(f"Portal {index} has no continuous graphite ceiling trim")
+    print(f"VALIDATED: {len(unique_doors(game_map))} open portals, closed lintels and continuous ceiling trim")
+
+
 def main() -> None:
     clear_scene()
     create_materials()
@@ -1096,12 +1524,15 @@ def main() -> None:
     add_walls(building, game_map)
     add_doors(building, game_map)
     add_ceilings(building, game_map)
+    add_wall_finishes(building, game_map)
     add_feature_walls(building, game_map)
     add_stairs(building, game_map)
     add_room_details(building, game_map)
     add_modern_decor(building, game_map)
     add_vent_grilles(building, game_map)
     add_furniture(building, game_map)
+    validate_portals(game_map)
+    validate_exterior_windows(game_map)
     BLEND_PATH.parent.mkdir(parents=True, exist_ok=True)
     GLB_PATH.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
