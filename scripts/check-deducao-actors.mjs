@@ -6,7 +6,7 @@ import * as THREE from "three"
 
 const scenePath = "app/(game)/games/deducao/[roomId]/scene/office-scene.tsx"
 const source = ts.createSourceFile(scenePath, await readFile(scenePath, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-const names = ["STAIR_LANDING_SIZE", "stairSampleAt", "cloneCrewScene", "PlayerNameplate", "Actor", "Corpse"]
+const names = ["cloneCrewScene", "PlayerNameplate", "Actor", "Corpse"]
 const selected = source.statements.filter(statement => ts.isFunctionDeclaration(statement)
   ? names.includes(statement.name?.text)
   : ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => names.includes(declaration.name.text)))
@@ -16,6 +16,11 @@ const code = ts.transpileModule(selected.map(statement => printer.printNode(ts.E
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.React },
 }).outputText
 const map = JSON.parse(await readFile("assets/models/deducao/office-map.json", "utf8"))
+const movementModule = { exports: {} }
+vm.runInNewContext(ts.transpileModule(await readFile("app/(game)/games/deducao/[roomId]/scene/movement-geometry.ts", "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText, { module: movementModule, exports: movementModule.exports })
+const movement = movementModule.exports
 const model = new THREE.Group()
 for (const name of ["Crew Body Color", "Crew Accent Color", "Crew Dark Uniform", "Crew Visor", "Report Beacon"]) {
   const material = new THREE.MeshStandardMaterial({ color: "#aa8855", emissive: "#110a02", emissiveIntensity: 0.12 })
@@ -39,7 +44,7 @@ function harness() {
     useFrame(callback) { frame = callback },
   }
   vm.runInNewContext(code, {
-    module, exports: module.exports, THREE, ...hooks, FLOOR_HEIGHT: 4.2,
+    module, exports: module.exports, THREE, ...hooks, ...movement,
     CREW_MODEL: "crew", CORPSE_MODEL: "corpse", useGLTF: () => ({ scene: model }),
     patchVision(material) { cloneCalls++; return material },
     document: { createElement() { return { width: 0, height: 0, getContext() { return { measureText: text => ({ width: text.length * 29 }), fillText() {} } } } } },
@@ -49,7 +54,7 @@ function harness() {
     } },
   })
   return {
-    api: module.exports,
+    api: { ...movement, ...module.exports },
     render(name, props) { cursor = 0; return module.exports[name](props) },
     tick(count = 1) { for (let index = 0; index < count; index++) frame?.({}, 1 / 60) },
     get cloneCalls() { return cloneCalls },

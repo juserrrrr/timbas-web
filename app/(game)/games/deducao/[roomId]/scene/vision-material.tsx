@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from "react"
 import * as THREE from "three"
+import { officeLightDeclarations, officeLightFragment, officeLightUniforms } from "./light-grid"
 
 export const visionUniforms = {
   uBlackout: { value: 0 },
@@ -88,10 +89,16 @@ export function patchVision(material: THREE.Material, surface: Surface = "nenhum
 
         #include <tonemapping_fragment>`,
       )
+    if (material instanceof THREE.MeshStandardMaterial) {
+      Object.assign(shader.uniforms, officeLightUniforms)
+      shader.fragmentShader = shader.fragmentShader
+        .replace("void main() {", `${officeLightDeclarations}\nvoid main() {`)
+        .replace("#include <lights_fragment_end>", `${officeLightFragment}\n#include <lights_fragment_end>`)
+    }
   }
   // Materiais com onBeforeCompile diferente precisam de programas diferentes, e
   // o three só percebe isso pela chave de cache.
-  material.customProgramCacheKey = () => "timbas-vision-linear-v2"
+  material.customProgramCacheKey = () => "timbas-vision-clustered-lines-v3"
   return material
 }
 

@@ -41,10 +41,10 @@ export function ProceduralEnvironment({ quality, blackout, nightVision = false }
 }
 
 export function CinematicEffects({ blackout }: { blackout: boolean }) {
-  const { gl, scene, camera, size } = useThree()
+  const { gl, scene, camera, size, viewport } = useThree()
   const pipeline = useMemo(() => {
     const composer = new EffectComposer(gl)
-    const samples = Math.min(4, gl.capabilities.maxSamples)
+    const samples = Math.min(2, gl.capabilities.maxSamples)
     composer.renderTarget1.samples = samples
     composer.renderTarget2.samples = samples
     const render = new RenderPass(scene, camera)
@@ -57,9 +57,11 @@ export function CinematicEffects({ blackout }: { blackout: boolean }) {
   }, [camera, gl, scene])
 
   useEffect(() => {
-    pipeline.composer.setPixelRatio(Math.min(gl.getPixelRatio(), 1.25))
+    const ratio = Math.min(viewport.dpr, 1.25)
+    pipeline.composer.setPixelRatio(ratio)
     pipeline.composer.setSize(size.width, size.height)
-  }, [gl, pipeline, size.height, size.width])
+    pipeline.bloom.setSize(Math.ceil(size.width * ratio * 0.5), Math.ceil(size.height * ratio * 0.5))
+  }, [pipeline, size.height, size.width, viewport.dpr])
 
   useEffect(() => {
     pipeline.bloom.strength = blackout ? 0.035 : 0.025

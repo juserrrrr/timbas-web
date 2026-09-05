@@ -122,7 +122,7 @@ export function Hud({
       {/* O progresso do time fica visível sem cobrir a área de jogo. O painel
           escuro é o que segura o texto legível agora que o chão do escritório é
           claro. */}
-      <div className="absolute left-4 top-4 w-56 rounded-2xl border border-white/10 bg-black/45 p-3 backdrop-blur-sm sm:left-6 sm:top-6 sm:w-72">
+      <div className="absolute left-4 top-4 w-56 rounded-2xl border border-white/10 bg-black/65 p-3 sm:left-6 sm:top-6 sm:w-72">
         <div className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400">
           <span>Tarefas do time</span>
           <span className="text-amber-300">
@@ -210,13 +210,13 @@ export function Hud({
 
         {/* O mapa fica sempre à vista para orientar tanto cenários internos
             quanto casas, campos e áreas abertas geradas pelo criador. */}
-        <div className="hidden w-44 rounded-xl border border-white/10 bg-black/55 p-1.5 backdrop-blur-sm sm:block lg:w-56">
+        <div className="hidden w-44 rounded-xl border border-white/10 bg-black/70 p-1.5 sm:block lg:w-56">
           <Minimap map={map} spots={spots} role={role} poseRef={poseRef} level={mine?.level ?? 0} />
         </div>
       </div>
 
       {/* Lista de tarefas: o que falta e onde, sem abrir menu nenhum. */}
-      <div className="absolute bottom-24 left-4 w-56 rounded-2xl border border-white/10 bg-black/45 p-3 backdrop-blur-sm sm:bottom-6 sm:left-6 sm:w-64">
+      <div className="absolute bottom-24 left-4 w-56 rounded-2xl border border-white/10 bg-black/65 p-3 sm:bottom-6 sm:left-6 sm:w-64">
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400">Suas tarefas</p>
         <ul className="mt-2 space-y-1.5">
           {spots.length === 0 && <li className="text-[11px] text-emerald-300/80">Suas tarefas acabaram.</li>}
@@ -351,7 +351,7 @@ export function Hud({
       </fieldset>
 
       {mapOpen && (
-        <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm">
+        <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center bg-black/80 p-6">
           <div className="max-h-full w-full max-w-4xl overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950/80 p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-400">{map.name}</p>
@@ -383,7 +383,7 @@ export function Hud({
       )}
 
       {alive && (
-        <div className="absolute bottom-5 left-1/2 hidden w-[min(30rem,calc(100vw-36rem))] -translate-x-1/2 rounded-xl border border-white/15 bg-black/80 px-3 py-2.5 text-zinc-200 backdrop-blur-sm lg:block" aria-label="Controles do teclado">
+        <div className="absolute bottom-5 left-1/2 hidden w-[min(30rem,calc(100vw-36rem))] -translate-x-1/2 rounded-xl border border-white/15 bg-black/80 px-3 py-2.5 text-zinc-200 lg:block" aria-label="Controles do teclado">
           <div className="flex flex-wrap justify-center gap-x-3 gap-y-2">
             {KEYBOARD_HELP.map(({ keys, label }) => (
               <span key={keys} className="flex items-center gap-1.5 whitespace-nowrap text-[11px]">
@@ -399,12 +399,12 @@ export function Hud({
         {visibleNotices.map((notice) => (
           <p
             key={notice.id}
-            className={`rounded-xl border px-4 py-2.5 text-center text-[13px] font-semibold backdrop-blur ${
+            className={`rounded-xl border px-4 py-2.5 text-center text-[13px] font-semibold ${
               notice.kind === "perigo"
-                ? "border-red-500/30 bg-red-950/70 text-red-200"
+                ? "border-red-500/30 bg-red-950/90 text-red-200"
                 : notice.kind === "pista"
-                  ? "border-sky-400/30 bg-sky-950/70 text-sky-200"
-                  : "border-amber-400/30 bg-amber-950/70 text-amber-100"
+                  ? "border-sky-400/30 bg-sky-950/90 text-sky-200"
+                  : "border-amber-400/30 bg-amber-950/90 text-amber-100"
             }`}
           >
             {notice.text}
@@ -435,10 +435,10 @@ function ActionButton({
   onClick: () => void
 }) {
   const tones = {
-    principal: "border-amber-400/50 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25",
-    perigo: "border-red-500/50 bg-red-500/15 text-red-200 hover:bg-red-500/25",
-    alerta: "border-orange-400/50 bg-orange-500/15 text-orange-200 hover:bg-orange-500/25",
-    neutro: "border-white/15 bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]",
+    principal: "border-amber-400/50 bg-amber-950/90 text-amber-200 hover:bg-amber-950/95",
+    perigo: "border-red-500/50 bg-red-950/90 text-red-200 hover:bg-red-950/95",
+    alerta: "border-orange-400/50 bg-orange-950/90 text-orange-200 hover:bg-orange-950/95",
+    neutro: "border-white/15 bg-zinc-950/85 text-zinc-300 hover:bg-zinc-900/95",
   }
 
   return (
@@ -446,7 +446,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex cursor-pointer items-center gap-3 rounded-2xl border pl-4 pr-5 backdrop-blur transition disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-white/[0.02] disabled:text-zinc-600 ${
+      className={`flex cursor-pointer items-center gap-3 rounded-2xl border pl-4 pr-5 transition disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-zinc-950/75 disabled:text-zinc-600 ${
         small ? "py-2.5" : "py-3.5"
       } ${tones[tone]}`}
     >

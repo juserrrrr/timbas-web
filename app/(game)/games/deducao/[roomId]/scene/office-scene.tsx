@@ -1,12 +1,12 @@
 "use client"
 
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react"
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import type { Room } from "@colyseus/sdk"
 import { moveTowards, PLAYER_RADIUS, distance, hasLineOfSight } from "@/lib/games/collision"
-import { playGameSound } from "@/lib/games/game-audio"
+import { playGameSound, prepareGameAudio } from "@/lib/games/game-audio"
 import type { OfficeMap } from "@/lib/services/games"
 import { NO_TARGETS, type LookState, type Quality, type Targets } from "../match-types"
 import { isGameControlTarget } from "../keyboard-controls"
@@ -16,10 +16,14 @@ import { NightSky } from "./night-sky"
 import { CinematicEffects, ProceduralEnvironment } from "./office-lighting"
 import { viewerLighting } from "./lighting-profile"
 import { prepareScene } from "./scene-warmup"
+import { collidersAtHeight, stairSampleAt, surfaceHeightAt } from "./movement-geometry"
 import { patchVision, setBlackout } from "./vision-material"
+import { OfficeLightGrid } from "./office-light-grid"
+import { AdaptiveResolution } from "./render-budget"
 
 const VOID_COLOR = "#07111f"
 const MAX_RENDER_FPS = 60
+const SHADOW_SETTINGS = { type: THREE.PCFShadowMap }
 const CREW_MODEL = "/models/games/deducao/timbas-crew-character.glb"
 const CORPSE_MODEL = "/models/games/deducao/timbas-crew-corpse.glb"
 
@@ -40,120 +44,6 @@ const SEND_EVERY_MS = 50
 const TASK_RANGE = 2.2
 const REPORT_RANGE = 2.6
 const VENT_RANGE = 1.8
-const STAIR_LANDING_SIZE = 2.42
-
-interface StairSample {
-  y: number
-  progress: number
-  level: number
-  targetLevel: number
-}
-
-/// A posição no corredor da escada é a própria posição vertical. Não existe
-/// animação disparada nem impulso: parar de andar conserva exatamente o degrau.
-function stairSampleAt(map: OfficeMap, x: number, z: number): StairSample | null {
-  let closest: (StairSample & { distance: number }) | null = null
-
-  for (const stair of map.stairs.filter((candidate) => candidate.targetLevel > candidate.level)) {
-    const points = [{ x: stair.x, z: stair.z }]
-    if (stair.turnX !== undefined && stair.turnZ !== undefined) {
-      points.push({ x: stair.turnX, z: stair.turnZ })
-    }
-    points.push({ x: stair.targetX, z: stair.targetZ })
-    const lengths = points.slice(0, -1).map((point, index) =>
-      Math.hypot(points[index + 1].x - point.x, points[index + 1].z - point.z),
-    )
-    const totalLength = lengths.reduce((sum, length) => sum + length, 0)
-    const landingHalf = lengths.length === 2
-      ? Math.min(STAIR_LANDING_SIZE / 2, lengths[0] * 0.4, lengths[1] * 0.4)
-      : 0
-    const climbLength = totalLength - landingHalf * 2
-    const landingStart = lengths[0] - landingHalf
-    const landingEnd = lengths[0] + landingHalf
-    const turn = points[1]
-    if (landingHalf > 0 && Math.abs(x - turn.x) <= landingHalf && Math.abs(z - turn.z) <= landingHalf) {
-      const progress = landingStart / climbLength
-      return {
-        y: stair.level * FLOOR_HEIGHT + progress * FLOOR_HEIGHT,
-        progress,
-        level: stair.level,
-        targetLevel: stair.targetLevel,
-      }
-    }
-    let traversed = 0
-
-    for (let index = 0; index < points.length - 1; index += 1) {
-      const from = points[index]
-      const to = points[index + 1]
-      const dx = to.x - from.x
-      const dz = to.z - from.z
-      const length = lengths[index]
-      const rawSegmentProgress = ((x - from.x) * dx + (z - from.z) * dz) / (length * length)
-      if (rawSegmentProgress < -0.08 || rawSegmentProgress > 1.08) {
-        traversed += length
-        continue
-      }
-
-      const segmentProgress = THREE.MathUtils.clamp(rawSegmentProgress, 0, 1)
-      const projectedX = from.x + dx * segmentProgress
-      const projectedZ = from.z + dz * segmentProgress
-      const perpendicularDistance = Math.hypot(x - projectedX, z - projectedZ)
-      if (perpendicularDistance <= 1.16) {
-        const pathDistance = traversed + length * segmentProgress
-        const climbDistance = landingHalf === 0
-          ? pathDistance
-          : pathDistance <= landingStart
-            ? pathDistance
-            : pathDistance <= landingEnd
-              ? landingStart
-              : pathDistance - landingHalf * 2
-        const progress = THREE.MathUtils.clamp(climbDistance / climbLength, 0, 1)
-        if (!closest || perpendicularDistance < closest.distance) {
-          closest = {
-            y: stair.level * FLOOR_HEIGHT + progress * FLOOR_HEIGHT,
-            progress,
-            level: stair.level,
-            targetLevel: stair.targetLevel,
-            distance: perpendicularDistance,
-          }
-        }
-      }
-      traversed += length
-    }
-  }
-
-  return closest
-    ? { y: closest.y, progress: closest.progress, level: closest.level, targetLevel: closest.targetLevel }
-    : null
-}
-
-function collidersAtHeight(map: OfficeMap, level: number, feetHeight: number) {
-  return [
-    ...map.walls.filter((box) => (box.level ?? 0) === level),
-    ...map.obstacles.filter(
-      (box) =>
-        (box.level ?? 0) === level &&
-        (box.height === undefined || box.height > feetHeight + 0.06),
-    ),
-  ]
-}
-
-function surfaceHeightAt(map: OfficeMap, level: number, x: number, z: number, maxHeight: number) {
-  return map.obstacles.reduce((height, box) => {
-    if (
-      (box.level ?? 0) !== level ||
-      box.height === undefined ||
-      box.height > maxHeight ||
-      x < box.minX ||
-      x > box.maxX ||
-      z < box.minZ ||
-      z > box.maxZ
-    ) {
-      return height
-    }
-    return Math.max(height, box.height)
-  }, 0)
-}
 
 export interface InputState {
   x: number
@@ -182,6 +72,7 @@ interface Props {
 
 export function OfficeScene(props: Props) {
   const { quality } = props
+  const [dpr, setDpr] = useState(1)
   const initialLighting = viewerLighting(
     props.snapshot.blackout,
     props.role === "assassino" && (props.snapshot.players.find((player) => player.id === props.me)?.alive ?? true),
@@ -189,8 +80,8 @@ export function OfficeScene(props: Props) {
   const cameraFar = Math.max(130, Math.hypot(props.map.bounds.w, props.map.bounds.d) + 24)
   return (
     <Canvas
-      shadows={quality !== "baixo"}
-      dpr={quality === "alto" ? [1, 1.35] : quality === "medio" ? [1, 1.2] : 1}
+      shadows={quality !== "baixo" ? SHADOW_SETTINGS : false}
+      dpr={dpr}
       frameloop="never"
       gl={{
         antialias: quality !== "baixo",
@@ -212,7 +103,7 @@ export function OfficeScene(props: Props) {
     >
       <CappedFrameLoop />
       <Suspense fallback={null}>
-        <SceneContent {...props} />
+        <SceneContent {...props} onResolution={setDpr} />
       </Suspense>
     </Canvas>
   )
@@ -258,7 +149,8 @@ function SceneContent({
   poseRef,
   onTargets,
   onReady,
-}: Props) {
+  onResolution,
+}: Props & { onResolution?: (ratio: number) => void }) {
   const { camera, gl, scene } = useThree()
   const local = useRef(new THREE.Vector2())
   const velocity = useRef(new THREE.Vector2())
@@ -283,6 +175,7 @@ function SceneContent({
   const flashlightTarget = useRef<THREE.Object3D>(null)
 
   useEffect(() => {
+    prepareGameAudio()
     const controller = new AbortController()
     void prepareScene(gl, scene, camera, quality === "alto", controller.signal).catch((error) => {
       console.warn("Não foi possível antecipar a compilação da cena.", error)
@@ -668,6 +561,8 @@ function SceneContent({
 
   return (
     <>
+      <AdaptiveResolution quality={quality} onChange={onResolution} />
+      <OfficeLightGrid map={map} blackout={snapshot.blackout} />
       <ProceduralEnvironment quality={quality} blackout={snapshot.blackout} nightVision={assassinNightVision} />
       {quality === "alto" && <CinematicEffects blackout={blackoutForViewer} />}
       <NightSky quality={quality} />

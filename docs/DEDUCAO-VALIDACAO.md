@@ -1,6 +1,37 @@
-# Validação de Dedução, 04/09/2026
+# Validação de Dedução, 4 e 5/09/2026
 
-## Resultado desta revisão
+## Luzes lineares e desempenho, 05/09/2026
+
+Esta revisão substitui o sistema de pontos descrito no histórico abaixo. As 57 fontes fixas agora usam uma grade espacial: 56 segmentos luminosos e o ponto do botão de emergência. As barras verticais iluminam ao longo de 2,18 m; as duas barras do pergolado acompanham aproximadamente 7,19 m. A fonte admite RGB, inclusive verde, sem trocar as cores azuis/amarelas dos modelos existentes. O cálculo é uma aproximação de luz linear com resposta PBR, não uma simulação fotométrica exata nem sombra de área.
+
+A grade tem 9.600 células de 2 m, máximo de 17 fontes por lista/célula e média de 3,70 nas células ocupadas pelas luzes normais. Esse último número não é uma média ponderada pelos pixels visíveis. As três texturas ocupam 278.528 bytes de dados. Células são calculadas pelo alcance da fonte no mundo, nunca pelo andar ou câmera do observador. A seleção normal/emergência muda apenas um uniforme.
+
+O alto usa duas amostras MSAA e bloom em meia largura/altura. A resolução adaptativa observa janelas de tempo para perseguir 60 FPS com histerese, preservando a iluminação entre qualidades. Também foram removidos filtros de desfoque do HUD e adicionados caches da rota da escada, colisores e apoio. A preparação inicial passou a enviar buffers fora da câmera em um alvo de 1 pixel, restaurando culling e destino mesmo em caso de erro.
+
+### Medição local antes/depois
+
+Cena real, planta e GLB reais, transporte local, navegador integrado desktop e renderização de 1.279 × 912 pixels, DPR 1 nos dois sistemas. Tempo de GPU obtido com `EXT_disjoint_timer_query_webgl2`, consultado somente após disponibilidade, sem `gl.finish`. Cada p95 estável abaixo usa 360 amostras válidas, com zero eventos disjoint. Os intervalos de carregamento e troca de qualidade não fazem parte dessas janelas.
+
+| Enquadramento | GPU p95 anterior | GPU p95 atual | Redução local | FPS atual |
+| --- | ---: | ---: | ---: | ---: |
+| LED azul, alto | 11,79 ms | 7,34 ms | 37,7% | 60 |
+| Terraço, alto | 8,68 ms | 6,73 ms | 22,5% | 60 |
+| LED azul, leve | 9,55 ms | 5,47 ms | 42,7% | 60 |
+| LED azul, médio | não comparável | 7,31 ms | não calculada | 60 |
+
+A amostra anterior do médio foi descartada porque apresentou geometria incorreta durante a troca de qualidade. O médio atual foi inspecionado visualmente. As três qualidades mantêm claridade e cor semelhantes, com diferenças de suavização, sombras e bloom. Foram conferidos o banho contínuo azul na parede e as barras da cobertura. No apagão em leve, o corredor manteve 60 FPS, GPU p95 de 4,77 ms, sem quadro acima de 80 ms nem novas compilações após a troca.
+
+A pausa isolada de aproximadamente 0,6 s na primeira caminhada foi rastreada ao primeiro `AudioContext`: a chamada isolada de preparação levou 526,2 ms. Preparando o áudio antes do movimento, a primeira subida registrou 60 FPS, intervalo máximo de 18,4 ms, CPU de render máxima de 2,7 ms e nenhum long task. Não houve aumento dos 22 programas gráficos. Essa medição diferencia a inicialização de áudio do custo contínuo da iluminação.
+
+`prepareGameAudio()` agora faz essa inicialização silenciosa antes de `sceneReady`. Uma sessão nova, sem usar o botão de diagnóstico de áudio, confirmou a primeira subida em 60 FPS, sem quadros acima de 80 ms ou long tasks. Os 22 programas e as 86 geometrias permaneceram estáveis. Sete verificações novas de áudio passaram, incluindo contexto único, ausência de som/resume no preparo, retomada por gesto, SSR e falhas seguras. Console da sessão final sem erros; permanece o aviso preexistente de descontinuação de `THREE.Clock`.
+
+Os testes permanentes novos cobrem a cobertura espacial completa das fontes, eixos X/Y/Z, RGB verde em espaço linear, separação normal/emergência, descarte das texturas, rejeição de densidade acima da capacidade, adaptação em 60/50/30 FPS e recuperação sem oscilação. Foram comparadas 10.243 amostras de movimento com as fórmulas anteriores, sem mudança de colisão, apoio ou escada. O teste de warmup inclui erro no render com/sem pós-processamento, culling/visibilidade originais e descarte único do alvo. A auditoria Blender de emergência foi repetida: dez luminárias, 60 amostras e seis LEDs aprovados, sem alterar modelos.
+
+Controles (16), cena (6), atores (5), planta (17), modelos (34) e ciclo de iluminação (240 alternâncias) também foram repetidos e passaram. A checagem TypeScript dedicada à cena e o build de produção do frontend passaram. A descida em alta com apagão ativo manteve 60 FPS na janela final, sem long tasks ou novos programas. Página, servidor e cache temporários foram removidos antes do build; os validadores permanentes foram preservados.
+
+Os resultados são locais, não uma garantia de 60 FPS em qualquer tablet. A partida multiplayer e o dispositivo físico do usuário não foram medidos. Carregamento inicial e troca manual de qualidade ainda têm custo de preparação. A API e os assets não foram alterados nesta revisão; os testes e builds da API relatados abaixo pertencem à revisão anterior.
+
+## Histórico de arquitetura e interiores, 04/09/2026
 
 As correções estão no código, na planta exportada e no modelo Blender/GLB. A verificação cobriu os pedidos acumulados de arquitetura, iluminação, ambiente noturno, controles, remoção da garagem e renovação dos interiores, incluindo cozinha, banheiro e a compactação adicional do escritório.
 
@@ -57,7 +88,7 @@ As dez luminárias de emergência estavam no interior da sanca, a 0,70 m da pare
 
 ## Limites e pendências de validação
 
-O navegador de revisão não usou servidor multiplayer, banco, WebSocket ou microfone. A mudança de andar foi exercitada nos testes de movimento e na câmera real com transporte local, não em uma partida Colyseus real. Foram observadas contagens de recursos e amostras de CPU do renderizador local, mas não FPS, memória em bytes, tempo de GPU ou gestos em tablet físico, nem leitor de tela real. Os testes geométricos são amostrados e não representam prova de ausência absoluta de defeitos.
+O navegador de revisão não usou servidor multiplayer, banco, WebSocket ou microfone. A mudança de andar foi exercitada nos testes de movimento e na câmera real com transporte local, não em uma partida Colyseus real. A revisão de 05/09 acrescenta FPS e tempo de GPU locais, mas não mede memória total, gestos em tablet físico nem leitor de tela real. Os testes geométricos são amostrados e não representam prova de ausência absoluta de defeitos.
 
 As portas das cabines são cenográficas e permanecem fechadas, com colisão correspondente. Esta revisão não adiciona um sistema interativo para abrir ou fechar portas.
 
@@ -74,6 +105,10 @@ node scripts/check-deducao-controls.mjs
 node scripts/check-deducao-scene.mjs
 node scripts/check-deducao-actors.mjs
 node scripts/check-deducao-lighting.mjs
+node scripts/check-deducao-light-grid.mjs
+node scripts/check-deducao-render-budget.mjs
+node scripts/check-deducao-movement-geometry.mjs
+node scripts/check-deducao-audio.mjs
 node scripts/check-deducao-minimap.mjs
 node scripts/check-deducao-models.mjs
 & 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --factory-startup --python-exit-code 1 --python scripts/check-office-architecture-blender.py

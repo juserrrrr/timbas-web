@@ -132,11 +132,12 @@ Janelas externas fixas usam um único plano de vidro claro, com baixa opacidade,
 - `lighting-profile.ts` centraliza exposição e intensidades para luz normal, blackout e visão noturna. Leve, médio e alto compartilham a mesma claridade base.
 - A qualidade altera resolução, sombras, definição dos reflexos e brilho localizado. O ambiente PBR mantém a mesma energia, com mapas de 64, 128 e 256 pixels para leve, médio e alto.
 - Os ajustes de visão e o céu passam pelo tone mapping em espaço linear, tanto na renderização direta quanto no pós-processamento do alto. O bloom destaca apenas emissões fortes, sem clarear o ambiente inteiro.
-- No alto, os buffers de pós-processamento usam MSAA de até 4 amostras, limitado pelo dispositivo, para não perder a suavização de bordas ao ativar o bloom.
+- No alto, os buffers de pós-processamento usam MSAA de até duas amostras, limitado pelo dispositivo. O bloom trabalha com metade da largura/altura, sem reduzir a imagem principal nem alterar a exposição.
 - As fontes normais não projetam sombras adicionais e permanecem acesas nos dois pavimentos. O alcance é limitado; subir a escada nunca altera quais luzes existem no mundo.
-- Luzes normais, decorativas, de emergência e lanterna permanecem montadas. O apagão altera intensidades, não a quantidade de luzes no shader. Prédio, personagens, cadáveres e luminárias preservam suas geometrias e materiais, atualizando apenas valores de aparência.
-- Antes de liberar a cena, `scene-warmup.ts` antecipa a compilação dos materiais dos dois pisos e o envio de texturas, inclusive etiquetas ocultas. No alto, usa o destino de pós-processamento; o mapa de sombras usa `PCFShadowMap`, suportado pela versão atual do Three. Subida e apagão não reiniciam essa preparação. A saída da sala cancela uploads pendentes e descarta o destino temporário.
-- As seis fitas verticais dos átrios iluminam suas paredes em azul ou amarelo, com uma fonte fixa diante de cada difusor e alcance curto. Essas luzes decorativas acompanham o apagão global.
+- As 57 fontes fixas são indexadas em uma grade mundial de células de 2 m. Cada fragmento consulta somente as fontes cujo alcance cruza sua célula, sem desligar pisos ou transferir fontes para a câmera. As listas normal/emergência estão nas mesmas três texturas; o apagão troca um uniforme, sem reconstruir a grade ou recompilar materiais. A lanterna continua independente.
+- Das fontes fixas, 56 são segmentos finitos e uma é pontual, no botão de emergência. O shader aproxima a irradiância da linha e conserva a resposta PBR, sem simular dezenas de pontos por barra. Não é uma integração fotométrica exata nem produz sombras de área. Cores RGB são aceitas, inclusive verde; os LEDs existentes continuam azuis e amarelos.
+- Antes de liberar a cena, `scene-warmup.ts` antecipa compilação, texturas e buffers dos dois pisos. Um render temporário de 1 pixel inclui malhas fora da câmera sem revelar objetos ocultos. No alto, a compilação usa o destino de pós-processamento; o mapa de sombras usa `PCFShadowMap` estável inclusive nos rerenders do Canvas. Subida e apagão não reiniciam essa preparação. Cancelamento ou erro restauram o destino/culling e descartam o temporário.
+- As seis fitas verticais dos átrios iluminam suas paredes ao longo de 2,18 m, em azul ou amarelo, diante do difusor e com alcance curto. Essas luzes decorativas acompanham o apagão global.
 - Emergências de corredor ficam a 1,30 m da parede, fora da sanca de gesso. O corpo continua preso ao teto e o ponto luminoso fica imediatamente abaixo do difusor. A auditoria deve testar visibilidade por baixo, não apenas contato com o forro.
 - Nenhuma luminária pode ser criada dentro do recorte da laje sobre uma escada.
 - Apenas uma luz principal pode projetar sombra dinâmica quando necessário.
@@ -144,13 +145,18 @@ Janelas externas fixas usam um único plano de vidro claro, com baixa opacidade,
 - O assassino recebe leitura noturna reduzida no blackout, sem reacender as luminárias normais para os demais jogadores.
 - A qualidade baixa preserva todas as fontes fixas e a leitura espacial, mas desativa sombras dinâmicas e pós-processamento.
 - O `NightSky` procedural mantém o céu azul-escuro, com laranja localizado no horizonte. Sua esfera tem raio de 100 m e as estrelas ficam entre 94 e 98 m, dentro do alcance mínimo de 130 m da câmera.
-- O terraço recebe duas luzes quentes fixas, uma sob cada LED lateral do pergolado.
+- O terraço recebe duas fontes lineares quentes de aproximadamente 7,19 m, acompanhando os LEDs laterais do pergolado, sem um ponto luminoso concentrado no meio.
 - As janelas das casas vizinhas mantêm a emissão durante o blackout do escritório.
 
 Os pavimentos são camadas de colisão e da planta, não cenas independentes. Não existe aviso ou carregamento ao subir a escada. Jogadores, cadáveres e nomes usam o depth buffer da geometria 3D para a oclusão, sem sumir pelo andar do observador; fantasmas e dutos conservam as regras de jogo.
 
+`render-budget.tsx` ajusta a resolução com meta de 60 FPS, sem mudar as fontes, cores ou claridade. Os limites de DPR são 0,70 a 1 no leve, 0,80 a 1,15 no médio e 0,85 a 1,25 no alto, respeitando a densidade do dispositivo. Sobrecarga sustentada reduz 0,10; quatro janelas saudáveis permitem recuperar 0,05. Há aquecimento, histerese e descarte de pausas da aba. O Canvas e o compositor recebem o mesmo DPR. A meta não garante 60 FPS em qualquer hardware.
+
+`movement-geometry.ts` mantém a rota da escada e os colisores em cache por planta imutável. A altura ainda determina colisão e apoio, sem ocultar jogadores ou luzes. O HUD usa fundos translúcidos sem `backdrop-filter`, evitando refiltrar a cena atrás de cada painel.
+
 ## Controles e áudio
 
+- `prepareGameAudio()` cria o contexto silenciosamente durante a preparação inicial, antes de liberar os controles. O primeiro passo não inicializa o dispositivo de áudio; os gestos continuam responsáveis por retomá-lo. Falhas de áudio não bloqueiam a cena.
 - O HUD mantém ajuda de teclado legível, com teclas destacadas. WASD e setas compartilham os eixos, sem somar duas vezes a mesma direção, e as diagonais são normalizadas.
 - Tarefas, mapa expandido, apresentação do papel e fases sem jogo bloqueiam movimento e ações. Controles HTML focados recebem suas teclas sem interferência do jogo.
 - Perder foco, ocultar a aba ou liberar o ponteiro zera as teclas pressionadas; repetição automática não retoma movimento nem repete ações.
@@ -192,6 +198,10 @@ node scripts/check-deducao-controls.mjs
 node scripts/check-deducao-scene.mjs
 node scripts/check-deducao-actors.mjs
 node scripts/check-deducao-minimap.mjs
+node scripts/check-deducao-light-grid.mjs
+node scripts/check-deducao-render-budget.mjs
+node scripts/check-deducao-movement-geometry.mjs
+node scripts/check-deducao-audio.mjs
 ```
 
 A auditoria Blender verifica portas e molduras, degraus/patamar, pés e duplicação dos postes, conectividade das luminárias, janelas, contato do pergolado e paisagem com seus apoios. Reimporta o GLB para comparar geometria com o `.blend` e confirma por hash que as entradas não foram alteradas. Os testes da cena exercitam os handlers reais de movimento, câmera e luz com transporte local. Nenhum desses testes substitui uma partida multiplayer nem a medição de desempenho em dispositivo físico.

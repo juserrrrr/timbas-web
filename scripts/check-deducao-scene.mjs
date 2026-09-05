@@ -24,10 +24,11 @@ function evaluate(code, bindings = {}) {
   return module.exports
 }
 const collision = evaluate(await compiled("lib/games/collision.ts"))
+const movement = evaluate(await compiled(`${scenePath}/movement-geometry.ts`))
 const { viewerLighting } = evaluate(await compiled(`${scenePath}/lighting-profile.ts`))
 const sceneCode = await compiled(`${scenePath}/office-scene.tsx`, [
-  "EYE_HEIGHT", "PITCH_LIMIT", "WALK_SPEED", "RUN_SPEED", "JUMP_SPEED", "GRAVITY", "SEND_EVERY_MS", "TASK_RANGE", "REPORT_RANGE", "VENT_RANGE", "STAIR_LANDING_SIZE",
-  "stairSampleAt", "collidersAtHeight", "surfaceHeightAt", "SceneContent", "reportTargets",
+  "EYE_HEIGHT", "PITCH_LIMIT", "WALK_SPEED", "RUN_SPEED", "JUMP_SPEED", "GRAVITY", "SEND_EVERY_MS", "TASK_RANGE", "REPORT_RANGE", "VENT_RANGE",
+  "SceneContent", "reportTargets",
 ])
 
 class Surface extends EventTarget {
@@ -62,13 +63,13 @@ function harness({ quality = "alto", blackout = false, role = "funcionario", pos
   }
   const noop = () => null
   const api = evaluate(sceneCode, {
-    ...collision, viewerLighting, FLOOR_HEIGHT: 4.2, NO_TARGETS: { task: null, corpse: null, emergency: false, vent: null, kill: null },
+    ...collision, ...movement, viewerLighting, NO_TARGETS: { task: null, corpse: null, emergency: false, vent: null, kill: null },
     document, window, AbortController, Element: Surface, HTMLElement: Surface, performance: { now: () => now },
     isGameControlTarget: target => target instanceof Surface && target.control,
-    playGameSound: () => {}, setBlackout: value => { blackoutValue = value }, prepareScene: () => Promise.resolve(),
+    playGameSound: () => {}, prepareGameAudio: () => {}, setBlackout: value => { blackoutValue = value }, prepareScene: () => Promise.resolve(),
     useThree: () => ({ camera, gl }), useRef: current => ({ current }), useMemo: factory => factory(),
     useEffect: effect => effects.push(effect), useFrame: callback => { frame = callback },
-    ProceduralEnvironment: noop, CinematicEffects: noop, NightSky: noop, OfficeBuilding: noop, OfficeWorld: noop, Markers: noop, Actor: noop, Corpse: noop,
+    AdaptiveResolution: noop, OfficeLightGrid: noop, ProceduralEnvironment: noop, CinematicEffects: noop, NightSky: noop, OfficeBuilding: noop, OfficeWorld: noop, Markers: noop, Actor: noop, Corpse: noop,
     React: { createElement(type, attributes, ...children) {
       if (attributes?.ref && ["ambientLight", "hemisphereLight", "directionalLight", "spotLight", "object3D"].includes(type)) {
         const constructors = { ambientLight: THREE.AmbientLight, hemisphereLight: THREE.HemisphereLight, directionalLight: THREE.DirectionalLight, spotLight: THREE.SpotLight, object3D: THREE.Object3D }
@@ -81,6 +82,7 @@ function harness({ quality = "alto", blackout = false, role = "funcionario", pos
       return { type, props: { ...attributes, children } }
     } },
   })
+  Object.assign(api, movement)
   api.SceneContent(props)
   const cleanup = effects.map(effect => effect()).filter(Boolean)
   function tick(count = 1, delta = 1 / 60) {

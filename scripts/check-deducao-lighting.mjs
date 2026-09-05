@@ -33,12 +33,14 @@ async function isolatedModule(filename, names, bindings = {}) {
 const { FIXTURE_INTENSITY, viewerLighting } = await isolatedModule("lighting-profile.ts", [
   "NORMAL", "BLACKOUT", "NIGHT_VISION", "FIXTURE_INTENSITY", "viewerLighting",
 ])
-const { patchVision } = await isolatedModule("vision-material.tsx", ["SURFACE_CODE", "visionUniforms", "patchVision"])
-const { cloneMaterial, ceilingFixturePlacements, emergencyPlacements, normalLightSources, terraceLightSources, accentLightSources, isInsideStairOpening, OfficeWorld, WALL_HEIGHT } = await isolatedModule("office-world.tsx", [
-  "cloneMaterial", "isInsideStairOpening", "ceilingFixturePlacements", "emergencyPlacements", "normalLightSources", "terraceLightSources", "accentLightSources", "FixedOfficeLights", "OfficeWorld",
+const gridApi = await isolatedModule("light-grid.ts", ["dataTexture", "buildLightGrid", "CELL_SIZE", "TEXTURE_WIDTH", "MAX_CELL_LIGHTS", "officeLightUniforms", "officeLightDeclarations", "officeLightFragment"])
+const { patchVision } = await isolatedModule("vision-material.tsx", ["SURFACE_CODE", "visionUniforms", "patchVision"], gridApi)
+const { cloneMaterial, ceilingFixturePlacements, emergencyPlacements, normalLightSources, terraceLightSources, accentLightSources, isInsideStairOpening, OfficeWorld, worldLightSources, WALL_HEIGHT } = await isolatedModule("office-world.tsx", [
+  "cloneMaterial", "isInsideStairOpening", "ceilingFixturePlacements", "emergencyPlacements", "normalLightSources", "terraceLightSources", "accentLightSources", "worldLightSources", "OfficeWorld",
   "WALL_HEIGHT", "STAIR_OPENING_HALF_WIDTH", "STAIR_OPENING_END_PADDING", "EMERGENCY_LIGHT_MODEL",
 ], {
   FIXTURE_INTENSITY,
+  FLOOR_HEIGHT: 4.2,
   patchVision,
   useMemo: (factory) => factory(),
   DetailedPropKind: () => null,
@@ -195,23 +197,30 @@ for (const level of [0, 1]) {
     assert.ok(terraceLights.every((light) => light.y === 2.49 && light.intensity === FIXTURE_INTENSITY.terrace))
   }
   for (const blackout of [false, true]) {
-    const baseline = renderedLights(OfficeWorld({ map, level, blackout }))
+    const baseline = worldLightSources(map).filter((light) => Math.floor((light.start[1] + light.end[1]) / 2 / 4.2) === level)
     const normalCount = lights.length + terraceLights.length + accentLights.length
     const emergencyCount = emergencies.length + Number((map.emergency.level ?? 0) === level)
-    assert.equal(baseline.length, normalCount + emergencyCount, "Normal e emergência ficam montadas para não recompilar shaders ao apagar")
-    const illuminated = baseline.filter((light) => light.intensity > 0)
+    assert.equal(baseline.length, normalCount + emergencyCount, "Normal e emergência permanecem na grade de luz")
+    const illuminated = baseline.filter((light) => light.emergency === blackout)
     assert.equal(illuminated.length, blackout ? emergencyCount : normalCount)
-    assert.deepEqual(baseline.map(({ intensity, ...light }) => light), renderedLights(OfficeWorld({ map, level, blackout: !blackout })).map(({ intensity, ...light }) => light), "Apagão muda intensidade, nunca quantidade ou posição das luzes")
+    assert.equal(renderedLights(OfficeWorld({ map, level, blackout })).length, 0, "Não usa 57 pointLights globais para iluminar cada pixel")
     if (blackout) {
       illuminated.forEach((light, index) => close(light.intensity, index < emergencies.length ? FIXTURE_INTENSITY.emergency : FIXTURE_INTENSITY.emergencyButton, "Emergência segue o perfil compartilhado"))
     }
     for (const quality of ["baixo", "medio", "alto"]) {
-      assert.deepEqual(renderedLights(OfficeWorld({ map, level, blackout, quality })), baseline, `${quality}: posições, cores, alcance e intensidades devem coincidir`)
-      assert.deepEqual(renderedLights(OfficeWorld({ map, level, blackout, quality, active: false })), baseline, "Trocar o andar do observador nunca apaga fontes do prédio")
+      assert.deepEqual(worldLightSources(map, quality, blackout, level), worldLightSources(map), `${quality}: fontes não dependem da qualidade, apagão ou andar do observador`)
       console.log(`Andar ${level}, ${quality}, ${blackout ? "apagão" : "normal"}: ${illuminated.length} fontes acesas, ${baseline.length} fontes persistentes.`)
     }
   }
 }
+
+const worldGrid = gridApi.buildLightGrid(worldLightSources(map))
+assert.equal(worldGrid.stats.sources, 57)
+assert.ok(worldGrid.stats.maximum < 32, "Toda célula tem menos fontes do que a antiga lista global")
+assert.ok(worldGrid.stats.average < 10, "Custo médio espacial é muito menor que 57 fontes por fragmento")
+assert.equal(worldLightSources(map).filter((light) => light.start.some((value, index) => value !== light.end[index])).length, 56, "Barras, teto e emergências são lineares; só o botão usa fonte pontual")
+console.log("Grade real:", worldGrid.stats)
+worldGrid.dispose()
 
 const turn = map.stairs.find((stair) => stair.turnX !== undefined)
 assert.ok(isInsideStairOpening(map, 0, turn.turnX + 1, turn.turnZ + 1), "O canto externo do patamar também é um vão no teto")
@@ -315,11 +324,22 @@ const warmupScene = new THREE.Scene()
 warmupScene.add(hiddenName, new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTexture })))
 let compiled = 0
 const uploaded = []
+let geometryTarget = null, preparedGeometry = 0
 await prepareScene({
-  getRenderTarget: () => null,
+  getRenderTarget: () => geometryTarget,
+  setRenderTarget(target) { geometryTarget = target },
   async compileAsync(scene, camera) { assert.equal(scene, warmupScene); assert.ok(camera instanceof THREE.Camera); compiled++ },
   initTexture(texture) { assert.equal(compiled, 1); uploaded.push(texture) },
+  render(scene) {
+    assert.equal(geometryTarget.width, 1, "Buffers são enviados fora da tela")
+    assert.ok(scene.children.every((child) => !child.frustumCulled))
+    assert.equal(hiddenName.visible, false, "Geometria oculta nunca é revelada")
+    preparedGeometry++
+  },
 }, warmupScene, new THREE.PerspectiveCamera())
+assert.equal(preparedGeometry, 1)
+assert.equal(geometryTarget, null)
+assert.equal(hiddenName.frustumCulled, true, "Culling normal é restaurado após preparação")
 assert.deepEqual(uploaded, [nameTexture], "Texturas inclusive fora da câmera são preparadas uma única vez antes de jogar")
 assert.equal(hiddenName.visible, false, "Pré-compilação não revela jogadores ou etiquetas ocultos")
 const previousTarget = new THREE.WebGLRenderTarget(2, 2)
@@ -351,8 +371,47 @@ await assert.rejects(prepareScene({
 assert.equal(activeTarget, previousTarget, "Erro síncrono também restaura o destino")
 assert.equal(disposedTarget, 2, "Erro não vaza destino temporário")
 await prepareScene({ compileAsync() { assert.fail("Cancelamento anterior evita qualquer preparação") } }, warmupScene, new THREE.PerspectiveCamera(), false, controller.signal)
+const renderFailureScene = new THREE.Scene()
+const renderFailureGeometry = new THREE.BoxGeometry()
+const renderFailureMaterial = new THREE.MeshBasicMaterial()
+const initiallyCulled = new THREE.Mesh(renderFailureGeometry, renderFailureMaterial)
+const initiallyUnculled = new THREE.Mesh(renderFailureGeometry, renderFailureMaterial)
+initiallyUnculled.frustumCulled = false
+initiallyUnculled.visible = false
+renderFailureScene.add(initiallyCulled, initiallyUnculled)
+for (const postprocessing of [false, true]) {
+  let renderTarget = previousTarget, renderDisposed = 0, attemptedRender = 0
+  await assert.rejects(prepareScene({
+    getRenderTarget: () => renderTarget,
+    setRenderTarget(target) { renderTarget = target },
+    async compileAsync() { return renderFailureScene },
+    initTexture() { assert.fail("Malhas deste cenário não possuem texturas para enviar") },
+    render(scene) {
+      attemptedRender++
+      assert.equal(scene, renderFailureScene)
+      assert.equal(renderTarget.width, 1, "Render que falha também usa o destino temporário")
+      assert.equal(renderTarget.height, 1)
+      renderTarget.addEventListener("dispose", () => renderDisposed++)
+      assert.equal(initiallyCulled.frustumCulled, false)
+      assert.equal(initiallyUnculled.frustumCulled, false)
+      assert.equal(initiallyCulled.visible, true)
+      assert.equal(initiallyUnculled.visible, false, "Render de preparação não revela malhas ocultas")
+      throw new Error("warmup-render-failure")
+    },
+  }, renderFailureScene, new THREE.PerspectiveCamera(), postprocessing), /warmup-render-failure/)
+  assert.equal(attemptedRender, 1)
+  assert.equal(renderTarget, previousTarget, "Falha do render restaura o destino anterior")
+  assert.equal(initiallyCulled.frustumCulled, true, "Culling habilitado é restaurado após falha")
+  assert.equal(initiallyUnculled.frustumCulled, false, "Culling originalmente desabilitado não é alterado")
+  assert.equal(initiallyCulled.visible, true)
+  assert.equal(initiallyUnculled.visible, false, "Visibilidade oculta permanece intacta após falha")
+  assert.equal(renderDisposed, 1, "Falha descarta o destino temporário exatamente uma vez")
+}
+renderFailureGeometry.dispose()
+renderFailureMaterial.dispose()
 previousTarget.dispose()
 nameTexture.dispose()
 warmupScene.children.forEach((child) => child.material.dispose())
 console.log("Ciclo de vida validado: 240 alternâncias sem recriar prédio, materiais ou instâncias de emergência.")
+console.log("Warmup validado: falha do render direto/pós-processado restaura destino, culling, visibilidade e descarta o temporário uma única vez.")
 console.log("Iluminação validada: três qualidades com a mesma energia, dois andares, apagão, visão noturna e shaders no espaço linear.")

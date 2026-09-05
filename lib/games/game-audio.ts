@@ -1,21 +1,36 @@
 export type GameSound = "step" | "action" | "task" | "kill" | "vent" | "blackout" | "meeting"
 
 let context: AudioContext | null = null
+let initializationAttempted = false
 
 function audioContext(): AudioContext | null {
   if (typeof window === "undefined") return null
   if (context) return context
-  const AudioContextClass =
-    window.AudioContext ??
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-  if (!AudioContextClass) return null
-  context = new AudioContextClass()
+  if (initializationAttempted) return null
+  initializationAttempted = true
+  try {
+    const AudioContextClass =
+      window.AudioContext ??
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (AudioContextClass) context = new AudioContextClass()
+  } catch {
+    context = null
+  }
   return context
+}
+
+export function prepareGameAudio() {
+  audioContext()
 }
 
 export function unlockGameAudio() {
   const current = audioContext()
-  if (current?.state === "suspended") void current.resume()
+  if (current?.state !== "suspended") return
+  try {
+    void current.resume().catch(() => {})
+  } catch {
+    // O jogo continua sem áudio se o navegador recusar a retomada.
+  }
 }
 
 function tone(
@@ -63,7 +78,7 @@ function noise(current: AudioContext, duration: number, volume: number, delay = 
 export function playGameSound(sound: GameSound) {
   const current = audioContext()
   if (!current) return
-  if (current.state === "suspended") void current.resume()
+  unlockGameAudio()
 
   if (sound === "step") {
     tone(current, 105 + Math.random() * 18, 0.055, 0.018, "triangle", 0, 72)
