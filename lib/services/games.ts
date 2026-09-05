@@ -192,10 +192,11 @@ export function listOfficeMaps(): Promise<{ maps: GameMapSummary[] }> {
 
 export function getOfficeMap(mapId = "original"): Promise<{
   map: OfficeMap
+  lobby: OfficeMap
   minPlayers: number
   maxPlayers: number
 }> {
-  return request<{ map: OfficeMap; minPlayers: number; maxPlayers: number }>(
+  return request<{ map: OfficeMap; lobby: OfficeMap; minPlayers: number; maxPlayers: number }>(
     `/games/deducao/maps/${encodeURIComponent(mapId)}`,
   )
 }

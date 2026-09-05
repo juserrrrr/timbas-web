@@ -14,7 +14,7 @@ vm.runInNewContext(compile(await readFile(`${directory}sabotage-cooldown.ts`, "u
 })
 const { calibrateSabotageStatus, sabotageRemainingMs, canSabotage } = module.exports
 const hookText = await readFile(`${directory}use-deducao-room.ts`, "utf8")
-const lobbyText = await readFile(`${directory}lobby.tsx`, "utf8")
+const lobbyText = await readFile(`${directory}lobby-rules.tsx`, "utf8")
 const hook = ts.createSourceFile("use-deducao-room.ts", hookText, ts.ScriptTarget.Latest, true)
 const printer = ts.createPrinter()
 const snapshot = { phase: "jogando", blackout: false, players: [{ id: "me", alive: true, inVent: false }] }
@@ -102,7 +102,7 @@ check("Handler privado real recebe status, ignora payload inválido e novo papel
   let role
   const assignRole = messageHandler("papel", {
     setSabotageStatus(next) { status = next }, setRole(next) { role = next },
-    setFinalRoles() {}, setAllies() {}, setMyTasks() {},
+    setFinalRoles() {}, setAllies() {}, setMyTasks() {}, setEmergencyStatus() {},
   })
   assignRole({ role: "funcionario", tasks: [], allies: [] })
   assert.equal(status, null)
@@ -117,7 +117,14 @@ check("Snapshot público e configuração do lobby não incluem estado privado n
   assert.doesNotMatch(snapshotDefinition.getText(hook), /sabotage|readyAt|blackoutEverySeconds/)
   assert.doesNotMatch(lobbyText, /blackoutEverySeconds|Apagão a cada/)
   assert.match(lobbyText, /key: "blackoutSeconds"[\s\S]*?min: 10,[\s\S]*?max: 60,[\s\S]*?step: 5,/)
-  assert.match(lobbyText, /rule.key === "blackoutSeconds" \? 25 : 0/)
+  const lobby = ts.createSourceFile("lobby-rules.tsx", lobbyText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const rules = lobby.statements.filter(ts.isVariableStatement)
+    .flatMap((node) => [...node.declarationList.declarations])
+    .find((node) => node.name.getText(lobby) === "RULES")
+  assert.ok(rules?.initializer, "Regras extraídas precisam manter o padrão do apagão")
+  const loaded = { exports: {} }
+  vm.runInNewContext(compile(`module.exports = ${rules.initializer.getText(lobby)}`), { module: loaded })
+  assert.equal(loaded.exports.find((rule) => rule.key === "blackoutSeconds")?.defaultValue, 25)
 })
 
 console.log(`${checks} verificações de sabotagem privada, recarga calibrada e regras de elegibilidade passaram.`)

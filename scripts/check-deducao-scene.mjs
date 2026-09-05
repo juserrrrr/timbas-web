@@ -6,6 +6,16 @@ import * as THREE from "three"
 
 const scenePath = "app/(game)/games/deducao/[roomId]/scene"
 const map = JSON.parse(await readFile("assets/models/deducao/office-map.json", "utf8"))
+const lobbyLayout = JSON.parse(await readFile("assets/models/deducao/online-lobby-layout.json", "utf8"))
+const lobbyMap = {
+  ...map, id: "lobby-test", name: "Sala de testes", floors: 1,
+  bounds: { x: lobbyLayout.bounds.minX, z: lobbyLayout.bounds.minZ,
+    w: lobbyLayout.bounds.maxX - lobbyLayout.bounds.minX, d: lobbyLayout.bounds.maxZ - lobbyLayout.bounds.minZ },
+  rooms: [{ id: "lobby", level: 0 }], walls: [], obstacles: lobbyLayout.colliders.map((box) => ({ ...box,
+    minX: box.x - box.w / 2, maxX: box.x + box.w / 2, minZ: box.z - box.d / 2, maxZ: box.z + box.d / 2,
+    level: 0, tall: box.height > 1.2 })),
+  taskSpots: [], vents: [], stairs: [], doors: [], spawns: lobbyLayout.spawns,
+}
 async function compiled(path, names) {
   const source = ts.createSourceFile(path, await readFile(path, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   const printer = ts.createPrinter()
@@ -25,7 +35,9 @@ function evaluate(code, bindings = {}) {
 }
 const collision = evaluate(await compiled("lib/games/collision.ts"))
 const movement = evaluate(await compiled(`${scenePath}/movement-geometry.ts`))
-const { viewerLighting } = evaluate(await compiled(`${scenePath}/lighting-profile.ts`))
+const { viewerLighting, FIXTURE_INTENSITY } = evaluate(await compiled(`${scenePath}/lighting-profile.ts`))
+const { LOBBY_LIGHT_SOURCES } = evaluate(await compiled(`${scenePath}/lobby-world.tsx`, ["LOBBY_LIGHT_SOURCES"]), { layout: lobbyLayout, FIXTURE_INTENSITY })
+const { BIBAO_ARTWORK_PLACEMENTS } = evaluate(await compiled(`${scenePath}/framed-artwork.tsx`, ["BIBAO_ARTWORK_PLACEMENTS"]))
 const sceneCode = await compiled(`${scenePath}/office-scene.tsx`, [
   "EYE_HEIGHT", "PITCH_LIMIT", "WALK_SPEED", "RUN_SPEED", "JUMP_SPEED", "GRAVITY", "SEND_EVERY_MS", "TASK_RANGE", "REPORT_RANGE", "VENT_RANGE",
   "SceneContent", "reportTargets",
@@ -36,7 +48,8 @@ class Surface extends EventTarget {
   closest() { return this.control ? this : null }
   blur() {}
 }
-function harness({ quality = "alto", blackout = false, role = "funcionario", position = map.spawns[0], controlsEnabled = true, latency = 0 } = {}) {
+function harness({ quality = "alto", blackout = false, role = "funcionario", lobby = false, sceneMap = map,
+  position = sceneMap.spawns[0], controlsEnabled = true, latency = 0 } = {}) {
   const document = Object.assign(new EventTarget(), { activeElement: null, pointerLockElement: null, hidden: false })
   const window = Object.assign(new EventTarget(), { innerWidth: 1280 })
   const canvas = new Surface()
@@ -44,23 +57,23 @@ function harness({ quality = "alto", blackout = false, role = "funcionario", pos
   const gl = { domElement: canvas, toneMappingExposure: viewerLighting(blackout, role === "assassino").exposure }
   const lights = {}
   const effects = []
-  let frame, now = 0, targets, blackoutValue
+  let frame, now = 0, targets, targetUpdates = 0, blackoutValue
   const mine = { id: "local", name: "Teste", color: "#38bdf8", alive: true, connected: true, ready: true, inVent: false, dir: 0, ...position }
   const state = { players: new Map([[mine.id, mine]]) }
   const sent = []
   const pending = []
   const acknowledge = payload => {
-    if (snapshot.phase !== "jogando") return
+    if (snapshot.phase !== "jogando" && snapshot.phase !== "lobby") return
     Object.assign(mine, payload, { moveSequence: payload.sequence })
-    const sample = api.stairSampleAt(map, mine.x, mine.z)
+    const sample = api.stairSampleAt(sceneMap, mine.x, mine.z)
     if (sample) mine.level = sample.progress >= 0.5 ? sample.targetLevel : sample.level
   }
-  const snapshot = { players: [mine], phase: "jogando", config: {}, blackout, corpses: [] }
+  const snapshot = { players: [mine], phase: lobby ? "lobby" : "jogando", config: {}, blackout, corpses: [] }
   const props = {
-    map, snapshot, me: mine.id, role, allies: [], pendingTasks: [], quality, controlsEnabled,
+    map: sceneMap, lobby, snapshot, me: mine.id, role, allies: [], pendingTasks: [], quality, controlsEnabled,
     inputRef: { current: { x: 0, z: 0, sprint: false, crouch: false, jumpSerial: 0 } },
     lookRef: { current: { yaw: 0, pitch: 0 } }, poseRef: { current: { x: 0, z: 0, dir: 0 } },
-    onTargets: value => { targets = value }, onReady: () => {},
+    onTargets: value => { targets = value; targetUpdates++ }, onReady: () => {},
     roomRef: { current: { state, send(type, payload) {
       sent.push({ type, ...payload })
       if (latency) pending.push({ at: now + latency, payload })
@@ -75,7 +88,9 @@ function harness({ quality = "alto", blackout = false, role = "funcionario", pos
     playGameSound: () => {}, prepareGameAudio: () => {}, setBlackout: value => { blackoutValue = value }, prepareScene: () => Promise.resolve(),
     useThree: () => ({ camera, gl }), useRef: current => ({ current }), useMemo: factory => factory(),
     useEffect: effect => effects.push(effect), useFrame: callback => { frame = callback },
-    AdaptiveResolution: noop, OfficeLightGrid: noop, ProceduralEnvironment: noop, CinematicEffects: noop, NightSky: noop, OfficeBuilding: noop, OfficeWorld: noop, Markers: noop, Actor: noop, Corpse: noop,
+    AdaptiveResolution: noop, OfficeLightGrid: "OfficeLightGrid", ProceduralEnvironment: noop, CinematicEffects: noop,
+    NightSky: "NightSky", OfficeBuilding: "OfficeBuilding", OfficeWorld: "OfficeWorld", Markers: "Markers", Actor: "Actor", Corpse: "Corpse",
+    LobbyWorld: "LobbyWorld", LOBBY_LIGHT_SOURCES, FramedArtwork: "FramedArtwork", BIBAO_ARTWORK_PLACEMENTS,
     React: { createElement(type, attributes, ...children) {
       if (attributes?.ref && ["ambientLight", "hemisphereLight", "directionalLight", "spotLight", "object3D"].includes(type)) {
         const constructors = { ambientLight: THREE.AmbientLight, hemisphereLight: THREE.HemisphereLight, directionalLight: THREE.DirectionalLight, spotLight: THREE.SpotLight, object3D: THREE.Object3D }
@@ -89,7 +104,7 @@ function harness({ quality = "alto", blackout = false, role = "funcionario", pos
     } },
   })
   Object.assign(api, movement)
-  api.SceneContent(props)
+  const tree = api.SceneContent(props)
   const cleanup = effects.map(effect => effect()).filter(Boolean)
   function tick(count = 1, delta = 1 / 60) {
     for (let index = 0; index < count; index++) {
@@ -99,8 +114,9 @@ function harness({ quality = "alto", blackout = false, role = "funcionario", pos
     }
   }
   tick()
-  return { ...api, props, camera, gl, lights, sent, mine, canvas, document, window, tick,
+  return { ...api, props, tree, camera, gl, lights, sent, mine, canvas, document, window, tick,
     get targets() { return targets }, get blackoutValue() { return blackoutValue },
+    get targetUpdates() { return targetUpdates },
     dispose() { cleanup.reverse().forEach(callback => callback()) },
   }
 }
@@ -109,6 +125,14 @@ function near(actual, expected, message, tolerance = 0.002) {
 }
 let checks = 0
 function check(name, run) { run(); checks++; console.log(`OK ${name}`) }
+function find(tree, type) {
+  if (tree?.type === type) return tree
+  for (const child of tree?.props?.children?.flat(Infinity) ?? []) {
+    const result = child && typeof child === "object" ? find(child, type) : null
+    if (result) return result
+  }
+  return null
+}
 
 check("Camera e luzes reais da cena usam o mesmo perfil nas três qualidades e papéis", () => {
   for (const quality of ["baixo", "medio", "alto"]) for (const blackout of [false, true]) for (const role of ["funcionario", "assassino"]) {
@@ -258,6 +282,77 @@ check("Olhar touch limpa o dedo antigo ao perder foco, ocultar página ou focar 
     assert.notEqual(h.props.lookRef.current.yaw, previous, "Novo toque retoma o olhar")
     h.dispose()
   }
+})
+
+check("Cena de lobby escolhe sua sala e seis fontes reais sem prédio, céu ou marcadores da partida", () => {
+  for (const quality of ["baixo", "medio", "alto"]) {
+    const h = harness({ lobby: true, sceneMap: lobbyMap, quality, role: null })
+    assert.equal(find(h.tree, "LobbyWorld").props.quality, quality)
+    for (const excluded of ["OfficeBuilding", "OfficeWorld", "NightSky", "Markers"]) assert.equal(find(h.tree, excluded), null)
+    assert.ok(find(h.tree, "Actor"), "Avatares continuam no mesmo mundo online")
+    const grid = find(h.tree, "OfficeLightGrid").props
+    assert.equal(grid.map, lobbyMap)
+    assert.equal(grid.sources, LOBBY_LIGHT_SOURCES)
+    assert.equal(grid.sources.length, 6)
+    assert.equal(new Set(grid.sources.map((source) => source.color)).size, 5)
+    for (const source of grid.sources) assert.ok(source.intensity > 0 && source.range > 0)
+    near(h.camera.position.y, 1.62, "Câmera do lobby apoiada no piso")
+    h.dispose()
+  }
+})
+
+check("Movimento previsto do lobby não volta para a posição antiga a cada quadro ou eco de rede", () => {
+  for (const fps of [30, 60, 120]) for (const latency of [50, 150, 300]) {
+    const h = harness({ lobby: true, sceneMap: lobbyMap, latency })
+    const start = h.camera.position.x
+    h.props.inputRef.current.x = 1
+    let previous = start
+    for (let frame = 0; frame < fps; frame++) {
+      h.tick(1, 1 / fps)
+      assert.ok(h.camera.position.x >= previous - 0.0001, `Lobby ${fps}fps/${latency}ms: movimento regrediu`)
+      previous = h.camera.position.x
+    }
+    assert.ok(previous - start > 4, "Lobby realmente anda, não só anima parado")
+    h.props.inputRef.current.x = 0
+    const stop = previous
+    for (let frame = 0; frame < fps * 2; frame++) {
+      h.tick(1, 1 / fps)
+      assert.ok(h.camera.position.x >= previous - 0.0001, `Lobby ${fps}fps/${latency}ms: eco puxou para trás`)
+      previous = h.camera.position.x
+    }
+    assert.ok(previous - stop < 0.3)
+    assert.equal(h.sent.at(-1).moving, false)
+    assert.ok(h.sent.every((packet, index) => !index || packet.sequence > h.sent[index - 1].sequence))
+    near(h.mine.x, h.camera.position.x, "Confirmação final do lobby", 0.01)
+    h.dispose()
+  }
+})
+
+check("Lobby não publica alvos de partida e não repete a limpeza em cada quadro", () => {
+  const h = harness({ lobby: true, sceneMap: lobbyMap, role: "assassino" })
+  h.props.snapshot.corpses.push({ id: "stale-body", playerId: "old", x: h.mine.x, z: h.mine.z, level: 0, reported: false })
+  h.props.inputRef.current.x = 1
+  h.tick(180)
+  assert.deepEqual(Object.keys(h.targets).sort(), ["corpse", "emergency", "kill", "task", "vent"])
+  for (const value of Object.values(h.targets)) assert.ok(value === null || value === false)
+  assert.equal(h.targetUpdates, 1, "Sem spam de setState dos alvos durante exploração")
+  h.dispose()
+})
+
+check("Sala respeita colisores do mobiliário e preparação impede andar ou pular", () => {
+  const h = harness({ lobby: true, sceneMap: lobbyMap, position: { x: 0, z: 0, level: 0 } })
+  h.props.inputRef.current.x = 1
+  h.tick(240)
+  const cabinet = lobbyLayout.colliders.find((box) => box.id === "lobby-east-cabinet")
+  assert.ok(h.camera.position.x > 4)
+  assert.ok(h.camera.position.x <= cabinet.x - cabinet.w / 2 - collision.PLAYER_RADIUS + 0.02)
+  h.dispose()
+  const paused = harness({ lobby: true, sceneMap: lobbyMap, controlsEnabled: false })
+  const start = paused.camera.position.clone()
+  Object.assign(paused.props.inputRef.current, { x: 1, z: -1, sprint: true, jumpSerial: 1 })
+  paused.tick(120)
+  near(paused.camera.position.distanceTo(start), 0, "Preparação não deixa input residual atravessar")
+  paused.dispose()
 })
 
 console.log(`${checks} verificações integradas da cena passaram. Transporte é local; não substitui uma partida multiplayer real.`)

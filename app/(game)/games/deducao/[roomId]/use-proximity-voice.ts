@@ -25,9 +25,13 @@ interface VoiceSignal {
 
 export interface VoiceControls {
   enabled: boolean
+  configured: boolean
   busy: boolean
   peerCount: number
   error: string
+  devices: { deviceId: string; label: string }[]
+  selectedDeviceId: string
+  configure: (deviceId?: string) => void
   toggle: () => void
 }
 
@@ -47,14 +51,35 @@ function volumeAt(distance: number) {
 
 export function useProximityVoice({ roomRef, me, snapshot, poseRef }: Options): VoiceControls {
   const [enabled, setEnabled] = useState(false)
+  const [configured, setConfigured] = useState(false)
   const [busy, setBusy] = useState(false)
   const [peerCount, setPeerCount] = useState(0)
   const [error, setError] = useState("")
+  const [devices, setDevices] = useState<VoiceControls["devices"]>([])
+  const [selectedDeviceId, setSelectedDeviceId] = useState("")
   const streamRef = useRef<MediaStream | null>(null)
   const peersRef = useRef(new Map<string, VoicePeer>())
   const enabledRef = useRef(false)
+  const mutedRef = useRef(false)
+  const busyRef = useRef(false)
+  const requestVersion = useRef(0)
+  const mounted = useRef(false)
   const snapshotRef = useRef(snapshot)
   snapshotRef.current = snapshot
+
+  const reportMicrophone = useCallback((ready: boolean) => {
+    try { roomRef.current?.send("microphone:status" as never, { ready } as never) } catch { /* A reconexão confirma novamente. */ }
+  }, [roomRef])
+
+  const refreshDevices = useCallback(async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return
+    try {
+      const available = await navigator.mediaDevices.enumerateDevices()
+      if (!mounted.current || !streamRef.current) return
+      setDevices(available.filter((device) => device.kind === "audioinput" && device.deviceId)
+        .map((device, index) => ({ deviceId: device.deviceId, label: device.label || `Microfone ${index + 1}` })))
+    } catch { /* A captura pode funcionar mesmo sem a lista de dispositivos. */ }
+  }, [])
 
   const sendSignal = useCallback(
     (to: string, payload: Omit<VoiceSignal, "from">) => {
@@ -149,16 +174,22 @@ export function useProximityVoice({ roomRef, me, snapshot, poseRef }: Options): 
 
   const stop = useCallback(
     (notify = true) => {
+      requestVersion.current++
+      busyRef.current = false
       enabledRef.current = false
-      if (notify) roomRef.current?.send("voice:leave" as never)
+      if (notify) {
+        reportMicrophone(false)
+        try { roomRef.current?.send("voice:leave" as never) } catch { /* A sala já pode ter sido encerrada. */ }
+      }
       for (const id of [...peersRef.current.keys()]) removePeer(id)
-      streamRef.current?.getTracks().forEach((track) => track.stop())
+      streamRef.current?.getTracks().forEach((track) => { track.onended = null; track.stop() })
       streamRef.current = null
       setEnabled(false)
+      setConfigured(false)
       setBusy(false)
       setPeerCount(0)
     },
-    [removePeer, roomRef],
+    [removePeer, reportMicrophone, roomRef],
   )
 
   useEffect(() => {
@@ -223,7 +254,7 @@ export function useProximityVoice({ roomRef, me, snapshot, poseRef }: Options): 
   }, [ensurePeer, makeOffer, me, removePeer, roomRef, sendSignal])
 
   useEffect(() => {
-    if (!enabled) return
+    if (!configured) return
     const updateVolumes = () => {
       const current = snapshotRef.current
       const roomState = roomRef.current?.state as any
@@ -250,21 +281,50 @@ export function useProximityVoice({ roomRef, me, snapshot, poseRef }: Options): 
     }
     updateVolumes()
     const volumeTimer = window.setInterval(updateVolumes, VOLUME_UPDATE_MS)
-    const heartbeat = window.setInterval(() => roomRef.current?.send("voice:join" as never), VOICE_HEARTBEAT_MS)
+    const heartbeat = window.setInterval(() => {
+      if (!streamRef.current?.getAudioTracks().some((track) => track.readyState === "live")) {
+        setError("O microfone foi desconectado. Configure novamente para marcar pronto.")
+        stop(true)
+        return
+      }
+      reportMicrophone(true)
+      roomRef.current?.send("voice:join" as never)
+    }, VOICE_HEARTBEAT_MS)
     return () => {
       window.clearInterval(volumeTimer)
       window.clearInterval(heartbeat)
     }
-  }, [enabled, me, poseRef, roomRef])
+  }, [configured, me, poseRef, reportMicrophone, roomRef, stop])
 
-  useEffect(() => () => stop(true), [stop])
-
-  const toggle = useCallback(() => {
-    if (busy) return
-    if (enabledRef.current) {
+  useEffect(() => {
+    mounted.current = true
+    const onDeviceChange = () => { void refreshDevices() }
+    navigator.mediaDevices?.addEventListener("devicechange", onDeviceChange)
+    let permission: PermissionStatus | undefined
+    let observing = true
+    const onPermissionChange = () => {
+      if (permission?.state !== "denied") return
+      setError("O acesso ao microfone foi bloqueado. Permita nas configurações do site e tente novamente.")
       stop(true)
-      return
     }
+    void navigator.permissions?.query({ name: "microphone" as PermissionName }).then((status) => {
+      if (!observing) return
+      permission = status
+      status.addEventListener("change", onPermissionChange)
+    }).catch(() => undefined)
+    return () => {
+      observing = false
+      mounted.current = false
+      navigator.mediaDevices?.removeEventListener("devicechange", onDeviceChange)
+      permission?.removeEventListener("change", onPermissionChange)
+      stop(true)
+    }
+  }, [refreshDevices, stop])
+
+  const configure = useCallback((deviceId?: string) => {
+    if (busyRef.current || !mounted.current) return
+    busyRef.current = true
+    const version = ++requestVersion.current
     setBusy(true)
     setError("")
     void (async () => {
@@ -278,28 +338,73 @@ export function useProximityVoice({ roomRef, me, snapshot, poseRef }: Options): 
             noiseSuppression: true,
             autoGainControl: true,
             channelCount: 1,
+            ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
           },
           video: false,
         })
+        if (!mounted.current || version !== requestVersion.current) {
+          stream.getTracks().forEach((track) => track.stop())
+          return
+        }
+        const audioTrack = stream.getAudioTracks().find((track) => track.readyState === "live")
+        if (!audioTrack) {
+          stream.getTracks().forEach((track) => track.stop())
+          throw new Error("Nenhum microfone ativo foi encontrado. Conecte um microfone e tente novamente.")
+        }
+        const previous = streamRef.current
         streamRef.current = stream
+        for (const track of stream.getAudioTracks()) {
+          track.enabled = !mutedRef.current
+          track.onended = () => {
+            if (streamRef.current !== stream) return
+            setError("O microfone foi desconectado. Configure novamente para marcar pronto.")
+            stop(true)
+          }
+        }
+        for (const [id, peer] of peersRef.current) {
+          const sender = peer.connection.getSenders().find((candidate) => candidate.track?.kind === "audio")
+          if (sender) void sender.replaceTrack(audioTrack).catch(() => {
+            if (peersRef.current.get(id) === peer) removePeer(id)
+          })
+        }
+        previous?.getTracks().forEach((track) => { track.onended = null; track.stop() })
         enabledRef.current = true
-        setEnabled(true)
+        setConfigured(true)
+        setEnabled(!mutedRef.current)
+        setSelectedDeviceId(audioTrack.getSettings().deviceId || deviceId || "")
+        reportMicrophone(true)
         roomRef.current?.send("voice:join" as never)
+        void refreshDevices()
       } catch (problem) {
-        const denied = problem instanceof DOMException && problem.name === "NotAllowedError"
+        if (!mounted.current || version !== requestVersion.current) return
+        const name = problem instanceof DOMException ? problem.name : ""
         setError(
-          denied
-            ? "Permita o microfone no navegador para usar o áudio."
-            : problem instanceof Error
-              ? problem.message
-              : "Não foi possível ligar o microfone.",
+          name === "NotAllowedError" || name === "SecurityError"
+            ? "Permita o microfone nas configurações do site no navegador e tente novamente para marcar pronto."
+            : name === "NotFoundError" || name === "OverconstrainedError"
+              ? "Microfone não encontrado. Conecte um dispositivo ou escolha outro microfone."
+              : name === "NotReadableError" || name === "AbortError"
+                ? "Não foi possível acessar o microfone. Confira se outro aplicativo está usando o dispositivo."
+                : problem instanceof Error ? problem.message : "Não foi possível ligar o microfone.",
         )
-        stop(false)
+        if (!streamRef.current?.getAudioTracks().some((track) => track.readyState === "live")) stop(true)
       } finally {
-        setBusy(false)
+        if (mounted.current && version === requestVersion.current) {
+          busyRef.current = false
+          setBusy(false)
+        }
       }
     })()
-  }, [busy, roomRef, stop])
+  }, [refreshDevices, removePeer, reportMicrophone, roomRef, stop])
 
-  return { enabled, busy, peerCount, error, toggle }
+  const toggle = useCallback(() => {
+    if (busyRef.current) return
+    const tracks = streamRef.current?.getAudioTracks().filter((track) => track.readyState === "live")
+    if (!tracks?.length) { configure(); return }
+    mutedRef.current = !mutedRef.current
+    tracks.forEach((track) => { track.enabled = !mutedRef.current })
+    setEnabled(!mutedRef.current)
+  }, [configure])
+
+  return { enabled, configured, busy, peerCount, error, devices, selectedDeviceId, configure, toggle }
 }

@@ -5,6 +5,7 @@ import { Client, type Room } from "@colyseus/sdk"
 import { getToken } from "@/lib/auth"
 import { clearDeducaoRoomPassword, createGameTicket, gameServerUrl, getDeducaoRoomPassword } from "@/lib/services/games"
 import { calibrateSabotageStatus, type SabotageStatus } from "./sabotage-cooldown"
+import { calibrateEmergencyStatus, type EmergencyStatus } from "./emergency-cooldown"
 
 export type Phase = "lobby" | "jogando" | "reuniao" | "votacao" | "fim"
 export type Role = "assassino" | "detetive" | "funcionario"
@@ -17,6 +18,7 @@ export interface PlayerRow {
   alive: boolean
   connected: boolean
   ready: boolean
+  microphoneReady: boolean
   inVent: boolean
   tasksDone: number
   tasksTotal: number
@@ -74,6 +76,7 @@ export interface Snapshot {
   tasksTotal: number
   blackout: boolean
   blackoutEndsAt: number
+  emergencyReadyAt: number
   winner: string
   endReason: string
   players: PlayerRow[]
@@ -130,6 +133,7 @@ function snapshotOf(state: any): Snapshot {
       alive: player.alive,
       connected: player.connected,
       ready: player.ready,
+      microphoneReady: Boolean(player.microphoneReady),
       inVent: player.inVent,
       tasksDone: player.tasksDone,
       tasksTotal: player.tasksTotal,
@@ -183,6 +187,7 @@ function snapshotOf(state: any): Snapshot {
     tasksTotal: state.tasksTotal,
     blackout: state.blackout,
     blackoutEndsAt: state.blackoutEndsAt,
+    emergencyReadyAt: Number(state.emergencyReadyAt ?? 0),
     winner: state.winner,
     endReason: state.endReason,
     players,
@@ -214,6 +219,7 @@ function snapshotOf(state: any): Snapshot {
       voteSeconds: state.config.voteSeconds,
       revealRoleOnEject: state.config.revealRoleOnEject,
       emergencyPerPlayer: state.config.emergencyPerPlayer,
+      emergencyCooldownMs: state.config.emergencyCooldownMs ?? 30_000,
       blackoutSeconds: state.config.blackoutSeconds,
     },
   }
@@ -318,6 +324,7 @@ export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [role, setRole] = useState<Role | null>(null)
   const [sabotageStatus, setSabotageStatus] = useState<SabotageStatus | null>(null)
+  const [emergencyStatus, setEmergencyStatus] = useState<EmergencyStatus | null>(null)
   const [allies, setAllies] = useState<string[]>([])
   const [myTasks, setMyTasks] = useState<string[]>([])
   const [notices, setNotices] = useState<Notice[]>([])
@@ -404,6 +411,7 @@ export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
       room.onMessage("papel", (payload: { role: Role; tasks: string[]; allies: string[] }) => {
         setFinalRoles({})
         setSabotageStatus(null)
+        setEmergencyStatus(null)
         setRole(payload.role)
         setAllies(payload.allies)
         setMyTasks(payload.tasks)
@@ -411,6 +419,10 @@ export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
       room.onMessage("sabotage:status", (payload: unknown) => {
         const next = calibrateSabotageStatus(payload)
         if (next) setSabotageStatus(next)
+      })
+      room.onMessage("emergency:status", (payload: unknown) => {
+        const next = calibrateEmergencyStatus(payload)
+        if (next) setEmergencyStatus(next)
       })
       room.onMessage("morte", (payload: { by: string }) => {
         notice("perigo", `${payload.by} te pegou. Agora você observa e termina suas tarefas.`)
@@ -452,6 +464,7 @@ export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
         setStatus("erro")
       })
       room.send("sabotage:status")
+      room.send("emergency:status")
     }
 
     connect().catch((problem: Error) => {
@@ -485,6 +498,7 @@ export function useDeducaoRoom({ roomId, name, password, mapId }: Options) {
     snapshot,
     role,
     sabotageStatus,
+    emergencyStatus,
     allies,
     myTasks,
     notices,

@@ -5,10 +5,11 @@ import { useThree } from "@react-three/fiber"
 import type { OfficeMap } from "@/lib/services/games"
 import { worldLightSources } from "./office-world"
 import { buildLightGrid, officeLightUniforms } from "./light-grid"
+import type { OfficeLightSource } from "./light-grid"
 
-export function OfficeLightGrid({ map, blackout }: { map: OfficeMap; blackout: boolean }) {
+export function OfficeLightGrid({ map, blackout, sources }: { map: OfficeMap; blackout: boolean; sources?: OfficeLightSource[] }) {
   const { gl, scene } = useThree()
-  const grid = useMemo(() => buildLightGrid(worldLightSources(map)), [map])
+  const grid = useMemo(() => buildLightGrid(sources ?? worldLightSources(map)), [map, sources])
   useLayoutEffect(() => {
     const uniforms = officeLightUniforms
     uniforms.uOfficeHeaders.value = grid.headers

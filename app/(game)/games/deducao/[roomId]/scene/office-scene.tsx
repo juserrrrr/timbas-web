@@ -21,6 +21,8 @@ import { patchVision, setBlackout } from "./vision-material"
 import { OfficeLightGrid } from "./office-light-grid"
 import { AdaptiveResolution } from "./render-budget"
 import { createActorMotion, updateActorMotion } from "./actor-motion"
+import { LobbyWorld, LOBBY_LIGHT_SOURCES } from "./lobby-world"
+import { FramedArtwork, BIBAO_ARTWORK_PLACEMENTS } from "./framed-artwork"
 
 const VOID_COLOR = "#07111f"
 const SHADOW_SETTINGS = { type: THREE.PCFShadowMap }
@@ -57,6 +59,7 @@ export interface InputState {
 
 interface Props {
   map: OfficeMap
+  lobby?: boolean
   snapshot: Snapshot
   roomRef: React.MutableRefObject<Room | null>
   me: string
@@ -111,6 +114,7 @@ export function OfficeScene(props: Props) {
 
 function SceneContent({
   map,
+  lobby = false,
   snapshot,
   roomRef,
   me,
@@ -188,7 +192,7 @@ function SceneContent({
 
   const alive = mineSnapshot?.alive ?? true
   const inVent = mineSnapshot?.inVent ?? false
-  const visionRange = Number(snapshot.config.visionRange ?? 13)
+  const visionRange = Number(snapshot.config.visionRange ?? 11)
   // O prédio entra no mesmo apagão para todos. O assassino mantém alcance e
   // contraste suficientes para caçar; a tripulação fica limitada às luzes de
   // emergência e ao cone curto da lanterna.
@@ -380,7 +384,7 @@ function SceneContent({
     const serverDisagrees = !acknowledgedPosition || Math.hypot(
       mine.x - acknowledgedPosition.x, mine.z - acknowledgedPosition.z,
     ) > 0.08
-    if (snapshot.phase !== "jogando" || inVent) {
+    if ((snapshot.phase !== "jogando" && snapshot.phase !== "lobby") || inVent) {
       local.current.set(mine.x, mine.z)
       velocity.current.set(0, 0)
       visualLevel.current = liveLevel
@@ -541,7 +545,12 @@ function SceneContent({
     }
     gl.toneMappingExposure += (lighting.exposure - gl.toneMappingExposure) * Math.min(1, delta * 3)
 
-    if (onStairs) {
+    if (lobby) {
+      if (targetSignature.current !== "lobby") {
+        targetSignature.current = "lobby"
+        onTargets(NO_TARGETS)
+      }
+    } else if (onStairs) {
       if (targetSignature.current !== "stairs") {
         targetSignature.current = "stairs"
         onTargets(NO_TARGETS)
@@ -568,10 +577,10 @@ function SceneContent({
   return (
     <>
       <AdaptiveResolution quality={quality} onChange={onResolution} />
-      <OfficeLightGrid map={map} blackout={snapshot.blackout} />
+      <OfficeLightGrid map={map} blackout={snapshot.blackout} sources={lobby ? LOBBY_LIGHT_SOURCES : undefined} />
       <ProceduralEnvironment quality={quality} blackout={snapshot.blackout} nightVision={assassinNightVision} />
       {quality === "alto" && <CinematicEffects blackout={blackoutForViewer} />}
-      <NightSky quality={quality} />
+      {!lobby && <NightSky quality={quality} />}
       <ambientLight ref={ambient} color="#91a9d4" intensity={viewerLighting(snapshot.blackout, assassinNightVision).ambient} />
       <hemisphereLight ref={sky} args={["#738bb8", "#09101b", viewerLighting(snapshot.blackout, assassinNightVision).sky]} />
       <directionalLight
@@ -601,7 +610,9 @@ function SceneContent({
         decay={2}
       />
 
+      {lobby ? <LobbyWorld quality={quality} /> : <>
       <OfficeBuilding blackout={snapshot.blackout} quality={quality} />
+      {map.rooms.some((room) => room.id === "recepcao") && <FramedArtwork {...BIBAO_ARTWORK_PLACEMENTS.reception} />}
       {renderedFloors.map((floor) => (
         <OfficeWorld
           key={floor}
@@ -611,7 +622,8 @@ function SceneContent({
           baseY={floor * FLOOR_HEIGHT}
         />
       ))}
-      <group position-y={currentLevel * FLOOR_HEIGHT}>
+      </>}
+      {!lobby && <group position-y={currentLevel * FLOOR_HEIGHT}>
         <Markers
           map={map}
           spots={myTaskSpots}
@@ -621,7 +633,7 @@ function SceneContent({
           visionRange={activeVision}
           level={currentLevel}
         />
-      </group>
+      </group>}
 
       {snapshot.players.map((player) => (
         <Actor

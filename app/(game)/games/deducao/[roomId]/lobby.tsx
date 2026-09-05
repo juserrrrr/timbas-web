@@ -1,66 +1,48 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Check, Copy, Lock, LogOut, Play, Send } from "lucide-react"
+import { Check, Copy, Lock, LogOut, Mic, MicOff, Play, Send } from "lucide-react"
 import { toast } from "@/lib/toast"
 import { PlayerBadge } from "./badge"
+import { MicrophoneSetup } from "./microphone-setup"
+import { LobbyRules } from "./lobby-rules"
 import type { Snapshot } from "./use-deducao-room"
+import type { VoiceControls } from "./use-proximity-voice"
 
 interface Props {
   snapshot: Snapshot
   me: string
   minPlayers: number
+  voice: VoiceControls
+  exploring?: boolean
+  canExplore?: boolean
+  onExploreChange: (exploring: boolean) => void
   onSend: (type: string, payload?: unknown) => void
   onLeave: () => void
 }
 
-const RULES: { key: string; label: string; hint: string; min: number; max: number; step: number; unit?: string }[] = [
-  { key: "killers", label: "Assassinos", hint: "Quantos a partida sorteia", min: 1, max: 3, step: 1 },
-  { key: "tasksPerPlayer", label: "Tarefas por jogador", hint: "Quantas cada um recebe", min: 2, max: 8, step: 1 },
-  {
-    key: "killCooldownMs",
-    label: "Tempo entre abates",
-    hint: "Quanto o assassino espera para matar de novo",
-    min: 10000,
-    max: 60000,
-    step: 5000,
-    unit: "s",
-  },
-  {
-    key: "visionRange",
-    label: "Campo de visão",
-    hint: "Alcance para interagir e identificar elementos próximos",
-    min: 7,
-    max: 15,
-    step: 1,
-    unit: "m",
-  },
-  {
-    key: "meetingSeconds",
-    label: "Discussão",
-    hint: "Tempo de conversa antes de votar",
-    min: 15,
-    max: 120,
-    step: 5,
-    unit: "s",
-  },
-  { key: "voteSeconds", label: "Votação", hint: "Tempo para escolher quem sai", min: 15, max: 120, step: 5, unit: "s" },
-  {
-    key: "blackoutSeconds",
-    label: "Duração da sabotagem",
-    hint: "Luzes apagadas pelo assassino, com recarga de 40 segundos",
-    min: 10,
-    max: 60,
-    step: 5,
-    unit: "s",
-  },
-]
-
-export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
+export function Lobby({ snapshot, me, minPlayers, voice, exploring = false, canExplore = true, onExploreChange, onSend, onLeave }: Props) {
   const isHost = snapshot.hostId === me
+  const mine = snapshot.players.find((player) => player.id === me)
+  const microphoneReady = voice.configured && Boolean(mine?.microphoneReady) && mine?.connected !== false && !voice.busy
+  const missingMicrophones = snapshot.players.filter((player) => !player.microphoneReady).length
+  const disconnectedPlayers = snapshot.players.filter((player) => player.connected === false).length
   const missing = Math.max(0, minPlayers - snapshot.players.length)
   const notReady = snapshot.players.filter((player) => !player.ready && player.id !== snapshot.hostId).length
   const canStartSolo = snapshot.hostCanStartSolo
+  const canStart = microphoneReady && missingMicrophones === 0 && disconnectedPlayers === 0 && (canStartSolo || missing === 0) && notReady === 0
+  const readiness = mine?.connected === false
+    ? "Aguardando sua reconexão à sala."
+    : disconnectedPlayers > 0 ? `Aguardando ${disconnectedPlayers} reconectar à sala.`
+      : !microphoneReady
+        ? voice.busy ? "Aguarde a configuração do microfone." : voice.configured ? "Aguardando a confirmação do microfone na sala." : "Configure seu microfone para ficar pronto."
+        : missingMicrophones > 0 ? `${missingMicrophones} ainda precisam configurar o microfone.`
+          : notReady > 0 ? `${notReady} ainda não marcaram pronto.`
+            : canStartSolo && missing > 0 ? "Você pode iniciar sozinho para testar."
+              : missing > 0 ? `Faltam ${missing} para começar.`
+                : isHost ? "Todo mundo pronto. É com você." : "Esperando o anfitrião começar."
+  const toggleReady = () => { if (mine?.ready || microphoneReady) onSend("ready") }
+  const start = () => { if (canStart) onSend("start") }
   const [draft, setDraft] = useState("")
   const chatList = useRef<HTMLDivElement>(null)
 
@@ -79,6 +61,31 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
     onSend("chat", { text })
     setDraft("")
   }
+
+  if (exploring) return (
+    <div data-lobby-dock className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+5.75rem)] w-[calc(100%-1.5rem)] max-w-sm -translate-x-1/2">
+      <div className="pointer-events-auto flex items-center justify-center gap-1.5 rounded-2xl border border-white/15 bg-zinc-950/85 p-1.5 shadow-lg" role="group" aria-label="Preparação da partida">
+        <button type="button" onClick={(event) => { event.currentTarget.blur(); onExploreChange(false) }}
+          className="min-h-11 min-w-0 flex-1 cursor-pointer rounded-xl border border-white/15 px-2 text-xs font-semibold text-zinc-200 hover:bg-white/10">
+          Preparação
+        </button>
+        <button type="button" disabled={!mine?.ready && !microphoneReady} aria-describedby="lobby-readiness"
+          aria-pressed={Boolean(mine?.ready)} title={readiness}
+          onPointerDown={(event) => { if (event.pointerType !== "mouse") event.preventDefault() }}
+          onClick={(event) => { event.currentTarget.blur(); toggleReady() }}
+          className="min-h-11 min-w-0 flex-1 cursor-pointer rounded-xl border border-emerald-400/30 px-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-zinc-500">
+          <span className="block truncate">{mine?.ready ? "Não estou pronto" : "Estou pronto"}</span>
+        </button>
+        {isHost && <button type="button" disabled={!canStart} aria-describedby="lobby-readiness" title={readiness}
+          onPointerDown={(event) => { if (event.pointerType !== "mouse") event.preventDefault() }}
+          onClick={(event) => { event.currentTarget.blur(); start() }}
+          className="min-h-11 min-w-0 flex-1 cursor-pointer rounded-xl bg-amber-400 px-2 text-xs font-bold text-zinc-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-500">
+          Começar partida
+        </button>}
+      </div>
+      <p id="lobby-readiness" className="sr-only" role="status">{readiness}</p>
+    </div>
+  )
 
   return (
     <div className="h-full overflow-y-auto bg-zinc-950 px-4 py-4 sm:px-6 lg:overflow-hidden lg:px-8 lg:py-5">
@@ -114,6 +121,14 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
           </div>
         </header>
 
+        <div className="mt-4 flex shrink-0 flex-wrap items-center gap-3">
+          <button type="button" disabled={!canExplore} onClick={(event) => { if (!canExplore) return; event.currentTarget.blur(); onExploreChange(true) }}
+            className="min-h-11 cursor-pointer rounded-xl border border-amber-400/35 bg-amber-400/10 px-4 py-2.5 text-sm font-bold text-amber-200 transition hover:bg-amber-400/20 disabled:cursor-wait disabled:opacity-50">
+            {canExplore ? "Testar na sala" : "Sala de testes carregando"}
+          </button>
+          <p className="max-w-lg text-xs leading-relaxed text-zinc-400">Ande pela sala e teste os controles antes de marcar Pronto. Você pode explorar antes de configurar o microfone.</p>
+        </div>
+
         <div className="mt-5 grid flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(0,1.2fr)_minmax(26rem,0.8fr)] xl:grid-cols-[minmax(0,1.25fr)_minmax(34rem,0.75fr)]">
           <section className="min-h-0 lg:overflow-y-auto lg:pr-2">
             <div className="flex items-baseline justify-between">
@@ -128,31 +143,40 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
                   player={player}
                   you={player.id === me}
                   host={player.id === snapshot.hostId}
-                  hint={player.ready ? "Pronto" : "Esperando"}
+                  hint={player.connected === false ? "Desconectado" : !player.microphoneReady ? "Microfone pendente" : player.ready ? "Pronto" : "Esperando"}
                   footer={
-                    <span
-                      className={`mt-3 block h-1 rounded-full ${player.ready || player.id === snapshot.hostId ? "bg-emerald-400/70" : "bg-white/[0.08]"}`}
-                    />
+                    <div className="mt-3">
+                      <span className={`flex items-center gap-1.5 text-[10px] ${player.microphoneReady ? "text-emerald-300/80" : "text-zinc-500"}`}>
+                        {player.microphoneReady ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
+                        {player.microphoneReady ? "Microfone configurado" : "Microfone não configurado"}
+                      </span>
+                      <span className={`mt-2 block h-1 rounded-full ${player.connected !== false && player.microphoneReady && (player.ready || player.id === snapshot.hostId) ? "bg-emerald-400/70" : "bg-white/[0.08]"}`} />
+                    </div>
                   }
                 />
               ))}
             </div>
 
+            <MicrophoneSetup voice={voice} serverReady={Boolean(mine?.microphoneReady)} />
+
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() => onSend("ready")}
-                className="cursor-pointer rounded-xl border border-white/10 px-5 py-3 text-sm font-bold text-zinc-200 transition hover:border-emerald-400/40 hover:text-emerald-300"
+                onClick={toggleReady}
+                disabled={!mine?.ready && !microphoneReady}
+                aria-describedby="lobby-readiness"
+                className="cursor-pointer rounded-xl border border-white/10 px-5 py-3 text-sm font-bold text-zinc-200 transition hover:border-emerald-400/40 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Check className="mr-2 inline h-4 w-4" />
-                {snapshot.players.find((player) => player.id === me)?.ready ? "Não estou pronto" : "Estou pronto"}
+                {mine?.ready ? "Não estou pronto" : "Estou pronto"}
               </button>
 
               {isHost && (
                 <button
                   type="button"
-                  onClick={() => onSend("start")}
-                  disabled={(!canStartSolo && missing > 0) || notReady > 0}
+                  onClick={start}
+                  disabled={!canStart}
+                  aria-describedby="lobby-readiness"
                   className="cursor-pointer rounded-xl bg-amber-400 px-6 py-3 text-sm font-black uppercase tracking-wide text-zinc-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-500"
                 >
                   <Play className="mr-2 inline h-4 w-4" />
@@ -160,73 +184,14 @@ export function Lobby({ snapshot, me, minPlayers, onSend, onLeave }: Props) {
                 </button>
               )}
 
-              <p className="text-xs text-zinc-500">
-                {canStartSolo && missing > 0
-                  ? "Você pode iniciar sozinho para testar."
-                  : missing > 0
-                  ? `Faltam ${missing} para começar.`
-                  : notReady > 0
-                    ? `${notReady} ainda não marcaram pronto.`
-                    : isHost
-                      ? "Todo mundo pronto. É com você."
-                      : "Esperando o anfitrião começar."}
+              <p id="lobby-readiness" className="text-xs text-zinc-500">
+                {readiness}
               </p>
             </div>
           </section>
 
-          <aside className="grid min-h-0 gap-4 lg:grid-rows-[auto_minmax(9rem,1fr)]">
-            <section className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
-              <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">
-                Regras da partida
-              </h2>
-
-              <div className="mt-3 grid gap-x-5 gap-y-3 lg:grid-cols-2">
-                {RULES.map((rule) => {
-                  const raw = Number(snapshot.config[rule.key] ?? (rule.key === "blackoutSeconds" ? 25 : 0))
-                  const shown = rule.unit === "s" && rule.key.endsWith("Ms") ? raw / 1000 : raw
-                  return (
-                    <div key={rule.key}>
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-xs font-bold text-zinc-300">{rule.label}</span>
-                        <span className="font-mono text-sm font-bold text-amber-300">
-                          {shown}
-                          {rule.unit ?? ""}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={rule.min}
-                        max={rule.max}
-                        step={rule.step}
-                        value={raw}
-                        disabled={!isHost}
-                        onChange={(event) => onSend("config", { [rule.key]: Number(event.target.value) })}
-                        className="mt-1 w-full cursor-pointer accent-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
-                      />
-                      <p className="text-[10px] leading-snug text-zinc-600">{rule.hint}</p>
-                    </div>
-                  )
-                })}
-
-                <label className="flex cursor-pointer items-center justify-between gap-3 border-t border-white/[0.06] pt-3 lg:col-span-2">
-                  <span>
-                    <span className="block text-xs font-bold text-zinc-300">Detetive na sala</span>
-                    <span className="mt-1 block text-[11px] text-zinc-600">
-                      Um jogador investiga alguém por reunião e recebe o resultado na seguinte
-                    </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(snapshot.config.withDetective)}
-                    disabled={!isHost}
-                    onChange={(event) => onSend("config", { withDetective: event.target.checked })}
-                    className="h-4 w-4 shrink-0 cursor-pointer accent-amber-400 disabled:cursor-not-allowed"
-                  />
-                </label>
-              </div>
-
-              {!isHost && <p className="mt-3 text-[11px] text-zinc-600">Quem ajusta as regras é o anfitrião.</p>}
-            </section>
+          <aside className="grid min-h-0 gap-4 lg:grid-rows-[auto_minmax(9rem,1fr)] lg:overflow-y-auto lg:pr-2">
+            <LobbyRules snapshot={snapshot} isHost={isHost} onSend={onSend} />
 
             <section className="flex h-64 min-h-0 flex-col rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 lg:h-auto">
               <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">Chat</h2>

@@ -1,10 +1,13 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { LoaderCircle } from "lucide-react"
 import { playGameSound, unlockGameAudio } from "@/lib/games/game-audio"
 import type { MapTaskSpot, OfficeMap } from "@/lib/services/games"
 import { EndScreen } from "./end-screen"
+import { canCallEmergency, type EmergencyStatus } from "./emergency-cooldown"
 import { Hud } from "./hud"
+import type { HudPanel } from "./hud-panels"
 import { gameKeyCode, isGameControlTarget } from "./keyboard-controls"
 import { NO_TARGETS, type LookState, type Quality, type Targets } from "./match-types"
 import { Meeting } from "./meeting"
@@ -12,15 +15,21 @@ import { TaskOverlay } from "./minigames"
 import { canSabotage, type SabotageStatus } from "./sabotage-cooldown"
 import { OfficeScene, type InputState } from "./scene/office-scene"
 import type { Notice, Role, Snapshot } from "./use-deducao-room"
-import { useProximityVoice } from "./use-proximity-voice"
+import type { VoiceControls } from "./use-proximity-voice"
 
 interface Props {
   map: OfficeMap
+  lobby?: boolean
+  lobbyControlsEnabled?: boolean
+  onLobbySetup?: () => void
   snapshot: Snapshot
   roomRef: React.MutableRefObject<any>
+  poseRef: React.MutableRefObject<{ x: number; z: number; dir: number }>
+  voice: VoiceControls
   me: string
   role: Role | null
   sabotageStatus: SabotageStatus | null
+  emergencyStatus: EmergencyStatus | null
   allies: string[]
   myTasks: string[]
   finalRoles: Record<string, string>
@@ -51,17 +60,35 @@ const ROLE_INTRO: Record<Role, { title: string; line: string; tone: string }> = 
   },
 }
 
-/// Alto é o padrão. A escolha manual fica guardada, e trocar recria a cena para
+/// Leve é o padrão. A escolha manual fica guardada, e trocar recria a cena para
 /// que antialias, sombras e pós-processamento nunca compartilhem recursos velhos.
 const QUALITY_KEY = "timbas.deducao.graphics-quality"
 
+function initialQuality(): Quality {
+  try {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem(QUALITY_KEY)
+      if (saved === "alto" || saved === "medio" || saved === "baixo") return saved
+    }
+  } catch {
+    // Leve continua disponível quando o navegador bloqueia armazenamento.
+  }
+  return "baixo"
+}
+
 export function Match({
   map,
+  lobby = false,
+  lobbyControlsEnabled = false,
+  onLobbySetup,
   snapshot,
   roomRef,
+  poseRef,
+  voice,
   me,
   role,
   sabotageStatus,
+  emergencyStatus,
   allies,
   myTasks,
   finalRoles,
@@ -73,21 +100,28 @@ export function Match({
   // Olhar e posição vivem fora do React: mudam em todo quadro, e passar isso
   // por estado redesenharia o HUD sessenta vezes por segundo.
   const lookRef = useRef<LookState>({ yaw: 0, pitch: 0 })
-  const poseRef = useRef({ x: 0, z: 0, dir: 0 })
   const pressed = useRef(new Set<string>())
   const [targets, setTargets] = useState<Targets>(NO_TARGETS)
   const [openTask, setOpenTask] = useState<MapTaskSpot | null>(null)
   const [mapOpen, setMapOpen] = useState(false)
-  const [quality, setQuality] = useState<Quality>("alto")
+  const [hudPanel, setHudPanel] = useState<HudPanel>(null)
+  const [quality, setQuality] = useState<Quality>(initialQuality)
   const [intro, setIntro] = useState(false)
   const [sceneReady, setSceneReady] = useState(false)
   const [doneTasks, setDoneTasks] = useState<string[]>([])
   const previousBlackout = useRef(snapshot.blackout)
   const previousPhase = useRef(snapshot.phase)
   const previousAlive = useRef(snapshot.players.find((player) => player.id === me)?.alive ?? true)
-  const controlsEnabled = sceneReady && snapshot.phase === "jogando" && !openTask && !intro && !mapOpen
-  const actions = useRef({ snapshot, targets, role, sabotageStatus, onSend, controlsEnabled })
-  actions.current = { snapshot, targets, role, sabotageStatus, onSend, controlsEnabled }
+  const controlsEnabled = sceneReady && (snapshot.phase === "jogando" || (lobby && snapshot.phase === "lobby" && lobbyControlsEnabled)) && !openTask && !intro && !mapOpen && !hudPanel
+  const actions = useRef({ snapshot, targets, role, sabotageStatus, emergencyStatus, onSend, controlsEnabled })
+  actions.current = { snapshot, targets, role, sabotageStatus, emergencyStatus, onSend, controlsEnabled }
+  const requestEmergency = useCallback(() => {
+    const current = actions.current
+    if (!current.controlsEnabled || !current.targets.emergency
+      || !canCallEmergency(current.snapshot, me, current.emergencyStatus)) return
+    playGameSound("action")
+    current.onSend("emergency")
+  }, [me])
   const requestSabotage = useCallback(() => {
     const current = actions.current
     if (!current.controlsEnabled || !canSabotage(current.snapshot, me, current.role, current.sabotageStatus)) return
@@ -99,28 +133,39 @@ export function Match({
     pressed.current.clear()
     inputRef.current = { x: 0, z: 0, sprint: false, crouch: false, jumpSerial: inputRef.current.jumpSerial }
   }, [])
-  const voice = useProximityVoice({ roomRef, me, snapshot, poseRef })
-
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(QUALITY_KEY)
-      if (saved === "alto" || saved === "medio" || saved === "baixo") setQuality(saved)
-    } catch {
-      // Alto continua sendo o padrão quando o navegador bloqueia armazenamento.
-    }
+  const changeMapOpen = useCallback((open: boolean) => {
+    setHudPanel(null)
+    setMapOpen(open)
+  }, [])
+  const changeHudPanel = useCallback((panel: HudPanel) => {
+    setMapOpen(false)
+    setHudPanel(panel)
   }, [])
 
-  const chooseQuality = (next: Quality) => {
-    if (next === quality) return
+  useEffect(() => {
     resetInput()
     setTargets(NO_TARGETS)
     setSceneReady(false)
-    setQuality(next)
+  }, [lobby, resetInput])
+
+  useEffect(() => {
+    if (lobby && !lobbyControlsEnabled) {
+      setMapOpen(false)
+      setHudPanel(null)
+    }
+  }, [lobby, lobbyControlsEnabled])
+
+  const chooseQuality = (next: Quality) => {
     try {
       window.localStorage.setItem(QUALITY_KEY, next)
     } catch {
       // A troca vale para esta partida mesmo sem persistência.
     }
+    if (next === quality) return
+    resetInput()
+    setTargets(NO_TARGETS)
+    setSceneReady(false)
+    setQuality(next)
   }
 
   useEffect(() => {
@@ -207,6 +252,7 @@ export function Match({
       }
 
       if (event.repeat) return
+      if (current.snapshot.phase !== "jogando") return
       const mine = current.snapshot.players.find((player) => player.id === me)
       const alive = mine?.alive ?? false
 
@@ -249,10 +295,9 @@ export function Match({
         event.preventDefault()
         playGameSound("action")
         current.onSend("report", { corpseId: current.targets.corpse.id })
-      } else if (code === "KeyR" && alive && current.targets.emergency && (mine?.emergenciesLeft ?? 0) > 0) {
+      } else if (code === "KeyR" && alive && current.targets.emergency) {
         event.preventDefault()
-        playGameSound("action")
-        current.onSend("emergency")
+        requestEmergency()
       }
     }
     const up = (event: KeyboardEvent) => {
@@ -283,7 +328,7 @@ export function Match({
       document.removeEventListener("pointerlockchange", pointerLock)
       resetInput()
     }
-  }, [me, resetInput, requestSabotage])
+  }, [me, resetInput, requestSabotage, requestEmergency])
 
   // A tarefa aberta fecha sozinha quando a reunião começa: ninguém termina o
   // cabeamento no meio de uma discussão.
@@ -291,26 +336,28 @@ export function Match({
     if (snapshot.phase !== "jogando") {
       setOpenTask(null)
       setMapOpen(false)
+      setHudPanel(null)
     }
   }, [snapshot.phase])
 
   // O servidor sabe quais tarefas já foram, mas não manda a lista de volta para
   // não entregar de graça quem está trabalhando. Quem risca da lista é a própria
   // tela, no momento em que o minigame fecha.
-  const pendingTasks = useMemo(() => myTasks.filter((id) => !doneTasks.includes(id)), [myTasks, doneTasks])
+  const pendingTasks = useMemo(() => lobby ? [] : myTasks.filter((id) => !doneTasks.includes(id)), [lobby, myTasks, doneTasks])
 
   const inMeeting = snapshot.phase === "reuniao" || snapshot.phase === "votacao"
 
   return (
     <div className="relative h-full w-full overflow-hidden overscroll-none bg-black">
       <OfficeScene
-        key={`office-${quality}`}
+        key={`office-${quality}-${lobby ? "lobby" : "match"}`}
         map={map}
+        lobby={lobby}
         snapshot={snapshot}
         roomRef={roomRef}
         me={me}
-        role={role}
-        allies={allies}
+        role={lobby ? null : role}
+        allies={lobby ? [] : allies}
         pendingTasks={pendingTasks}
         quality={quality}
         inputRef={inputRef}
@@ -325,18 +372,22 @@ export function Match({
         snapshot={snapshot}
         map={map}
         me={me}
-        role={role}
+        role={lobby ? null : role}
+        lobby={lobby}
+        onLobbySetup={onLobbySetup}
         sabotageStatus={sabotageStatus}
         onSabotage={requestSabotage}
+        emergencyStatus={emergencyStatus}
+        onEmergency={requestEmergency}
         pendingTasks={pendingTasks}
-        targets={targets}
+        targets={lobby ? NO_TARGETS : targets}
         notices={notices}
         quality={quality}
         onQuality={chooseQuality}
         poseRef={poseRef}
         onSend={onSend}
         onOpenTask={(spot) => {
-          if (!controlsEnabled) return
+          if (!controlsEnabled || snapshot.phase !== "jogando") return
           resetInput()
           onSend("task:begin", { spotId: spot.id })
           setOpenTask(spot)
@@ -345,9 +396,15 @@ export function Match({
         inputRef={inputRef}
         controlsEnabled={controlsEnabled}
         mapOpen={mapOpen}
-        onMapOpenChange={setMapOpen}
+        onMapOpenChange={changeMapOpen}
+        panel={hudPanel}
+        onPanelChange={changeHudPanel}
         voice={voice}
       />
+
+      {!sceneReady && <div className="pointer-events-none absolute inset-0 flex items-center justify-center" role="status">
+        <p className="flex items-center gap-2 rounded-xl bg-zinc-950/90 px-4 py-3 text-sm text-zinc-200"><LoaderCircle className="size-4 animate-spin" />Preparando ambiente...</p>
+      </div>}
 
       {openTask && (
         <TaskOverlay
@@ -362,10 +419,10 @@ export function Match({
         />
       )}
 
-      {inMeeting && <Meeting snapshot={snapshot} me={me} role={role} onSend={onSend} />}
+      {inMeeting && <Meeting snapshot={snapshot} me={me} role={role} voice={voice} onSend={onSend} />}
 
       {snapshot.phase === "fim" && (
-        <EndScreen snapshot={snapshot} me={me} roles={finalRoles} onSend={onSend} onLeave={onLeave} />
+        <EndScreen snapshot={snapshot} me={me} roles={finalRoles} voice={voice} onSend={onSend} onLeave={onLeave} />
       )}
 
       {intro && role && (

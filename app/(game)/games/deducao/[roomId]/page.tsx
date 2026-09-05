@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import dynamic from "next/dynamic"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Spinner } from "@/components/ui/spinner"
 import { getOfficeMap, type OfficeMap } from "@/lib/services/games"
 import { Lobby } from "./lobby"
-import { useDeducaoRoom } from "./use-deducao-room"
+import { useDeducaoRoom, type Snapshot } from "./use-deducao-room"
+import { useProximityVoice } from "./use-proximity-voice"
 
 /// A partida carrega o Three.js inteiro. Fora daqui ninguém paga por isso, e
 /// nada disso renderiza no servidor porque a cena precisa de WebGL.
@@ -31,6 +32,7 @@ export default function DeducaoRoomPage() {
   const search = useSearchParams()
   const router = useRouter()
   const [map, setMap] = useState<OfficeMap | null>(null)
+  const [lobbyMap, setLobbyMap] = useState<OfficeMap | null>(null)
   const [minPlayers, setMinPlayers] = useState(4)
 
   const room = useDeducaoRoom({
@@ -47,9 +49,11 @@ export default function DeducaoRoomPage() {
   useEffect(() => {
     if (!room.snapshot?.mapId) return
     setMap(null)
+    setLobbyMap(null)
     void getOfficeMap(room.snapshot.mapId)
       .then((payload) => {
         setMap(payload.map)
+        setLobbyMap(payload.lobby ?? null)
         setMinPlayers(payload.minPlayers)
       })
       .catch(() => setMap(null))
@@ -96,7 +100,7 @@ export default function DeducaoRoomPage() {
     )
   }
 
-  if (!room.snapshot || !map) {
+  if (!room.snapshot) {
     return (
       <GameScreen>
         <div className="flex h-full flex-col items-center justify-center">
@@ -107,31 +111,59 @@ export default function DeducaoRoomPage() {
     )
   }
 
+  return <ConnectedRoom room={room} snapshot={room.snapshot} map={map} lobbyMap={lobbyMap} minPlayers={minPlayers} onLeave={leave} />
+}
+
+function ConnectedRoom({ room, snapshot, map, lobbyMap, minPlayers, onLeave }: {
+  room: ReturnType<typeof useDeducaoRoom>
+  snapshot: Snapshot
+  map: OfficeMap | null
+  lobbyMap: OfficeMap | null
+  minPlayers: number
+  onLeave: () => void
+}) {
+  const poseRef = useRef({ x: 0, z: 0, dir: 0 })
+  const voice = useProximityVoice({ roomRef: room.roomRef, me: room.me, snapshot, poseRef })
+  const [exploring, setExploring] = useState(false)
+  const inLobby = snapshot.phase === "lobby"
+  const activeMap = inLobby ? lobbyMap : map
+  useEffect(() => setExploring(false), [snapshot.phase])
+
   return (
     <GameScreen>
       <div className="relative h-full overflow-hidden">
-        <Match
-          map={map}
-          snapshot={room.snapshot}
+        {activeMap ? <Match
+          map={activeMap}
+          lobby={inLobby}
+          lobbyControlsEnabled={exploring}
+          onLobbySetup={() => setExploring(false)}
+          snapshot={snapshot}
           roomRef={room.roomRef}
+          poseRef={poseRef}
+          voice={voice}
           me={room.me}
           role={room.role}
           sabotageStatus={room.sabotageStatus}
+          emergencyStatus={room.emergencyStatus}
           allies={room.allies}
           myTasks={room.myTasks}
           finalRoles={room.finalRoles}
           notices={room.notices}
           onSend={room.send}
-          onLeave={leave}
-        />
-        {room.snapshot.phase === "lobby" && (
-          <div className="absolute inset-0 z-[70] h-full overflow-hidden">
+          onLeave={onLeave}
+        /> : <div className="flex h-full items-center justify-center"><Spinner className="size-7 text-amber-300" /></div>}
+        {snapshot.phase === "lobby" && (
+          <div className={`absolute inset-0 h-full overflow-hidden ${exploring ? "pointer-events-none z-20" : "z-[70]"}`}>
             <Lobby
-              snapshot={room.snapshot}
+              snapshot={snapshot}
               me={room.me}
               minPlayers={minPlayers}
+              voice={voice}
+              exploring={exploring}
+              canExplore={Boolean(lobbyMap)}
+              onExploreChange={(next) => { if (!next || lobbyMap) setExploring(next) }}
               onSend={room.send}
-              onLeave={leave}
+              onLeave={onLeave}
             />
           </div>
         )}

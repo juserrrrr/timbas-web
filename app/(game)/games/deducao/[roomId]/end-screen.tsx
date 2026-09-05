@@ -2,17 +2,20 @@
 
 import { RotateCcw, LogOut } from "lucide-react"
 import { PlayerBadge } from "./badge"
+import { MicrophoneToggle } from "./microphone-setup"
 import type { Snapshot } from "./use-deducao-room"
+import type { VoiceControls } from "./use-proximity-voice"
 
 interface Props {
   snapshot: Snapshot
   me: string
   roles: Record<string, string>
+  voice: VoiceControls
   onSend: (type: string, payload?: unknown) => void
   onLeave: () => void
 }
 
-export function EndScreen({ snapshot, me, roles, onSend, onLeave }: Props) {
+export function EndScreen({ snapshot, me, roles, voice, onSend, onLeave }: Props) {
   const crewWon = snapshot.winner === "escritorio"
   const isHost = snapshot.hostId === me
 
@@ -31,6 +34,7 @@ export function EndScreen({ snapshot, me, roles, onSend, onLeave }: Props) {
             {crewWon ? "Os funcionários venceram" : "Os assassinos venceram"}
           </h1>
           <p className="mt-3 text-sm text-zinc-400">{snapshot.endReason}</p>
+          <div className="mt-4"><MicrophoneToggle voice={voice} /></div>
         </header>
 
         <section className="mt-10">

@@ -16,6 +16,9 @@ class MockElement {
     this.tagName = tag
     this.parentElement = parent
     this.attributes = attributes
+    this.style = {}
+    this.dataset = {}
+    this.captures = new Set()
   }
   closest() {
     const roles = ["textbox", "combobox", "listbox", "slider", "spinbutton", "button"]
@@ -28,6 +31,11 @@ class MockElement {
     return null
   }
   blur() { environment.document.activeElement = null }
+  setAttribute(key, value) { this.attributes[key] = value }
+  setPointerCapture(id) { this.captures.add(id) }
+  hasPointerCapture(id) { return this.captures.has(id) }
+  releasePointerCapture(id) { this.captures.delete(id) }
+  getBoundingClientRect() { return { left: 12, top: 500, width: 112, height: 112 } }
 }
 
 function eventBus() {
@@ -47,18 +55,21 @@ function eventBus() {
 
 function createEnvironment() {
   const timers = new Map()
+  const media = { ...eventBus(), matches: false }
   let serial = 0
   return {
     now: 0,
     document: { ...eventBus(), activeElement: null, pointerLockElement: null, hidden: false },
     window: {
       ...eventBus(), innerWidth: 1000,
+      matchMedia: () => media,
       localStorage: { getItem: () => null, setItem() {} },
       setTimeout(callback) { timers.set(++serial, callback); return serial },
       clearTimeout(id) { timers.delete(id) },
     },
     runTimers() { for (const [id, callback] of [...timers]) { timers.delete(id); callback() } },
     timerCount() { return timers.size },
+    media,
   }
 }
 
@@ -106,7 +117,7 @@ const placeholder = (name) => {
   if (!components.has(name)) components.set(name, Object.assign(() => null, { displayName: name }))
   return components.get(name)
 }
-const jsx = (type, props) => ({ type, props })
+const jsx = (type, props, key) => ({ type, props, key })
 const context = vm.createContext({
   Element: MockElement, HTMLElement: MockElement,
   performance: { now: () => environment.now },
@@ -128,8 +139,10 @@ function load(name, expose = "", transform = (value) => value) {
     if (id === "react/jsx-runtime") return { jsx, jsxs: jsx, Fragment: "fragment" }
     if (id === "./keyboard-controls") return modules.get("keyboard-controls.ts")
     if (id === "./sabotage-cooldown") return modules.get("sabotage-cooldown.ts")
+    if (id === "./emergency-cooldown") return modules.get("emergency-cooldown.ts")
+    if (id === "./touch-controls") return modules.get("touch-controls.tsx")
+    if (id === "./hud-panels") return modules.get("hud-panels.tsx")
     if (id === "./match-types") return { NO_TARGETS: noTargets }
-    if (id === "./use-proximity-voice") return { useProximityVoice: () => ({}) }
     if (id === "@/lib/games/game-audio") return { playGameSound() {}, unlockGameAudio() {} }
     return new Proxy({}, { get: (_, property) => placeholder(property) })
   }
@@ -140,8 +153,37 @@ function load(name, expose = "", transform = (value) => value) {
 
 const { gameKeyCode, isGameControlTarget } = load("keyboard-controls.ts")
 const { calibrateSabotageStatus } = load("sabotage-cooldown.ts")
+const { calibrateEmergencyStatus } = load("emergency-cooldown.ts")
 const { Match } = load("match.tsx")
-const { Hud, TouchStick, ActionButton, SabotageButton } = load("hud.tsx", "\nexport { TouchStick, ActionButton }\n")
+const { TouchControls } = load("touch-controls.tsx")
+const { HudPanels } = load("hud-panels.tsx")
+const { Hud, ActionButton, SabotageButton, EmergencyButton } = load("hud.tsx", "\nexport { ActionButton }\n")
+
+function loadCameraTouchEffect() {
+  const scene = ts.createSourceFile("office-scene.tsx", source("scene/office-scene.tsx"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const effects = []
+  function visit(node) {
+    if (ts.isCallExpression(node) && node.expression.getText(scene) === "useEffect"
+      && node.arguments[0]?.getText(scene).includes('canvas.addEventListener("touchstart"')) effects.push(node)
+    ts.forEachChild(node, visit)
+  }
+  visit(scene)
+  assert.equal(effects.length, 1, "Teste isola o único efeito real da câmera touch, sem recriar handlers")
+  const pitch = scene.statements.filter(ts.isVariableStatement)
+    .find((statement) => statement.declarationList.declarations.some((declaration) => declaration.name.getText(scene) === "PITCH_LIMIT"))
+  assert.ok(pitch)
+  const output = ts.transpileModule(`${pitch.getText(scene)}
+    module.exports = function CameraTouch({ gl, controlsEnabled, lookRef }) { ${effects[0].getText(scene)}; return null }`, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText
+  const module = { exports: {} }
+  vm.runInContext(`(function(module, useEffect, isGameControlTarget, THREE) { ${output}\n})`, context)(
+    module, react.useEffect, isGameControlTarget,
+    { MathUtils: { clamp: (value, low, high) => Math.min(high, Math.max(low, value)) } },
+  )
+  return module.exports
+}
+const CameraTouch = loadCameraTouchEffect()
 
 function mount(component, initialProps) {
   const hooks = { index: 0, slots: [], effects: [], dirty: false }
@@ -169,11 +211,11 @@ function mount(component, initialProps) {
   }
 }
 
-function find(tree, type) {
+function find(tree, type, predicate = () => true) {
   if (!tree || typeof tree !== "object") return null
-  if (tree.type === type) return tree
+  if (tree.type === type && predicate(tree)) return tree
   for (const child of [tree.props?.children].flat(Infinity)) {
-    const match = find(child, type)
+    const match = find(child, type, predicate)
     if (match) return match
   }
   return null
@@ -188,18 +230,55 @@ const down = (code, fields) => { const event = keyEvent(code, fields); environme
 const up = (code, fields) => environment.window.dispatch("keyup", keyEvent(code, fields))
 const touch = (id, x, y) => ({ identifier: id, clientX: x, clientY: y })
 const touchEvent = (touches, target = new MockElement()) => ({ target, changedTouches: touches, preventDefault() {} })
+const pointerEvent = (pointerId, currentTarget, clientX = 68, clientY = 556) => ({
+  pointerId, currentTarget, target: currentTarget, pointerType: "touch", button: 0, clientX, clientY,
+  defaultPrevented: false, propagationStopped: false,
+  preventDefault() { this.defaultPrevented = true }, stopPropagation() { this.propagationStopped = true },
+})
+const clickEvent = (currentTarget = new MockElement("button"), detail = 1) => ({ currentTarget, detail })
 const idleInput = () => ({ x: 0, z: 0, sprint: false, crouch: false, jumpSerial: 0 })
 const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-10, `${a} != ${b}`)
 
-function matchFixture() {
+function touchFixture(inputRef, enabled = true) {
+  let props = { inputRef, enabled, forceVisible: true }
+  const mounted = mount(TouchControls, props)
+  const elements = new Map()
+  const bind = () => {
+    const walk = (tree) => {
+      if (!tree || typeof tree !== "object") return
+      if (tree.props?.ref) {
+        const key = tree.props["aria-label"] ?? "knob"
+        if (!elements.has(key)) elements.set(key, new MockElement(tree.type))
+        const element = elements.get(key)
+        if (typeof tree.props.ref === "function") tree.props.ref(element)
+        else tree.props.ref.current = element
+      }
+      for (const child of [tree.props?.children].flat(Infinity)) walk(child)
+    }
+    walk(mounted.tree)
+  }
+  bind()
+  const stickElement = new MockElement("div")
+  return { ...mounted, stickElement, elements,
+    stick: () => find(mounted.tree, "div", (node) => node.props["aria-label"] === "Manche de movimento").props,
+    action: (label) => find(mounted.tree, "button", (node) => node.props["aria-label"] === label).props,
+    render(patch = {}) { props = { ...props, ...patch }; mounted.render(props); bind() },
+  }
+}
+
+function matchFixture(overrides = {}) {
   environment = createEnvironment()
   const sends = []
   let props = {
     map: { taskSpots: [], rooms: [], vents: [] },
-    snapshot: { phase: "jogando", blackout: false, players: [{ id: "me", alive: true, emergenciesLeft: 1 }] },
+    snapshot: { phase: "jogando", blackout: false, emergencyReadyAt: 0, players: [{ id: "me", alive: true, connected: true, emergenciesLeft: 1 }] },
     roomRef: { current: null }, me: "me", role: "assassino", allies: [], myTasks: [], finalRoles: {}, notices: [],
+    poseRef: { current: { x: 0, z: 0, dir: 0 } },
+    voice: { enabled: false, configured: true, busy: false, peerCount: 0, error: "", devices: [], selectedDeviceId: "", toggle() {}, configure() {} },
     sabotageStatus: calibrateSabotageStatus({ readyAt: 0, serverNow: 10_000, cooldownMs: 40_000 }),
+    emergencyStatus: calibrateEmergencyStatus({ readyAt: 0, serverNow: 10_000, cooldownMs: 30_000 }),
     onSend: (...args) => sends.push(args), onLeave() {},
+    ...overrides,
   }
   const mounted = mount(Match, props)
   const scene = () => find(mounted.tree, placeholder("OfficeScene")).props
@@ -208,8 +287,9 @@ function matchFixture() {
   mounted.render()
   environment.runTimers()
   mounted.render()
-  assert.equal(scene().controlsEnabled, true)
-  return { ...mounted, scene, hud, input: () => scene().inputRef.current, sends,
+  assert.equal(scene().controlsEnabled, Boolean(props.snapshot.phase === "jogando"
+    || (props.lobby && props.lobbyControlsEnabled && props.snapshot.phase === "lobby")))
+  return { ...mounted, get tree() { return mounted.tree }, scene, hud, input: () => scene().inputRef.current, sends,
     render: mounted.render,
     update(patch) { props = { ...props, ...patch }; mounted.render(props) },
   }
@@ -320,6 +400,246 @@ test("modal map, task and meeting gate input and clear movement", () => {
   assert.equal(fixture.scene().controlsEnabled, false)
   down("KeyF"); assert.equal(fixture.sends.length, 1)
   fixture.unmount()
+})
+
+test("lobby movement is opt-in and preparation resets held input without a scene remount", () => {
+  const snapshot = { phase: "lobby", blackout: false, players: [{ id: "me", alive: true, connected: true, microphoneReady: false, ready: false }] }
+  const fixture = matchFixture({ lobby: true, lobbyControlsEnabled: false, snapshot, role: null })
+  const initialKey = find(fixture.tree, placeholder("OfficeScene")).key
+  down("KeyW"); down("Space"); close(fixture.input().z, 0)
+  assert.equal(fixture.input().jumpSerial, 0)
+  fixture.update({ lobbyControlsEnabled: true })
+  assert.equal(fixture.scene().controlsEnabled, true, "Exploração não depende de microfone nem Pronto")
+  down("KeyW"); down("ShiftLeft"); down("ControlLeft"); down("Space")
+  close(fixture.input().z, -1); assert.equal(fixture.input().jumpSerial, 1)
+  fixture.hud().onPanelChange("opcoes"); fixture.render()
+  assert.equal(fixture.scene().controlsEnabled, false)
+  fixture.update({ lobbyControlsEnabled: false })
+  assert.equal(fixture.hud().panel, null)
+  assert.equal(fixture.hud().mapOpen, false)
+  close(fixture.input().z, 0)
+  assert.equal(fixture.input().sprint, false); assert.equal(fixture.input().crouch, false)
+  fixture.update({ lobbyControlsEnabled: true })
+  assert.equal(fixture.scene().controlsEnabled, true)
+  assert.equal(find(fixture.tree, placeholder("OfficeScene")).key, initialKey)
+  down("KeyW", { repeat: true }); close(fixture.input().z, 0)
+  up("KeyW"); down("KeyW"); close(fixture.input().z, -1)
+  for (const phase of ["reuniao", "votacao", "fim"]) {
+    fixture.update({ snapshot: { ...snapshot, phase } })
+    assert.equal(fixture.scene().controlsEnabled, false, "Flag de lobby residual não permite andar fora da fase lobby")
+  }
+  fixture.unmount()
+})
+
+test("lobby rejects stale role, targets, tasks and powers while keeping motion controls", () => {
+  const fixture = matchFixture({ lobby: true, lobbyControlsEnabled: true, role: "assassino", myTasks: ["old-task"], allies: ["ally"],
+    snapshot: { phase: "lobby", blackout: false, emergencyReadyAt: 0, players: [{ id: "me", alive: true, connected: true, emergenciesLeft: 1 }] } })
+  const spot = { id: "old-task", label: "Tarefa antiga" }
+  fixture.scene().onTargets({ ...noTargets, task: spot, kill: { id: "victim", name: "colega" },
+    vent: { id: "vent", links: ["a", "b"] }, corpse: { id: "body", name: "colega" }, emergency: true }); fixture.render()
+  assert.equal(fixture.scene().role, null)
+  assert.equal(fixture.hud().role, null)
+  assert.equal(fixture.scene().allies.length, 0)
+  assert.equal(fixture.scene().pendingTasks.length, 0)
+  assert.equal(fixture.hud().pendingTasks.length, 0)
+  for (const code of ["KeyE", "KeyQ", "KeyV", "KeyR", "KeyF", "Digit1", "Digit2"]) down(code)
+  fixture.hud().onOpenTask(spot); fixture.hud().onSabotage(); fixture.hud().onEmergency(); fixture.render()
+  assert.equal(fixture.sends.length, 0)
+  assert.equal(find(fixture.tree, placeholder("TaskOverlay")), null)
+  const hud = mount(Hud, fixture.hud())
+  assert.equal(find(hud.tree, ActionButton), null)
+  assert.equal(find(hud.tree, SabotageButton), null)
+  assert.equal(find(hud.tree, EmergencyButton), null)
+  assert.equal(find(hud.tree, "button", (node) => node.props["aria-label"] === "Abrir a planta"), null)
+  assert.equal(down("KeyM").defaultPrevented, false)
+  assert.equal(fixture.hud().mapOpen, false)
+  down("KeyW"); down("Space")
+  close(fixture.input().z, -1); assert.equal(fixture.input().jumpSerial, 1)
+  hud.unmount(); fixture.unmount()
+})
+
+test("lobby-to-match transition recreates only Canvas, waits for readiness and preserves voice and quality", () => {
+  const lobbyMap = { id: "lobby", taskSpots: [], rooms: [], vents: [] }
+  const matchMap = { id: "office", taskSpots: [], rooms: [], vents: [] }
+  const snapshot = { phase: "lobby", blackout: false, players: [{ id: "me", alive: true, connected: true }] }
+  const fixture = matchFixture({ lobby: true, lobbyControlsEnabled: true, role: null, snapshot, map: lobbyMap })
+  fixture.hud().onQuality("medio"); fixture.render(); fixture.scene().onReady(); fixture.render()
+  const lobbyKey = find(fixture.tree, placeholder("OfficeScene")).key
+  const voice = fixture.hud().voice, pose = fixture.scene().poseRef, input = fixture.scene().inputRef
+  down("KeyW"); down("ShiftLeft")
+  fixture.update({ lobby: false, lobbyControlsEnabled: false, snapshot: { ...snapshot, phase: "jogando" }, map: matchMap })
+  assert.notEqual(find(fixture.tree, placeholder("OfficeScene")).key, lobbyKey)
+  assert.equal(fixture.scene().map, matchMap)
+  assert.equal(fixture.scene().controlsEnabled, false)
+  assert.equal(fixture.scene().quality, "medio")
+  assert.equal(fixture.scene().poseRef, pose); assert.equal(fixture.hud().voice, voice); assert.equal(fixture.scene().inputRef, input)
+  close(fixture.input().z, 0); assert.equal(fixture.input().sprint, false)
+  down("KeyW"); close(fixture.input().z, 0)
+  fixture.scene().onReady(); fixture.render()
+  assert.equal(fixture.scene().controlsEnabled, true)
+  const matchKey = find(fixture.tree, placeholder("OfficeScene")).key
+  for (const phase of ["reuniao", "votacao", "fim"]) {
+    fixture.update({ snapshot: { ...snapshot, phase } })
+    assert.equal(find(fixture.tree, placeholder("OfficeScene")).key, matchKey)
+    assert.equal(fixture.hud().voice, voice)
+  }
+  fixture.update({ lobby: true, lobbyControlsEnabled: false, snapshot, map: lobbyMap })
+  assert.equal(find(fixture.tree, placeholder("OfficeScene")).key, lobbyKey)
+  assert.equal(fixture.scene().controlsEnabled, false)
+  fixture.update({ lobbyControlsEnabled: true })
+  assert.equal(fixture.scene().controlsEnabled, false, "Nova sala também aguarda seu onReady")
+  fixture.scene().onReady(); fixture.render()
+  assert.equal(fixture.scene().controlsEnabled, true)
+  assert.equal(fixture.hud().voice, voice)
+  fixture.unmount()
+})
+
+test("lobby HUD opens preparation through its dedicated callback without exposing tasks", () => {
+  let preparation = 0
+  const fixture = matchFixture({ lobby: true, lobbyControlsEnabled: true, role: null, onLobbySetup() { preparation++ },
+    snapshot: { phase: "lobby", blackout: false, players: [{ id: "me", alive: true, connected: true, ready: false }] } })
+  const hud = mount(Hud, fixture.hud())
+  const open = find(hud.tree, "button", (node) => node.props["aria-label"] === "Abrir preparação da sala")
+  assert.ok(open); assert.equal(open.props.disabled, false)
+  open.props.onClick(clickEvent())
+  assert.equal(preparation, 1)
+  assert.equal(fixture.hud().panel, null)
+  assert.equal(fixture.hud().mapOpen, false)
+  hud.unmount(); fixture.unmount()
+})
+
+test("task and options panels pause Match, exclude the map and resume without held input", () => {
+  const fixture = matchFixture()
+  const hud = mount(Hud, fixture.hud())
+  const render = () => { fixture.render(); hud.render(fixture.hud()) }
+  const panels = () => find(hud.tree, HudPanels).props
+  for (const panel of ["tarefas", "opcoes"]) {
+    down("KeyW"); down("ShiftLeft"); down("ControlLeft")
+    fixture.hud().onPanelChange(panel); render()
+    assert.equal(fixture.hud().panel, panel)
+    assert.equal(fixture.hud().mapOpen, false)
+    assert.equal(fixture.scene().controlsEnabled, false)
+    close(fixture.input().z, 0)
+    assert.equal(fixture.input().sprint, false); assert.equal(fixture.input().crouch, false)
+    down("KeyF"); fixture.hud().onSabotage(); fixture.hud().onEmergency()
+    assert.equal(fixture.sends.length, 0)
+    assert.equal(find(hud.tree, TouchControls).props.enabled, false)
+    panels().onClose(); render()
+    assert.equal(fixture.hud().panel, null)
+    assert.equal(fixture.hud().mapOpen, false)
+    assert.equal(fixture.scene().controlsEnabled, true)
+    down("KeyW", { repeat: true }); close(fixture.input().z, 0)
+    up("KeyW"); down("KeyW"); close(fixture.input().z, -1)
+  }
+  fixture.hud().onMapOpenChange(true); render()
+  assert.equal(fixture.hud().panel, null)
+  fixture.hud().onPanelChange("tarefas"); render()
+  assert.equal(fixture.hud().mapOpen, false)
+  fixture.hud().onMapOpenChange(true); render()
+  assert.equal(fixture.hud().panel, null)
+  assert.equal(fixture.hud().mapOpen, true)
+  down("Escape", { target: new MockElement("button") }); render()
+  assert.equal(fixture.hud().mapOpen, false)
+  fixture.hud().onPanelChange("opcoes"); render()
+  down("Escape", { target: new MockElement("select") }); render()
+  assert.equal(fixture.hud().panel, null)
+  assert.equal(fixture.scene().controlsEnabled, true)
+  hud.unmount(); fixture.unmount()
+})
+
+test("meetings close optional panels and task overlay blocks their toolbar", () => {
+  for (const panel of ["tarefas", "opcoes"]) {
+    const fixture = matchFixture()
+    fixture.hud().onPanelChange(panel); fixture.render()
+    fixture.update({ snapshot: { phase: "reuniao", blackout: false, players: [{ id: "me", alive: true }] } })
+    assert.equal(fixture.hud().panel, null)
+    assert.equal(fixture.hud().mapOpen, false)
+    assert.equal(fixture.scene().controlsEnabled, false)
+    fixture.unmount()
+  }
+  const fixture = matchFixture()
+  const spot = { id: "task-1", room: "sala", label: "Tarefa" }
+  fixture.scene().onTargets({ ...noTargets, task: spot }); fixture.render()
+  fixture.hud().onOpenTask(spot); fixture.render()
+  const hud = mount(Hud, fixture.hud())
+  assert.ok(find(fixture.tree, placeholder("TaskOverlay")))
+  for (const label of ["Abrir tarefas: 0 pendentes", "Abrir a planta", "Opções da partida"]) {
+    assert.equal(find(hud.tree, "button", (node) => node.props["aria-label"] === label).props.disabled, true)
+  }
+  assert.equal(find(hud.tree, TouchControls).props.enabled, false)
+  assert.equal(find(hud.tree, "button", (node) => node.props["aria-label"] === "Ativar microfone").props.disabled, false)
+  hud.unmount(); fixture.unmount()
+})
+
+test("compact HUD hides unavailable actions but retains contextual tasks, reports, vents and cooldowns", () => {
+  const fixture = matchFixture()
+  const hud = mount(Hud, fixture.hud())
+  assert.equal(find(hud.tree, ActionButton), null, "Sem alvo, não há ações vazias cobrindo a cena")
+  assert.ok(find(hud.tree, SabotageButton), "Assassino acompanha a recarga mesmo sem alvo")
+  assert.equal(find(hud.tree, "select"), null, "Qualidade fica no painel opcional")
+  assert.equal(find(hud.tree, placeholder("Minimap")), null, "Minimapa não cobre a câmera permanentemente")
+  fixture.scene().onTargets({ ...noTargets, kill: { id: "victim", name: "colega" }, task: { id: "task", label: "Tarefa" },
+    vent: { id: "vent", links: [] }, corpse: { id: "body", name: "amigo" }, emergency: true }); fixture.render()
+  hud.render(fixture.hud())
+  for (const label of ["Matar colega", "Entrar no duto", "Reportar amigo", "Fazer tarefa"]) {
+    assert.ok(find(hud.tree, ActionButton, (node) => node.props.label === label), label)
+  }
+  assert.equal(find(hud.tree, EmergencyButton), null, "Corpo conserva prioridade na emergência")
+  fixture.update({ snapshot: { phase: "jogando", players: [{ id: "me", alive: true, inVent: true }] },
+    map: { taskSpots: [], rooms: [{ id: "room-a", name: "Copa" }], vents: [{ id: "a", room: "room-a" }] } })
+  fixture.scene().onTargets({ ...noTargets, vent: { id: "vent", links: ["a"] } }); fixture.render()
+  hud.render(fixture.hud())
+  assert.ok(find(hud.tree, ActionButton, (node) => node.props.label === "Ir para Copa"))
+  assert.ok(find(hud.tree, ActionButton, (node) => node.props.label === "Sair do duto"))
+  assert.equal(find(hud.tree, TouchControls).props.enabled, false)
+  fixture.update({ role: "funcionario", snapshot: { phase: "jogando", players: [{ id: "me", alive: false }] } })
+  fixture.scene().onTargets({ ...noTargets, task: { id: "task" } }); fixture.render()
+  hud.render(fixture.hud())
+  assert.equal(find(hud.tree, SabotageButton), null)
+  assert.ok(find(hud.tree, ActionButton, (node) => node.props.label === "Fazer tarefa"), "Fantasma continua tarefas")
+  hud.unmount(); fixture.unmount()
+})
+
+test("real HUD panels retain tasks, local graphics, touch override and blur after dialog close", () => {
+  const fixture = matchFixture()
+  fixture.update({ myTasks: ["task-1"], map: { name: "Escritório", rooms: [{ id: "copa", name: "Copa" }], vents: [],
+    taskSpots: [{ id: "task-1", label: "Preparar café", room: "copa", level: 1 }, { id: "task-2", label: "Outra tarefa" }] } })
+  const hud = mount(Hud, fixture.hud())
+  const panels = () => find(hud.tree, HudPanels).props
+  assert.equal(HudPanels(panels()).props.open, false)
+  fixture.hud().onPanelChange("tarefas"); fixture.render(); hud.render(fixture.hud())
+  let panelTree = HudPanels(panels())
+  assert.equal(panelTree.props.open, true)
+  assert.equal(panels().spots.length, 1)
+  assert.equal(panels().spots[0].id, "task-1")
+  assert.ok(find(panelTree, "ul"))
+  assert.equal(find(panelTree, "select"), null)
+  fixture.hud().onPanelChange("opcoes"); fixture.render(); hud.render(fixture.hud())
+  panelTree = HudPanels(panels())
+  const select = find(panelTree, "select")
+  assert.equal(select.props["aria-label"], "Qualidade gráfica")
+  assert.equal(select.props.value, "baixo")
+  select.props.onChange({ target: { value: "medio" } }); fixture.render(); hud.render(fixture.hud())
+  assert.equal(fixture.scene().quality, "medio")
+  assert.equal(fixture.scene().controlsEnabled, false)
+  assert.equal(fixture.hud().panel, "opcoes")
+  find(panelTree, "input", (node) => node.props.type === "checkbox").props.onChange({ target: { checked: true } })
+  hud.render(fixture.hud())
+  assert.equal(find(hud.tree, TouchControls).props.forceVisible, true)
+  assert.ok(find(panelTree, "details"), "Ajuda de teclado continua disponível sob demanda")
+  const active = new MockElement("select")
+  environment.document.activeElement = active
+  let prevented = false
+  find(panelTree, placeholder("DialogContent")).props.onCloseAutoFocus({ preventDefault() { prevented = true } })
+  assert.equal(prevented, true)
+  assert.equal(environment.document.activeElement, null)
+  panelTree.props.onOpenChange(false); fixture.render(); hud.render(fixture.hud())
+  assert.equal(fixture.hud().panel, null)
+  assert.equal(fixture.hud().mapOpen, false)
+  assert.equal(fixture.scene().controlsEnabled, false, "Fechar opções não antecipa prontidão da nova cena")
+  fixture.scene().onReady(); fixture.render(); hud.render(fixture.hud())
+  assert.equal(fixture.scene().controlsEnabled, true)
+  hud.unmount(); fixture.unmount()
 })
 
 test("actions fire once, honor targets, alive status and role", () => {
@@ -472,10 +792,147 @@ test("compiled sabotage button releases after 40s with stable props and rejects 
   }
 })
 
+test("R and emergency HUD share the global calibrated cooldown and current snapshot deadline", () => {
+  for (const action of [(fixture) => down("KeyR"), (fixture) => fixture.hud().onEmergency()]) {
+    const fixture = matchFixture()
+    fixture.scene().onTargets({ ...noTargets, emergency: true }); fixture.render()
+    action(fixture)
+    assert.deepEqual(fixture.sends.map(([name]) => name), ["emergency"])
+    const snapshot = { phase: "jogando", blackout: false, emergencyReadyAt: 130_000,
+      players: [{ id: "me", alive: true, connected: true, emergenciesLeft: 1 }] }
+    fixture.update({ snapshot })
+    action(fixture)
+    assert.equal(fixture.sends.length, 1, "Deadline novo bloqueia status calibrado antigo antes da resposta")
+    fixture.update({ emergencyStatus: calibrateEmergencyStatus({ readyAt: 130_000, serverNow: 100_000, cooldownMs: 30_000 }) })
+    for (const now of [0, 1_000, 29_999]) {
+      environment.now = now
+      action(fixture)
+      assert.equal(fixture.sends.length, 1)
+    }
+    environment.now = 30_000
+    action(fixture)
+    assert.equal(fixture.sends.length, 2)
+    fixture.hud().onMapOpenChange(true); fixture.render()
+    action(fixture)
+    assert.equal(fixture.sends.length, 2, "Modal bloqueia teclado e callback compartilhado")
+    fixture.unmount()
+  }
+})
+
+test("emergency eligibility blocks missing target, dead, disconnected, vent and exhausted players", () => {
+  const fixture = matchFixture()
+  const activePlayer = { id: "me", alive: true, connected: true, emergenciesLeft: 1 }
+  down("KeyR"); fixture.hud().onEmergency()
+  assert.equal(fixture.sends.length, 0, "Estar fora do botão físico não pode enviar emergência")
+  fixture.scene().onTargets({ ...noTargets, emergency: true }); fixture.render()
+  for (const player of [null, { ...activePlayer, alive: false }, { ...activePlayer, connected: false },
+    { ...activePlayer, connected: undefined }, { ...activePlayer, inVent: true }, { ...activePlayer, emergenciesLeft: 0 }]) {
+    fixture.update({ snapshot: { phase: "jogando", blackout: false, emergencyReadyAt: 0, players: player ? [player] : [] } })
+    down("KeyR"); fixture.hud().onEmergency()
+    assert.equal(fixture.sends.length, 0)
+  }
+  fixture.update({ snapshot: { phase: "jogando", blackout: true, emergencyReadyAt: 0, players: [activePlayer] } })
+  down("KeyR"); down("KeyR", { repeat: true })
+  assert.equal(fixture.sends.length, 1, "Apagão não bloqueia emergência, repetição de tecla não reenvia")
+  fixture.unmount()
+})
+
+test("body reports retain R and HUD priority during emergency cooldown", () => {
+  const fixture = matchFixture()
+  fixture.update({ snapshot: { phase: "jogando", blackout: false, emergencyReadyAt: 130_000,
+    players: [{ id: "me", alive: true, connected: true, emergenciesLeft: 0 }] },
+  emergencyStatus: calibrateEmergencyStatus({ readyAt: 130_000, serverNow: 100_000, cooldownMs: 30_000 }) })
+  fixture.scene().onTargets({ ...noTargets, emergency: true, corpse: { id: "body-1", name: "colega" } }); fixture.render()
+  down("KeyR")
+  assert.equal(fixture.sends[0][0], "report")
+  assert.equal(fixture.sends[0][1].corpseId, "body-1")
+  const hud = mount(Hud, fixture.hud())
+  assert.equal(find(hud.tree, EmergencyButton), null, "Corpo não divide o atalho R com a emergência")
+  const report = find(hud.tree, ActionButton, (node) => node.props.label.startsWith("Reportar"))
+  assert.ok(report)
+  report.props.onClick()
+  assert.equal(fixture.sends[1][0], "report")
+  assert.equal(fixture.sends[1][1].corpseId, "body-1")
+  hud.unmount(); fixture.unmount()
+})
+
+test("emergency countdown resyncs, shows exhausted calls and cleans up timers", () => {
+  environment = createEnvironment()
+  let props = { snapshot: { phase: "jogando", emergencyReadyAt: 130_000,
+    players: [{ id: "me", alive: true, connected: true, emergenciesLeft: 2 }] },
+  me: "me", controlsEnabled: true, onEmergency() {},
+  status: calibrateEmergencyStatus({ readyAt: 130_000, serverNow: 100_000, cooldownMs: 30_000 }) }
+  const mounted = mount(EmergencyButton, props)
+  assert.equal(mounted.tree.props.label, "Emergência · 30s")
+  assert.equal(mounted.tree.props.disabled, true)
+  assert.equal(environment.timerCount(), 1)
+  environment.now = 1_000; environment.runTimers(); mounted.render()
+  assert.equal(mounted.tree.props.label, "Emergência · 29s")
+  environment.now = 30_000; environment.runTimers(); mounted.render()
+  assert.equal(mounted.tree.props.label, "Reunião · 2 restantes")
+  assert.equal(mounted.tree.props.disabled, false)
+  assert.equal(environment.timerCount(), 0)
+  props = { ...props, snapshot: { ...props.snapshot, emergencyReadyAt: 180_000 } }
+  mounted.render(props)
+  assert.equal(mounted.tree.props.label, "Sincronizando emergência")
+  assert.equal(mounted.tree.props.disabled, true)
+  props = { ...props, status: calibrateEmergencyStatus({ readyAt: 180_000, serverNow: 165_000, cooldownMs: 30_000 }) }
+  mounted.render(props)
+  assert.equal(mounted.tree.props.label, "Emergência · 15s")
+  assert.equal(environment.timerCount(), 1)
+  props = { ...props, snapshot: { ...props.snapshot, players: [{ id: "me", alive: true, connected: true, emergenciesLeft: 0 }] } }
+  mounted.render(props)
+  assert.equal(mounted.tree.props.label, "Sem chamadas de emergência")
+  assert.equal(mounted.tree.props.disabled, true)
+  props = { ...props, status: null }
+  mounted.render(props)
+  assert.equal(environment.timerCount(), 0)
+  props = { ...props, status: calibrateEmergencyStatus({ readyAt: 230_000, serverNow: 200_000, cooldownMs: 30_000 }) }
+  mounted.render(props)
+  assert.equal(environment.timerCount(), 1)
+  mounted.unmount()
+  assert.equal(environment.timerCount(), 0)
+})
+
+test("compiled emergency button releases at 30s with stable props and detects an implicit clock", () => {
+  for (const explicitClock of [false, true]) {
+    const { EmergencyButton: CompiledButton } = load("hud.tsx", "", (text) => {
+      if (!explicitClock) {
+        const implicit = text.replace("canCallEmergency(snapshot, me, status, now)", "canCallEmergency(snapshot, me, status)")
+        assert.notEqual(implicit, text, "Controle negativo remove só a dependência explícita do relógio")
+        text = implicit
+      }
+      const compiled = babel.transformSync(text, {
+        filename: "hud.tsx", parserOpts: { plugins: ["jsx", "typescript"] },
+        plugins: [reactCompiler], configFile: false, babelrc: false,
+      }).code
+      assert.ok(compiled.includes("react/compiler-runtime"))
+      return compiled
+    })
+    environment = createEnvironment()
+    const props = { snapshot: { phase: "jogando", emergencyReadyAt: 130_000,
+      players: [{ id: "me", alive: true, connected: true, emergenciesLeft: 1 }] },
+    me: "me", controlsEnabled: true, onEmergency() {},
+    status: calibrateEmergencyStatus({ readyAt: 130_000, serverNow: 100_000, cooldownMs: 30_000 }) }
+    const mounted = mount(CompiledButton, props)
+    assert.equal(mounted.tree.props.disabled, true)
+    environment.now = 29_999; environment.runTimers(); mounted.render()
+    assert.equal(mounted.tree.props.label, "Emergência · 1s")
+    assert.equal(mounted.tree.props.disabled, true)
+    environment.now = 30_000; environment.runTimers(); mounted.render()
+    assert.equal(mounted.tree.props.label, "Reunião · 1 restante")
+    assert.equal(mounted.tree.props.disabled, !explicitClock)
+    assert.equal(environment.timerCount(), 0)
+    environment.now = 90_000; mounted.render()
+    assert.equal(mounted.tree.props.disabled, !explicitClock, "Controle negativo reproduz botão travado após 90s")
+    mounted.unmount()
+  }
+})
+
 test("changing graphics pauses controls until the new scene is ready", () => {
   const fixture = matchFixture()
   down("KeyW"); down("Space")
-  fixture.hud().onQuality("baixo"); fixture.render()
+  fixture.hud().onQuality("medio"); fixture.render()
   assert.equal(fixture.scene().controlsEnabled, false)
   close(fixture.input().z, 0); assert.equal(fixture.input().jumpSerial, 1)
   down("KeyF"); assert.equal(fixture.sends.length, 0)
@@ -490,6 +947,7 @@ test("map keyboard toggles and focused controls remain usable", () => {
   environment = createEnvironment()
   let props = { snapshot: { players: [], tasksTotal: 0 }, map: { rooms: [], taskSpots: [], vents: [] }, pendingTasks: [], targets: noTargets,
     notices: [], role: null, quality: "baixo", inputRef: { current: idleInput() }, controlsEnabled: true, mapOpen: false, voice: {},
+    panel: null, onPanelChange: (panel) => { props = { ...props, panel } },
     onMapOpenChange: (open) => { props = { ...props, mapOpen: open, controlsEnabled: !open } },
   }
   const mounted = mount(Hud, props)
@@ -498,29 +956,41 @@ test("map keyboard toggles and focused controls remain usable", () => {
   down("KeyM", { repeat: true }); assert.equal(props.mapOpen, true)
   down("Escape", { target: new MockElement("button") }); mounted.render(props)
   assert.equal(props.mapOpen, false)
-  down("Tab", { target: new MockElement("select") }); assert.equal(props.mapOpen, false)
-  down("Tab"); mounted.render(props); assert.equal(props.mapOpen, true)
+  assert.equal(down("Tab", { target: new MockElement("select") }).defaultPrevented, false)
+  assert.equal(props.mapOpen, false)
+  assert.equal(down("Tab").defaultPrevented, false, "Ponteiro livre preserva navegação nativa até a toolbar")
+  mounted.render(props); assert.equal(props.mapOpen, false)
+  environment.document.pointerLockElement = new MockElement("canvas")
+  assert.equal(down("Tab", { target: new MockElement("select") }).defaultPrevented, false)
+  assert.equal(props.mapOpen, false, "Select focado nunca perde sua navegação nativa")
+  assert.equal(down("Tab").defaultPrevented, true)
+  mounted.render(props); assert.equal(props.mapOpen, true)
+  environment.document.pointerLockElement = null
+  assert.equal(down("Tab").defaultPrevented, false, "Mapa aberto com ponteiro solto preserva o foco acessível")
+  assert.equal(props.mapOpen, true)
   mounted.unmount()
 })
 
-test("touch stick clamps diagonal movement and ignores other fingers/end events", () => {
+test("TouchControls clamps movement, adds a deadzone and ignores other pointer end events", () => {
   environment = createEnvironment()
   const inputRef = { current: idleInput() }
-  const mounted = mount(TouchStick, { inputRef, enabled: true })
-  environment.window.dispatch("touchstart", touchEvent([touch(1, 200, 400)]))
-  environment.window.dispatch("touchmove", touchEvent([touch(2, 450, 200)])); close(inputRef.current.x, 0)
-  environment.window.dispatch("touchmove", touchEvent([touch(1, 300, 300)]))
+  const mounted = touchFixture(inputRef)
+  mounted.stick().onPointerDown(pointerEvent(1, mounted.stickElement))
+  mounted.stick().onPointerMove(pointerEvent(2, mounted.stickElement, 200, 400)); close(inputRef.current.x, 0)
+  mounted.stick().onPointerMove(pointerEvent(1, mounted.stickElement, 69, 555))
+  close(inputRef.current.x, 0); close(inputRef.current.z, 0)
+  mounted.stick().onPointerMove(pointerEvent(1, mounted.stickElement, 168, 456))
   close(inputRef.current.x, Math.SQRT1_2); close(inputRef.current.z, -Math.SQRT1_2)
-  environment.window.dispatch("touchend", touchEvent([touch(2, 450, 200)])); close(inputRef.current.x, Math.SQRT1_2)
-  environment.window.dispatch("touchcancel", touchEvent([touch(1, 300, 300)])); close(inputRef.current.x, 0)
+  mounted.stick().onPointerUp(pointerEvent(2, mounted.stickElement)); close(inputRef.current.x, Math.SQRT1_2)
+  mounted.stick().onPointerCancel(pointerEvent(1, mounted.stickElement)); close(inputRef.current.x, 0)
   mounted.unmount()
 })
 
-test("touch controls ignore HUD buttons and right-half camera gestures", () => {
+test("TouchControls captures only its own elements, not HUD buttons or camera gestures", () => {
   for (const [x, target] of [[200, new MockElement("button")], [200, new MockElement("svg", new MockElement("button"))], [510, new MockElement()], [900, new MockElement()]]) {
     environment = createEnvironment()
     const inputRef = { current: idleInput() }
-    const mounted = mount(TouchStick, { inputRef, enabled: true })
+    const mounted = touchFixture(inputRef)
     environment.window.dispatch("touchstart", touchEvent([touch(1, x, 400)], target))
     environment.window.dispatch("touchmove", touchEvent([touch(1, x + 56, 400)], target))
     close(inputRef.current.x, 0)
@@ -528,21 +998,153 @@ test("touch controls ignore HUD buttons and right-half camera gestures", () => {
   }
 })
 
-test("touch blur, hidden, modal disable and focused UI cancel the active finger", () => {
+test("real touch camera owns only its right-side finger across multitouch and half-screen crossing", () => {
+  environment = createEnvironment()
+  const canvas = { ...eventBus() }, lookRef = { current: { yaw: 0, pitch: 0 } }
+  const mounted = mount(CameraTouch, { gl: { domElement: canvas }, controlsEnabled: true, lookRef })
+  canvas.dispatch("touchstart", touchEvent([touch(1, 200, 400)]))
+  canvas.dispatch("touchmove", touchEvent([touch(1, 250, 350)]))
+  close(lookRef.current.yaw, 0); close(lookRef.current.pitch, 0)
+  canvas.dispatch("touchstart", touchEvent([touch(1, 200, 400), touch(2, 800, 400)]))
+  canvas.dispatch("touchstart", touchEvent([touch(3, 900, 400)]))
+  canvas.dispatch("touchmove", touchEvent([touch(1, 260, 300), touch(3, 950, 350)]))
+  close(lookRef.current.yaw, 0)
+  canvas.dispatch("touchmove", touchEvent([touch(2, 780, 390)]))
+  close(lookRef.current.yaw, 0.12); close(lookRef.current.pitch, 0.06)
+  canvas.dispatch("touchend", touchEvent([touch(1, 260, 300)]))
+  canvas.dispatch("touchcancel", touchEvent([touch(3, 950, 350)]))
+  canvas.dispatch("touchmove", touchEvent([touch(2, 400, 390)]))
+  close(lookRef.current.yaw, 2.4)
+  canvas.dispatch("touchmove", touchEvent([touch(2, 390, -10_000)]))
+  close(lookRef.current.pitch, 1.05)
+  canvas.dispatch("touchmove", touchEvent([touch(2, 390, 10_000)]))
+  close(lookRef.current.pitch, -1.05)
+  canvas.dispatch("touchend", touchEvent([touch(2, 390, 390)]))
+  const stopped = { ...lookRef.current }
+  canvas.dispatch("touchmove", touchEvent([touch(2, 100, 100)]))
+  assert.deepEqual(lookRef.current, stopped)
+  mounted.unmount()
+  assert.equal(canvas.listenerCount(), 0)
+  assert.equal(environment.window.listenerCount(), 0)
+  assert.equal(environment.document.listenerCount(), 0)
+})
+
+test("real touch camera cancels old gestures on blur, hidden, UI focus, modal and touchcancel", () => {
   for (const reset of [
     () => environment.window.dispatch("blur"),
     () => { environment.document.hidden = true; environment.document.dispatch("visibilitychange") },
-    (mounted, inputRef) => mounted.render({ inputRef, enabled: false }),
     () => environment.document.dispatch("focusin", { target: new MockElement("select") }),
+    (mounted, props) => { mounted.render({ ...props, controlsEnabled: false }); mounted.render(props) },
+    (_mounted, _props, canvas) => canvas.dispatch("touchcancel", touchEvent([touch(2, 790, 400)])),
+  ]) {
+    environment = createEnvironment()
+    const canvas = { ...eventBus() }, lookRef = { current: { yaw: 0, pitch: 0 } }
+    const props = { gl: { domElement: canvas }, controlsEnabled: true, lookRef }
+    const mounted = mount(CameraTouch, props)
+    canvas.dispatch("touchstart", touchEvent([touch(2, 800, 400)]))
+    canvas.dispatch("touchmove", touchEvent([touch(2, 790, 400)]))
+    close(lookRef.current.yaw, 0.06)
+    reset(mounted, props, canvas)
+    canvas.dispatch("touchmove", touchEvent([touch(2, 500, 100)]))
+    close(lookRef.current.yaw, 0.06); close(lookRef.current.pitch, 0)
+    environment.document.hidden = false
+    canvas.dispatch("touchstart", touchEvent([touch(4, 800, 400)]))
+    canvas.dispatch("touchmove", touchEvent([touch(4, 790, 400)]))
+    close(lookRef.current.yaw, 0.12)
+    mounted.unmount()
+    assert.equal(canvas.listenerCount(), 0)
+    assert.equal(environment.window.listenerCount(), 0)
+    assert.equal(environment.document.listenerCount(), 0)
+  }
+})
+
+test("movement, camera and contextual actions coexist; opening a panel clears all gesture owners", () => {
+  const fixture = matchFixture()
+  fixture.scene().onTargets({ ...noTargets, kill: { id: "victim", name: "colega" } }); fixture.render()
+  const hud = mount(Hud, fixture.hud())
+  const touchControls = touchFixture(find(hud.tree, TouchControls).props.inputRef)
+  const canvas = { ...eventBus() }, lookRef = fixture.scene().lookRef
+  const cameraProps = { gl: { domElement: canvas }, controlsEnabled: true, lookRef }
+  const camera = mount(CameraTouch, cameraProps)
+  const start = pointerEvent(1, touchControls.stickElement)
+  touchControls.stick().onPointerDown(start)
+  assert.equal(start.defaultPrevented, true); assert.equal(start.propagationStopped, true)
+  touchControls.stick().onPointerMove(pointerEvent(1, touchControls.stickElement, 100, 556))
+  close(fixture.input().x, 1)
+  canvas.dispatch("touchstart", touchEvent([touch(2, 800, 400)]))
+  canvas.dispatch("touchmove", touchEvent([touch(2, 790, 400)]))
+  close(lookRef.current.yaw, 0.06)
+
+  const kill = ActionButton(find(hud.tree, ActionButton, (node) => node.props.label === "Matar colega").props)
+  const actionElement = new MockElement("button")
+  const actionPointer = pointerEvent(3, actionElement)
+  kill.props.onPointerDown(actionPointer)
+  assert.equal(actionPointer.defaultPrevented, true, "Ação de toque não dispara foco que cancela a câmera")
+  if (!actionPointer.defaultPrevented) {
+    environment.document.activeElement = actionElement
+    environment.document.dispatch("focusin", { target: actionElement })
+  }
+  kill.props.onClick(clickEvent(actionElement))
+  assert.equal(environment.document.activeElement, null)
+  assert.equal(fixture.sends[0][0], "kill")
+  close(fixture.input().x, 1)
+  canvas.dispatch("touchmove", touchEvent([touch(2, 780, 400)]))
+  close(lookRef.current.yaw, 0.12)
+
+  for (const [id, label] of [[4, "Pular"], [5, "Correr"], [6, "Agachar"]]) {
+    const element = new MockElement("button")
+    const pointer = pointerEvent(id, element)
+    touchControls.action(label).onPointerDown(pointer)
+    assert.equal(pointer.defaultPrevented, true); assert.equal(pointer.propagationStopped, true)
+    touchControls.action(label).onPointerUp(pointerEvent(id, element))
+    touchControls.action(label).onClick(clickEvent(element))
+    touchControls.render()
+    close(fixture.input().x, 1)
+    canvas.dispatch("touchmove", touchEvent([touch(2, 780 - id, 400)]))
+  }
+  assert.equal(fixture.input().jumpSerial, 1, "Click sintético depois do pointerup não duplica pulo")
+  assert.equal(fixture.input().crouch, true)
+  assert.equal(fixture.input().sprint, false, "Último modo ativo vence, sem correr agachado")
+  touchControls.stick().onPointerMove(pointerEvent(1, touchControls.stickElement, 110, 556))
+  assert.equal(fixture.input().crouch, true, "Mover não sobrescreve modificadores")
+
+  fixture.hud().onPanelChange("opcoes"); fixture.render(); hud.render(fixture.hud())
+  touchControls.render({ enabled: find(hud.tree, TouchControls).props.enabled })
+  camera.render({ ...cameraProps, controlsEnabled: fixture.scene().controlsEnabled })
+  close(fixture.input().x, 0)
+  assert.equal(fixture.input().crouch, false)
+  assert.equal(touchControls.stickElement.captures.size, 0)
+  const pausedYaw = lookRef.current.yaw
+  find(hud.tree, HudPanels).props.onClose(); fixture.render(); hud.render(fixture.hud())
+  touchControls.render({ enabled: find(hud.tree, TouchControls).props.enabled })
+  camera.render({ ...cameraProps, controlsEnabled: fixture.scene().controlsEnabled })
+  touchControls.stick().onPointerMove(pointerEvent(1, touchControls.stickElement, 140, 556))
+  canvas.dispatch("touchmove", touchEvent([touch(2, 300, 100)]))
+  close(fixture.input().x, 0); close(lookRef.current.yaw, pausedYaw)
+  touchControls.stick().onPointerDown(pointerEvent(7, touchControls.stickElement, 100, 556))
+  close(fixture.input().x, 1)
+  touchControls.unmount(); camera.unmount(); hud.unmount(); fixture.unmount()
+  assert.equal(canvas.listenerCount(), 0)
+  assert.equal(environment.window.listenerCount(), 0)
+  assert.equal(environment.document.listenerCount(), 0)
+  assert.equal(environment.media.listenerCount(), 0)
+})
+
+test("TouchControls blur, hidden, modal disable and lost capture cancel the active pointer", () => {
+  for (const reset of [
+    () => environment.window.dispatch("blur"),
+    () => { environment.document.hidden = true; environment.document.dispatch("visibilitychange") },
+    (mounted) => mounted.render({ enabled: false }),
+    (mounted) => mounted.stick().onLostPointerCapture(pointerEvent(1, mounted.stickElement)),
   ]) {
     environment = createEnvironment()
     const inputRef = { current: idleInput() }
-    const mounted = mount(TouchStick, { inputRef, enabled: true })
-    environment.window.dispatch("touchstart", touchEvent([touch(1, 200, 400)]))
-    environment.window.dispatch("touchmove", touchEvent([touch(1, 256, 400)])); close(inputRef.current.x, 1)
-    reset(mounted, inputRef)
+    const mounted = touchFixture(inputRef)
+    mounted.stick().onPointerDown(pointerEvent(1, mounted.stickElement))
+    mounted.stick().onPointerMove(pointerEvent(1, mounted.stickElement, 100, 556)); close(inputRef.current.x, 1)
+    reset(mounted)
     close(inputRef.current.x, 0)
-    environment.window.dispatch("touchmove", touchEvent([touch(1, 270, 400)])); close(inputRef.current.x, 0)
+    mounted.stick().onPointerMove(pointerEvent(1, mounted.stickElement, 120, 556)); close(inputRef.current.x, 0)
     mounted.unmount()
   }
 })
@@ -552,8 +1154,9 @@ test("HUD action buttons expose disabled state and callbacks without touch-stick
   let actions = 0
   const button = ActionButton({ label: "Fazer tarefa", tone: "principal", disabled: true, shortcut: "E", onClick: () => actions++ })
   assert.equal(button.type, "button"); assert.equal(button.props.disabled, true)
+  button.props.onClick(clickEvent()); assert.equal(actions, 0)
   const enabled = ActionButton({ label: "Apagar a luz", tone: "neutro", onClick: () => actions++ })
-  enabled.props.onClick()
+  enabled.props.onClick(clickEvent())
   assert.equal(actions, 1)
 })
 
@@ -563,13 +1166,14 @@ test("keyboard and touch listener cleanup prevents stale controls after unmount"
   assert.equal(environment.window.listenerCount(), 0)
   assert.equal(environment.document.listenerCount(), 0)
   const inputRef = { current: idleInput() }
-  const stick = mount(TouchStick, { inputRef, enabled: true })
-  environment.window.dispatch("touchstart", touchEvent([touch(1, 200, 400)]))
-  environment.window.dispatch("touchmove", touchEvent([touch(1, 256, 400)]))
+  const stick = touchFixture(inputRef)
+  stick.stick().onPointerDown(pointerEvent(1, stick.stickElement))
+  stick.stick().onPointerMove(pointerEvent(1, stick.stickElement, 100, 556))
   stick.unmount()
   close(inputRef.current.x, 0)
   assert.equal(environment.window.listenerCount(), 0)
   assert.equal(environment.document.listenerCount(), 0)
+  assert.equal(environment.media.listenerCount(), 0)
 })
 
 let failures = 0

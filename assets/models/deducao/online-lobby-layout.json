@@ -1,0 +1,273 @@
+{
+  "model": "/models/games/deducao/timbas-online-lobby.glb",
+  "coordinates": "Three.js, Y up, meters",
+  "bounds": {
+    "minX": -6,
+    "maxX": 6,
+    "minZ": -5,
+    "maxZ": 5
+  },
+  "floorY": 0,
+  "ceilingY": 3.6,
+  "wallThickness": 0.24,
+  "colliders": [
+    {
+      "id": "lobby-sofa-west",
+      "x": -2,
+      "z": 3.95,
+      "w": 2.4,
+      "d": 1.3,
+      "height": 0.9
+    },
+    {
+      "id": "lobby-sofa-east",
+      "x": 2,
+      "z": 3.95,
+      "w": 2.4,
+      "d": 1.3,
+      "height": 0.9
+    },
+    {
+      "id": "lobby-audio-counter",
+      "x": -5.25,
+      "z": 0,
+      "w": 1.1,
+      "d": 3,
+      "height": 1.1
+    },
+    {
+      "id": "lobby-east-cabinet",
+      "x": 5.25,
+      "z": 0,
+      "w": 1.1,
+      "d": 3,
+      "height": 1.1
+    },
+    {
+      "id": "lobby-plant--5.2--4.2",
+      "x": -5.2,
+      "z": -4.2,
+      "w": 0.8,
+      "d": 0.8,
+      "height": 1.65
+    },
+    {
+      "id": "lobby-plant--5.2-4.2",
+      "x": -5.2,
+      "z": 4.2,
+      "w": 0.8,
+      "d": 0.8,
+      "height": 1.65
+    },
+    {
+      "id": "lobby-plant-5.2--4.2",
+      "x": 5.2,
+      "z": -4.2,
+      "w": 0.8,
+      "d": 0.8,
+      "height": 1.65
+    },
+    {
+      "id": "lobby-plant-5.2-4.2",
+      "x": 5.2,
+      "z": 4.2,
+      "w": 0.8,
+      "d": 0.8,
+      "height": 1.65
+    }
+  ],
+  "spawns": [
+    {
+      "x": -2.4,
+      "z": -1.8,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": -0.8,
+      "z": -1.8,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": 0.8,
+      "z": -1.8,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": 2.4,
+      "z": -1.8,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": -2.4,
+      "z": 0,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": -0.8,
+      "z": 0,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": 0.8,
+      "z": 0,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": 2.4,
+      "z": 0,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": -2.4,
+      "z": 1.8,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": -0.8,
+      "z": 1.8,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": 0.8,
+      "z": 1.8,
+      "level": 0,
+      "dir": 3.141592653589793
+    },
+    {
+      "x": 2.4,
+      "z": 1.8,
+      "level": 0,
+      "dir": 3.141592653589793
+    }
+  ],
+  "leds": [
+    {
+      "id": "lobby-led-blue-audio",
+      "mesh": "LobbyLED_Blue_Audio",
+      "color": "#558bff",
+      "from": [
+        -5.835,
+        0.72,
+        -2.65
+      ],
+      "to": [
+        -5.835,
+        2.96,
+        -2.65
+      ],
+      "range": 4.8,
+      "strength": 0.8,
+      "position": [
+        -5.835,
+        1.8399999999999999,
+        -2.65
+      ]
+    },
+    {
+      "id": "lobby-led-amber-lounge",
+      "mesh": "LobbyLED_Amber_Lounge",
+      "color": "#ffc46b",
+      "from": [
+        -3.75,
+        3.19,
+        4.835
+      ],
+      "to": [
+        3.75,
+        3.19,
+        4.835
+      ],
+      "range": 5.8,
+      "strength": 0.7,
+      "position": [
+        0.0,
+        3.19,
+        4.835
+      ]
+    },
+    {
+      "id": "lobby-led-green-screen",
+      "mesh": "LobbyLED_Green_Screen",
+      "color": "#68e8b1",
+      "from": [
+        -2.55,
+        3.19,
+        -4.835
+      ],
+      "to": [
+        2.55,
+        3.19,
+        -4.835
+      ],
+      "range": 5.8,
+      "strength": 0.7,
+      "position": [
+        0.0,
+        3.19,
+        -4.835
+      ]
+    },
+    {
+      "id": "lobby-led-blue-entry",
+      "mesh": "LobbyLED_Blue_Entry",
+      "color": "#82b4ff",
+      "from": [
+        5.835,
+        0.72,
+        -2.65
+      ],
+      "to": [
+        5.835,
+        2.96,
+        -2.65
+      ],
+      "range": 4.8,
+      "strength": 0.7,
+      "position": [
+        5.835,
+        1.8399999999999999,
+        -2.65
+      ]
+    }
+  ],
+  "lamps": [
+    {
+      "id": "lobby-ceiling-west",
+      "mesh": "LobbyLamp_Diffusers",
+      "color": "#ffe7ce",
+      "position": [
+        -2.4,
+        3.35,
+        0
+      ],
+      "range": 8,
+      "strength": 1.1
+    },
+    {
+      "id": "lobby-ceiling-east",
+      "mesh": "LobbyLamp_Diffusers",
+      "color": "#ffe7ce",
+      "position": [
+        2.4,
+        3.35,
+        0
+      ],
+      "range": 8,
+      "strength": 1.1
+    }
+  ],
+  "budget": {
+    "drawCalls": 17,
+    "triangles": 15540
+  }
+}

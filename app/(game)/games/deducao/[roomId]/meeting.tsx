@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from "react"
 import { Fingerprint, Send, SkipForward } from "lucide-react"
 import { PlayerBadge } from "./badge"
+import { MicrophoneToggle } from "./microphone-setup"
 import type { Role, Snapshot } from "./use-deducao-room"
+import type { VoiceControls } from "./use-proximity-voice"
 
 interface Props {
   snapshot: Snapshot
   me: string
   role: Role | null
+  voice: VoiceControls
   onSend: (type: string, payload?: unknown) => void
 }
 
@@ -25,7 +28,7 @@ function useMeetingCountdown(endsAt: number) {
   return left
 }
 
-export function Meeting({ snapshot, me, role, onSend }: Props) {
+export function Meeting({ snapshot, me, role, voice, onSend }: Props) {
   const meeting = snapshot.meeting
   const seconds = useMeetingCountdown(meeting.endsAt)
   const mine = snapshot.players.find((player) => player.id === me)
@@ -48,7 +51,7 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
     setDraft("")
   }
 
-  if (settled) return <Verdict snapshot={snapshot} />
+  if (settled) return <Verdict snapshot={snapshot} voice={voice} />
 
   return (
     <div className="pointer-events-auto absolute inset-0 z-20 overflow-y-auto bg-[radial-gradient(circle_at_center,transparent_12%,rgba(6,9,14,0.56)_100%)] backdrop-blur-[1px] lg:overflow-hidden">
@@ -68,6 +71,7 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
           <p className="mt-3 font-mono text-4xl font-black tabular-nums text-white">
             {String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}
           </p>
+          <div className="mt-3"><MicrophoneToggle voice={voice} /></div>
         </header>
 
         <div className="mt-4 grid flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(20rem,30rem)_minmax(18rem,1fr)_minmax(20rem,27rem)]">
@@ -169,12 +173,13 @@ export function Meeting({ snapshot, me, role, onSend }: Props) {
   )
 }
 
-function Verdict({ snapshot }: { snapshot: Snapshot }) {
+function Verdict({ snapshot, voice }: { snapshot: Snapshot; voice: VoiceControls }) {
   const meeting = snapshot.meeting
   const ejected = snapshot.players.find((player) => player.id === meeting.ejectedId)
 
   return (
     <div className="pointer-events-auto absolute inset-0 z-20 flex items-center justify-center bg-black px-6">
+      <div className="absolute inset-x-4 top-4"><MicrophoneToggle voice={voice} /></div>
       <div className="text-center">
         {meeting.ejectedId && ejected ? (
           <>
